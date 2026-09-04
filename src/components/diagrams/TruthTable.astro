@@ -1,0 +1,257 @@
+---
+/**
+ * TruthTable - A truth table as the complete map of a question
+ *
+ * Rows are generated from the input names, in the standard order (all 0s
+ * first, counting up in binary), so a table can never disagree with itself
+ * about which row is which.
+ *
+ * Works across platforms — entirely content-driven, no platform assumptions.
+ *
+ * Usage:
+ *   <TruthTable
+ *     inputs={["A", "B"]}
+ *     columns={[{ label: "A AND B", values: [0, 0, 0, 1] }]}
+ *     caption="AND is true only where both are"
+ *   />
+ *
+ * Two columns that hold the same values can be marked as a claim, which is
+ * how this track proves two different-looking guards are the same guard:
+ *
+ *   <TruthTable
+ *     inputs={["A", "B"]}
+ *     columns={[
+ *       { label: "NOT (A AND B)", values: [1, 1, 1, 0] },
+ *       { label: "NOT A OR NOT B", values: [1, 1, 1, 0], same: true },
+ *     ]}
+ *   />
+ *
+ * The `same` flag is checked at build time, not taken on trust: if the two
+ * columns differ the build fails rather than shipping a false proof.
+ *
+ * Pass `syncWith` matching a LogicCircuit's `id` and the table highlights
+ * whichever row the reader has set the circuit's inputs to.
+ */
+
+import { inlineMarkdown } from '../../lib/inline-markdown';
+
+interface Column {
+  label: string;
+  values: (0 | 1)[];
+  /** Claims this column holds the same values as the one before it. Verified. */
+  same?: boolean;
+}
+
+interface Props {
+  inputs: string[];
+  columns: Column[];
+  caption?: string;
+  /** Highlight this row (0-based) on load. */
+  highlightRow?: number;
+  /** A LogicCircuit id whose inputs drive the highlighted row. */
+  syncWith?: string;
+}
+
+const { inputs, columns, caption, highlightRow, syncWith } = Astro.props;
+
+if (inputs.length === 0) {
+  throw new Error('TruthTable: needs at least one input');
+}
+
+const rowCount = 2 ** inputs.length;
+
+// Standard order: row r holds the binary digits of r, most significant first.
+// The circuit component computes its row index the same way, so a synced
+// highlight lands on the row the reader actually set.
+const rows = Array.from({ length: rowCount }, (_, r) =>
+  inputs.map((_, i) => (r >> (inputs.length - 1 - i)) & 1)
+);
+
+columns.forEach((column) => {
+  if (column.values.length !== rowCount) {
+    throw new Error(
+      `TruthTable: column "${column.label}" has ${column.values.length} values, ` +
+        `but ${inputs.length} inputs make ${rowCount} rows`
+    );
+  }
+});
+
+// Verify every `same` claim. A proof the reader is asked to believe should
+// not be able to rot into a lie when someone edits one column of a pair.
+columns.forEach((column, i) => {
+  if (!column.same) return;
+  if (i === 0) {
+    throw new Error(
+      `TruthTable: column "${column.label}" is marked same, but there is no column before it`
+    );
+  }
+  const previous = columns[i - 1];
+  const matches = column.values.every((v, r) => v === previous.values[r]);
+  if (!matches) {
+    throw new Error(
+      `TruthTable: "${column.label}" is marked as the same as "${previous.label}", ` +
+        `but their values differ — ${previous.values.join('')} against ${column.values.join('')}`
+    );
+  }
+});
+
+const tableLabel = caption ?? `Truth table for ${columns.map((c) => c.label).join(' and ')}`;
+---
+
+<figure class="truth-table-figure" data-sync-with={syncWith}>
+  <table class="truth-table" aria-label={tableLabel}>
+    <thead>
+      <tr>
+        {inputs.map((name) => <th scope="col" class="tt-input">{name}</th>)}
+        {
+          columns.map((column) => (
+            <th scope="col" class:list={['tt-output', column.same && 'tt-same']}>
+              <Fragment set:html={inlineMarkdown(column.label)} />
+            </th>
+          ))
+        }
+      </tr>
+    </thead>
+    <tbody>
+      {
+        rows.map((row, r) => (
+          <tr data-row={r} class:list={[r === highlightRow && 'tt-row-on']}>
+            {row.map((bit) => (
+              <td class="tt-input">{bit}</td>
+            ))}
+            {columns.map((column) => (
+              <td
+                class:list={[
+                  'tt-output',
+                  column.same && 'tt-same',
+                  column.values[r] === 1 ? 'tt-true' : 'tt-false',
+                ]}
+              >
+                {column.values[r]}
+              </td>
+            ))}
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+  {caption && <figcaption class="truth-table-caption" set:html={inlineMarkdown(caption)} />}
+</figure>
+
+{
+  syncWith && (
+    <script is:inline define:vars={{ syncWith }}>
+      document.addEventListener('logic-circuit-change', (event) => {
+        if (event.detail.id !== syncWith) return;
+        document.querySelectorAll(`[data-sync-with="${syncWith}"] tbody tr`).forEach((tr) => {
+          tr.classList.toggle('tt-row-on', Number(tr.dataset.row) === event.detail.row);
+        });
+      });
+    </script>
+  )
+}
+
+<style>
+  /* Light is the base; the two dark cases below are the only overrides, matching
+     how the site's tokens are arranged — an explicit dark choice, or a system
+     preference with no choice made. */
+  .truth-table-figure {
+    --tt-rule: #d8d2c4;
+    --tt-head: #f4f1ea;
+    --tt-true: #1a6b3c;
+    --tt-false: var(--diagram-ink-dim, #6b6355);
+    --tt-same: #3538c9;
+    --tt-same-wash: #ececfb;
+    --tt-row-on: #fbf1de;
+  }
+
+  :global(:root[data-theme='dark']) .truth-table-figure {
+    --tt-rule: #3a3630;
+    --tt-head: #262320;
+    --tt-true: #2ecc71;
+    --tt-false: var(--diagram-ink-dim, #a89b85);
+    --tt-same: #7d80ff;
+    --tt-same-wash: #23233a;
+    --tt-row-on: #33291a;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme])) .truth-table-figure {
+      --tt-rule: #3a3630;
+      --tt-head: #262320;
+      --tt-true: #2ecc71;
+      --tt-false: var(--diagram-ink-dim, #a89b85);
+      --tt-same: #7d80ff;
+      --tt-same-wash: #23233a;
+      --tt-row-on: #33291a;
+    }
+  }
+
+  .truth-table-figure {
+    margin: var(--space-6, 1.5rem) 0;
+    padding: 0;
+    overflow-x: auto;
+  }
+
+  .truth-table {
+    border-collapse: collapse;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.9rem;
+    margin: 0;
+  }
+
+  .truth-table th,
+  .truth-table td {
+    border: 1px solid var(--tt-rule);
+    padding: 0.35rem 0.7rem;
+    text-align: center;
+  }
+
+  .truth-table thead th {
+    background: var(--tt-head);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .truth-table .tt-input {
+    color: var(--diagram-ink-dim, inherit);
+  }
+
+  .truth-table td.tt-true {
+    color: var(--tt-true);
+    font-weight: 700;
+  }
+
+  .truth-table td.tt-false {
+    color: var(--tt-false);
+  }
+
+  /* A verified pair of equal columns. The tint says "look across", which is the
+     whole point of putting them side by side. */
+  .truth-table .tt-same {
+    background: var(--tt-same-wash);
+    box-shadow: inset 2px 0 0 var(--tt-same);
+  }
+
+  .truth-table tbody tr.tt-row-on td,
+  .truth-table tbody tr.tt-row-on th {
+    background: var(--tt-row-on);
+  }
+
+  .truth-table tbody tr.tt-row-on .tt-same {
+    background: var(--tt-row-on);
+  }
+
+  .truth-table-caption {
+    margin-top: var(--space-2, 0.5rem);
+    font-size: 0.875rem;
+    color: var(--color-text-muted, #6b6355);
+    max-width: 44rem;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .truth-table tbody tr {
+      transition: background-color 120ms ease;
+    }
+  }
+</style>
