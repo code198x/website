@@ -43,12 +43,73 @@ const {
 // Layout constants
 const BOX_W = 200;
 const BOX_H = 40;
-const DIAMOND_SIZE = 50;
 const STEP_GAP = 60;
 const PADDING_X = 60;
 const PADDING_Y = 30;
-const LOOP_OFFSET = 74;
-const SKIP_OFFSET = 50;
+const LINE_HEIGHT = 14;
+const STEP_FONT = 11;
+const ARROW_FONT = 10;
+
+// Split multiline labels into tspan arrays. Accept both a real newline
+// (what "…\n…" in a JSX/MDX string produces) and a literal backslash-n
+// (what escaped input produces) — splitting only on the literal was a
+// bug that silently flattened documented multi-line labels.
+function labelLines(label: string): string[] {
+  return label.split(/\n|\\n/);
+}
+
+// Every label is set in a monospace face, so a character count times the
+// advance width is the real width — no measuring at build time. 0.62em
+// slightly over-estimates the usual 0.6, which leaves labels clear of the
+// shapes and lines around them rather than flush against them.
+const CHAR_ADVANCE = 0.62;
+
+function textWidth(text: string, fontSize: number): number {
+  return text.length * fontSize * CHAR_ADVANCE;
+}
+
+function widestLine(label: string, fontSize: number): number {
+  return labelLines(label).reduce((max, line) => Math.max(max, textWidth(line, fontSize)), 0);
+}
+
+// A diamond only offers its full width along its centre line, so sizing one to
+// its label's bounding box still lets the text escape through the sloped sides.
+// Fit the label's box inside the rhombus instead: a centred w-by-h box fits a
+// diamond of half-width a and half-height b when w/2a + h/2b <= 1. Solving for
+// the width keeps the height tied to the line count and lets the shape widen.
+const DIAMOND_MIN = 50;
+const DIAMOND_PAD = 10;
+
+function diamondSize(label: string): { w: number; h: number } {
+  const textW = widestLine(label, STEP_FONT) + DIAMOND_PAD;
+  const textH = labelLines(label).length * LINE_HEIGHT;
+  const h = Math.max(DIAMOND_MIN, textH * 2);
+  const w = Math.max(DIAMOND_MIN, textW / (1 - textH / h));
+  return { w, h };
+}
+
+// Side-arrow labels sit in the gap between a shape's edge and the vertical run
+// of the arrow, so the gap has to be wide enough to hold the widest of them.
+// Left at a fixed width, a long label runs back under the shape it labels.
+const ARROW_LABEL_PAD = 20;
+
+function sideOffset(base: number, labels: string[]): number {
+  const widest = labels.reduce((max, label) => Math.max(max, textWidth(label, ARROW_FONT)), 0);
+  return Math.max(base, widest + ARROW_LABEL_PAD);
+}
+
+const skipLabels: string[] = [];
+const loopLabels: string[] = [];
+for (const conn of connections) {
+  const fromIdx = steps.findIndex(s => s.id === conn.from);
+  const toIdx = steps.findIndex(s => s.id === conn.to);
+  if (fromIdx < 0 || toIdx < 0 || !conn.label) continue;
+  if (toIdx > fromIdx + 1) skipLabels.push(conn.label);
+  else if (toIdx < fromIdx) loopLabels.push(conn.label);
+}
+
+const LOOP_OFFSET = sideOffset(74, loopLabels);
+const SKIP_OFFSET = sideOffset(50, skipLabels);
 
 // Detect if any connections skip forward (need left-side space)
 const hasSkipArrows = connections.some(conn => {
@@ -61,44 +122,31 @@ const SKIP_SPACE = hasSkipArrows ? SKIP_OFFSET + 30 : 0;
 // Centre X
 const CX = PADDING_X + SKIP_SPACE + BOX_W / 2;
 
-// Calculate Y position for each step
-const stepPositions = new Map<string, { x: number; y: number; step: Step }>();
+// Calculate Y position and shape size for each step
+const stepPositions = new Map<string, { x: number; y: number; step: Step; w: number; h: number }>();
 let currentY = PADDING_Y;
 
 for (const step of steps) {
-  const h = step.type === 'decision' ? DIAMOND_SIZE : BOX_H;
-  stepPositions.set(step.id, { x: CX, y: currentY + h / 2, step });
+  const { w, h } = step.type === 'decision'
+    ? diamondSize(step.label)
+    : { w: BOX_W, h: BOX_H };
+  stepPositions.set(step.id, { x: CX, y: currentY + h / 2, step, w, h });
   currentY += h + STEP_GAP;
 }
 
 const TOTAL_W = PADDING_X * 2 + SKIP_SPACE + BOX_W + LOOP_OFFSET + 30;
 const TOTAL_H = currentY - STEP_GAP + BOX_H / 2 + PADDING_Y;
 
-// Split multiline labels into tspan arrays. Accept both a real newline
-// (what "…\n…" in a JSX/MDX string produces) and a literal backslash-n
-// (what escaped input produces) — splitting only on the literal was a
-// bug that silently flattened documented multi-line labels.
-function labelLines(label: string): string[] {
-  return label.split(/\n|\\n/);
-}
 
-// Colours by step type
+// Colours are custom properties rather than literals so the diagram can follow
+// the page. The four step types keep their meanings in both themes — green
+// starts, red ends, amber decides, blue works — and only the values move.
 function fillColor(type: Step['type']): string {
-  switch (type) {
-    case 'start': return '#1a6b3c';
-    case 'end': return '#8b2020';
-    case 'decision': return '#7a5c1e';
-    case 'process': return '#2b2419';
-  }
+  return `var(--flow-fill-${type})`;
 }
 
 function strokeColor(type: Step['type']): string {
-  switch (type) {
-    case 'start': return '#2ecc71';
-    case 'end': return '#e74c3c';
-    case 'decision': return '#f39c12';
-    case 'process': return '#4a4dff';
-  }
+  return `var(--flow-stroke-${type})`;
 }
 
 // Build forward connections (linear, top to bottom)
@@ -162,19 +210,19 @@ import { inlineMarkdown } from '../../lib/inline-markdown';
         refY="3"
         orient="auto"
       >
-        <path d="M0,0 L8,3 L0,6 Z" fill="#888" />
+        <path d="M0,0 L8,3 L0,6 Z" fill="var(--diagram-ink-dim)" />
       </marker>
     </defs>
 
     {/* Background */}
-    <rect x="0" y="0" width={TOTAL_W} height={TOTAL_H} rx="0" fill="#1a1714" />
+    <rect x="0" y="0" width={TOTAL_W} height={TOTAL_H} rx="0" fill="var(--diagram-bg)" />
 
     {/* Draw arrows first (behind boxes) */}
     {arrows.map((arrow) => {
       const from = stepPositions.get(arrow.fromId)!;
       const to = stepPositions.get(arrow.toId)!;
-      const fromH = from.step.type === 'decision' ? DIAMOND_SIZE / 2 : BOX_H / 2;
-      const toH = to.step.type === 'decision' ? DIAMOND_SIZE / 2 : BOX_H / 2;
+      const fromH = from.h / 2;
+      const toH = to.h / 2;
 
       if (arrow.type === 'forward') {
         const y1 = from.y + fromH;
@@ -186,7 +234,7 @@ import { inlineMarkdown } from '../../lib/inline-markdown';
               y1={y1}
               x2={CX}
               y2={y2}
-              stroke="#888"
+              stroke="var(--diagram-ink-dim)"
               stroke-width="1.5"
               marker-end={`url(#${markerId})`}
             />
@@ -196,9 +244,9 @@ import { inlineMarkdown } from '../../lib/inline-markdown';
                 y={(y1 + y2) / 2}
                 text-anchor="start"
                 dominant-baseline="central"
-                fill="#aaa"
+                fill="var(--diagram-ink-dim)"
                 font-family="var(--font-family-mono, monospace)"
-                font-size="10"
+                font-size={ARROW_FONT}
               >
                 {arrow.label}
               </text>
@@ -211,8 +259,8 @@ import { inlineMarkdown } from '../../lib/inline-markdown';
         const y1 = from.y;
         const y2 = to.y;
         const skipX = CX - BOX_W / 2 - SKIP_OFFSET;
-        const startX = from.step.type === 'decision' ? CX - DIAMOND_SIZE / 2 : CX - BOX_W / 2;
-        const endX = to.step.type === 'decision' ? CX - DIAMOND_SIZE / 2 : CX - BOX_W / 2;
+        const startX = CX - from.w / 2;
+        const endX = CX - to.w / 2;
 
         // Right-angle path: left from source, down, right into target
         const points = `${startX},${y1} ${skipX},${y1} ${skipX},${y2} ${endX},${y2}`;
@@ -222,7 +270,7 @@ import { inlineMarkdown } from '../../lib/inline-markdown';
             <polyline
               points={points}
               fill="none"
-              stroke="#888"
+              stroke="var(--diagram-ink-dim)"
               stroke-width="1.5"
               stroke-dasharray="4 3"
               marker-end={`url(#${markerId})`}
@@ -233,9 +281,9 @@ import { inlineMarkdown } from '../../lib/inline-markdown';
                 y={y1 - 6}
                 text-anchor="middle"
                 dominant-baseline="auto"
-                fill="#aaa"
+                fill="var(--diagram-ink-dim)"
                 font-family="var(--font-family-mono, monospace)"
-                font-size="10"
+                font-size={ARROW_FONT}
               >
                 {arrow.label}
               </text>
@@ -248,8 +296,8 @@ import { inlineMarkdown } from '../../lib/inline-markdown';
       const y1 = from.y;
       const y2 = to.y;
       const loopX = CX + BOX_W / 2 + LOOP_OFFSET;
-      const startX = CX + BOX_W / 2;
-      const endX = CX + BOX_W / 2;
+      const startX = CX + from.w / 2;
+      const endX = CX + to.w / 2;
 
       // Right-angle path: right from source, up, left into target
       const points = `${startX},${y1} ${loopX},${y1} ${loopX},${y2} ${endX},${y2}`;
@@ -259,7 +307,7 @@ import { inlineMarkdown } from '../../lib/inline-markdown';
           <polyline
             points={points}
             fill="none"
-            stroke="#888"
+            stroke="var(--diagram-ink-dim)"
             stroke-width="1.5"
             stroke-dasharray="4 3"
             marker-end={`url(#${markerId})`}
@@ -270,9 +318,9 @@ import { inlineMarkdown } from '../../lib/inline-markdown';
               y={y2 - 6}
               text-anchor="middle"
               dominant-baseline="auto"
-              fill="#aaa"
+              fill="var(--diagram-ink-dim)"
               font-family="var(--font-family-mono, monospace)"
-              font-size="10"
+              font-size={ARROW_FONT}
             >
               {arrow.label}
             </text>
@@ -285,13 +333,14 @@ import { inlineMarkdown } from '../../lib/inline-markdown';
     {steps.map((step) => {
       const pos = stepPositions.get(step.id)!;
       const lines = labelLines(step.label);
-      const lineHeight = 14;
+      const lineHeight = LINE_HEIGHT;
       const textStartY = pos.y - ((lines.length - 1) * lineHeight) / 2;
 
       if (step.type === 'decision') {
-        // Diamond shape
-        const s = DIAMOND_SIZE / 2;
-        const points = `${pos.x},${pos.y - s} ${pos.x + s},${pos.y} ${pos.x},${pos.y + s} ${pos.x - s},${pos.y}`;
+        // Diamond shape, sized to its label by diamondSize
+        const halfW = pos.w / 2;
+        const halfH = pos.h / 2;
+        const points = `${pos.x},${pos.y - halfH} ${pos.x + halfW},${pos.y} ${pos.x},${pos.y + halfH} ${pos.x - halfW},${pos.y}`;
         return (
           <g>
             <polygon
@@ -306,9 +355,9 @@ import { inlineMarkdown } from '../../lib/inline-markdown';
                 y={textStartY + i * lineHeight}
                 text-anchor="middle"
                 dominant-baseline="central"
-                fill="#e0e0e0"
+                fill="var(--diagram-ink)"
                 font-family="var(--font-family-mono, monospace)"
-                font-size="11"
+                font-size={STEP_FONT}
               >
                 {line}
               </text>
@@ -337,9 +386,9 @@ import { inlineMarkdown } from '../../lib/inline-markdown';
               y={textStartY + i * lineHeight}
               text-anchor="middle"
               dominant-baseline="central"
-              fill="#e0e0e0"
+              fill="var(--diagram-ink)"
               font-family="var(--font-family-mono, monospace)"
-              font-size="11"
+              font-size={STEP_FONT}
             >
               {line}
             </text>
@@ -352,6 +401,47 @@ import { inlineMarkdown } from '../../lib/inline-markdown';
 </figure>
 
 <style>
+  /* Light is the default and dark is the override, matching how the rest of the
+     site's tokens are arranged: an explicit dark choice, or a system preference
+     with no choice made. The dark values are the ones this diagram always had. */
+  .flow-diagram-figure {
+    --flow-fill-start: #e3f3e8;
+    --flow-fill-end: #fbe9e9;
+    --flow-fill-decision: #fbf1de;
+    --flow-fill-process: var(--color-bg);
+
+    --flow-stroke-start: #1a6b3c;
+    --flow-stroke-end: #8b2020;
+    --flow-stroke-decision: #8a6413;
+    --flow-stroke-process: #3538c9;
+  }
+
+  :global(:root[data-theme="dark"]) .flow-diagram-figure {
+    --flow-fill-start: #1a6b3c;
+    --flow-fill-end: #8b2020;
+    --flow-fill-decision: #7a5c1e;
+    --flow-fill-process: #2b2419;
+
+    --flow-stroke-start: #2ecc71;
+    --flow-stroke-end: #e74c3c;
+    --flow-stroke-decision: #f39c12;
+    --flow-stroke-process: #4a4dff;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :global(:root:not([data-theme])) .flow-diagram-figure {
+      --flow-fill-start: #1a6b3c;
+      --flow-fill-end: #8b2020;
+      --flow-fill-decision: #7a5c1e;
+      --flow-fill-process: #2b2419;
+
+      --flow-stroke-start: #2ecc71;
+      --flow-stroke-end: #e74c3c;
+      --flow-stroke-decision: #f39c12;
+      --flow-stroke-process: #4a4dff;
+    }
+  }
+
   .flow-diagram-figure {
     margin: var(--space-6, 1.5rem) 0;
     padding: 0;
