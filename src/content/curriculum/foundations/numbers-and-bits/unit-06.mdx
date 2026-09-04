@@ -7,8 +7,7 @@ unit: 6
 tags: ["foundations", "numbers-and-bits", "fixed-point", "floating-point"]
 ---
 
-import CodeFromFile from "@components/CodeFromFile.astro";
-import Figure from "@components/Figure.astro";
+import Output from "@components/Output.astro";
 
 Every number so far has been a whole one. But the moment you write a game, you need the
 in-between: a ship that drifts **half a pixel** a frame, a ball at **two-thirds** speed.
@@ -18,31 +17,61 @@ answers, and which one you pick turns out to be a story about **speed**.
 ## The flexible way: let the point float
 
 The first answer is to let the decimal point **float** — sit wherever the number needs it,
-close up for tiny fractions, far out for huge values. It's wonderfully flexible, and you've
-been using it without knowing: **every number in Sinclair BASIC is a floating-point number.**
-Type a fraction and it just works:
+close up for tiny fractions, far out for huge values. It's wonderfully flexible, and it is
+what most languages hand you without being asked. Type a fraction and it just works:
 
-<CodeFromFile src="foundations/numbers-and-bits/unit-06/steps/step-01.bas" lang="sinclair-basic" />
+```text
+SHOW 1 / 3
+```
 
-<Figure src="/images/foundations/numbers-and-bits/unit-06/step-01-third.png" alt="A Spectrum screen showing 0.33333333 printed below the program PRINT 1/3." caption="Ask for a third. The computer floats the point and does its best — eight threes, and then it simply stops. It hasn't got a third; it's got the closest it can store." />
+<Output>{`0.33333333`}</Output>
 
-That's the catch hiding in the convenience: floating-point is **only ever an
-approximation**. It gave you eight threes and gave up — there isn't room for a real third.
-And there's a second catch that matters more for games: the processors in these machines
-have **no hardware for floating-point** at all. BASIC does every floating-point sum in
+Look at what came back. Not a third — a run of threes that stops. How many you get depends
+on the machine, but every machine stops somewhere, because a third has no exact form in
+tens and there is only so much room. Floating-point is **only ever an approximation**.
+
+## Why it can never be exact
+
+You might think that's a problem only for awkward numbers like a third. It isn't, and the
+reason goes back to Unit 1.
+
+The places to the *left* of the point double as you go: 1, 2, 4, 8. The places to the
+**right** halve: a half, a quarter, an eighth, a sixteenth. Every fraction the machine can
+hold exactly is built by adding some of those up. A half is one of them. So is three
+quarters — a half and a quarter. Fine.
+
+Now try a tenth. There is no run of halves and quarters and eighths that comes to exactly
+0.1. It recurs, on and on, the way a third does in tens:
+
+```text
+0.1 in tens   0.1                exact
+0.1 in twos   0.000110011001100…  recurring
+```
+
+So `0.1` — a number that is *perfectly* exact when you write it in tens — is not exact
+inside the machine at all. It stores the closest it can, which is a hair out. Add a few of
+those hairs together and the error shows up in your answer. This catches people out in
+every language there is.
+
+There's a second catch, and for games it mattered more: the processors in these machines
+have **no hardware for floating-point** at all. Every floating-point sum is done in
 software, step by laborious step. Flexible, yes — but **slow**. Far too slow to do dozens
 of times a frame in a game loop.
 
 ## The cheap way: nail the point down
 
 So games did the opposite. Don't let the point float — **fix** it. Pick a scale — say
-**256** — and agree, once and for all, that every number you store is really that many
+**256** — and agree, once and for all, that every number you store is that many
 *256ths*. Then 1.5 isn't stored as "1.5" at all. It's stored as 1.5 × 256 = **384** — an
 ordinary whole number. To read the real value back, you divide by the agreed scale:
 
-<CodeFromFile src="foundations/numbers-and-bits/unit-06/steps/step-02.bas" lang="sinclair-basic" />
+```text
+SHOW 384 / 256
+```
 
-<Figure src="/images/foundations/numbers-and-bits/unit-06/step-02-fixed.png" alt="A Spectrum screen showing 1.5 printed below the program PRINT 384 / 256." caption="384 ÷ 256 is 1.5. So the whole number 384 is how you carry 1.5 — the point isn't floating, it's fixed at 'divide by 256', and everyone agrees to it." />
+<Output>{`1.5`}</Output>
+
+The point isn't floating. It's fixed at "divide by 256", and everyone agrees to it.
 
 The fraction is being carried as a **whole number**. That's the whole trick, and it's the
 name: **fixed-point**.
@@ -53,9 +82,11 @@ Here's why that's such a win. Because fixed-point values *are* whole numbers, yo
 arithmetic on them with plain integer addition — the fast kind. Add 1.5 and 0.5: store both
 scaled (384 and 0.5 × 256 = 128) and just add the integers:
 
-<CodeFromFile src="foundations/numbers-and-bits/unit-06/steps/step-03.bas" lang="sinclair-basic" />
+```text
+SHOW 384 + 128
+```
 
-<Figure src="/images/foundations/numbers-and-bits/unit-06/step-03-add.png" alt="A Spectrum screen showing 512 printed below the program PRINT 384 + 128." caption="384 + 128 = 512 — and 512 ÷ 256 is 2. So 1.5 + 0.5 came out to 2, worked entirely in whole numbers. No floating-point in sight." />
+<Output>{`512`}</Output>
 
 512 is just 2 at our scale, so **1.5 + 0.5 = 2**, done with nothing but whole-number
 addition. And scaling by 256 isn't even multiplication — 256 is 2⁸, so ×256 is a
@@ -64,18 +95,18 @@ the two fastest things the machine does: integer maths and shifting.
 
 ## Why games chose fixed-point
 
-Lay the two side by side. **Floating-point** is flexible and effortless — BASIC hands it to
-you free — but it's approximate, and on these machines it's *slow*, done laboriously in
-software. **Fixed-point** is a whole number at an agreed scale: fast (the machine's quickest
+Lay the two side by side. **Floating-point** is flexible and effortless — most languages
+hand it to you free — but it's approximate, and on these machines it's *slow*, done
+laboriously in software. **Fixed-point** is a whole number at an agreed scale: fast (the machine's quickest
 operations), exact within its range, and a little more bookkeeping for you. In a game moving
-dozens of objects fifty times a second, speed won every time — so fixed-point is how the
-smooth motion in very nearly every game on these machines was actually done.
+dozens of objects fifty times a second, speed won every time — so fixed-point is how
+nearly every game on these machines moved things smoothly.
 
 ## When it's wrong, see why
 
-- **A "float" wasn't exactly the value you expected.** It never is — floating-point stores
-  the *closest it can*, not the exact number. Don't lean on one being precise (that 1/3 is
-  `0.33333333`, not a real third).
+- **A "float" wasn't exactly the value you expected.** It stores the *closest it can*, not
+  the exact number — and that includes tidy-looking values like `0.1`, which recurs in
+  twos. Never test two floating-point numbers for being exactly equal.
 - **A fixed-point value printed as a big whole number** (384, not 1.5). You forgot to divide
   by the scale to read it. The scaling is yours to remember — the machine only sees integers.
 - **The numbers ran out of room.** A scale eats range: at ×256, the largest value you can
@@ -88,8 +119,9 @@ smooth motion in very nearly every game on these machines was actually done.
 
 - A fraction can be carried two ways: **floating-point** (let the point float) or
   **fixed-point** (nail it down at an agreed scale).
-- **Floating-point** is flexible and what BASIC gives you free — but **approximate** and, with
-  no hardware for it, **slow**.
+- **Floating-point** is flexible and what most languages give you free — but
+  **approximate**, because the places after the point are halves and quarters and a value
+  like `0.1` never lands on one; and, with no hardware for it, **slow**.
 - **Fixed-point** stores a fraction as a **whole number** at a fixed scale, so its maths is
   plain integer addition and shifts — **fast** and exact within range.
 - Games chose fixed-point because, in a loop, **speed won**.
