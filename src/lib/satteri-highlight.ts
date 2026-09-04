@@ -8,7 +8,8 @@
  * Sätteri wraps injected HTML as a `raw` node for `.md` and a `Fragment`
  * (mdxJsxFlowElement) for `.mdx`; the `mdx` option picks the right one.
  */
-import { codeToHighlightHtml, loadCustomLanguage } from 'shiki-highlight-api';
+import { loadCustomLanguage } from 'shiki-highlight-api';
+import { codeToThemedHighlight } from './themed-highlight';
 import { bundledLanguages } from 'shiki';
 import { loadCode198xLanguages } from './load-custom-languages';
 
@@ -50,11 +51,10 @@ let blockCounter = 0;
 
 interface Options {
   mdx?: boolean;
-  theme?: string;
   lineNumbers?: boolean | { start: number };
 }
 
-export function code198xHighlightPlugin({ mdx = false, theme = 'dark-plus', lineNumbers: globalLineNumbers }: Options = {}) {
+export function code198xHighlightPlugin({ mdx = false, lineNumbers: globalLineNumbers }: Options = {}) {
   const wrap = mdx
     ? (html: string) => ({
         type: 'mdxJsxFlowElement',
@@ -91,9 +91,8 @@ export function code198xHighlightPlugin({ mdx = false, theme = 'dark-plus', line
         const code = ctx.textContent(codeChild).replace(/\n$/, '');
         const metaOptions = parseMetaString(meta);
         const blockId = `hl-${++blockCounter}`;
-        const result = await codeToHighlightHtml(code, {
+        const result = await codeToThemedHighlight(code, {
           lang,
-          theme,
           blockId,
           lineNumbers: (metaOptions as any).lineNumbers ?? globalLineNumbers,
           ...metaOptions,
