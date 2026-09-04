@@ -534,7 +534,6 @@ const unitPages = defineCollection({
     tags: z.array(z.string()).default([]),
     status: z.string().optional(),
     heroImage: z.string().optional(),
-    learningTime: z.number().optional(),
   }),
 });
 
