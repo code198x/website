@@ -13,6 +13,7 @@ import sinclairBasicGrammar from '../syntax/sinclair-basic.tmLanguage.json';
 import ca65Grammar from '../syntax/ca65.tmLanguage.json';
 import z80Grammar from '../syntax/z80.tmLanguage.json';
 import m68kGrammar from '../syntax/m68k.tmLanguage.json';
+import forthGrammar from '../syntax/forth.tmLanguage.json';
 
 /**
  * Load all Code198x custom languages
@@ -85,6 +86,20 @@ export async function loadCode198xLanguages() {
   await loadCustomLanguage({
     ...m68kGrammar,
     name: '68000',
+  });
+
+  // Load Forth. Shiki bundles no Forth grammar, so this is ours: Ace Forth,
+  // which the Jupiter Ace manual's Appendix D describes as FORTH-79 plus
+  // cassette storage, decompilation, floating point and a handful of hardware
+  // words. Registered under both names because the Ace is the only machine in
+  // the fleet whose only honest on-ramp is Forth.
+  await loadCustomLanguage({
+    ...forthGrammar,
+    name: 'forth',
+  });
+  await loadCustomLanguage({
+    ...forthGrammar,
+    name: 'ace-forth',
   });
 
   // Load Shiki's built-in 'asm' language using the new helper
