@@ -1,22 +1,27 @@
 ---
 /**
- * UnitSteps — one block per unit in the module, marking where this one sits.
+ * UnitSteps — one block per unit in the module: which are done, and which one
+ * you are reading.
  *
- * Replaces a continuous bar plus a percentage. "9% of General Programming"
- * answers a question nobody asked; a row of blocks answers the one they did —
- * how many units there are, and which of them you are on.
+ * Blocks are a fixed size and the row grows to hold them. A module whose row
+ * runs out of space is telling you it has too many units, which is worth
+ * seeing rather than hiding behind blocks that quietly shrink.
  *
- * The blocks divide a fixed track rather than each taking a fixed width, so a
- * module of eleven and a module of thirty-two both fit the same space.
+ * Completion is read from the same localStorage the completion control writes,
+ * so a block is filled because the unit was marked done — not because it comes
+ * earlier in the module than this one. That has to happen on the client: the
+ * server has no idea what any given reader has finished.
  */
 
 interface Props {
   unit: number;
   totalUnits: number;
   label: string;
+  /** Every unit's path, in order, so each block can be looked up in storage. */
+  unitPaths: string[];
 }
 
-const { unit, totalUnits, label } = Astro.props;
+const { unit, totalUnits, label, unitPaths } = Astro.props;
 ---
 
 <div
@@ -29,39 +34,59 @@ const { unit, totalUnits, label } = Astro.props;
 >
   {Array.from({ length: totalUnits }, (_, i) => (
     <span
-      class:list={[
-        'unit-step',
-        { 'is-done': i + 1 < unit, 'is-current': i + 1 === unit },
-      ]}
+      class:list={['unit-step', { 'is-current': i + 1 === unit }]}
+      data-unit-path={unitPaths[i]}
     />
   ))}
 </div>
+
+<script>
+  const STORAGE_KEY = 'code198x-progress';
+
+  function paint() {
+    let progress: Record<string, boolean> = {};
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      progress = stored ? JSON.parse(stored) : {};
+    } catch {
+      // A reader with storage unavailable sees position only, which is the
+      // same thing they saw before this read anything.
+      return;
+    }
+
+    document.querySelectorAll<HTMLElement>('.unit-step').forEach(step => {
+      const path = step.dataset.unitPath;
+      step.classList.toggle('is-done', Boolean(path && progress[path] === true));
+    });
+  }
+
+  paint();
+  window.addEventListener('progress-updated', paint);
+</script>
 
 <style>
   .unit-steps {
     display: flex;
     align-items: center;
     gap: 3px;
-    flex: 0 1 14rem;
-    min-width: 6rem;
   }
 
   .unit-step {
-    flex: 1 1 0;
-    min-width: 3px;
+    flex: none;
+    width: 8px;
     height: 6px;
     border-radius: 1px;
     background: var(--color-border);
   }
 
-  /* Units already behind you read as the same colour, dimmed; the current one
-     is the only block at full strength. */
   .unit-step.is-done {
     background: var(--systemColor, var(--color-text-secondary));
-    opacity: 0.4;
+    opacity: 0.45;
   }
 
+  /* The unit being read is the only block at full strength, done or not. */
   .unit-step.is-current {
     background: var(--systemColor, var(--color-text-secondary));
+    opacity: 1;
   }
 </style>
