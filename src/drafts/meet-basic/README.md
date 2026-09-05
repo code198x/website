@@ -23,6 +23,11 @@ The review routes are:
 - `/systems/sinclair-zx-spectrum/basic/meet-basic/review/unit-02/`
 - `/systems/sinclair-zx-spectrum/basic/meet-basic/review/unit-03/`
 
+Previous/next links, the lesson list and links between draft lessons stay within
+`review/`, including when the entry URL has no trailing slash. The overview button
+returns to the review lesson list. The breadcrumb explicitly labels the exit to
+the published BASIC track.
+
 The route returns no paths for production builds. The drafts are outside the
 curriculum content collections and catalogue. They neither replace existing unit
 URLs nor appear in the public curriculum, sitemap or search index.
