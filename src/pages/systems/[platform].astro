@@ -1,281 +1,93 @@
 ---
-/**
- * Never-404 system stub — /[platform]/
- *
- * Every machine in
- * the manifest that has no curriculum yet still gets a real page: machine facts,
- * an honest plan, a place in the queue, and an invitation to help — never a 404,
- * and never a pretence. Quiet, neutral house chrome with NO system colour; colour
- * is earned by going live (same rule as the fleet wall).
- *
- * Active platforms (Spectrum, C64, NES, Amiga) have their own dedicated landing
- * pages under src/pages/<slug>/index.astro, so they're excluded here to avoid a
- * route collision. This route covers the rest, with copy that flexes by tier:
- * planned (in the queue), edge (strains the method), beyond (outside the domain).
- *
- * Facts come from the platforms manifest + manufacturers collection. Rows the
- * manifest doesn't carry (RAM/display/sound) are omitted rather than invented.
- */
 import Layout from '../../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
 import { getAllPlatforms, getAllManufacturers } from '../../lib/platforms';
 import { asmInstructionReference } from '../../lib/surfaces';
+import { systemStatus } from '../../lib/system-directory';
 
 export async function getStaticPaths() {
   const platforms = await getAllPlatforms();
   const manufacturers = await getAllManufacturers();
-  const maker = new Map(manufacturers.map(m => [m.id, m.data]));
-
-  return platforms
-    // Only the live platforms have dedicated landing pages (src/pages/<slug>/index.astro).
-    // Everything else — including `next` systems still in build — gets this honest stub,
-    // so footer/fleet links never 404.
-    .filter(p => p.data.tier !== 'live')
-    .map(p => ({
-      params: { platform: p.id },
-      props: { data: p.data, maker: maker.get(p.data.manufacturer) ?? null },
-    }));
+  const makers = new Map(manufacturers.map(m => [m.id, m.data.shortName]));
+  return platforms.filter(p => p.data.tier !== 'live').map(p => ({
+    params: { platform: p.id }, props: { data: p.data, maker: makers.get(p.data.manufacturer) ?? p.data.manufacturer },
+  }));
 }
-
 const { data, maker } = Astro.props;
-const { platform: slug } = Astro.params;
-const tier = data.tier ?? 'planned';
-
-const TIER_COPY: Record<string, { stamp: string; honest: string; plan: boolean }> = {
-  next: {
-    stamp: 'Next up',
-    honest: `This one's <span class="mk">next in line</span> — the groundwork is done and the curriculum is being written. No lessons here yet, but it's actively in build, not a someday-maybe.`,
-    plan: true,
-  },
-  planned: {
-    stamp: 'Planned',
-    honest: `We haven't built this one yet — and we're not going to pretend otherwise. There are <span class="mk">no lessons here</span> today. What there is: the plan, a clear sense of where it sits, and a standing invitation to help bring it forward.`,
-    plan: true,
-  },
-  edge: {
-    stamp: 'Edge of domain',
-    honest: `This one sits at the <span class="mk">edge of what the method covers</span> — vector displays, add-on hardware, or design that fights the one-machine, hands-on approach. It may earn a curriculum; it may stay a reference. No lessons here today, and we won't pretend otherwise.`,
-    plan: false,
-  },
-  beyond: {
-    stamp: 'Beyond',
-    honest: `This sits <span class="mk">outside the curriculum's domain</span> — too far from the hands-on, single-machine craft we teach. You'll find it in the Vault as history; a build curriculum is unlikely. A real page, honest about its place.`,
-    plan: false,
-  },
-};
-const copy = TIER_COPY[tier] ?? TIER_COPY.planned;
-
-const made = [data.year, maker?.shortName, maker?.city].filter(Boolean).join(' · ');
-const regionName: Record<string, string> = {
-  US: 'United States', UK: 'United Kingdom', Japan: 'Japan', Europe: 'Europe', Netherlands: 'Netherlands',
-};
-const facts = [
-  { k: 'CPU', v: data.cpu },
-  { k: 'Architecture', v: `${data.bits}-bit · ${data.cpuArchitecture}` },
-  { k: 'Type', v: data.type },
-  { k: 'Region', v: regionName[data.region] ?? data.region },
-  { k: 'Made', v: made },
-].filter(f => f.v);
-
-// Asm198x publishes a generated instruction reference per CPU. For a machine
-// with no curriculum yet this is the one concrete thing a reader can go and
-// use today, which is exactly what this page promises isn't missing. Null for
-// the seven architectures Asm198x has no page for — no card rather than a
-// guessed URL.
+const slug = Astro.params.platform!;
+const lessons = (await getCollection('unit-pages')).filter(unit => unit.id.startsWith(`${slug}/`));
+const status = systemStatus[lessons.length ? 'live' : data.tier ?? 'planned'];
+const articles = (await getCollection('vault')).filter(entry => entry.data.platforms?.includes(slug))
+  .sort((a, b) => Number(b.data.category === 'systems') - Number(a.data.category === 'systems') || a.data.title.localeCompare(b.data.title)).slice(0, 6);
 const instructionRef = asmInstructionReference(data.cpuArchitecture);
-const wikiSearch = `https://en.wikipedia.org/w/index.php?search=${encodeURIComponent(data.name)}`;
-const TIERS = ['live', 'next', 'planned', 'edge', 'beyond'];
-const tierLabel: Record<string, string> = { live: 'Live', next: 'Next', planned: 'Planned', edge: 'Edge', beyond: 'Beyond' };
+const regions: Record<string, string> = { US: 'United States', UK: 'United Kingdom', USSR: 'Soviet Union' };
+const facts = [
+  { label: 'Manufacturer', value: maker }, { label: 'Introduced', value: data.year },
+  { label: 'CPU', value: data.cpu }, { label: 'Type', value: data.type },
+  { label: 'Region', value: regions[data.region] ?? data.region },
+];
 ---
-
-<Layout
-  title={`${data.name} · ${copy.stamp}`}
-  description={`${data.name} — a real page in the Code Like It's 198x fleet. No curriculum yet, but the machine, the plan, and an honest invitation to help.`}
->
-  <div class="wrap">
-    <!-- HERO (quiet, honest) -->
-    <section class="hero">
-      <div class="ghost"><span>{data.shortName}</span></div>
-      <div class="in">
-        <div class="k">
-          <span class="stamp">{copy.stamp}</span>
-          <span class="eyebrow">{[maker?.shortName, data.region, data.year, data.cpu].filter(Boolean).join(' · ')}</span>
-        </div>
-        <h1>{data.name}</h1>
-        <div class="herorule"></div>
-        <p class="honest" set:html={copy.honest} />
-        <div class="note">
-          <b>The honest bit</b>{' '}
-          This isn't a dead end. The page is real — there's just no curriculum on it yet.
-        </div>
-      </div>
-    </section>
-
-    <div class="grid">
-      <!-- MAIN -->
-      <div class="main">
-        {copy.plan && (
-          <div class="sec">
-            <h2>The plan, when we get here</h2>
-            <div class="step">
-              <span class="num">1</span>
-              <div class="b"><div class="t">Port the methodology</div>
-                <p>Prove the Spectrum approach generalises to this machine's CPU and display. This is the gate — everything else waits on it.</p></div>
-              <span class="state">Not started</span>
-            </div>
-            <div class="step">
-              <span class="num">2</span>
-              <div class="b"><div class="t">A gateway track</div>
-                <p>The gentlest on-ramp the machine allows — fundamentals first, building real things from the very first lesson.</p></div>
-              <span class="state">Queued</span>
-            </div>
-            <div class="step">
-              <span class="num">3</span>
-              <div class="b"><div class="t">Assembly flagship</div>
-                <p>The real prize: a complete game on the metal, at the same commercial bar as Shadowkeep on the Spectrum.</p></div>
-              <span class="state">Queued</span>
-            </div>
-          </div>
-        )}
-
-        <div class="sec">
-          <h2>The machine itself</h2>
-          <div class="machine">
-            <div class="facts">
-              {facts.map(f => (
-                <div class="row"><span class="k">{f.k}</span><span class="v">{f.v}</span></div>
-              ))}
-            </div>
-            <div class="afield">
-              <div class="eyebrow">Further afield</div>
-              <ul>
-                <li><a href={wikiSearch} rel="noopener">Wikipedia</a> <span class="d">· search for {data.name}</span></li>
-                <li><a href="/timeline">Timeline</a> <span class="d">· where {data.shortName} sits on the timeline</span></li>
-                <li><a href="/vault">The Vault</a> <span class="d">· history, people, and culture</span></li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div class="sec">
-          <h2>In the meantime</h2>
-          <div class="meanwhile">
-            <a class="mw" href="/systems/sinclair-zx-spectrum"><div class="u">/sinclair-zx-spectrum/</div><h3>Start on a live machine</h3><p>The Spectrum is ready today — same craft, same bar. A fine place to begin.</p></a>
-            <a class="mw" href="/vault"><div class="u">/vault/</div><h3>Read about it now</h3><p>The Vault holds history, people and culture — no curriculum required.</p></a>
-            <a class="mw" href="/systems"><div class="u">/systems/</div><h3>See the whole fleet</h3><p>Every machine we mean to teach. Find where this one sits.</p></a>
-          </div>
-        </div>
-      </div>
-
-      <!-- SIDEBAR -->
-      <aside class="side">
-        <div class="card go">
-          <div class="eyebrow">Follow along</div>
-          <p>We post in Discord when a machine goes live. Come and say which one you're waiting for.</p>
-          <a class="btn sm primary" href="https://discord.gg/AdmEYQKWZb" rel="noopener">Join the Discord →</a>
-        </div>
-
-        {instructionRef && (
-          <div class="card">
-            <div class="eyebrow">Write code for it today</div>
-            <p>No curriculum yet, but the CPU is documented. Asm198x's instruction reference covers every {data.cpuArchitecture} opcode — encoding, cycles and flags — generated from its spec.</p>
-            <a class="btn sm primary" href={instructionRef} rel="noopener">{data.cpuArchitecture} instructions &rarr;</a>
-          </div>
-        )}
-
-        <div class="card">
-          <div class="eyebrow">Or build it yourself</div>
-          <p>Know this machine better than we do? Very likely. Port the methodology and open a PR — your name goes on it.</p>
-          <a class="btn sm primary" href="https://github.com/code198x" rel="noopener">Help build it →</a>
-        </div>
-
-        <div class="card">
-          <div class="eyebrow">What "{copy.stamp}" means</div>
-          <div class="tiers">
-            {TIERS.map(t => (
-              <span class={t === tier ? 'on' : ''}>{tierLabel[t]}{t === tier ? ' ← here' : ''}</span>
-            ))}
-          </div>
-          <p style="margin-top:9px;">A real page with a plan, even before the lessons land. No dead ends, no pretending.</p>
-        </div>
-      </aside>
+<Layout title={data.name} description={`${data.name}: curriculum availability, machine details and related Code198x reference material.`}>
+  <article class="page">
+    <header>
+      <p class="eyebrow">Systems · {status.label}</p>
+      <h1>{data.name}</h1>
+      <p class="lead">{status.description}</p>
+    </header>
+    <div class="columns">
+      <section aria-labelledby="machine">
+        <h2 id="machine">About the machine</h2>
+        <dl>{facts.map(fact => <div><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>
+        <p>These details identify the system in the directory. Particular models, expansions
+          and regional versions can differ; a development guide needs to name its target configuration.</p>
+      </section>
+      <section aria-labelledby="available">
+        <h2 id="available">What you can explore now</h2>
+        {lessons.length > 0 ? <ul>{lessons.map(lesson => <li><a href={`/systems/${lesson.id}`}>{lesson.data.title}</a></li>)}</ul> :
+          <p>There are no published Code198x lessons for this system yet. You can explore
+            related reference material below, or choose a machine with lessons from the{' '}
+            <a href="/systems">Systems directory</a>.</p>}
+        <p><a href="/foundations">Foundations</a> offers programming concepts in pseudocode,
+          without choosing a machine. It is an optional starting point, not a requirement
+          for a future track here.</p>
+        {instructionRef && <p>The <a href={instructionRef}>{data.cpuArchitecture} instructions</a>{' '}
+          on Asm198x provide a CPU reference. A CPU reference is not a complete
+          setup guide or evidence that a program can be built and run on this system.</p>}
+      </section>
     </div>
-  </div>
+    <section aria-labelledby="related">
+      <h2 id="related">Related reading</h2>
+      {articles.length > 0 ? <ul class="articles">{articles.map(article => <li><a href={`/vault/${article.id}`}>
+        <span>{article.data.category}</span><strong>{article.data.title}</strong><span class="read">Read in the Vault →</span>
+      </a></li>)}</ul> : <p>Browse the <a href="/vault">Vault</a> for computing history and technical
+        context, or the <a href="/timeline">Timeline</a> for events across systems.</p>}
+    </section>
+    <section aria-labelledby="contributing">
+      <h2 id="contributing">Help develop the material</h2>
+      <p>A useful contribution might be a sourced correction, a small working example or
+        a proposal for a game suited to this machine. Explain the target configuration,
+        what the example teaches and what you have checked.</p>
+      <p>Read the <a href="/contribute">contribution guide</a> and discuss a proposed track
+        before starting a large set of lessons. The <a href="/standards">Sources &amp; Standards</a>{' '}
+        page explains our approach to evidence. Published additions appear in{' '}
+        <a href="/updates">What’s New</a>.</p>
+    </section>
+  </article>
 </Layout>
-
 <style>
-  .wrap { max-width: var(--container-max-width); margin: 0 auto; padding: var(--space-4) var(--space-6) var(--space-16); }
-  .eyebrow { font-family: var(--font-family-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-text-secondary); }
-
-
-  .btn { font-family: var(--font-family-mono); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-    padding: 12px 16px; border: 3px solid var(--color-text); background: var(--color-surface); color: var(--color-text); text-decoration: none; box-shadow: var(--shadow-chunky); display: inline-block; transition: transform var(--transition-base), box-shadow var(--transition-base); }
-  .btn:hover { transform: translate(-2px, -2px); box-shadow: 6px 6px 0 rgb(0 0 0 / 0.18); }
-  /* --color-house-2 is a chrome colour; white on it is 3.10:1. --btn-fill is
-     the white-safe shade of the same hue (5.11 light / 4.51 dark). */
-  .btn.primary { background: var(--btn-fill); border-color: var(--btn-fill); color: #fff; box-shadow: 4px 4px 0 rgb(192 81 47 / 0.3); }
-  .btn.sm { padding: 9px 12px; font-size: 0.7rem; }
-
-  /* hero — deliberately quiet; non-live tiers are dashed/neutral */
-  .stamp { display: inline-block; font-family: var(--font-family-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
-    border: 2px dashed var(--color-text-secondary); color: var(--color-text-secondary); padding: 3px 10px; background: var(--color-surface); }
-  .hero { position: relative; overflow: hidden; margin-top: var(--space-4); padding: var(--space-8) 0 var(--space-1); }
-  .ghost { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end; pointer-events: none; overflow: hidden; z-index: 0; }
-  .ghost span { font-family: var(--font-family-read); font-weight: 700; font-size: clamp(140px, 26vw, 300px); line-height: 0.7; color: var(--color-house); opacity: 0.045; transform: rotate(-4deg); margin-right: -10px; white-space: nowrap; }
-  .hero .in { position: relative; z-index: 1; }
-  .hero .k { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .hero h1 { font-family: var(--font-family-read); font-weight: 700; font-size: clamp(3.4rem, 9vw, 5.25rem); line-height: 0.84;
-      /* Reserve the descender the tight line-height does not: Literata's ink
-         drops ~0.33em past the box, which collided with the strapline. */
-      padding-bottom: 0.25em; margin: var(--space-2) 0 0; color: var(--color-text); }
-  .hero .honest { font-size: 1.05rem; max-width: 60ch; margin: var(--space-3) 0 0; color: var(--color-text); }
-  .hero .honest :global(.mk) { background: linear-gradient(180deg, transparent 58%, var(--color-house-tint) 58%); padding: 0 2px; }
-  .herorule { height: 9px; width: 240px; background: var(--color-house); position: relative; margin-top: var(--space-3); }
-  .herorule::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 24%; background: var(--color-house-2); }
-  .note { display: inline-block; background: #fdf3a8; border: 1px solid rgb(0 0 0 / 0.18); box-shadow: 2px 3px 6px rgb(0 0 0 / 0.12);
-    padding: 9px 12px; font-family: var(--font-family-read); font-size: 1.15rem; line-height: 1.15; color: #5a4a18; transform: rotate(-1.4deg); margin-top: var(--space-4); max-width: 420px; }
-  .note b { font-family: var(--font-family-mono); font-size: 0.6rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #836400; display: block; margin-bottom: 2px; }
-
-  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--space-8); margin-top: var(--space-8); align-items: start; }
-  .wrap h2 { font-family: var(--font-family-base, inherit); font-weight: 800; font-size: 1.3rem; margin: 0 0 var(--space-3); color: var(--color-text); }
-  .sec { margin-bottom: var(--space-8); }
-
-  /* the honest plan — dashed, unchecked */
-  .step { display: flex; gap: 13px; border: 2px dashed var(--color-border); background: var(--color-surface); padding: 13px 15px; margin-bottom: 10px; }
-  .step .num { font-family: var(--font-family-read); font-weight: 700; font-size: 1.85rem; line-height: 0.85; color: var(--color-text-secondary); width: 28px; flex: 0 0 auto; }
-  .step .b { flex: 1; } .step .t { font-weight: 800; font-size: 1rem; } .step p { font-size: 0.85rem; color: var(--color-text-secondary); margin: 5px 0 0; line-height: 1.5; }
-  .step .state { font-family: var(--font-family-mono); font-size: 0.56rem; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-secondary); border: 1.5px solid var(--color-border); padding: 2px 7px; align-self: flex-start; white-space: nowrap; }
-
-  /* machine band — real facts (the machine IS real) */
-  .machine { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: var(--space-5); }
-  .facts { border: 3px solid var(--color-border); background: var(--color-surface); padding: 6px 14px; }
-  .facts .row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dashed var(--color-border); font-size: 0.9rem; }
-  .facts .row:last-child { border-bottom: 0; }
-  .facts .k { font-family: var(--font-family-mono); font-size: 0.62rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-secondary); align-self: center; }
-  .facts .v { font-weight: 600; text-align: right; }
-  .afield { border: 3px solid var(--color-border); background: var(--color-house-tint); padding: 12px 15px; }
-  .afield ul { list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.85rem; }
-  .afield li { padding: 5px 0 5px 20px; position: relative; }
-  .afield li::before { content: "↗"; position: absolute; left: 0; color: var(--color-house-2); font-family: var(--font-family-mono); }
-  .afield a { color: var(--color-text); font-weight: 600; text-decoration: none; } .afield a:hover { color: var(--color-house-2); } .afield .d { color: var(--color-text-secondary); font-weight: 400; }
-
-  .meanwhile { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); }
-  .mw { border: 3px solid var(--color-border); background: var(--color-surface); padding: 13px 15px; text-decoration: none; color: var(--color-text); transition: transform var(--transition-base), box-shadow var(--transition-base); }
-  .mw:hover { transform: translate(-3px, -3px); box-shadow: var(--shadow-chunky); border-color: var(--color-text); }
-  .mw .u { font-family: var(--font-family-mono); font-size: 0.62rem; letter-spacing: 0.1em; color: var(--color-house-2); }
-  .mw h3 { font-weight: 800; font-size: 1rem; margin: 4px 0 0; } .mw p { font-size: 0.8rem; color: var(--color-text-secondary); margin: 5px 0 0; line-height: 1.5; }
-
-  /* sidebar */
-  .side .card { border: 3px solid var(--color-border); background: var(--color-surface); padding: 14px 15px; margin-bottom: var(--space-4); }
-  .side .card.go { border-color: var(--color-house-2); background: var(--color-house-tint); }
-  .side p { font-size: 0.8rem; color: var(--color-text-secondary); margin: 6px 0 0; line-height: 1.5; }
-  .sub { display: flex; margin-top: 11px; }
-  .sub input { flex: 1; font-family: var(--font-family-mono); font-size: 0.75rem; padding: 9px 10px; border: 3px solid var(--color-text); border-right: 0; background: var(--color-bg); color: var(--color-text); min-width: 0; }
-  .sub button { font-family: var(--font-family-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 0 13px; border: 3px solid var(--color-house-2); background: var(--color-house-2); color: #fff; cursor: pointer; }
-
-  /* tier explainer */
-  .tiers { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-  .tiers span { font-family: var(--font-family-mono); font-size: 0.58rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 8px; border: 1.5px solid var(--color-border); color: var(--color-text-secondary); }
-  .tiers span.on { border: 2px solid var(--color-text); color: var(--color-text); background: var(--color-bg); }
-
-  @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } .side { order: 2; } .machine { grid-template-columns: 1fr; } .meanwhile { grid-template-columns: 1fr; } }
+  .page { max-width: var(--container-max-width); margin: auto; padding: var(--space-10) var(--gutter) var(--space-16); }
+  .eyebrow { font-family: var(--font-family-mono); font-size: .8rem; color: var(--h-ink-muted); }
+  h1 { font-family: var(--font-family-read); font-size: clamp(2.2rem, 5vw, 4rem); line-height: 1.12; margin: var(--space-4) 0; text-wrap: balance; }
+  h2 { font-size: 1.4rem; line-height: 1.3; } p { max-width: 72ch; line-height: 1.7; color: var(--h-ink-body); } .lead { font-size: 1.15rem; }
+  a { color: inherit; text-decoration: underline; text-underline-offset: .15em; }
+  section { margin-top: var(--space-8); }
+  .columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-8); }
+  dl { background: var(--color-surface); padding: var(--space-4); border: 1px solid var(--color-border); }
+  dl > div { display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: var(--space-3); padding: var(--space-2) 0; }
+  dt { color: var(--h-ink-muted); } dd { margin: 0; overflow-wrap: anywhere; }
+  .articles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: var(--space-5); list-style: none; padding: 0; }
+  .articles li { display: flex; } .articles a { display: flex; flex: 1; flex-direction: column; gap: var(--space-3); padding: var(--space-5); border: 1px solid var(--color-border); background: var(--color-surface); text-decoration: none; }
+  .articles span { font-size: .8rem; color: var(--h-ink-body); } .articles strong { flex: 1; } .articles .read { text-decoration: underline; }
+  .articles a:focus-visible { outline: 3px solid var(--h-ink); outline-offset: 4px; }
+  @media (max-width: 760px) { .columns { grid-template-columns: 1fr; gap: 0; } }
 </style>
