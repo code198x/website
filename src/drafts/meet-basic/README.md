@@ -37,15 +37,18 @@ in `verification/input-results.json`; its story capture was visually inspected. 
 support instructions, order, variables and output without assuming attendance.
 
 The desktop keyboard mapping was checked in source, **not exercised in the native
-interface**. The saving explanation deliberately stops short of inventing a menu
-operation: [Emu198x #1446](https://github.com/emu198x/emu198x/issues/1446) tracks the
-missing desktop export of a recorded BASIC tape. The review wrapper makes this
-blocker visible before a reader reaches the save section.
+interface**. [Emu198x PR #1447](https://github.com/emu198x/emu198x/pull/1447)
+implements Tape → Export Recording and has been built locally. A2 now describes
+that export and the File → Open Tape Deck / LOAD / Play route. The obsolete
+missing-command warning has been removed from the review wrapper.
 
-Before publication, verify the native keyboard/editor route and complete A2 with
-actual destination-file, export, close/reopen and load instructions. Recheck that
-an exported file survives closing, lists/runs in a new session and accepts an edit.
-Add the necessary interface captures. Do not substitute snapshots silently.
+The desktop export adapter passed a real-ROM SAVE and fresh-runtime reload test;
+the rebuilt binary passed all 16 greeting keyboard/tape checks through MCP.
+Native menu, file-picker, cancellation and message-dialog operation remain
+unverified. Before publication, exercise the written route in that interface,
+check the recovered listing/run/edit, and add the necessary interface captures.
+[Emu198x #1446](https://github.com/emu198x/emu198x/issues/1446) remains open for
+that acceptance check. Do not substitute a snapshot for a BASIC tape save.
 
 Then resolve publishing identities and old URLs against the module's source mapping,
 finish Story Builder with a setting, another event and readable presentation, and migrate the catalogues and affected links together.
