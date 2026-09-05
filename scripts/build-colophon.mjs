@@ -13,7 +13,7 @@
  * as fresh as the last person who remembered to update it, and a missing name
  * is a worse failure than a missing page.
  *
- * See Code198x docs/infrastructure/astro-site.md
+ * See Code198x docs/website.md#rendering-and-design
  */
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';

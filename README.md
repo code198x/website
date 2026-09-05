@@ -2,7 +2,7 @@
 
 Astro 7 learning platform for Code198x: curriculum pages, module/unit catalogues, pattern library, systems pages, field notes, updates, and vault content.
 
-The [project charter](https://github.com/code198x/docs/blob/main/PROJECT.md) defines the goals, audience and curriculum direction. Use the [current documentation index](https://github.com/code198x/docs/blob/main/index.md) for authoring specifications and the [component assessment](https://github.com/code198x/docs/blob/main/infrastructure/curriculum-components.md) for proposed teaching interfaces.
+The [project charter](https://github.com/code198x/docs/blob/main/PROJECT.md) defines the goals, audience and curriculum direction. Use the [current documentation index](https://github.com/code198x/docs/blob/main/README.md) for authoring specifications and the [component assessment](https://github.com/code198x/docs/blob/main/work.md#website-components) for proposed teaching interfaces.
 
 ## Project structure
 
@@ -86,7 +86,7 @@ Tests that do not load the decoder can run without `PLAY198X_WASM_PATH`; decoder
 
 The Pages workflow announces newly live RSS entries after deployment. The feed-diff and payload builders live in `scripts/discord-new-items.py` and `scripts/discord-payloads.py`. Run their offline regression checks with `python3 -m unittest discover -s scripts -p 'test_discord_*.py'`.
 
-The retained `new-items` artifact contains both the feed difference and prepared messages. Later deployments do not retry failed delivery. Inspect channel delivery before any recovery to avoid duplicates; see [the announcement guide](https://github.com/code198x/docs/blob/main/infrastructure/discord-announcements.md).
+The retained `new-items` artifact contains both the feed difference and prepared messages. Later deployments do not retry failed delivery. Inspect channel delivery before any recovery to avoid duplicates; see [the announcement guide](https://github.com/code198x/docs/blob/main/website.md#discord-announcements).
 
 ## Adding or changing content
 
