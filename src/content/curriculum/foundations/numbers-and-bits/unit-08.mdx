@@ -1,110 +1,97 @@
 ---
-title: "Nailing the Point Down"
-description: "Fix the point at an agreed scale and a fraction becomes an ordinary whole number, which the machine adds at full speed."
+title: "Numbers That Aren't Whole"
+description: "A machine that counts in whole steps still has to carry half a pixel. The flexible answer is to let the point float, and it is never exact."
 pubDate: 2026-06-30
 game: 1
 unit: 8
-tags: ["foundations", "numbers-and-bits", "fixed-point"]
+tags: ["foundations", "numbers-and-bits", "floating-point"]
 ---
 
 import Output from "@components/Output.astro";
 
-Unit 7 left us with a problem. Floating-point carries any fraction you like, approximately, and
-on these machines it is far too slow for a game loop.
+Every number so far has been a whole one. The moment you write a game, you need the in-between:
+a ship that drifts half a pixel a frame, a ball at two-thirds speed.
 
-So games did the opposite. They fixed the point instead of floating it.
+The machine counts in whole steps. So how do you give it a fraction?
 
-## Agree on a scale
+There are two answers. This unit takes the flexible one, and finds the problem with it. The next
+unit takes the answer games used.
 
-Pick a scale, say **256**, and agree once and for all that every number you store is that many
-*256ths*.
+## Let the point float
 
-Then 1.5 is not stored as "1.5" at all. It is stored as 1.5 × 256, which is **384**. That is an
-ordinary whole number.
+The first answer is to let the decimal point **float**. It sits wherever the number needs it,
+close up for tiny fractions and far out for huge values.
 
-To read the real value back, divide by the agreed scale:
-
-```text
-SHOW 384 / 256
-```
-
-<Output>{`1.5`}</Output>
-
-The point is not floating. It is fixed at "divide by 256", and everyone who touches the value
-agrees to it.
-
-The fraction is being carried as a **whole number**. That is the trick, and it is also the name:
-**fixed-point**.
-
-## The maths is just integer maths
-
-Here is why that is such a win. Fixed-point values *are* whole numbers, so you do arithmetic on
-them with plain integer addition, which is the fast kind.
-
-Add 1.5 and 0.5. Store both scaled, as 384 and 128, then add the integers:
+It is flexible, and it is what most languages hand you without being asked. Type a fraction and
+it works:
 
 ```text
-SHOW 384 + 128
+SHOW 1 / 3
 ```
 
-<Output>{`512`}</Output>
+<Output>{`0.33333333`}</Output>
 
-512 is 2 at our scale, so 1.5 + 0.5 came to 2 using nothing but whole-number addition.
+Look at what came back. Not a third, but a run of threes that stops.
 
-## The scale is a shift
+How many threes you get depends on the machine, and every machine stops somewhere. A third has no
+exact form in tens, and there is only so much room to hold one.
 
-Scaling by 256 is not even a multiplication.
+Floating-point is **only ever an approximation**.
 
-256 is 2⁸, so multiplying by 256 is a shift left by eight, and dividing by 256 is a shift right by
-eight. Both come straight from Unit 5.
+## Why it can never be exact
 
-So fixed-point is built from the two fastest things the machine does: integer arithmetic and
-shifting. That is the whole reason it won.
+You might think that is a problem only for awkward numbers like a third. It is not, and the
+reason goes back to Unit 1.
 
-## What it costs you
+The places to the *left* of the point double as you go: 1, 2, 4, 8. The places to the **right**
+halve: a half, a quarter, an eighth, a sixteenth. Every fraction the machine holds exactly is
+built by adding some of those together.
 
-Fixed-point is not free. Two things are now your job rather than the machine's.
+A half is one of them. So is three quarters, which is a half and a quarter. Fine so far.
 
-**You remember the scale.** The machine sees 384 and thinks 384. Only you know it means 1.5.
+Now try a tenth. There is no run of halves and quarters and eighths that comes to exactly 0.1. It
+recurs, on and on, the way a third does in tens:
 
-**You keep the scales matching.** Every value in a sum has to share one scale, or the answer is
-nonsense.
+```text
+0.1 in tens   0.1                 exact
+0.1 in twos   0.000110011001100…  recurring
+```
 
-That bookkeeping buys speed. In a game moving dozens of objects fifty times a second, it was the
-trade worth making, every time.
+So `0.1` is perfectly exact when you write it in tens, and not exact at all inside the machine.
 
-## Choosing the scale
+The machine stores the closest it can hold, which is a hair out. Add a few of those hairs
+together and the error shows up in your answer. This catches people out in every language there
+is, which is why you never test two floating-point numbers for being exactly equal.
 
-The scale decides what you get and what you give up.
+## And on these machines, it was slow
 
-A bigger scale buys finer fractions. At ×256 you can hold 256ths, which is far finer than a pixel.
+There is a second problem, and for games it mattered more.
 
-It costs range. At ×256 the largest value you can hold is 256 times smaller than the raw
-integer's limit. Choose the scale to fit the job.
+The processors in these machines have **no hardware for floating-point**. There is no instruction
+that adds two fractions. Every floating-point sum happens in software, worked out step by step
+from simpler operations.
+
+That is flexible and it is slow. Far too slow to do dozens of times a frame while a game is
+running.
 
 ## When it's wrong, see why
 
-- **A value printed as a big whole number**, like 384 rather than 1.5. You forgot to divide by the
-  scale. The machine only ever sees integers.
-- **Two values fought.** Adding a ×256 number to a ×16 number gives nonsense. Everything in a sum
-  must share the **same scale**.
-- **The numbers ran out of room.** A scale eats range, so a value that fitted as a plain integer
-  may not fit once scaled.
-- **A fraction vanished.** Scaled values are still whole numbers, so anything finer than one unit
-  of your scale rounds away.
+- **A float was not exactly the value you expected.** It stores the closest it can, and that
+  includes tidy-looking values like `0.1`.
+- **Two floats that should be equal were not.** Each was stored a hair out, and the hairs
+  differed. Compare them for being close enough instead.
+- **Small errors grew.** Every sum adds a little more. The more arithmetic a value has been
+  through, the further it has drifted.
 
 ## What you've learnt
 
-- **Fixed-point** stores a fraction as a **whole number** at an agreed scale.
-- Its arithmetic is plain integer addition, and its scaling is a **shift**.
-- You carry the bookkeeping: remembering the scale, and keeping every value in a sum on the same
-  one.
-- Games chose it because in a loop, **speed won**.
+- A **floating-point** number lets the point sit wherever the value needs it.
+- It is flexible, and most languages give it to you free.
+- It is **approximate**. The places after the point are halves and quarters, so a value like
+  `0.1` never lands exactly on one.
+- On these machines it is also **slow**, because nothing in the hardware does it.
 
-## Where this leaves you
+## What's next
 
-That is the primer. You can look at a number the way the machine does, whole or fractional,
-positive or negative, in bits or in hex, and you can mask it, shift it and scale it.
-
-From here the road goes down into a real machine, where hex addresses, bit flags, signed offsets
-and fixed-point are not background facts. They are the language the code is written in.
+Flexible and slow is the wrong trade for a game loop. In **Unit 9** we stop letting the point
+float and nail it down, and the arithmetic turns back into the fast kind.
