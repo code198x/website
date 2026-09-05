@@ -9,13 +9,15 @@
  * This pass runs between `astro build` and `pagefind`. It wraps each stub in
  * `<html data-pagefind-ignore>`, which gives Pagefind a valid document to parse
  * and an explicit instruction to skip it — no warning, nothing indexed. The
- * meta-refresh still lives in the head, so the redirect is unaffected.
+ * browser redirect preserves a heading fragment; a noscript meta-refresh keeps
+ * the destination reachable without JavaScript.
  *
  * It keys off the stub's shape, not a hardcoded URL list, so any future
  * redirect is handled automatically.
  */
 import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { prepareRedirectStub } from '../src/lib/redirect-stub.mjs';
 
 const DIST = 'dist';
 
@@ -30,15 +32,9 @@ async function* htmlFiles(dir) {
 let wrapped = 0;
 for await (const file of htmlFiles(DIST)) {
   const html = await readFile(file, 'utf8');
-  if (!html.includes('http-equiv="refresh"')) continue; // not a redirect stub
-  if (/<html[\s>]/i.test(html)) continue; // real page, or already wrapped
-
-  const match = html.match(/^(\s*<!doctype html>)/i);
-  if (!match) continue; // unexpected shape — leave it alone
-
-  const doctype = match[1];
-  const rest = html.slice(doctype.length);
-  await writeFile(file, `${doctype}<html data-pagefind-ignore>${rest}</html>`);
+  const prepared = prepareRedirectStub(html);
+  if (prepared === html) continue;
+  await writeFile(file, prepared);
   wrapped++;
 }
 
