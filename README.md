@@ -4,6 +4,8 @@ Astro 7 learning platform for Code198x: curriculum pages, module/unit catalogues
 
 The [project charter](https://github.com/code198x/docs/blob/main/PROJECT.md) defines the goals, audience and curriculum direction. Use the [current documentation index](https://github.com/code198x/docs/blob/main/README.md) for authoring specifications and the [component assessment](https://github.com/code198x/docs/blob/main/work.md#website-components) for proposed teaching interfaces.
 
+Original prose is licensed under **CC BY 4.0**. See [LICENSE.md](LICENSE.md) for scope, attribution and exclusions; software and third-party material retain their own terms.
+
 ## Project structure
 
 ```text
