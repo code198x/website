@@ -450,7 +450,7 @@ const vaultCategories = defineCollection({
 // A dependency edge. A bare string is a structural reference with no thread —
 // used by the seam edges between sections and tracks. The object form carries
 // the thread it belongs to and why it is needed, and is what a game-to-game
-// edge uses. See docs/specifications/content-model.md
+// edge uses. See docs/website.md#content-and-navigation
 const routeRef = z.union([
   z.string(),
   z.object({
@@ -577,7 +577,7 @@ const gettingStartedPages = defineCollection({
 // From the Metal — short essays that reframe modern programming advice by
 // dropping down to a vintage CPU where the cost is visible. One MDX per article;
 // the per-article `accent` is a topic-coded hue (deliberately beyond the four
-// brand colours). See docs/tracker/from-the-metal/build-plan.md.
+// brand colours). See docs/work.md.
 const fromTheMetal = defineCollection({
   loader: glob({ pattern: '**/*.mdx', base: 'src/content/from-the-metal' }),
   schema: z.object({

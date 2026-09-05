@@ -11,7 +11,7 @@
  * `Reading the world` fragment the grouping silently, but a near-duplicate is a
  * judgement call and should not block a deploy.
  *
- * See Code198x docs/specifications/content-model.md
+ * See Code198x docs/website.md#content-and-navigation
  */
 import { globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
