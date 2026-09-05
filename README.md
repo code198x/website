@@ -54,6 +54,7 @@ Run commands from this directory:
 | Command | Action |
 |---|---|
 | `npm install` | Install dependencies. |
+| `npm run ui:fetch` | Fetch the pinned House198x kit and provision its self-hosted fonts. |
 | `npm run dev` | Start the Astro dev server at `localhost:4321`. |
 | `npm run build` | Build the production site, run redirect noindex marking, and index with Pagefind. |
 | `npm run build:wasm` | Build the `play198x-web` decoder that `NativeImage.astro` reads at build time. Run before `npm run build` on any page using `<NativeImage>`. |
@@ -63,6 +64,17 @@ Run commands from this directory:
 | `npm run test:a11y` | Run accessibility-focused Playwright tests. |
 | `npm run prose:check` | Run Vale prose checks and the prose readability report. |
 | `npm run surfaces:gaps` | Report support-surface catalogue gaps. |
+
+### House198x kit
+
+The site consumes the shared [198x-ui](https://github.com/stevehill1981/198x-ui)
+kit at the `v0.5.1` tag. `predev` and `prebuild` run `scripts/fetch-ui.sh`, which
+checks out that tag into ignored `_198x-ui/` and copies its font files to the
+ignored `public/fonts/` directory. This keeps local development and CI on the
+same pinned components and preserves self-hosted font delivery. Override the
+pin for a development session with `UI_REF=vX.Y.Z npm run dev` (or supply
+the same variable to `npm run build`). Update the documented pin and validate
+the site before changing the default.
 
 ### `<NativeImage>` needs a Rust toolchain
 
