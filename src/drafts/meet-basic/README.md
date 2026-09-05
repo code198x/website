@@ -41,8 +41,15 @@ complete checkpoints and six input scenarios, with 20 named prompt/output checks
 in `verification/input-results.json`; its story capture was visually inspected. Specific Foundations links
 support instructions, order, variables and output without assuming attendance.
 
-The desktop keyboard mapping was checked in source, **not exercised in the native
-interface**. [Emu198x PR #1447](https://github.com/emu198x/emu198x/pull/1447)
+The drafts use Host Keyboard mode from
+[Emu198x PR #1448](https://github.com/emu198x/emu198x/pull/1448), built locally.
+Characters use the host layout; the ROM still interprets keyword keys. Home is
+EDIT, with Original Keyboard mode available for target shift combinations.
+Automated checks cover the host-character adapter through the 48K ROM and shared
+held-key/release behaviour. Native OS keyboard-layout and menu interaction remain
+unverified; check both modes with the intended learner keyboards before publication.
+
+[Emu198x PR #1447](https://github.com/emu198x/emu198x/pull/1447)
 implements Tape → Export Recording and has been built locally. A2 now describes
 that export and the File → Open Tape Deck / LOAD / Play route. The obsolete
 missing-command warning has been removed from the review wrapper.
