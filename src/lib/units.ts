@@ -99,3 +99,8 @@ export async function hasUnitsEntry(
   const entry = await getUnitsEntry(platform, track, moduleSlug);
   return entry !== undefined;
 }
+
+/** A lesson's public identity can outlive its position in the teaching sequence. */
+export function unitSlug(unit: { number: number; slug?: string }): string {
+  return unit.slug ?? `unit-${String(unit.number).padStart(2, '0')}`;
+}
