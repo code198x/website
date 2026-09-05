@@ -469,10 +469,20 @@ const modules = defineCollection({
     platform: z.string().optional(),
     track: z.enum(['assembly', 'basic', 'amos', 'blitz', 'machine']).optional(),
     section: z.enum(['foundations', 'craft']).optional(),
+    // Thematic groups a section page renders its modules under, in this
+    // order. Ten modules on one shelf read as a syllabus; three headed groups
+    // read as a shelf. A module names its group; one with none is listed
+    // after the groups. See docs/decisions/foundations-is-language-neutral.md
+    groups: z.array(z.object({
+      slug: z.string(),
+      name: z.string(),
+      strap: z.string(),
+    })).optional(),
     modules: z.array(z.object({
       number: z.number(),
       slug: z.string(),
       name: z.string(),
+      group: z.string().optional(),
       // What sort of module: a buildable game, a teaching module (the Primer),
       // or an interval. A game can be taught by several modules (revisits) —
       // `game` ties them together, `pass` orders them. See decisions/modules-not-games.md
@@ -534,7 +544,6 @@ const unitPages = defineCollection({
     tags: z.array(z.string()).default([]),
     status: z.string().optional(),
     heroImage: z.string().optional(),
-    learningTime: z.number().optional(),
   }),
 });
 

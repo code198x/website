@@ -8,6 +8,7 @@ import {
   code198xTableAccessibilityPlugin,
 } from './src/lib/satteri-highlight.ts';
 import { legacySystemRedirects } from './src/lib/legacy-system-redirects.mjs';
+import { foundationsSplitRedirects } from './src/lib/foundations-split-redirects.mjs';
 
 // https://astro.build/config
 export default defineConfig({
@@ -19,6 +20,7 @@ export default defineConfig({
   // decisions/modules-not-games.md.
   redirects: {
     ...legacySystemRedirects(),
+    ...foundationsSplitRedirects(),
     // Renamed 2026-09-03: the nav said "START HERE" while the page and its URL
     // said "Who this is for". The nav was the better of the two.
     '/who-this-is-for': '/start-here',
