@@ -2,7 +2,7 @@
 // modules and Numbers & Bits (9 units) became two, so every old URL under the two
 // slugs has a new home. Module landings go to the first module of the run; each
 // unit goes to the module that now holds it. See Code198x
-// docs/decisions/foundations-is-language-neutral.md
+// docs/specifications/curriculum.md
 const RUNS = {
   'general-programming': [['basics', 5], ['working-it-out', 3], ['decisions', 4], ['repeating', 3], ['structure', 4]],
   'numbers-and-bits': [['counting-in-twos', 4], ['working-the-bits', 5]],

@@ -2,6 +2,8 @@
 
 Astro 7 learning platform for Code198x: curriculum pages, module/unit catalogues, pattern library, systems pages, field notes, updates, and vault content.
 
+The [project charter](https://github.com/code198x/docs/blob/main/PROJECT.md) defines the goals, audience and curriculum direction. Use the [current documentation index](https://github.com/code198x/docs/blob/main/index.md) for authoring specifications and the [component assessment](https://github.com/code198x/docs/blob/main/infrastructure/curriculum-components.md) for proposed teaching interfaces.
+
 ## Project structure
 
 ```text
@@ -78,11 +80,13 @@ dependency. Building that page locally needs:
    `<checkout>/crates/play198x-web/pkg-node`, the directory `build:wasm`
    writes to).
 
-You only need any of this to build a page that uses `<NativeImage>`. Without
-`PLAY198X_WASM_PATH` set, `npm run build` and `npm test` both work: the nine
-unit tests that load the decoder skip, and the rest run. CI sets the variable
-and builds the decoder first, so those nine still run for real on every pull
-request — see code198x/website#385.
+Tests that do not load the decoder can run without `PLAY198X_WASM_PATH`; decoder-dependent tests then skip. A production build containing native images needs the decoder. CI builds and supplies it before testing and rendering.
+
+## Discord announcements
+
+The Pages workflow announces newly live RSS entries after deployment. The feed-diff and payload builders live in `scripts/discord-new-items.py` and `scripts/discord-payloads.py`. Run their offline regression checks with `python3 -m unittest discover -s scripts -p 'test_discord_*.py'`.
+
+The retained `new-items` artifact contains both the feed difference and prepared messages. Later deployments do not retry failed delivery. Inspect channel delivery before any recovery to avoid duplicates; see [the announcement guide](https://github.com/code198x/docs/blob/main/infrastructure/discord-announcements.md).
 
 ## Adding or changing content
 

@@ -15,7 +15,7 @@ export async function GET(context: APIContext) {
   const unitPages = await getCollection('unit-pages');
   const unitItems: FeedItem[] = await Promise.all(
     unitPages
-      .filter(entry => entry.data.pubDate)
+      .filter(entry => entry.data.pubDate && entry.data.pubDate <= new Date())
       .map(async (entry) => {
         // ID: "sinclair-zx-spectrum/assembly/game-01-shadowkeep/unit-06"
         const parts = entry.id.split('/');
