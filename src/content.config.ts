@@ -450,7 +450,7 @@ const vaultCategories = defineCollection({
 // A dependency edge. A bare string is a structural reference with no thread —
 // used by the seam edges between sections and tracks. The object form carries
 // the thread it belongs to and why it is needed, and is what a game-to-game
-// edge uses. See docs/decisions/curriculum-routes.md
+// edge uses. See docs/specifications/content-model.md
 const routeRef = z.union([
   z.string(),
   z.object({
@@ -472,7 +472,7 @@ const modules = defineCollection({
     // Thematic groups a section page renders its modules under, in this
     // order. Ten modules on one shelf read as a syllabus; three headed groups
     // read as a shelf. A module names its group; one with none is listed
-    // after the groups. See docs/decisions/foundations-is-language-neutral.md
+    // after the groups. See docs/specifications/curriculum.md
     groups: z.array(z.object({
       slug: z.string(),
       name: z.string(),

@@ -3,7 +3,7 @@
 #
 # The artefacts are not committed to code-samples; they are produced here, at
 # deploy time, by the same toolchain the units teach. See
-# docs/decisions/built-artefacts-are-published-not-committed.md in the Code198x
+# docs/specifications/code-samples.md in the Code198x
 # docs repo for why, and for what had to become true first — chiefly that the
 # builds are now reproducible, so a hash describes a program rather than the
 # moment someone built it.

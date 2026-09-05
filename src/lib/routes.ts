@@ -5,7 +5,7 @@
  * implementation serves the site and `scripts/check-curriculum-routes.mjs`, and
  * a resolver that needs a content collection can only be tested through one.
  *
- * See docs/decisions/curriculum-routes.md
+ * See docs/specifications/content-model.md
  */
 
 export type RouteRefRaw =

@@ -94,12 +94,16 @@ jobs:
           CODE_SAMPLES_PATH: ${{ github.workspace }}/code-samples
           PLAY198X_WASM_PATH: ${{ github.workspace }}/play198x/crates/play198x-web/pkg-node
 
+      - name: Test announcement payloads
+        run: python3 -m unittest discover -s scripts -p 'test_discord_*.py'
+
       - name: Work out what became newly live
         run: |
           python3 scripts/discord-new-items.py \
             --old old-rss.xml \
             --new dist/rss.xml \
             --out new-items.json
+          python3 scripts/discord-payloads.py --items new-items.json --out discord-payloads.json
 
       # Carried to the announce job rather than posted here: nothing should be
       # announced until the deploy it describes has actually succeeded.
@@ -107,7 +111,9 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: new-items
-          path: new-items.json
+          path: |
+            new-items.json
+            discord-payloads.json
           retention-days: 7
 
       - name: Upload artifact
@@ -166,57 +172,31 @@ jobs:
             exit 0
           fi
 
-          count=$(jq 'length' new-items.json)
+          count=$(jq '[.[].embeds | length] | add // 0' discord-payloads.json)
           if [ "$count" = "0" ]; then
             echo "Nothing became newly live in this deploy."
             exit 0
           fi
 
-          # Discord takes at most 10 embeds per message. Five messages is a
-          # deliberate ceiling for a catch-up day; anything beyond it is
-          # reported rather than dropped in silence.
-          posted=0
+          # Payloads were validated before deployment and retained with the feed
+          # diff. Read one JSON message per line; never construct URLs in shell.
           failed=0
-          for offset in 0 10 20 30 40; do
-            chunk=$(jq -c --argjson o "$offset" '.[$o:$o+10]' new-items.json)
-            [ "$(jq 'length' <<<"$chunk")" = "0" ] && break
-
-            # jq builds the payload so titles and descriptions containing
-            # quotes, ampersands and newlines are escaped rather than pasted in.
-            # Colour keys the kind, which is already the title's prefix.
-            jq -n --argjson items "$chunk" '{
-              username: "Code198x",
-              embeds: ($items | map({
-                title: (.title | if length > 250 then .[0:250] + "…" else . end),
-                url: ("https://code198x.com" + .link),
-                description: (.description | if length > 600 then .[0:600] + "…" else . end),
-                color: (
-                  if   (.title | startswith("From the Metal:")) then 3447003
-                  elif (.title | startswith("Field Notes:"))    then 10181046
-                  elif (.title | startswith("What'"'"'s New:"))      then 15844367
-                  else 3066993 end
-                )
-              }))
-            }' > payload.json
-
+          while IFS= read -r payload; do
+            printf '%s' "$payload" > payload.json
             for target in "${targets[@]}"; do
               if ! curl --silent --show-error --fail-with-body \
-                        --retry 3 --retry-delay 5 --retry-all-errors \
+                        --retry 3 --retry-delay 5 \
+                        --connect-timeout 10 --max-time 30 \
                         -H "Content-Type: application/json" \
                         -X POST -d @payload.json "$target"; then
                 failed=1
               fi
             done
-            posted=$((posted + $(jq 'length' <<<"$chunk")))
-          done
-
-          if [ "$posted" -lt "$count" ]; then
-            echo "::warning::announced ${posted} of ${count} newly live items; the rest were over the message ceiling."
-          fi
+          done < <(jq -c '.[]' discord-payloads.json)
 
           if [ "$failed" -ne 0 ]; then
-            echo "::error::at least one Discord post failed; see the output above."
+            echo "::error::at least one Discord post failed. Inspect channel delivery before retrying: successful messages may be duplicated. The next deploy does not replay this list."
             exit 1
           fi
 
-          echo "Announced ${posted} item(s) to ${#targets[@]} Discord channel(s)."
+          echo "Announced ${count} item(s) to ${#targets[@]} Discord channel(s)."

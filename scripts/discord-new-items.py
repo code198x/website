@@ -8,8 +8,9 @@ diff of a push. Six deploys out of seven publish nothing new at all.
 The feed already knows. src/pages/rss.xml.ts filters every collection on
 `!draft && pubDate <= now`, so the built rss.xml *is* the list of what is live.
 Comparing the feed about to be deployed against the one currently live gives
-exactly the items that became visible in this deploy — with no state to keep,
-no double-posting on a re-deploy, and a missed run corrected by the next one.
+the items that became visible in this deploy. This is a feed diff, not a
+delivery ledger: a subsequent deployment will not retry failed announcements.
+Retain the new-items artifact and inspect channel delivery before recovery.
 
 Reads the two feeds, writes the new items as JSON.
 """
@@ -90,7 +91,8 @@ def main() -> int:
         # Belt and braces. The feed is supposed to gate on pubDate, but the
         # curriculum-unit branch of rss.xml.ts only checks that a pubDate
         # exists, so a future-dated unit would reach the feed early. Announcing
-        # it early is worse than leaving it to the next run, which will catch it.
+        # it early is worse than skipping it. The RSS publisher must also apply
+        # the date gate, or the next diff would consider it already known.
         if item["published"] is not None and item["published"] > now:
             print(f"::notice::not yet live, skipping: {item['title']}")
             continue
