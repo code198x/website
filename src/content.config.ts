@@ -551,6 +551,7 @@ const modulePages = defineCollection({
   loader: glob({ pattern: '**/index.mdx', base: 'src/content/curriculum' }),
   schema: z.object({
     title: z.string(),
+    presentation: z.enum(['classic', 'house']).default('classic'),
     description: z.string().optional(),
     status: z.enum(['in-progress', 'coming-soon', 'complete']).optional(),
     game: z.number().optional(),
