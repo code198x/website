@@ -24,7 +24,7 @@ export async function GET(context: APIContext) {
         const gameName = moduleSlug
           .replace(/^game-\d+-/, '')
           .split('-')
-          .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+          .map(w => w === 'basic' ? 'BASIC' : w.charAt(0).toUpperCase() + w.slice(1))
           .join(' ');
 
         const platform = await getPlatformBySlug(platformSlug);
@@ -34,7 +34,7 @@ export async function GET(context: APIContext) {
           title: `Unit ${entry.data.unit}: ${entry.data.title} — ${gameName} (${platformName})`,
           pubDate: entry.data.pubDate!,
           description: entry.data.description ?? '',
-          link: `/${entry.id}/`,
+          link: entry.data.feedPath ?? `/${entry.id}/`,
         };
       })
   );

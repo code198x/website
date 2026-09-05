@@ -10,6 +10,8 @@ import {
 import { legacySystemRedirects } from './src/lib/legacy-system-redirects.mjs';
 import { foundationsSplitRedirects } from './src/lib/foundations-split-redirects.mjs';
 
+import { meetBasicRedirects } from './src/lib/meet-basic-redirects.mjs';
+
 // https://astro.build/config
 export default defineConfig({
   site: 'https://code198x.com',
@@ -21,6 +23,7 @@ export default defineConfig({
   redirects: {
     ...legacySystemRedirects(),
     ...foundationsSplitRedirects(),
+    ...meetBasicRedirects(),
     // Renamed 2026-09-03: the nav said "START HERE" while the page and its URL
     // said "Who this is for". The nav was the better of the two.
     '/who-this-is-for': '/start-here',

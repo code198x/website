@@ -521,6 +521,7 @@ const units = defineCollection({
     })),
     units: z.array(z.object({
       number: z.number(),
+      slug: z.string().regex(/^unit-[a-z0-9-]+$/).optional(),
       title: z.string(),
       available: z.boolean().default(false),
       description: z.string().optional(),
@@ -539,6 +540,8 @@ const unitPages = defineCollection({
     title: z.string(),
     description: z.string().optional(),
     pubDate: z.coerce.date().optional(),
+    // Preserve an existing feed identity when a lesson moves.
+    feedPath: z.string().startsWith('/').optional(),
     game: z.number(),
     unit: z.number(),
     tags: z.array(z.string()).default([]),
