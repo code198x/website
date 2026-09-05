@@ -165,16 +165,56 @@ const tallest = Math.max(...[...column.values()].map((c) => c.length));
 const height = PAD_Y * 2 + (Math.max(1, tallest) - 1) * ROW_GAP + GATE_H;
 const width = columnX.get(outputLayer)! + (columnWidth.get(outputLayer) ?? 0) + PAD_X;
 
+// Vertical placement, column by column left to right. Inputs space out evenly;
+// after that a node wants to sit level with whatever feeds it, so wires run
+// straight rather than all converging on one centre line. Nodes that want the
+// same row get pushed apart, and each column is re-centred once it is placed.
 const pos = new Map<string, Placed>();
-column.forEach((keys, l) => {
-  const span = (keys.length - 1) * ROW_GAP;
-  keys.forEach((key, i) => {
-    pos.set(key, {
-      x: columnX.get(l)!,
-      y: (height - span) / 2 + i * ROW_GAP,
-    });
+for (let l = 0; l <= outputLayer; l += 1) {
+  const keys = column.get(l) ?? [];
+  if (keys.length === 0) continue;
+
+  if (l === 0) {
+    const span = (keys.length - 1) * ROW_GAP;
+    keys.forEach((key, i) =>
+      pos.set(key, { x: columnX.get(l)!, y: (height - span) / 2 + i * ROW_GAP })
+    );
+    continue;
+  }
+
+  const feeders = (key: string): string[] => {
+    const gate = gateById.get(key);
+    if (gate) return gate.from;
+    const out = outputs[Number(key.slice('__out'.length))];
+    return out ? [out.from] : [];
+  };
+
+  const want = keys.map((key) => {
+    const ys = feeders(key)
+      .map((ref) => pos.get(sourceOf(ref))?.y)
+      .filter((y): y is number => y !== undefined);
+    return ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : height / 2;
   });
-});
+
+  const placed: number[] = [];
+  let lowest = -Infinity;
+  keys
+    .map((_, i) => i)
+    .sort((a, b) => want[a] - want[b])
+    .forEach((i) => {
+      placed[i] = Math.max(want[i], lowest + ROW_GAP);
+      lowest = placed[i];
+    });
+
+  // Nudge into bounds if the wanted rows push past an edge, but do not centre:
+  // centring a column that holds one node throws its barycentre away, which is
+  // exactly the case a carry chain is made of.
+  const edge = PAD_Y + GATE_H / 2;
+  const over = Math.max(0, Math.max(...placed) - (height - edge));
+  const under = Math.max(0, edge - Math.min(...placed));
+  const shift = under - over;
+  keys.forEach((key, i) => pos.set(key, { x: columnX.get(l)!, y: placed[i] + shift }));
+}
 
 // Where a wire leaves a node, and where it arrives.
 function outAt(ref: string): Placed {
