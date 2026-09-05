@@ -6,7 +6,7 @@ const stub = (target: string) => `<!doctype html><meta http-equiv="refresh" cont
 function destination(target: string, hash: string) {
   const html = prepareRedirectStub(stub(target));
   let result = '';
-  runInNewContext(html.match(/<script>(.*?)<\/script>/)![1], {
+  runInNewContext(html.match(/<script>(.*?)<\/script>/is)![1], {
     URL,
     document: { createElement: () => ({ set innerHTML(value: string) { this.value = value; }, value: '' }) },
     location: { href: 'https://code198x.com/old/', hash, replace: (url: string) => { result = url; } },
