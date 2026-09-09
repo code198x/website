@@ -1,24 +1,7 @@
-# Touchdown lesson review
+# Touchdown publication evidence
 
-The overview and eleven lessons implement the agreed brief. Sixteen game checkpoints and one input diagnostic live in the samples repository under `sinclair-zx-spectrum/basic/touchdown/teaching/`. Keep this directory's roster identical to that source roster.
+The overview and eleven lessons were approved and moved to `src/content/curriculum/sinclair-zx-spectrum/basic/touchdown/`. This directory retains the teaching roster and browser evidence. The sixteen checkpoints and input diagnostic live under `sinclair-zx-spectrum/basic/touchdown/teaching/` in code-samples.
 
-Run the website with the teaching samples checkout:
+Run `scripts/check-touchdown-review.mjs` with `CODE_SAMPLES_PATH` set to that checkout and `TOUCHDOWN_REVIEW_URL` set to the served public Touchdown base URL. It checks all twelve pages at two widths in both themes. `npm run build` runs the production checks. The old review URLs and numbered lesson URLs redirect to the published course.
 
-```sh
-CODE_SAMPLES_PATH=/path/to/code-samples npm run dev -- --port 4371
-```
-
-Open `http://localhost:4371/systems/sinclair-zx-spectrum/basic/touchdown/review/overview/`. The review route exists only in development; production builds emit no review pages. Published Touchdown content and catalogue entries remain as they were.
-
-Verification:
-
-```sh
-CODE_SAMPLES_PATH=/path/to/code-samples TOUCHDOWN_REVIEW_URL=http://localhost:4371/systems/sinclair-zx-spectrum/basic/touchdown/review/ node scripts/check-touchdown-review.mjs
-CODE_SAMPLES_PATH=/path/to/code-samples npm run build
-```
-
-All 48 page/width/theme combinations passed source and inline-code equality, navigation, questions, image loading, overflow and serious/critical accessibility checks. The production build passed 69 tests with nine existing skips. `browser-results.json` retains the browser summary. Source execution and hashes are retained alongside the teaching checkpoints. The overview flight image comes from the verified prototype, whose final source and stored program are identical to the final teaching checkpoint.
-
-Review the teaching pace, especially the program reorganisation in lesson 4 and the keyboard-port explanation in lesson 7. Successful scripted landings demonstrate possibility, not beginner ease.
-
-After lesson approval, publish the reviewed MDX, reconcile the eleven-unit catalogue and game number, preserve or redirect every existing Touchdown lesson URL, update the BASIC landing page and Volley's onward link, then build and deploy together. No publication is included in this draft handoff.
+The reviewed final game is unchanged. Emulator results and source hashes remain with the samples. Scripted safe approaches establish that the controls allow success, not beginner ease.

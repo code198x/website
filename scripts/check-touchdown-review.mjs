@@ -7,18 +7,18 @@ const output=process.env.TOUCHDOWN_REVIEW_OUTPUT || path.join(tmpdir(),'touchdow
 mkdirSync(output,{recursive:true});
 const roster=JSON.parse(readFileSync(new URL('../src/drafts/touchdown/roster.json',import.meta.url)));
 const units=[...new Map(roster.map(u=>[u.unit,{...u,number:u.unit}])).values()];
-const base=process.env.TOUCHDOWN_REVIEW_URL || 'http://localhost:4321/systems/sinclair-zx-spectrum/basic/touchdown/review/';
+const base=process.env.TOUCHDOWN_REVIEW_URL || 'http://localhost:4321/systems/sinclair-zx-spectrum/basic/touchdown/';
 const browser=await chromium.launch();const results=[];
 try {
 for(const width of [390,1440])for(const theme of ['light','dark']){
  const context=await browser.newContext({viewport:{width,height:1000},colorScheme:theme});
  await context.addInitScript(t=>localStorage.setItem('theme',t),theme);
- for(const unit of [...units,{slug:'overview',number:0}]){
+ for(const unit of [...units,{slug:'',number:0}]){
   const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
   const response=await page.goto(base+(unit.slug ? unit.slug+'/' : ''));await page.waitForLoadState('networkidle');
   if(response.status()!==200)throw Error(`${unit.slug} ${response.status()}`);
   if(unit.number){
-   const draft=readFileSync(new URL('../src/drafts/touchdown/'+unit.slug+'.mdx',import.meta.url),'utf8');
+   const draft=readFileSync(new URL('../src/content/curriculum/sinclair-zx-spectrum/basic/touchdown/'+unit.slug+'.mdx',import.meta.url),'utf8');
    const rendered=await page.locator('pre code').allTextContents();
    const samples=process.env.CODE_SAMPLES_PATH;
    if(!samples)throw Error('CODE_SAMPLES_PATH is required');
