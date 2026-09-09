@@ -10,6 +10,7 @@ import {
 import { legacySystemRedirects } from './src/lib/legacy-system-redirects.mjs';
 import { foundationsSplitRedirects } from './src/lib/foundations-split-redirects.mjs';
 
+import { basicRetirementRedirects } from './src/lib/basic-retirement-redirects.mjs';
 import { touchdownRedirects } from './src/lib/touchdown-redirects.mjs';
 import { brightSparkRedirects } from './src/lib/bright-spark-redirects.mjs';
 import { meetBasicRedirects } from './src/lib/meet-basic-redirects.mjs';
@@ -39,6 +40,7 @@ export default defineConfig({
     ...meetBasicRedirects(),
     ...brightSparkRedirects,
     ...touchdownRedirects,
+    ...basicRetirementRedirects,
     // Renamed 2026-09-03: the nav said "START HERE" while the page and its URL
     // said "Who this is for". The nav was the better of the two.
     '/who-this-is-for': '/start-here',
@@ -102,9 +104,9 @@ export default defineConfig({
     // for the Mastertronic Magic Knight author of the same name. The bare slug
     // redirects to the person every existing link meant; the other is qualified.
     '/vault/people/david-jones': '/vault/people/dave-jones',
-    '/sinclair-zx-spectrum/basic/game-01-story-builder': '/sinclair-zx-spectrum/basic/story-builder',
-    '/sinclair-zx-spectrum/basic/game-02-lucky-number': '/sinclair-zx-spectrum/basic/lucky-number',
-    '/sinclair-zx-spectrum/basic/game-03-oracle-stone': '/sinclair-zx-spectrum/basic/oracle-stone',
+    '/sinclair-zx-spectrum/basic/game-01-story-builder': '/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer/',
+    '/sinclair-zx-spectrum/basic/game-02-lucky-number': '/systems/sinclair-zx-spectrum/basic/meet-basic/unit-05-give-a-useful-clue/',
+    '/sinclair-zx-spectrum/basic/game-03-oracle-stone': '/systems/sinclair-zx-spectrum/basic/meet-basic/unit-09-choose-an-answer/',
     '/sinclair-zx-spectrum/basic/game-04-reflex': '/sinclair-zx-spectrum/basic/reflex',
     '/sinclair-zx-spectrum/basic/game-05-dice-roller': '/sinclair-zx-spectrum/basic/dice-roller',
     '/sinclair-zx-spectrum/basic/game-06-bright-spark': '/sinclair-zx-spectrum/basic/bright-spark',
