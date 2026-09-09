@@ -10,6 +10,7 @@ import {
 import { legacySystemRedirects } from './src/lib/legacy-system-redirects.mjs';
 import { foundationsSplitRedirects } from './src/lib/foundations-split-redirects.mjs';
 
+import { touchdownRedirects } from './src/lib/touchdown-redirects.mjs';
 import { brightSparkRedirects } from './src/lib/bright-spark-redirects.mjs';
 import { meetBasicRedirects } from './src/lib/meet-basic-redirects.mjs';
 
@@ -37,6 +38,7 @@ export default defineConfig({
     ...foundationsSplitRedirects(),
     ...meetBasicRedirects(),
     ...brightSparkRedirects,
+    ...touchdownRedirects,
     // Renamed 2026-09-03: the nav said "START HERE" while the page and its URL
     // said "Who this is for". The nav was the better of the two.
     '/who-this-is-for': '/start-here',
