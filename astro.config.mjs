@@ -107,10 +107,10 @@ export default defineConfig({
     '/sinclair-zx-spectrum/basic/game-01-story-builder': '/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer/',
     '/sinclair-zx-spectrum/basic/game-02-lucky-number': '/systems/sinclair-zx-spectrum/basic/meet-basic/unit-05-give-a-useful-clue/',
     '/sinclair-zx-spectrum/basic/game-03-oracle-stone': '/systems/sinclair-zx-spectrum/basic/meet-basic/unit-09-choose-an-answer/',
-    '/sinclair-zx-spectrum/basic/game-04-reflex': '/sinclair-zx-spectrum/basic/reflex',
+    '/sinclair-zx-spectrum/basic/game-04-reflex': '/systems/sinclair-zx-spectrum/basic/',
     '/sinclair-zx-spectrum/basic/game-05-dice-roller': '/sinclair-zx-spectrum/basic/dice-roller',
     '/sinclair-zx-spectrum/basic/game-06-bright-spark': '/sinclair-zx-spectrum/basic/bright-spark',
-    '/sinclair-zx-spectrum/basic/game-07-hi-lo': '/sinclair-zx-spectrum/basic/hi-lo',
+    '/sinclair-zx-spectrum/basic/game-07-hi-lo': '/systems/sinclair-zx-spectrum/basic/',
     '/sinclair-zx-spectrum/basic/game-08-touchdown': '/sinclair-zx-spectrum/basic/touchdown',
     '/sinclair-zx-spectrum/assembly/game-01-shadowkeep': '/sinclair-zx-spectrum/assembly/shadowkeep',
     // Machines filed under hardware/ moved to systems/, where whole machines

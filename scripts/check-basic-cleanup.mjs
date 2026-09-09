@@ -2,7 +2,7 @@ import {readFileSync,existsSync} from 'node:fs';
 import {load} from 'js-yaml';
 import {basicRetirementRedirects} from '../src/lib/basic-retirement-redirects.mjs';
 const modules=load(readFileSync('src/content/modules/sinclair-zx-spectrum/basic.yaml','utf8')).modules;
-const retired=['story-builder','lucky-number','oracle-stone'];
+const retired=['story-builder','lucky-number','oracle-stone','reflex','hi-lo','quiz-master'];
 for(const slug of retired){
  if(modules.some(m=>m.slug===slug)||existsSync(`src/content/curriculum/sinclair-zx-spectrum/basic/${slug}`))throw Error('Still published: '+slug);
 }
