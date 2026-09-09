@@ -5,16 +5,16 @@ import path from 'node:path';
 import {tmpdir} from 'node:os';
 const output=process.env.VOLLEY_REVIEW_OUTPUT || path.join(tmpdir(),'volley-lesson-review');
 mkdirSync(output,{recursive:true});
-const roster=JSON.parse(readFileSync(new URL('../src/drafts/volley/roster.json',import.meta.url)));
-const base=process.env.VOLLEY_REVIEW_URL || 'http://localhost:4321/systems/sinclair-zx-spectrum/basic/volley/review/';
+const roster=JSON.parse(readFileSync(new URL('./volley-roster.json',import.meta.url)));
+const base=process.env.VOLLEY_REVIEW_URL || 'http://localhost:4321/systems/sinclair-zx-spectrum/basic/volley/';
 const browser=await chromium.launch();const results=[];
 try {
 for(const width of [390,1440])for(const theme of ['light','dark']){
  const context=await browser.newContext({viewport:{width,height:1000},colorScheme:theme});
  await context.addInitScript(t=>localStorage.setItem('theme',t),theme);
- for(const unit of [...roster,{slug:'overview',number:0}]){
+ for(const unit of [...roster,{slug:'',number:0}]){
   const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
-  const response=await page.goto(base+unit.slug+'/');await page.waitForLoadState('networkidle');
+  const response=await page.goto(base+(unit.slug ? unit.slug+'/' : ''));await page.waitForLoadState('networkidle');
   if(response.status()!==200)throw Error(`${unit.slug} ${response.status()}`);
   if(unit.number){
    if(await page.locator('.game-label').innerText()!=='GAME 2')throw Error('Wrong game');

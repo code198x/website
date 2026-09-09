@@ -22,6 +22,17 @@ export default defineConfig({
   // the Shadowkeep flagship. Cheap insurance, not exhaustive — see
   // decisions/modules-not-games.md.
   redirects: {
+    "/systems/sinclair-zx-spectrum/basic/volley/review": "/systems/sinclair-zx-spectrum/basic/volley/",
+    "/systems/sinclair-zx-spectrum/basic/volley/review/overview": "/systems/sinclair-zx-spectrum/basic/volley/",
+    "/systems/sinclair-zx-spectrum/basic/volley/review/unit-01-move-a-ball": "/systems/sinclair-zx-spectrum/basic/volley/unit-01-move-a-ball/",
+    "/systems/sinclair-zx-spectrum/basic/volley/review/unit-02-give-it-a-direction": "/systems/sinclair-zx-spectrum/basic/volley/unit-02-give-it-a-direction/",
+    "/systems/sinclair-zx-spectrum/basic/volley/review/unit-03-use-the-whole-court": "/systems/sinclair-zx-spectrum/basic/volley/unit-03-use-the-whole-court/",
+    "/systems/sinclair-zx-spectrum/basic/volley/review/unit-04-move-the-paddle": "/systems/sinclair-zx-spectrum/basic/volley/unit-04-move-the-paddle/",
+    "/systems/sinclair-zx-spectrum/basic/volley/review/unit-05-make-contact-matter": "/systems/sinclair-zx-spectrum/basic/volley/unit-05-make-contact-matter/",
+    "/systems/sinclair-zx-spectrum/basic/volley/review/unit-06-keep-score-and-play-again": "/systems/sinclair-zx-spectrum/basic/volley/unit-06-keep-score-and-play-again/",
+    "/systems/sinclair-zx-spectrum/basic/volley/review/unit-07-colour-the-court": "/systems/sinclair-zx-spectrum/basic/volley/unit-07-colour-the-court/",
+    "/systems/sinclair-zx-spectrum/basic/volley/review/unit-08-keep-the-ball-visible": "/systems/sinclair-zx-spectrum/basic/volley/unit-08-keep-the-ball-visible/",
+
     ...legacySystemRedirects(),
     ...foundationsSplitRedirects(),
     ...meetBasicRedirects(),
