@@ -1,0 +1,196 @@
+---
+title: Let the player repeat it
+description: Read one fresh valid choice, echo it, then compare a whole response with the stored order.
+game: 1
+unit: 5
+---
+
+import Sources from '@components/Sources.astro';
+import Question from '@components/Question.astro';
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+The Spectrum can show an order. To make a game, it must listen to the player
+and judge their response. A key that is still held from WATCH must not become
+an accidental answer, and an unrelated key must not count as a wrong panel.
+
+Continue from [Play the stored order](../unit-04-play-the-stored-order/). We’ll first test one choice
+without playback, then connect the two phases. Keep the drawing and cue
+routines and the quit block throughout.
+
+<details>
+<summary>Keyboard notes for this lesson</summary>
+
+Left Option/Alt+R gives `<`, +T gives `>`, +W gives `<>`, and +J gives `-`.
+
+</details>
+
+## Make room for the game controller
+
+The short main program is getting crowded between the board and the renderer.
+Move its next job to line 1000. Line numbers name positions in a program; they
+do not require us to fill the gaps.
+
+Replace **290** with `290 GO TO 1000`. Delete **295, 300, 305, 310, 315, 320,
+325 and 330**. Add the blocks at **1000–1080**, **1500–1590** and **1600–1630**
+shown here:
+
+<CodeFromFile src="sinclair-zx-spectrum/basic/bright-spark/opening/unit-05/snippets/step-01.bas" />
+
+The jump at 290 passes over the renderer and cue definitions. We still reach
+those routines with `GO SUB` when we need them. `STOP` at 1080 prevents the
+controller from falling into the input routine when its single-choice job is
+done. The existing `s$="314"` remains stored, but this first checkpoint does
+not use it yet.
+
+The controller prints the controls, asks for released keys, then announces
+YOUR TURN. It calls 1500 to obtain a panel choice, 900 to echo its signal, and
+1600 to wait for release before reporting the choice.
+
+<span id="reading-a-clean-tap" />
+
+## Capture once, then validate
+
+The routine at 1500 begins with `LET k$=INKEY$`. `k$` keeps **one reading** so
+all the following tests examine the same value. Reading again after a test
+would introduce a gap in which the player could release or change the key.
+
+The decisions have a deliberate order:
+
+| Reading | Action | Counts as a choice? |
+|---|---|---|
+| `""` | Read again | No |
+| `"q"` | Quit | No |
+| Before `"1"` or after `"4"` | Wait for release, then read again | No |
+| `"1"`, `"2"`, `"3"`, `"4"` | Convert and return | Yes |
+
+`<` and `>` compare the one-character strings in the Spectrum's character
+order. The four digit characters are consecutive, so this range admits exactly
+our four identifiers. Use one choice key at a time: `INKEY$` is not a general record of
+all simultaneously held keys.
+
+Only after those checks does `VAL k$` supply the numeric `p`. Trying to convert
+an empty reading, q or arbitrary text would give conversion a job it cannot do:
+deciding whether the player made a permitted choice.
+
+`RETURN` at 1560 goes back to the caller with `k$` and `p` available. This is
+shared state, not a value written after `RETURN`. The call leaves `s$` alone.
+
+## A held key is still one press
+
+The routine at 1600 captures into **a different string**, `a$`. It keeps reading
+while that value is not empty, with a q check so the player can leave even
+while waiting. `<>` means “not equal”.
+
+Why not reuse `k$` here? The controller still needs the accepted choice after
+the key has been released. Overwriting it with each release reading would
+replace it with `""` just before the caller tried to judge it.
+
+| Routine | Reads | Changes | Leaves alone |
+|---|---|---|---|
+| Fresh choice, 1500 | Keyboard | `k$`, numeric `p`; possibly `a$` while rejecting a key | `s$`, `i` |
+| Release, 1600 | Keyboard | `a$` | Accepted `k$`, `p`, `s$`, `i` |
+| Cue, 900 | Numeric `p` | `lit`, drawing values, `note`, row counter `r` | Accepted `k$`, `s$`, `i` |
+
+Release waits occur when crossing into the player's phase or after consuming
+a key. The empty-input branch goes straight back to 1500: it does not call a
+release wait before every attempt. Otherwise a new press arriving while idle
+could be mistaken for an old press to discard.
+
+Run the checkpoint. Press x: nothing should be chosen. Press 2: panel 2 should
+signal, then the program should show `You chose 2`. Run again and hold 2.
+There should still be one cue; the result waits until you release it. Try q
+on another run.
+
+This input is deliberately blocking. The world does not move while the player
+considers a choice, and there is no response deadline. The cue occupies BASIC
+while it draws and sounds. **Wait for that cue to finish before pressing the
+next choice.** A tap made during it is not queued for later. The program is
+built for deliberate memory responses, not typing ahead.
+
+[One press, one step](/systems/sinclair-zx-spectrum/basic/meet-basic/unit-15-one-press-one-step/)
+explores the same distinction between a held state and a fresh action in a
+movement experiment.
+
+<details>
+<summary>Complete single-choice checkpoint</summary>
+
+<CodeFromFile src="sinclair-zx-spectrum/basic/bright-spark/opening/unit-05/steps/step-01.bas" />
+
+</details>
+
+<span id="check-then-grow" />
+
+## Connect WATCH, input and judgement
+
+Replace the whole controller at **1000–1080** with the longer controller below,
+adding its new lines through **1170**. Also add **275** for the controls and
+**1800–1820** for a mismatch. No other lines are deleted or changed.
+
+<CodeFromFile src="sinclair-zx-spectrum/basic/bright-spark/opening/unit-05/snippets/step-02.bas" />
+
+Lines 1000–1060 reproduce the playback loop in its new home. `i` visits each
+position, `p` receives the converted digit, and the cue returns before `NEXT i`.
+The q tests still surround the cues.
+
+After WATCH, line 1070 announces the release wait. Line 1080 drains any held
+playback key, and only then does line 1090 show YOUR TURN. A player who presses
+2 early cannot have it silently accepted as their first answer.
+
+The second `FOR i` starts again at position 1. For each item it obtains a fresh
+valid choice, echoes the selected panel, and waits for release. Line 1140 then
+compares **text with text**: the accepted `k$` against the expected `s$(i)`.
+There is no need to convert either side of that comparison.
+
+A mismatch jumps to 1800 immediately. The controller prints `Different choice.`
+and gives a short low note. A correct item reaches `NEXT i`. Only completing
+all those visits reaches `Order complete.` at 1160.
+
+The lower failure note is `BEEP 0.1,-12`: a tenth of a second, one octave below
+pitch 0. Keep this cue brief; it
+marks the outcome without making a mistake unpleasant to hear. The text also
+communicates the result when sound is off.
+
+<Question prompt="For 314, what happens if the player presses 3, x, 1, 4?">
+
+The three valid choices complete the order. x is rejected inside the input
+routine, so it never reaches the comparison or `NEXT i`. Pressing a valid but
+wrong digit is different: 3, 2 would end the round at the second item.
+
+</Question>
+
+Run and repeat 3, 1, 4. Then try a wrong first, middle and final choice on
+separate runs. Each should stop at `Different choice.`; later choices are no
+longer requested. If a correct choice fails, check that the release routine
+uses `a$`, leaving `k$` intact.
+
+For a repeated-key check, temporarily set line 280 to `s$="22"`. Hold 2 during
+WATCH: the program should ask for release before YOUR TURN. Release it, then
+press and hold 2 again. One echoed cue should appear, but holding cannot finish
+the order. Release and make a second fresh press after the cue has finished.
+Only that second choice completes it. Restore `s$="314"` afterwards.
+
+The status strings include trailing spaces to erase the previous message.
+They share row 18; the controls occupy row 20, away from the panel labels.
+If fragments of `Release the keys.` remain beside YOUR TURN, check those
+spaces rather than adding a `CLS` that would erase the board.
+
+<details>
+<summary>Complete fixed-order game</summary>
+
+<CodeFromFile src="sinclair-zx-spectrum/basic/bright-spark/opening/unit-05/steps/step-02.bas" />
+
+</details>
+
+Save this as `spark`. It is now a playable fixed-order memory game: WATCH,
+repeat, then receive a result. Next we’ll give each game a new beginning and
+extend the order only after a whole round succeeds.
+
+<Sources>
+
+Steven Vickers, edited by Robin Bradbeer, *ZX Spectrum BASIC Programming*, second
+edition (Sinclair Research, 1983), chapters 3–5 (decisions, loops and subroutines),
+chapter 9 (`VAL`), chapter 13 (conditions), chapter 14, p. 95 (string comparisons),
+chapter 18,
+pp. 129–131 (`INKEY$` and waiting), and chapter 19 (`BEEP`).
+
+</Sources>
