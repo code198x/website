@@ -1,0 +1,26 @@
+// Preserve earlier lesson topics and approved review bookmarks.
+export const sonarRedirects = {
+  "/systems/sinclair-zx-spectrum/basic/sonar/unit-01": "/systems/sinclair-zx-spectrum/basic/sonar/unit-01-a-sea-to-search/",
+  "/sinclair-zx-spectrum/basic/sonar/unit-01": "/systems/sinclair-zx-spectrum/basic/sonar/unit-01-a-sea-to-search/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/unit-02": "/systems/sinclair-zx-spectrum/basic/sonar/unit-02-send-a-probe/",
+  "/sinclair-zx-spectrum/basic/sonar/unit-02": "/systems/sinclair-zx-spectrum/basic/sonar/unit-02-send-a-probe/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/unit-03": "/systems/sinclair-zx-spectrum/basic/sonar/unit-03-measure-the-distance/",
+  "/sinclair-zx-spectrum/basic/sonar/unit-03": "/systems/sinclair-zx-spectrum/basic/sonar/unit-03-measure-the-distance/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/unit-04": "/systems/sinclair-zx-spectrum/basic/sonar/unit-04-read-the-sonar/",
+  "/sinclair-zx-spectrum/basic/sonar/unit-04": "/systems/sinclair-zx-spectrum/basic/sonar/unit-04-read-the-sonar/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/unit-05": "/systems/sinclair-zx-spectrum/basic/sonar/unit-07-a-complete-round/",
+  "/sinclair-zx-spectrum/basic/sonar/unit-05": "/systems/sinclair-zx-spectrum/basic/sonar/unit-07-a-complete-round/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/unit-06": "/systems/sinclair-zx-spectrum/basic/sonar/unit-09-keep-your-game/",
+  "/sinclair-zx-spectrum/basic/sonar/unit-06": "/systems/sinclair-zx-spectrum/basic/sonar/unit-09-keep-your-game/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/review/unit-01": "/systems/sinclair-zx-spectrum/basic/sonar/unit-01-a-sea-to-search/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/review/unit-02": "/systems/sinclair-zx-spectrum/basic/sonar/unit-02-send-a-probe/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/review/unit-03": "/systems/sinclair-zx-spectrum/basic/sonar/unit-03-measure-the-distance/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/review/unit-04": "/systems/sinclair-zx-spectrum/basic/sonar/unit-04-read-the-sonar/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/review/unit-05": "/systems/sinclair-zx-spectrum/basic/sonar/unit-05-remember-the-clues/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/review/unit-06": "/systems/sinclair-zx-spectrum/basic/sonar/unit-06-one-probe-one-count/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/review/unit-07": "/systems/sinclair-zx-spectrum/basic/sonar/unit-07-a-complete-round/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/review/unit-08": "/systems/sinclair-zx-spectrum/basic/sonar/unit-08-search-somewhere-new/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/review/unit-09": "/systems/sinclair-zx-spectrum/basic/sonar/unit-09-keep-your-game/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/review": "/systems/sinclair-zx-spectrum/basic/sonar/",
+  "/systems/sinclair-zx-spectrum/basic/sonar/review/index": "/systems/sinclair-zx-spectrum/basic/sonar/"
+};
