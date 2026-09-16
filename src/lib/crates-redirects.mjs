@@ -1,0 +1,28 @@
+// Preserve older lesson topics and approved review bookmarks.
+export const cratesRedirects = {
+  "/systems/sinclair-zx-spectrum/basic/crates/unit-01": "/systems/sinclair-zx-spectrum/basic/crates/unit-02-give-the-warehouse-a-memory/",
+  "/sinclair-zx-spectrum/basic/crates/unit-01": "/systems/sinclair-zx-spectrum/basic/crates/unit-02-give-the-warehouse-a-memory/",
+  "/systems/sinclair-zx-spectrum/basic/crates/unit-02": "/systems/sinclair-zx-spectrum/basic/crates/unit-03-look-before-you-walk/",
+  "/sinclair-zx-spectrum/basic/crates/unit-02": "/systems/sinclair-zx-spectrum/basic/crates/unit-03-look-before-you-walk/",
+  "/systems/sinclair-zx-spectrum/basic/crates/unit-03": "/systems/sinclair-zx-spectrum/basic/crates/unit-03-look-before-you-walk/",
+  "/sinclair-zx-spectrum/basic/crates/unit-03": "/systems/sinclair-zx-spectrum/basic/crates/unit-03-look-before-you-walk/",
+  "/systems/sinclair-zx-spectrum/basic/crates/unit-04": "/systems/sinclair-zx-spectrum/basic/crates/unit-04-make-room-for-a-push/",
+  "/sinclair-zx-spectrum/basic/crates/unit-04": "/systems/sinclair-zx-spectrum/basic/crates/unit-04-make-room-for-a-push/",
+  "/systems/sinclair-zx-spectrum/basic/crates/unit-05": "/systems/sinclair-zx-spectrum/basic/crates/unit-05-keep-the-target-underneath/",
+  "/sinclair-zx-spectrum/basic/crates/unit-05": "/systems/sinclair-zx-spectrum/basic/crates/unit-05-keep-the-target-underneath/",
+  "/systems/sinclair-zx-spectrum/basic/crates/unit-06": "/systems/sinclair-zx-spectrum/basic/crates/unit-11-keep-the-warehouse/",
+  "/sinclair-zx-spectrum/basic/crates/unit-06": "/systems/sinclair-zx-spectrum/basic/crates/unit-11-keep-the-warehouse/",
+  "/systems/sinclair-zx-spectrum/basic/crates/review/unit-01-draw-a-wooden-crate": "/systems/sinclair-zx-spectrum/basic/crates/unit-01-draw-a-wooden-crate/",
+  "/systems/sinclair-zx-spectrum/basic/crates/review/unit-02-give-the-warehouse-a-memory": "/systems/sinclair-zx-spectrum/basic/crates/unit-02-give-the-warehouse-a-memory/",
+  "/systems/sinclair-zx-spectrum/basic/crates/review/unit-03-look-before-you-walk": "/systems/sinclair-zx-spectrum/basic/crates/unit-03-look-before-you-walk/",
+  "/systems/sinclair-zx-spectrum/basic/crates/review/unit-04-make-room-for-a-push": "/systems/sinclair-zx-spectrum/basic/crates/unit-04-make-room-for-a-push/",
+  "/systems/sinclair-zx-spectrum/basic/crates/review/unit-05-keep-the-target-underneath": "/systems/sinclair-zx-spectrum/basic/crates/unit-05-keep-the-target-underneath/",
+  "/systems/sinclair-zx-spectrum/basic/crates/review/unit-06-finish-one-room": "/systems/sinclair-zx-spectrum/basic/crates/unit-06-finish-one-room/",
+  "/systems/sinclair-zx-spectrum/basic/crates/review/unit-07-read-the-room-from-a-map": "/systems/sinclair-zx-spectrum/basic/crates/unit-07-read-the-room-from-a-map/",
+  "/systems/sinclair-zx-spectrum/basic/crates/review/unit-08-check-a-room-before-playing": "/systems/sinclair-zx-spectrum/basic/crates/unit-08-check-a-room-before-playing/",
+  "/systems/sinclair-zx-spectrum/basic/crates/review/unit-09-choose-another-approach": "/systems/sinclair-zx-spectrum/basic/crates/unit-09-choose-another-approach/",
+  "/systems/sinclair-zx-spectrum/basic/crates/review/unit-10-make-space-for-another-crate": "/systems/sinclair-zx-spectrum/basic/crates/unit-10-make-space-for-another-crate/",
+  "/systems/sinclair-zx-spectrum/basic/crates/review/unit-11-keep-the-warehouse": "/systems/sinclair-zx-spectrum/basic/crates/unit-11-keep-the-warehouse/",
+  "/systems/sinclair-zx-spectrum/basic/crates/review": "/systems/sinclair-zx-spectrum/basic/crates/",
+  "/systems/sinclair-zx-spectrum/basic/crates/review/index": "/systems/sinclair-zx-spectrum/basic/crates/"
+};
