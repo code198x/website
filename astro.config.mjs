@@ -11,6 +11,7 @@ import { legacySystemRedirects } from './src/lib/legacy-system-redirects.mjs';
 import { foundationsSplitRedirects } from './src/lib/foundations-split-redirects.mjs';
 
 import { basicRetirementRedirects } from './src/lib/basic-retirement-redirects.mjs';
+import { threeInARowRedirects } from './src/lib/three-in-a-row-redirects.mjs';
 import { locksmithRedirects } from './src/lib/locksmith-redirects.mjs';
 import { cratesRedirects } from './src/lib/crates-redirects.mjs';
 import { sonarRedirects } from './src/lib/sonar-redirects.mjs';
@@ -46,6 +47,7 @@ export default defineConfig({
     ...sonarRedirects,
     ...cratesRedirects,
     ...locksmithRedirects,
+    ...threeInARowRedirects,
     ...basicRetirementRedirects,
     // Renamed 2026-09-03: the nav said "START HERE" while the page and its URL
     // said "Who this is for". The nav was the better of the two.
