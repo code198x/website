@@ -11,6 +11,7 @@ import { legacySystemRedirects } from './src/lib/legacy-system-redirects.mjs';
 import { foundationsSplitRedirects } from './src/lib/foundations-split-redirects.mjs';
 
 import { basicRetirementRedirects } from './src/lib/basic-retirement-redirects.mjs';
+import { diceRollerRedirects } from './src/lib/dice-roller-redirects.mjs';
 import { cipherRedirects } from './src/lib/cipher-redirects.mjs';
 import { yearfallRedirects } from './src/lib/yearfall-redirects.mjs';
 import { cavernsRedirects } from './src/lib/caverns-redirects.mjs';
@@ -54,6 +55,7 @@ export default defineConfig({
     ...cavernsRedirects,
     ...yearfallRedirects,
     ...cipherRedirects,
+    ...diceRollerRedirects,
     ...basicRetirementRedirects,
     // Renamed 2026-09-03: the nav said "START HERE" while the page and its URL
     // said "Who this is for". The nav was the better of the two.
@@ -122,7 +124,6 @@ export default defineConfig({
     '/sinclair-zx-spectrum/basic/game-02-lucky-number': '/systems/sinclair-zx-spectrum/basic/meet-basic/unit-05-give-a-useful-clue/',
     '/sinclair-zx-spectrum/basic/game-03-oracle-stone': '/systems/sinclair-zx-spectrum/basic/meet-basic/unit-09-choose-an-answer/',
     '/sinclair-zx-spectrum/basic/game-04-reflex': '/systems/sinclair-zx-spectrum/basic/',
-    '/sinclair-zx-spectrum/basic/game-05-dice-roller': '/sinclair-zx-spectrum/basic/dice-roller',
     '/sinclair-zx-spectrum/basic/game-06-bright-spark': '/sinclair-zx-spectrum/basic/bright-spark',
     '/sinclair-zx-spectrum/basic/game-07-hi-lo': '/systems/sinclair-zx-spectrum/basic/',
     '/sinclair-zx-spectrum/basic/game-08-touchdown': '/sinclair-zx-spectrum/basic/touchdown',
