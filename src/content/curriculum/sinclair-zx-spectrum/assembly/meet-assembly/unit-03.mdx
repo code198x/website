@@ -1,0 +1,113 @@
+---
+title: "Build an eight-row shape"
+description: "Draw a small image and discover why neighbouring screen rows are not neighbouring bytes."
+game: 0
+unit: 3
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import BytePixelsLesson from '@components/BytePixelsLesson.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+Eight bits gave us one horizontal row. Eight rows will give us a tiny 8×8 picture. First, decide where each row belongs: the Spectrum does not store its screen in the order you might expect.
+
+## Down one row
+
+The first eight pixels are at `$4000`. The next byte, `$4001`, controls the next eight pixels **to the right**. It does not control the row below.
+
+Within the top-left 8×8 cell, the eight bitmap rows have these addresses:
+
+| Row, from the top | Address | Binary pattern |
+|---|---|---|
+| 1 | `$4000` | `%00011000` |
+| 2 | `$4100` | `%00111100` |
+| 3 | `$4200` | `%01111110` |
+| 4 | `$4300` | `%11011011` |
+| 5 | `$4400` | `%11111111` |
+| 6 | `$4500` | `%00111100` |
+| 7 | `$4600` | `%01100110` |
+| 8 | `$4700` | `%01000010` |
+
+Each address here is `$100`, or 256 decimal, above the previous one. Hexadecimal uses digits 0–9 followed by A–F; its place values are 1, 16, 256 and so on. That makes `$4100 - $4000 = $100`.
+
+The step comes from the Spectrum's display-memory layout. After the bytes for the top pixel row, it stores top rows for other character cells before returning to the second pixel row of our cell. Display hardware knows how to turn this arrangement back into a picture. Consecutive memory addresses and consecutive screen rows are different things.
+
+The `$100` step works for these eight rows within one character cell. Do not extend it to the whole screen: the ninth pixel row starts at `$4020`, not `$4800`.
+
+## Read, draw and investigate
+
+The editor contains a complete program. Each pair of drawing instructions puts a binary pattern into A, then copies it to a screen address. This time the patterns are written directly in `ld a,%...` instructions, rather than stored under a separate `pattern` label.
+
+The single write of 71 to `$5800` gives the whole cell bright white ink on black paper. You do not need a new attribute for every row.
+
+Work through the four experiments below. First predict the supplied picture. Then design your own, investigate an address mistake, and identify the repeated work. The drawing grid changes your design only; edit and run the source to change the Spectrum.
+
+<BytePixelsLesson height={8} />
+
+The magnified picture comes from the running Spectrum. The table reads its eight bitmap bytes, alongside your saved prediction. Editing a pattern does not update the result until you assemble and run. Each experiment keeps your source edits.
+
+<details>
+<summary>The complete starting program</summary>
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/meet-assembly/opening/eight-rows.asm" />
+
+</details>
+
+## An address chooses a destination
+
+In the third experiment, changing `$4100` to `$4001` sends the second pattern to the next cell **to the right**, on the top pixel row. It no longer writes row 2 of your character. That row keeps whatever the ROM left there. The extra `$4001` reading lets you check the misplaced byte directly; its pixels use the neighbouring cell’s attribute, so their colours may differ.
+
+Repairing the address repairs the destination. Changing the binary pattern would change which pixels use ink, but would not move the row back.
+
+<Question prompt="What if the second write used $4000 instead?">
+
+It would replace the first row’s byte. Two writes to one address leave the second value there, while row 2 remains untouched. Try it, inspect both rows, then restore `$4100`.
+
+</Question>
+
+## Give a loop a job
+
+Your finished picture gives us a result to preserve. The drawing code repeats two jobs eight times: obtain a pattern and write it to screen memory.
+
+| Each turn needs | What changes |
+|---|---|
+| A pattern byte | Read the next of eight bytes in a table. |
+| A destination | Add `$100` to reach the next row inside this cell. |
+| A stopping rule | Count eight rows, then stop. |
+
+We could store the eight patterns together with `defb`, just as the previous lesson stored one. A counted loop would read them in order and repeat the write. The artwork would become data; the drawing instructions would describe how to use it.
+
+<Question prompt="Would adding $100 after the eighth row draw the next row below this character?">
+
+No. That would reach `$4800`, which controls a different part of the display. The next pixel row below this character starts at `$4020`. Our first loop will deliberately handle one 8×8 cell, so its eight-turn stopping rule matters.
+
+</Question>
+
+We will build that loop next. Keep your character: the eight live row values are the result the shorter program must reproduce.
+
+## Keep and check your picture
+
+Use **Download your source** to save your current program as `eight-rows.asm`. Reopen that file when building locally so you keep your own artwork. Revert restores the supplied source; it does not erase your drawing-grid prediction.
+
+For a local build with Asm198x:
+
+```sh
+asm198x --dialect pasmo --cpu z80 --tapbas eight-rows.asm -o eight-rows.tap
+```
+
+Or, with Pasmo:
+
+```sh
+pasmo --tapbas eight-rows.asm eight-rows.tap
+```
+
+Load the new tape into a fresh 48K Spectrum as in lesson 1. Save the source, then reopen it and build once more. Compare the result with your saved prediction: this checks that the file you kept is the picture you intended.
+
+If a row appears in the wrong place, check its destination address. If it is in the right place with the wrong pixels, check the binary value immediately above that write. If the whole shape has the wrong colour, inspect `$5800` rather than changing eight patterns.
+
+<Sources>
+
+Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 24](https://worldofspectrum.org/ZXBasicManual/zxmanchap24.html), the order of pixel scans within the display file. The eight addresses and patterns above are also checked against the executed `eight-rows.asm` sample.
+
+</Sources>

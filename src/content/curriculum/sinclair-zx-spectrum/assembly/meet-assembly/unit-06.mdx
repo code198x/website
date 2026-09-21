@@ -1,0 +1,120 @@
+---
+title: "Move your character"
+description: "Read O and P, keep a position in RAM, and erase and redraw a character within bounds."
+game: 0
+unit: 6
+---
+
+import MovementLesson from '@components/MovementLesson.astro';
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+Your drawing routine can put a character at a chosen address. Now give that choice to the player. **O moves left; P moves right.** Each press moves one character cell. Release both keys before the next press.
+
+This is deliberately one step at a time. We can inspect each decision before adding movement that repeats while a key is held.
+
+## Try a move, then inspect it
+
+Assemble and run. Focus the Spectrum screen to use your keyboard, or use the buttons below it. The magnified cells and address table read the running machine’s RAM. They show what your source actually did, including mistakes.
+
+<MovementLesson />
+
+Try these experiments in order:
+
+1. Press O once. The position should change from 15 to 14. Hold it down: does another move happen? Release and press again.
+2. Hold the **Both** button. Neither direction should win. Release both before trying another move. If you press physical keys slightly apart, the first may already have caused its move before the second arrives.
+3. Reach column 0, then try moving left again. Reach 31 and try moving right. The character should stay on the screen.
+4. In the erase block after `move:`, change `ld hl,blank` to `ld hl,patterns`. Leave the clearing loop alone. Assemble again and move. Predict what remains in the old cell, then check its eight bytes. Restore `blank` to repair it.
+
+## Read two keyboard bits
+
+The Spectrum keyboard is a set of electrical switches. Reading a port returns bits describing which switches are closed. We use:
+
+```z80
+ ld bc,$DFFE
+ in a,(c)
+ and 3
+```
+
+BC holds the full port address; `in a,(c)` reads that port into A. `$DFFE` selects the half-row containing P, O, I, U and Y. Bit 0 represents P and bit 1 represents O. A pressed key reads **0**, a released key **1**: these are **active-low** inputs.
+
+`and 3` keeps only those two bits. The other keys and input signals cannot affect this decision.
+
+| O/P bits after AND | Decimal | Meaning |
+|---|---|---|
+| `11` | 3 | Neither pressed |
+| `01` | 1 | O pressed: left |
+| `10` | 2 | P pressed: right |
+| `00` | 0 | Both pressed: no move |
+
+The program stores this masked reading in `keys`, so the inspector can show it. These are current switch states, not “key pressed” messages supplied by the machine.
+
+## Turn a held state into one press
+
+`armed` is another byte in RAM. Reading `11` sets it to 1: we are ready for a fresh press. Any non-released reading consumes that permission and sets it to 0. Until both keys are released, the program keeps reading but does not move again.
+
+This also makes an edge attempt or a both-keys attempt consume a press. Releasing only one of two held keys does not sneak in a move.
+
+The loop runs continuously. Its speed does not choose the movement speed; the release-and-press rule chooses when a move happens. A later experiment will use a clock for held-key repetition.
+
+## Compare before changing the position
+
+`position: defb 15` reserves a byte with an initial value. Unlike the pattern table, this byte changes while the program runs. Parentheses distinguish reading it from naming its address: `ld a,(position)` loads its current contents.
+
+For a left move, the program tests for zero before decrementing. For a right move, it compares with 31 before incrementing. The legal columns are **0–31**, not 1–32.
+
+`cp 31` compares A with 31 by setting flags; it does not change A. `jr z,poll` branches when the comparison was equal. `or a` leaves A unchanged and sets the zero flag when A is zero. That gives the left-edge check the same kind of conditional branch.
+
+A byte can hold 0–255. Without the left-edge check, decrementing zero would wrap to 255. That is a valid byte but an invalid column for this routine.
+
+## Erase, update, redraw
+
+An accepted move saves its destination in `next_position`, then performs three jobs:
+
+1. Draw the eight zero bytes in `blank` at the old position.
+2. Copy `next_position` into `position`.
+3. Draw `patterns` at the new position.
+
+Both erase and draw use `draw_character`. The picture changes because HL points to different data. Erasing works here because our background is plain black; a detailed background would need to be restored instead.
+
+`draw_at` is a small wrapper around that routine. A supplies the column. `ld e,a` and `ld d,$40` make DE equal to `$4000 + column`; HL selects the artwork. After drawing, one RET returns to `draw_at`, and its RET returns to the main program. These nested calls each keep their own return address on the stack.
+
+The old position is also kept in `previous`. `move_keys` remembers the accepted input, and `moves` counts completed drawings, wrapping from 255 to 0. Those bytes make the last move inspectable even after you release the key. The display is sampled live memory, so it does not claim to replay every instruction between two readings.
+
+<Question prompt="Why save the next position before calling the drawing routine?">
+
+The drawing routine changes A, B, HL and DE. A is not a safe place to leave a value we need after that call. Keeping the destination in RAM lets us reload it afterwards, following the routine’s contract.
+
+</Question>
+
+## Own a small part of the display
+
+At startup we clear all 32 cells in the first character row by drawing `blank` repeatedly, then set their attributes to bright white on black. Other screen rows are outside this experiment. Our `$100` step between bitmap rows still works only within this first character row; vertical movement needs a different address calculation.
+
+The program begins with `di`, which disables maskable interrupts. It reads the keyboard directly and does not use the ROM’s periodic keyboard service. The ROM loader has already provided RAM and a valid stack. This program never returns to BASIC: reset the machine to leave it. Do not add HALT while interrupts remain disabled; the clock lesson will establish the interrupt environment it needs.
+
+<details>
+<summary>The complete starting program</summary>
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/meet-assembly/opening/move-character.asm" />
+
+</details>
+
+**Download your source** saves the current editor contents as `move-character.asm`. Build a tape with either assembler:
+
+```sh
+asm198x --dialect pasmo --cpu z80 --tapbas move-character.asm -o move-character.tap
+```
+
+```sh
+pasmo --tapbas move-character.asm move-character.tap
+```
+
+Load it on a fresh 48K Spectrum as in lesson 1. Check a single press, a held key, both keys and both edges. A picture that moves is only part of the result: explain the input decision, the changed position byte and the erased screen addresses too.
+
+<Sources>
+
+Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 23](https://worldofspectrum.org/ZXBasicManual/zxmanchap23.html), keyboard half-rows and active-low bits; [chapter 24](https://worldofspectrum.org/ZXBasicManual/zxmanchap24.html), bitmap and attribute memory. Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), instruction entries “IN r, (C)”, “AND n”, “OR r”, “CP n”, “JR cc, e” and “DI”.
+
+</Sources>

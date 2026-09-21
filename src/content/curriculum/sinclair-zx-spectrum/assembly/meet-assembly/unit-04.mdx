@@ -1,0 +1,105 @@
+---
+title: "Draw with a counted loop"
+description: "Keep the picture, turn its patterns into data, and follow eight real screen writes through a Z80 loop."
+game: 0
+unit: 4
+---
+
+import BytePixelsLesson from '@components/BytePixelsLesson.astro';
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+Our last program drew eight rows with eight pairs of instructions. We can give that repeated job to a **loop**: a piece of code that branches back to do another turn. The picture stays the same, but its eight patterns now live together as data.
+
+If you made your own character in lesson 3, run it there and press **Keep this character for the loop lesson**. Return here in the same tab and choose **Use my saved character**. This copies its eight bytes into the data table. The supplied picture works too.
+
+## Three things to keep track of
+
+A loop needs to know where to read, where to write, and when to stop.
+
+| Job | Register | Starting value |
+|---|---|---|
+| Address of the next pattern | HL | `patterns`, the label on our data table |
+| Address of the next screen row | DE | `$4000` |
+| Number of rows remaining | B | 8 |
+
+HL and DE are **register pairs**. Each combines two 8-bit registers into a 16-bit value, large enough to hold an address. H and D are the high bytes; L and E are the low bytes. With DE equal to `$4000`, D holds `$40` and E holds `$00`.
+
+`ld hl,patterns` loads an address into HL. It does not read the byte at that address. `ld a,(hl)` does the read: parentheses mean the contents of memory, as in the previous lessons.
+
+## Follow one turn
+
+```z80
+row:
+ ld a,(hl)
+ ld (de),a
+ inc hl
+ inc d
+ djnz row
+```
+
+The first instruction reads the pattern pointed to by HL into A. The second copies A into the memory byte pointed to by DE.
+
+`inc hl` adds one to the source address, selecting the next byte in the table. `inc d` adds one to the **high byte** of the destination: `$4000` becomes `$4100`, then `$4200`, and so on. E stays zero. These are different steps because the table is stored consecutively while the screen rows are not.
+
+`djnz row` means **decrement B and jump if not zero**. It subtracts one from B, then branches to `row` if the new value is non-zero. After the eighth write, B reaches zero and execution continues into the hold loop.
+
+<Question prompt="After the first turn, what should HL, DE and B contain?">
+
+HL points to `patterns + 1`, DE contains `$4100`, and B is 7. One pattern has been copied. Seven remain. The source advances by one byte; the screen destination advances by `$100`.
+
+</Question>
+
+## Run it, then replay the evidence
+
+Run the program, then press **Next write** to reveal each captured write. The Spectrum completes this tiny loop much faster than we can follow by eye. The replay shows writes recorded during real execution; it does not slow the machine, execute another loop, or simulate what the source ought to do.
+
+The live picture and memory table show the finished run. The separate replay lets you examine the writes that produced it. Try the count and address experiments before changing the data.
+
+<BytePixelsLesson height={8} loop={true} />
+
+<details>
+<summary>The complete starting program</summary>
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/meet-assembly/opening/row-loop.asm" />
+
+</details>
+
+## The count is part of the drawing rule
+
+With `ld b,4`, the program writes four rows. It does not clear the four rows it never touches. With `inc d` removed, it writes eight different patterns to the same address: the last one replaces the others.
+
+Keep the count between 1 and 8 for these experiments. The table has eight bytes and the destination step is designed for one character cell. More turns read beyond that table and write elsewhere on the screen. Starting B at zero does **not** skip the body: the body runs first, then DJNZ wraps zero to 255. That gives 256 turns before B finally returns to zero.
+
+<Question prompt="After eight turns, DE contains $4800. Did the loop write there?">
+
+No. The eighth write used `$4700`. Then `inc d` advanced the pointer to `$4800`, and DJNZ reduced B to zero without branching back. Advancing a pointer and writing through it are separate actions. The recorded destinations stop at `$4700`.
+
+</Question>
+
+## Keep the data, reuse the method
+
+The eight `defb` lines are your artwork. You can replace them without changing the drawing instructions. This is a useful separation: the data describes **what** to draw, and the loop describes **how** to place it.
+
+This first loop handles only the top-left 8×8 cell. Its source pointer advances through a table one byte at a time; its screen pointer follows the Spectrum’s layout. Drawing elsewhere will require us to choose a suitable starting address and respect the layout’s boundaries.
+
+Use **Download your source** to keep `row-loop.asm`. For a local build:
+
+```sh
+asm198x --dialect pasmo --cpu z80 --tapbas row-loop.asm -o row-loop.tap
+```
+
+Or, with Pasmo:
+
+```sh
+pasmo --tapbas row-loop.asm row-loop.tap
+```
+
+Load the tape in a fresh 48K Spectrum as in lesson 1. Check the eight rows against the previous program. The browser’s recorded-write replay is a teaching tool; the downloaded program is ordinary Z80 code and needs no replay controls to draw.
+
+<Sources>
+
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), instruction entries “LD A, (BC)”, “LD A, (DE)”, “LD r, (HL)”, “LD (DE), A”, “INC ss”, “INC r” and “DJNZ, e”. Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 24](https://worldofspectrum.org/ZXBasicManual/zxmanchap24.html), display-file ordering.
+
+</Sources>

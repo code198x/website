@@ -34,6 +34,8 @@ const WATCH_INTERVAL_FRAMES = 25;
 export class SpectrumRunner {
   #spectrum: Spectrum;
   #canvas: HTMLCanvasElement;
+  #keys = new Set<string>();
+  #keyListeners = new AbortController();
   #frame = 0;
   #last = 0;
   #wanted = false;
@@ -57,6 +59,8 @@ export class SpectrumRunner {
    * would never once find the counter inside it.
    */
   #tapePlayed = false;
+  #direct = false;
+  #onFrame: (() => void) | null = null;
   #checksSinceTape = 0;
   #verdictGiven = false;
 
@@ -98,6 +102,71 @@ export class SpectrumRunner {
     this.#spectrum.autoload(BOOT_FRAMES);
   }
 
+  /** Boot the ROM, install bytes in RAM and call through RANDOMIZE USR. */
+  runCode(bytes: Uint8Array, origin: number, entry: number): boolean {
+    const machine = this.#spectrum as unknown as {
+      runCode?: (bytes: Uint8Array, origin: number, entry: number) => void;
+    };
+    // The published package predates this API; retain its tape path until
+    // the browser package release reaches normal builds.
+    if (!machine.runCode) return false;
+    machine.runCode(bytes, origin, entry);
+    this.#direct = true;
+    return true;
+  }
+
+  debugState(): unknown {
+    const machine=this.#spectrum as unknown as {debugState?:()=>string};
+    if(!machine.debugState) throw Error('Debugging is unavailable in this emulator build.');
+    return JSON.parse(machine.debugState());
+  }
+
+  debugStep() {
+    const machine=this.#spectrum as unknown as {debugStep?:()=>unknown};
+    if(!machine.debugStep) throw Error('Debugging is unavailable in this emulator build.');
+    this.wanted=false;
+    machine.debugStep();
+  }
+
+  debugRunTo(address:number): boolean {
+    const machine=this.#spectrum as unknown as {debugRunTo?:(address:number)=>boolean};
+    if(!machine.debugRunTo) throw Error('Debugging is unavailable in this emulator build.');
+    this.wanted=false;
+    return machine.debugRunTo(address);
+  }
+
+  enableRoutineTrace(stop: number) {
+    const machine = this.#spectrum as unknown as {enableRoutineTrace?: (stop: number) => void};
+    if (!machine.enableRoutineTrace) throw Error('Routine recording is unavailable in this emulator build.');
+    machine.enableRoutineTrace(stop);
+  }
+
+  routineTrace(): unknown {
+    const machine = this.#spectrum as unknown as {routineTrace: () => string};
+    return JSON.parse(machine.routineTrace());
+  }
+
+  enableScreenWriteTrace() {
+    const machine = this.#spectrum as unknown as {enableScreenWriteTrace?: (address: number, length: number) => void};
+    if (!machine.enableScreenWriteTrace) throw Error('Recorded writes are unavailable in this emulator build.');
+    machine.enableScreenWriteTrace(0x4000, 0x800);
+  }
+
+  screenWriteTrace(): {writes: {pc: number; addr: number; value: number}[]; full: boolean} {
+    const machine = this.#spectrum as unknown as {screenWriteTrace: () => string};
+    return JSON.parse(machine.screenWriteTrace());
+  }
+
+  /** Read actual visible RAM; optional until the new browser API is released. */
+  readMemory(address: number, length: number): Uint8Array | null {
+    const machine = this.#spectrum as unknown as {
+      readMemory?: (address: number, length: number) => Uint8Array;
+    };
+    return machine.readMemory?.(address, length) ?? null;
+  }
+
+  observeFrame(callback: () => void) { this.#onFrame = callback; }
+
   /** Whether the reader has asked for the machine to run. */
   set wanted(value: boolean) {
     this.#wanted = value;
@@ -127,6 +196,8 @@ export class SpectrumRunner {
    * abandoned Spectrum keeps its 48K and its framebuffers until it is freed.
    */
   dispose() {
+    this.releaseKeys();
+    this.#keyListeners.abort();
     this.#disposed = true;
     this.stop();
     this.#spectrum.free();
@@ -168,7 +239,7 @@ export class SpectrumRunner {
       this.#checksSinceTape = 0;
       return;
     }
-    if (!this.#tapePlayed) return;
+    if (!this.#direct && !this.#tapePlayed) return;
 
     // The ROM needs a moment after the tape stops to hand over to the program.
     // Judging inside that window would report every successful load as a
@@ -221,6 +292,7 @@ export class SpectrumRunner {
     }
     try {
       this.#spectrum.tick(now - this.#last);
+      this.#onFrame?.();
       if (this.#extent && ++this.#sinceCheck >= WATCH_INTERVAL_FRAMES) {
         this.#sinceCheck = 0;
         this.#check();
@@ -236,12 +308,32 @@ export class SpectrumRunner {
 
   // Keys reach the machine only while the screen has focus, so a reader
   // scrolling with the arrow keys does not drive the Spectrum.
+  setKey(code: string, down: boolean): boolean {
+    if (this.#disposed) return false;
+    if (down) {
+      if (this.#keys.has(code)) return true;
+      const handled = this.#spectrum.keyDown(code);
+      if (handled) this.#keys.add(code);
+      return handled;
+    }
+    this.#keys.delete(code);
+    return this.#spectrum.keyUp(code);
+  }
+
+  releaseKeys() {
+    for (const code of this.#keys) this.#spectrum.keyUp(code);
+    this.#keys.clear();
+  }
+
   #attachKeys() {
+    const options = {signal: this.#keyListeners.signal};
     this.#canvas.addEventListener('keydown', (event) => {
-      if (this.#spectrum.keyDown(event.code)) event.preventDefault();
-    });
+      if (this.setKey(event.code, true)) event.preventDefault();
+    }, options);
     this.#canvas.addEventListener('keyup', (event) => {
-      if (this.#spectrum.keyUp(event.code)) event.preventDefault();
-    });
+      if (this.setKey(event.code, false)) event.preventDefault();
+    }, options);
+    this.#canvas.addEventListener('blur', () => this.releaseKeys(), options);
+    window.addEventListener('blur', () => this.releaseKeys(), options);
   }
 }

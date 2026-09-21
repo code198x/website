@@ -1,0 +1,301 @@
+---
+import AssembleAndRun from './AssembleAndRun.astro';
+interface Props { height?: 1 | 8; loop?: boolean }
+const {height = 1, loop = false} = Astro.props;
+const shape = height === 8;
+const bits = [7, 6, 5, 4, 3, 2, 1, 0];
+const addresses = Array.from({length: height}, (_, row) => 0x4000 + row * 256);
+const titles = loop ? ['Same picture', 'Stop early', 'Advance the address', 'Change the data'] : shape ? ['Read eight rows', 'Design a character', 'Follow an address', 'Find the repetition'] : ['Predict', 'Make a pattern', 'Make it disappear'];
+---
+<section class="byte-lesson" data-height={height} data-loop={String(loop)} aria-label={shape ? "Eight-row picture experiment" : "Byte and pixels experiment"}>
+  <nav class="experiments" aria-label="Experiments">
+    {titles.map((title, index) => <button type="button" data-stage={index} aria-current={index === 0 ? 'step' : undefined}>{index + 1}. {title}</button>)}
+  </nav>
+  <div class="experiment-brief">
+    <h3 data-heading>{loop ? "Eight writes, one loop" : shape ? "Read the picture from its eight bytes" : "Which pixels will use ink?"}</h3>
+    <p data-task>{loop ? "Run the program and replay its recorded writes one at a time. Compare the eight destinations with the previous lesson. The loop should reproduce the same picture." : shape ? "Read each binary value in the source. Draw the eight rows you expect below, save your prediction, then run and compare row by row." : "Read the byte after defb. Select the pixels you expect to use ink, from left to right, then save your prediction and run the program."}</p>
+    <p class="continuity">Each experiment keeps your edits. Revert restores the lesson’s starting program.</p>
+  </div>
+  {shape && <div class="character-transfer">
+    <button type="button" class="transfer-character">{loop ? 'Use my saved character' : 'Keep this character for the loop lesson'}</button>
+    <p class="transfer-note" role="status">{loop ? 'Uses the character you explicitly kept in lesson 3, in this tab.' : 'Run your finished source, then keep its eight actual row bytes for lesson 4.'}</p>
+  </div>}
+  <fieldset>
+    <legend>Your prediction · 1 means ink, 0 means paper</legend>
+    <div class="pixel-scroll"><div class="prediction">
+      {Array.from({length: height}, (_, row) => bits.map((bit, index) => <button type="button" data-bit={bit} data-row={row} aria-pressed="false" aria-label={`Row ${row + 1}, pixel ${index + 1}, bit ${bit}, paper`}>{!shape && <small>bit {bit}</small>}<span>0</span></button>))}
+    </div></div>
+    {shape && <p class="draft-rows" aria-label="Your draft row bytes"></p>}
+    <button type="button" class="save-prediction">Save prediction</button>
+    <p class="prediction-note" role="status">Choose your pixels before looking at the result.</p>
+  </fieldset>
+  <AssembleAndRun system="sinclair-zx-spectrum" src={`sinclair-zx-spectrum/assembly/meet-assembly/opening/${loop ? "row-loop" : shape ? "eight-rows" : "one-byte"}.asm`} dialect="pasmo" executionHints={false} traceWrites={loop} inspectBytes={[...addresses, 0x5800, ...(shape ? [0x4001] : [])]} rows={18} />
+  <button type="button" class="save-source">Download your source</button>
+  {loop && <section class="write-replay" aria-label="Recorded screen writes">
+    <h3>Follow the recorded writes</h3>
+    <p>The Spectrum has already run. These controls replay its captured writes within $4000–$47FF, the bitmap region containing this character. They do not slow or step the live machine.</p>
+    <button type="button" class="replay-reset" disabled>Start replay again</button>
+    <button type="button" class="replay-next" disabled>Next write</button>
+    <p class="replay-note" role="status">Run a program to capture its writes.</p>
+    <p class="replay-key">Recorded bitmap rows: 1 is light, 0 is dark. Grey means no write shown yet, not an empty memory byte.</p>
+    <canvas class="replay-pixels" width="8" height="8" role="img" aria-label="Recorded rows, not yet replayed"></canvas>
+    <ol class="replay-writes"></ol>
+  </section>}
+  <div class="observation" aria-label="Live screen and memory">
+    <h3>The machine’s result</h3>
+    <p class="observation-note" role="status">Run your program to inspect the screen and memory.</p>
+    <div class="readings" hidden>
+      <p><strong>{shape ? "Top-left character, magnified" : "Top-left eight pixels, magnified"}</strong> · copied from the Spectrum screen</p>
+      <canvas class="pixel-zoom" width="8" height={height} role="img" aria-label="Magnified top-left eight pixels"></canvas>
+      {!shape && <p class="memory-byte"></p>}
+      {shape && <div class="row-scroll"><table class="row-readings"><thead><tr><th>Row / address</th><th>Saved prediction</th><th>Actual byte</th></tr></thead><tbody>{addresses.map((address, row) => <tr><th>{row + 1} · ${address.toString(16).toUpperCase()}</th><td data-saved-row={row}>—</td><td data-live-row={row}>—</td></tr>)}</tbody></table></div>}
+      {shape && <p class="neighbour-byte"></p>}
+      <p class="attribute-byte"></p>
+      <p class="comparison"></p>
+    </div>
+  </div>
+  <details class="experiment-help"><summary>Explain this experiment</summary><p data-explanation>{loop ? "HL selects a pattern, DE selects a screen row, and B counts down. The captured writes show what the program actually stored on each turn." : shape ? "Read each row from left to right: 1 chooses ink, 0 chooses paper. The eight writes fill one character cell. Each row has its own pattern; the single attribute byte colours the whole cell." : "The leftmost written bit controls the leftmost pixel. In the starting program, 10101010 chooses ink, paper, ink, paper, ink, paper, ink, paper. The attribute makes ink white and paper black."}</p></details>
+</section>
+<script>
+  const byteStages = [
+    ['Which pixels will use ink?', 'Read the byte after defb. Select the pixels you expect to use ink, from left to right, then save your prediction and run the program.', 'The leftmost written bit controls the leftmost pixel. In the starting program, 10101010 chooses ink, paper, ink, paper, ink, paper, ink, paper. The attribute makes ink white and paper black.'],
+    ['Light only the two middle pixels', 'Draw your intended result in the prediction row. Then edit only the byte after defb to produce it. Save your prediction and run. Can you move those two pixels to the outside edges with one more edit?', 'The middle pair is %00011000. The two outside edges are %10000001. You change the pattern byte; its destination stays $4000. No new drawing instruction is needed.'],
+    ['The pattern disappears. Was it erased?', 'Keep your pattern and change ld a,71 to ld a,64. Predict whether the byte at $4000 will change, then run. Compare the magnified pixels with the stored bits. Bring the pattern back in red by changing the attribute again.', '64 selects bright black ink on black paper. The bitmap still holds your pattern: its 1 bits are simply black too. 66 selects bright red ink on black paper. Colour and shape live in separate bytes; changing one need not change the other.'],
+  ];
+  const shapeStages = [
+    ['Read the picture from its eight bytes', 'Read each binary value in the source. Draw the eight rows you expect below, save your prediction, then run and compare row by row.', 'Read each row from left to right: 1 chooses ink, 0 chooses paper. The eight writes fill one character cell. Each row has its own pattern; the single attribute byte colours the whole cell.'],
+    ['Design your own character', 'Draw a small creature, letter or symbol in the grid. The draft bytes below it describe your drawing. Copy those eight values into the corresponding ld a,%… instructions, keeping the destination addresses. Save your prediction, run, and inspect any row that differs.', 'Your grid is a design, not a remote control for the machine. Each row becomes one binary byte in the source. The source must be assembled and executed before the screen changes. One attribute at $5800 colours the whole 8×8 cell.'],
+    ['Does the next address mean the next row?', 'Give row 2 a distinctive pattern, such as %11111111. Change its destination from $4100 to $4001 and run. Compare row 2 with the extra reading at $4001. Find where those eight pixels went on the full Spectrum screen, then repair the address.', '$4001 is eight pixels to the right of $4000. Row 2 is at $4100. When its write goes elsewhere, row 2 retains the ROM’s old contents, while $4001 receives your byte. The neighbouring cell has its own attribute, so its colours may differ. Restore $4100 and run to repair it.'],
+    ['What could a loop repeat?', 'Keep your finished picture. Count the pairs that load a pattern into A and write it to screen memory. What changes each time? What could stay the same? Use the live rows as the result a shorter version must reproduce.', 'Eight repetitions do the same job with a different pattern and destination. A loop could read eight pattern bytes from a table, copy one each turn, advance to the next pattern, add $100 to the destination, and stop after eight rows. The $100 step works inside this cell; it is not a rule for the entire screen. We will build that loop next.'],
+  ];
+  const loopStages = [
+    ['Eight writes, one loop', 'Run the program and replay its recorded writes one at a time. Compare the eight destinations with the previous lesson. The loop should reproduce the same picture.', 'HL points to the pattern table, DE points to screen memory, and B counts rows. Each turn reads one byte, writes it, advances both pointers, and decrements B. DJNZ branches back unless B has become zero.'],
+    ['What does the count control?', 'Change ld b,8 to ld b,4. Predict how many bitmap writes will be recorded, then run and replay them. Inspect rows 5–8: no write means they retain their old contents. Restore 8 afterwards.', 'B starts at 4. DJNZ reduces it after each write: 3, 2, 1, 0. The fourth turn is the last. This does not erase the other rows. Their previous RAM values remain.'],
+    ['What happens if the destination never advances?', 'Remove inc d, run, and replay the addresses. Predict which pattern will remain at $4000. Restore inc d to repair the character.', 'All eight writes target $4000. Each replaces the previous value, so the last pattern survives there. INC HL still advances through the data, but without INC D the screen destination never moves.'],
+    ['A new picture, the same drawing instructions', 'Change the eight defb values to draw another character, or import your saved character. Leave the loop body intact. Run and compare the recorded destinations: does the drawing method need to change?', 'The artwork is now data. The loop does the same eight reads and writes for a different table. INC D advances the high byte of DE, adding $100 while E stays zero. This layout-specific step is only suitable for the eight rows of this cell.'],
+  ];
+  const colours = ['black', 'blue', 'red', 'magenta', 'green', 'cyan', 'yellow', 'white'];
+  function initialise() {
+    for (const root of document.querySelectorAll<HTMLElement>('.byte-lesson')) {
+      if (root.dataset.ready) continue;
+      root.dataset.ready = 'true';
+      const height = Number(root.dataset.height);
+      const shape = height === 8;
+      const loop = root.dataset.loop === 'true';
+      const stages = loop ? loopStages : shape ? shapeStages : byteStages;
+      const editor = root.querySelector<HTMLTextAreaElement>('textarea')!;
+      const buttons = [...root.querySelectorAll<HTMLButtonElement>('[data-bit]')];
+      const note = root.querySelector<HTMLElement>('.prediction-note')!;
+      const observation = root.querySelector<HTMLElement>('.observation-note')!;
+      const readings = root.querySelector<HTMLElement>('.readings')!;
+      const comparison = root.querySelector<HTMLElement>('.comparison')!;
+      const zoom = root.querySelector<HTMLCanvasElement>('.pixel-zoom')!;
+      let saved: number[] | null = null;
+      let lastSource: string | null = null;
+      let lastBytes: number[] | null = null;
+      const binary = (value: number) => value.toString(2).padStart(8, '0');
+      const draft = () => Array.from({length: height}, (_, row) => buttons.slice(row * 8, row * 8 + 8).reduce((value, button) => value * 2 + Number(button.getAttribute('aria-pressed') === 'true'), 0));
+      const showDraft = () => {
+        const output = root.querySelector('.draft-rows');
+        if (output) output.textContent = draft().map((byte, row) => `${row + 1}: %${binary(byte)}`).join(' · ');
+      };
+      showDraft();
+      const compare = () => {
+        if (lastBytes === null) return;
+        if (shape) {
+          root.querySelectorAll<HTMLElement>('[data-saved-row]').forEach((cell, row) => cell.textContent = saved ? binary(saved[row]) : '—');
+          root.querySelectorAll<HTMLElement>('[data-live-row]').forEach((cell, row) => cell.textContent = binary(lastBytes![row]));
+        }
+        const mismatches = saved ? lastBytes.flatMap((byte, row) => byte === saved![row] ? [] : [row + 1]) : [];
+        comparison.textContent = saved === null ? 'Save a prediction to compare it with these stored bits.' :
+          !mismatches.length ? 'The stored bits match your saved prediction.' : shape ?
+          `Rows ${mismatches.join(', ')} differ from your saved prediction. Check each pattern and its destination address.` :
+          `Your prediction was ${binary(saved[0])}. Compare it left to right with the stored bits above. A 1 selects ink; it does not choose a colour.`;
+      };
+      buttons.forEach((button, index) => button.addEventListener('click', () => {
+        const on = button.getAttribute('aria-pressed') !== 'true';
+        button.setAttribute('aria-pressed', String(on));
+        button.setAttribute('aria-label', `Row ${Math.floor(index / 8) + 1}, pixel ${index % 8 + 1}, bit ${7 - index % 8}, ${on ? 'ink' : 'paper'}`);
+        button.querySelector('span')!.textContent = on ? '1' : '0';
+        showDraft();
+        note.textContent = 'Prediction changed. Save it when you are ready.';
+      }));
+      root.querySelector('.save-prediction')!.addEventListener('click', () => {
+        saved = draft();
+        note.textContent = `Saved: ${shape ? 'eight rows' : binary(saved[0])}. Now run and compare.`;
+        compare();
+      });
+      root.querySelectorAll<HTMLButtonElement>('[data-stage]').forEach(button => button.addEventListener('click', () => {
+        const stage = Number(button.dataset.stage);
+        root.querySelectorAll('[data-stage]').forEach(item => item.removeAttribute('aria-current'));
+        button.setAttribute('aria-current', 'step');
+        root.querySelector('[data-heading]')!.textContent = stages[stage][0];
+        root.querySelector('[data-task]')!.textContent = stages[stage][1];
+        root.querySelector('[data-explanation]')!.textContent = stages[stage][2];
+        root.querySelector<HTMLDetailsElement>('details')!.open = false;
+      }));
+      root.querySelector('.save-source')!.addEventListener('click', () => {
+        const url = URL.createObjectURL(new Blob([editor.value], {type: 'text/plain'}));
+        const link = document.createElement('a');
+        link.href = url; link.download = loop ? 'row-loop.asm' : shape ? 'eight-rows.asm' : 'one-byte.asm'; link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      });
+      const transfer = root.querySelector<HTMLButtonElement>('.transfer-character');
+      transfer?.addEventListener('click', () => {
+        const message = root.querySelector('.transfer-note')!;
+        try {
+          if (!loop) {
+            if (!lastBytes || lastSource !== editor.value) { message.textContent = 'Run the current source before keeping its character.'; return; }
+            sessionStorage.setItem('meet-assembly-character', JSON.stringify(lastBytes));
+            message.textContent = 'Character kept for lesson 4 in this tab. Your source is unchanged.';
+          } else {
+            const bytes: unknown = JSON.parse(sessionStorage.getItem('meet-assembly-character') ?? 'null');
+            if (!Array.isArray(bytes) || bytes.length !== 8 || bytes.some(byte => !Number.isInteger(byte) || byte < 0 || byte > 255)) {
+              message.textContent = 'No character kept yet. Use the supplied picture, or return to lesson 3 and keep yours.'; return;
+            }
+            const pattern = /\bdefb\s+%[01]{8}\b/gi;
+            if ([...editor.value.matchAll(pattern)].length !== 8) { message.textContent = 'Import needs eight binary DEFB entries. Restore the source or copy your bytes manually.'; return; }
+            let row = 0;
+            editor.value = editor.value.replace(pattern, () => `defb %${binary(bytes[row++])}`);
+            editor.dispatchEvent(new Event('input'));
+            buttons.forEach((button, index) => {
+              const on = Boolean(bytes[Math.floor(index / 8)] & (128 >> (index % 8)));
+              button.setAttribute('aria-pressed', String(on));
+              button.querySelector('span')!.textContent = on ? '1' : '0';
+              button.setAttribute('aria-label', `Row ${Math.floor(index / 8) + 1}, pixel ${index % 8 + 1}, bit ${7 - index % 8}, ${on ? 'ink' : 'paper'}`);
+            });
+            showDraft(); saved = [...bytes]; compare();
+            note.textContent = 'Saved prediction: your imported character. Run to compare.';
+            message.textContent = 'Your character is in the data table. The loop instructions are unchanged. Run to test it.';
+          }
+        } catch { message.textContent = 'Tab storage is unavailable. Download your source and copy its eight pattern bytes instead.'; }
+      });
+      if (loop) {
+        const next = root.querySelector<HTMLButtonElement>('.replay-next')!;
+        const reset = root.querySelector<HTMLButtonElement>('.replay-reset')!;
+        const replayNote = root.querySelector('.replay-note')!;
+        const list = root.querySelector('.replay-writes')!;
+        const replayCanvas = root.querySelector<HTMLCanvasElement>('.replay-pixels')!;
+        const replayContext = replayCanvas.getContext('2d')!;
+        let trace: {addr: number; value: number}[] = [];
+        let position = 0;
+        let traceSource = '';
+        const render = () => {
+          list.replaceChildren(...trace.slice(0, position).map((write, index) => {
+            const item = document.createElement('li');
+            const row = (write.addr - 0x4000) / 256;
+            item.textContent = `$${write.addr.toString(16).toUpperCase().padStart(4, '0')} ← ${binary(write.value)}${Number.isInteger(row) && row >= 0 && row < 8 ? ` · row ${row + 1}` : ' · outside this cell'}`;
+            if (index === position - 1) item.setAttribute('aria-current', 'step');
+            return item;
+          }));
+          replayContext.fillStyle = '#888'; replayContext.fillRect(0, 0, 8, 8);
+          for (const write of trace.slice(0, position)) {
+            const row = (write.addr - 0x4000) / 256;
+            if (!Number.isInteger(row) || row < 0 || row > 7) continue;
+            for (let x = 0; x < 8; x++) {
+              replayContext.fillStyle = write.value & (128 >> x) ? '#fff' : '#000';
+              replayContext.fillRect(x, row, 1, 1);
+            }
+          }
+          replayCanvas.setAttribute('aria-label', `Bitmap reconstruction after ${position} captured writes; addresses and values are listed below.`);
+          root.querySelectorAll('[data-live-row]').forEach((cell, row) => {
+            cell.closest('tr')!.toggleAttribute('data-replay-current', position > 0 && trace[position - 1].addr === 0x4000 + row * 256);
+          });
+          next.disabled = position >= trace.length; reset.disabled = !trace.length;
+          replayNote.textContent = `${position} of ${trace.length} captured program writes shown.${editor.value !== traceSource ? ' Source changed; rerun to capture the edit.' : ''}`;
+        };
+        render();
+        replayNote.textContent = 'Run a program to capture its writes.';
+        next.addEventListener('click', () => { position = Math.min(trace.length, position + 1); render(); });
+        reset.addEventListener('click', () => { position = 0; render(); });
+        editor.addEventListener('input', () => { if (traceSource) render(); });
+        root.addEventListener('sandbox:trace', ((event: CustomEvent) => {
+          traceSource = event.detail.source; position = 0;
+          if (event.detail.full) { trace = []; render(); replayNote.textContent = 'The recording filled up. Use a bounded drawing loop and run again; this capture may be incomplete.'; return; }
+          trace = event.detail.writes; render();
+        }) as EventListener);
+      }
+      editor.addEventListener('input', () => {
+        if (lastSource !== null && editor.value !== lastSource) observation.textContent = 'Source changed. The result below is from your last run; run again to test your edit.';
+      });
+      root.addEventListener('sandbox:memory', ((event: CustomEvent) => {
+        const {values, source} = event.detail;
+        if (values.some((value: unknown) => value === null)) {
+          observation.textContent = 'Live memory inspection is unavailable. Compare your prediction with the Spectrum screen.';
+          readings.hidden = true; return;
+        }
+        const bytes = (values as number[]).slice(0, height);
+        const attribute = values[height] as number;
+        lastSource = source; lastBytes = bytes;
+        readings.hidden = false;
+        const message = editor.value === source ? 'Live result from your last assembled program.' : 'Source changed. The result below is from your last run; run again to test your edit.';
+        if (observation.textContent !== message) observation.textContent = message;
+        const screen = root.querySelector<HTMLCanvasElement>('.sandbox-screen')!;
+        const context = zoom.getContext('2d')!;
+        context.imageSmoothingEnabled = false;
+        // The standard 352×296 48K frame has 48 pixels of top/left border.
+        context.drawImage(screen, 48, 48, 8, height, 0, 0, 8, height);
+        const patterns = bytes.map(binary).join(', ');
+        const ink = colours[attribute & 7], paper = colours[(attribute >> 3) & 7];
+        zoom.setAttribute('aria-label', `Top-left pixels: rows ${patterns}; ink ${ink}, paper ${paper}${attribute & 128 ? ', flashing' : ''}.`);
+        const single = root.querySelector('.memory-byte');
+        if (single) single.textContent = `$4000 · bitmap: ${patterns} · ${bytes[0]} decimal`;
+        const neighbour = root.querySelector('.neighbour-byte');
+        if (neighbour) neighbour.textContent = `$4001 · next cell to the right, top row: ${binary(values[height + 1])}`;
+        root.querySelector('.attribute-byte')!.textContent = `$5800 · attribute: ${attribute} · ${attribute & 64 ? 'bright' : 'normal'} ${ink} ink on ${paper} paper${attribute & 128 ? ' · flashing' : ''}`;
+        compare();
+      }) as EventListener);
+    }
+  }
+  initialise();
+  document.addEventListener('astro:page-load', initialise);
+</script>
+<style>
+  .byte-lesson { margin-block: 2rem; }
+  .experiments { display: flex; flex-wrap: wrap; gap: .5rem; }
+  .byte-lesson button { min-height: 44px; padding: .5rem .75rem; font: inherit; color: inherit; background: var(--color-surface, #f6f1e9); border: 1px solid var(--color-border, #bbb); border-radius: 3px; cursor: pointer; touch-action: manipulation; }
+  .byte-lesson button:focus-visible { outline: 2px solid var(--color-primary, #ad3818); outline-offset: 3px; }
+  .experiments button[aria-current] { border-bottom: 3px solid var(--color-primary, #ad3818); }
+  .experiment-brief { min-height: 12rem; }
+  .byte-lesson h3 { margin: 1rem 0 .5rem; }
+  .byte-lesson p { margin-block: .5rem; }
+  .continuity { font-size: .85rem; color: var(--color-text-secondary, #555); }
+  fieldset { min-width: 0; padding: 1rem; border: 1px solid var(--color-border, #bbb); }
+  legend { font-size: .85rem; padding-inline: .3rem; }
+  .pixel-scroll { overflow-x: auto; margin-bottom: .75rem; }
+  .prediction { display: grid; grid-template-columns: repeat(8, minmax(44px, 1fr)); gap: 3px; }
+  .prediction button { padding: .4rem 0; background: #151921; color: #fff; font-family: var(--font-family-mono, monospace); }
+  .prediction button[aria-pressed=true] { background: #fff; color: #151921; box-shadow: inset 0 0 0 2px #151921; }
+  .prediction small, .prediction span { display: block; }
+  .prediction small { font-size: .65rem; }
+  @media (max-width: 30rem) {
+    .prediction { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; }
+    .prediction button { min-width: 0; min-height: 64px; }
+    fieldset { padding-inline: .5rem; }
+  }
+  .prediction span { font-size: 1.25rem; }
+  .byte-lesson .prediction-note, .byte-lesson .observation-note { min-height: 3em; font-size: .9rem; }
+  .observation { padding: 1rem; border-left: 3px solid var(--color-primary, #ad3818); background: var(--color-surface, #f6f1e9); }
+  .readings[hidden] { display: none; }
+  .pixel-zoom { display: block; width: 100%; height: 44px; image-rendering: pixelated; border: 1px solid #888; }
+  .byte-lesson .memory-byte, .byte-lesson .attribute-byte { font-family: var(--font-family-mono, monospace); font-size: .85rem; overflow-wrap: anywhere; }
+  .byte-lesson[data-height="8"] .prediction { max-width: 352px; gap: 0; grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .byte-lesson[data-height="8"] .prediction button { min-height: 44px; aspect-ratio: 1; padding: 0; border-radius: 0; }
+  .byte-lesson[data-height="8"] .pixel-zoom { width: min(100%, 256px); height: auto; aspect-ratio: 1; }
+  .byte-lesson .draft-rows, .byte-lesson .neighbour-byte { font: .8rem/1.8 var(--font-family-mono, monospace); overflow-wrap: anywhere; }
+  .row-scroll { overflow-x: auto; }
+  .byte-lesson .row-readings { width: 100%; font: .8rem/1.6 var(--font-family-mono, monospace); }
+  .row-readings th, .row-readings td { padding: .3rem; text-align: left; white-space: nowrap; }
+  .write-replay { padding: 1rem; border: 1px solid var(--color-border, #bbb); margin-block: 1rem; }
+  .write-replay button { margin-right: .5rem; }
+  .byte-lesson .replay-writes { font: .85rem/1.8 var(--font-family-mono, monospace); min-height: 3rem; }
+  .byte-lesson .replay-writes :global(li) { font: inherit; }
+  .replay-pixels { display: block; width: min(100%, 192px); height: auto; aspect-ratio: 1; image-rendering: pixelated; border: 1px solid var(--color-border, #888); }
+  .byte-lesson .replay-key { font-size: .85rem; }
+  .row-readings tr[data-replay-current] { outline: 2px solid var(--color-primary, #ad3818); outline-offset: -2px; }
+  .replay-writes :global(li[aria-current]) { border-left: 3px solid var(--color-primary, #ad3818); padding-left: .5rem; }
+  .byte-lesson .transfer-note { font-size: .85rem; }
+  .experiment-help { margin-top: 1rem; }
+  .experiment-help summary { cursor: pointer; padding-block: .75rem; }
+  @media (forced-colors: active) { .prediction button[aria-pressed=true] { outline: 2px solid Highlight; outline-offset: -3px; } }
+</style>
