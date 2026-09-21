@@ -544,6 +544,7 @@ const unitPages = defineCollection({
     feedPath: z.string().startsWith('/').optional(),
     game: z.number(),
     unit: z.number(),
+    sequence: z.string().optional(),
     tags: z.array(z.string()).default([]),
     status: z.string().optional(),
     heroImage: z.string().optional(),
@@ -555,6 +556,16 @@ const modulePages = defineCollection({
   schema: z.object({
     title: z.string(),
     presentation: z.enum(['classic', 'house']).default('classic'),
+    plannedTopicsNote: z.string().optional(),
+    plannedTopics: z.array(z.object({
+      title: z.string(),
+      description: z.string(),
+    })).default([]),
+    sequences: z.array(z.object({
+      name: z.string(),
+      description: z.string(),
+      format: z.string(),
+    })).default([]),
     description: z.string().optional(),
     status: z.enum(['in-progress', 'coming-soon', 'complete']).optional(),
     game: z.number().optional(),

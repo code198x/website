@@ -1,11 +1,11 @@
 # Maths for Games — current material and further topics
 
-Maths for Games lives in The Craft. The current five lessons form **Dice Roller**,
+Maths for Games lives in The Craft. The first five lessons form **Dice Roller**,
 a probability experiment using stock 48K Sinclair BASIC. The user selected this
 home on 2026-09-19. Source listings and verified tapes remain in the Spectrum
 sample tree; their target has not changed.
 
-## Current sequence
+## Chance and samples (existing URLs, units 01–05)
 
 1. Roll a die — twelve numbered results.
 2. Keep the tallies — count six outcomes.
@@ -17,17 +17,18 @@ These are independent-entry lessons. Numbers & Bits is not an attendance
 requirement. The curriculum specification in the docs repository governs the
 relationship between shared maths and system-specific implementation.
 
-## Further topics, not a lesson order
+## Aiming and movement (units 06–11)
 
-- Position, velocity and changes over time.
-- Fractional movement and fixed-point accumulators.
-- Multiplication strategies on a named processor, with measured costs.
-- Direction tables and the precision/runtime trade-off.
-- Squared-distance comparisons and approximations.
-- Pseudorandom sequences and choosing outcomes with unequal probabilities.
-- Applying these techniques to an opponent's movement and decisions.
+1. Place a point — coordinates, signs and displacement.
+2. Measure the triangle — Pythagoras, distance and ratios.
+3. Turn an angle into movement — signed sine/cosine components.
+4. Measure angles in radians — arc length and conversions.
+5. Find the angle to a target — atan2 and a reference shot.
+6. Keep fractional movement in integers — velocity quantisation and scaled position.
 
-Develop each through a concrete question. Do not imply that every game moves,
-that all target machines lack multiplication, or that pathfinding is just a
-direction calculation. Future unit counts and a compulsory sequence are not
-settled by this outline.
+Both sequences have independent entry and navigation. Their local lesson numbers
+start at one; existing probability URLs remain unchanged. Maintained experiments
+come from `code-samples/craft/maths-for-games/aiming/`, with teaching prose in MDX.
+
+Broader matrices, transforms, curves, interception and numerical-method routes
+remain future work governed by the Maths for Games specification.
