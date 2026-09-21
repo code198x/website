@@ -1,0 +1,155 @@
+---
+/** Editable BASIC for the reviewed Meet BASIC and Sonar teaching slices. */
+import fs from 'node:fs';
+import path from 'node:path';
+interface Props { src: string; name: string; keypad?: boolean; }
+const {src, name, keypad = false} = Astro.props;
+const source = fs.readFileSync(path.join(process.env.CODE_SAMPLES_PATH || path.resolve('../code-samples'), src), 'utf8');
+---
+<section class="basic-playground" data-name={name} aria-label="Try this BASIC program">
+  <div class="basic-panel">
+    <label class="basic-label" for={`basic-${name}`}>Your BASIC source</label>
+    <textarea id={`basic-${name}`} class="sandbox-source" rows="16" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off">{source}</textarea>
+  </div>
+  <div class="basic-panel">
+    <span class="basic-label">ZX Spectrum · 48K</span>
+    <canvas width="352" height="296" tabindex="0" aria-label="Spectrum screen. Focus here to send keys to the running program."></canvas>
+  </div>
+  <div class="basic-controls">
+    <button type="button" data-action="run">Run program</button>
+    <button type="button" data-action="restore">Restore source</button>
+    <button type="button" data-action="download">Download tape</button>
+    <button type="button" data-action="stop" disabled>Stop</button>
+    <span class="basic-status" role="status">Edit the source, then run it.</span>
+  </div>
+  <p class="basic-help">Type complete BASIC keywords in the editor. Run starts a fresh Spectrum and runs your program directly. Click the screen to send it keys; Tab returns to the page. Ctrl+Enter or Command+Enter runs from the editor.</p>
+  {keypad && <div class="basic-keypad" aria-label="Spectrum input keys">
+    {[1,2,3,4,5,6,7,8,9,0].map(n=><button type="button" data-key={`Digit${n}`}>{n}</button>)}
+    <button type="button" data-key="Backspace">Delete</button>
+    <button type="button" data-key="Enter">Enter</button>
+    <button type="button" data-key="KeyQ">Q · quit</button>
+  </div>}
+  <pre class="basic-error" role="alert" hidden></pre>
+  <details class="basic-transcript"><summary>Screen text</summary><pre aria-live="off">The Spectrum has not started yet.</pre></details>
+</section>
+<script>
+  const cleanups = new Set<() => void>();
+  function initialise() {
+    for (const root of document.querySelectorAll<HTMLElement>('.basic-playground')) {
+      if (root.dataset.ready) continue;
+      root.dataset.ready = 'true';
+      const source = root.querySelector<HTMLTextAreaElement>('textarea')!;
+      const original = source.value;
+      const canvas = root.querySelector<HTMLCanvasElement>('canvas')!;
+      const context = canvas.getContext('2d')!;
+      const status = root.querySelector<HTMLElement>('.basic-status')!;
+      const error = root.querySelector<HTMLElement>('.basic-error')!;
+      const transcript = root.querySelector<HTMLElement>('.basic-transcript pre')!;
+      const run = root.querySelector<HTMLButtonElement>('[data-action="run"]')!;
+      const stopButton = root.querySelector<HTMLButtonElement>('[data-action="stop"]')!;
+      void import('../lib/assembly-editor').then(({highlightAssemblyEditor})=>highlightAssemblyEditor(source, 'sinclair-basic')).catch(() => {});
+      let worker: Worker | null = null, exporter: Worker | null = null;
+      let frame = 0, last = 0, pending = false, running = false, visible = true;
+      const keys = new Map<string,string[]>();
+      function release() { keys.clear(); worker?.postMessage({type: 'release'}); }
+      function stop() {
+        release(); worker?.terminate(); worker = null; running = false; pending = false;
+        cancelAnimationFrame(frame); stopButton.disabled = true;
+      }
+      const say = (text: string) => { if (status.textContent !== text) status.textContent = text; };
+      const clearError = () => {error.hidden = true; error.textContent = '';};
+      function showError(message: string) {error.textContent = message; error.hidden = false; say('Check the source and try again.');}
+      function animate(now: number) {
+        if (!worker) return;
+        if (running && visible && !document.hidden && !pending) {
+          pending = true; worker.postMessage({type: 'tick', elapsed: Math.min(100, now-last)});
+        }
+        last = now; frame = requestAnimationFrame(animate);
+      }
+      function download(bytes: Uint8Array) {
+        const url = URL.createObjectURL(new Blob([bytes as BlobPart], {type: 'application/octet-stream'}));
+        const link = document.createElement('a'); link.href = url; link.download = `${root.dataset.name}.tap`; link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      function build(runProgram: boolean) {
+        clearError();
+        if (runProgram) {stop(); transcript.textContent = 'Loading a fresh Spectrum…';} else {exporter?.terminate(); exporter = null;}
+        const current = new Worker(new URL('../lib/spectrum-basic-worker.ts', import.meta.url), {type: 'module'});
+        if (runProgram) {worker = current; stopButton.disabled = false;} else exporter = current;
+        say(runProgram ? 'Preparing program…' : 'Preparing tape download…');
+        current.onerror = event => {if(current !== worker && current !== exporter)return; showError(event.message); if(current===worker)stop(); else {current.terminate();exporter=null;}};
+        current.onmessage = ({data}) => {
+          if (current !== worker && current !== exporter) return;
+          if (data.type === 'tape' && !runProgram) {download(data.bytes); current.terminate(); exporter = null; say('Tape downloaded.');}
+          else if (data.type === 'status') say(data.message);
+          else if (data.type === 'ready') {running = true; last = performance.now(); say('Program loaded.'); frame = requestAnimationFrame(animate);}
+          else if (data.type === 'frame') {
+            const [width,height] = data.size;
+            if(canvas.width !== width || canvas.height !== height){canvas.width=width;canvas.height=height;}
+            context.putImageData(new ImageData(new Uint8ClampedArray(data.pixels.buffer),width,height),0,0);
+            if(data.text)transcript.textContent = data.text.join('\n');
+            if(!data.loading)say('Program loaded. Click the screen to use its keyboard.');
+            pending = false;
+          } else if (data.type === 'error') {showError(data.message); if(runProgram)stop();else {current.terminate();exporter=null;}}
+        };
+        current.postMessage({type:'build', source:source.value, name:root.dataset.name, run:runProgram});
+      }
+      run.onclick = () => build(true);
+      root.querySelector<HTMLButtonElement>('[data-action="download"]')!.onclick = () => build(false);
+      root.querySelector<HTMLButtonElement>('[data-action="restore"]')!.onclick = () => {
+        stop(); source.value = original; source.dispatchEvent(new Event('input')); clearError(); say('Starting source restored. Run when ready.');
+      };
+      stopButton.onclick = () => {stop(); say('Stopped. Edit the source or run again.');};
+      source.addEventListener('keydown', event => {if((event.ctrlKey || event.metaKey) && event.key==='Enter'){event.preventDefault();build(true);}});
+      function codes(code: string): string[] | null {
+        if(code === 'Backspace')return ['ShiftLeft','Digit0'];
+        if(code === 'Escape')return ['ShiftLeft','Space'];
+        return /^(Key[A-Z]|Digit[0-9]|Enter|Space|ShiftLeft|ShiftRight|AltLeft|AltRight)$/.test(code) ? [code] : null;
+      }
+      canvas.addEventListener('keydown', event => {
+        if(event.metaKey || event.ctrlKey || !worker)return;
+        const mapped = codes(event.code); if(!mapped)return;
+        event.preventDefault(); if(event.repeat)return;
+        keys.set(event.code,mapped); worker.postMessage({type:'keys',codes:mapped,down:true});
+      });
+      canvas.addEventListener('keyup', event => {
+        const mapped=keys.get(event.code);if(!mapped)return;
+        event.preventDefault();keys.delete(event.code);worker?.postMessage({type:'keys',codes:mapped,down:false});
+      });
+      canvas.addEventListener('blur', release);
+      const onVisibility=()=>{if(document.hidden)release();};
+      document.addEventListener('visibilitychange',onVisibility);
+      window.addEventListener('blur',release);
+      for(const button of root.querySelectorAll<HTMLButtonElement>('[data-key]'))button.onclick=()=>worker?.postMessage({type:'tap',codes:codes(button.dataset.key!)});
+      const observer = new IntersectionObserver(entries => {visible=entries.some(entry=>entry.isIntersecting);if(!visible)release();});
+      observer.observe(root);
+      cleanups.add(()=>{stop();exporter?.terminate();observer.disconnect();window.removeEventListener('blur',release);document.removeEventListener('visibilitychange',onVisibility);});
+    }
+  }
+  initialise();
+  document.addEventListener('astro:page-load', initialise);
+  document.addEventListener('astro:before-swap', ()=>{for(const cleanup of cleanups)cleanup();cleanups.clear();});
+</script>
+<style>
+.basic-playground {display:grid;grid-template-columns:minmax(0,1fr);gap:1rem;margin:1.5rem 0;}
+.basic-panel {display:grid;grid-template-rows:auto minmax(0,1fr);gap:.5rem;min-width:0;}
+.basic-label {font: .7rem/1.5 var(--font-family-mono,monospace);text-transform:uppercase;letter-spacing:.1em;}
+.basic-panel > textarea {font:16px/1.5 monospace;background:#0d1117;color:#e6edf3;padding:.75rem;}
+.basic-panel .sandbox-source {box-sizing:border-box;width:100%;height:22rem;resize:vertical;}
+.basic-panel canvas {box-sizing:border-box;width:100%;height:auto;aspect-ratio:352/296;image-rendering:pixelated;background:black;border:1px solid var(--color-border,#444);}
+.basic-controls,.basic-keypad {display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;grid-column:1/-1;}
+.basic-playground button {font:inherit;font-size:.85rem;min-width:44px;min-height:44px;padding:.35rem .75rem;cursor:pointer;color:var(--color-text);background:var(--color-surface);border:1px solid var(--color-border);border-radius:3px;}
+.basic-playground button:disabled {opacity:.5;cursor:default;}
+.basic-playground :is(button,canvas,textarea):focus-visible {outline:2px solid var(--color-primary);outline-offset:2px;}
+.basic-status {flex:1 1 20rem;font-size:.85rem;line-height:1.5;}
+.basic-playground .basic-help {grid-column:1/-1;margin:0;font-size:.9rem;line-height:1.6;max-width:75ch;}
+.basic-error,.basic-transcript {grid-column:1/-1;min-width:0;}
+.basic-playground .basic-error {white-space:pre-wrap;color:var(--color-error,#c33);}
+.basic-error[hidden] {display:none;}
+.basic-transcript pre {overflow:auto;font:14px/1.5 monospace;}
+@media(min-width:60rem){
+ .basic-playground {grid-template-columns:repeat(2,minmax(0,1fr));}
+ .basic-panel :global(.assembly-editor){contain:size;min-height:0;height:100%;}
+ .basic-panel .sandbox-source {height:100%;min-height:0;resize:none;}
+}
+</style>
