@@ -556,6 +556,11 @@ const modulePages = defineCollection({
   schema: z.object({
     title: z.string(),
     presentation: z.enum(['classic', 'house']).default('classic'),
+    sequences: z.array(z.object({
+      name: z.string(),
+      description: z.string(),
+      format: z.string(),
+    })).default([]),
     description: z.string().optional(),
     status: z.enum(['in-progress', 'coming-soon', 'complete']).optional(),
     game: z.number().optional(),
