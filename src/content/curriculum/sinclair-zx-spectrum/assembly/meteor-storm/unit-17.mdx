@@ -1,0 +1,48 @@
+---
+title: "Measure time without counting distance"
+game: 1
+unit: 17
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+A course step measures progress through the storm. It does not measure elapsed time once we allow different numbers of steps per update. We will add a separate clock before adding boost.
+
+`frames` remains the interrupt handler's byte. At each accepted update, the main loop compares it with `last_frame`, records the difference in `frame_delta`, and adds that difference to the word `elapsed`. The course word `ticks` still increments once per simulation step.
+
+<MeteorExperiment checkpoint="timed-course" bytes={["frames","frame_delta","last_frame"]} words={["elapsed","ticks"]} controls="course" />
+
+At normal speed, most updates have frame_delta=2. A run can begin between alternate-frame opportunities, so its first difference may be one. This difference is measured; it is not assumed from the intended update rate.
+
+## Subtraction across a byte boundary
+
+Suppose last_frame is 254 and the current frame byte is 0. Byte subtraction `0-254` keeps the low eight bits of the result, which is 2. That is the number of elapsed frames across this wrap.
+
+This only works if fewer than 256 frames pass between samples. A difference of two cannot distinguish two frames from 258. Our update loop is much more frequent than that; a long pause outside this loop would require a wider clock.
+
+<AssemblyExcerpt checkpoint="timed-course" from=" ; Fixed 25 Hz updates:" to="race_step:" />
+
+## Add a byte to a word
+
+The frame difference goes into E and D is set to zero, making a sixteen-bit DE value. `ld hl,(elapsed)` reads the existing low and high bytes into HL. `add hl,de` performs a word addition, carrying from the low byte into the high byte when needed. `ld (elapsed),hl` writes both result bytes back.
+
+This is why elapsed can pass 255 while the frame byte wraps. It still has a limit: 65535 PAL frames is about 21 minutes 51 seconds. Our fixed course finishes far earlier; this is a short-run timer, not an unlimited clock.
+
+<Question prompt="An overloaded update takes four frames but advances ticks once. How much should elapsed increase?">
+
+Four. Elapsed measures time consumed, including work that was too slow. Adding a constant two would hide the missed update opportunity and make a slow implementation report a falsely fast time.
+
+</Question>
+
+`new_game` clears elapsed and records the current frame byte as last_frame after setting up the run. It does not need to restart the hardware clock. The result screen freezes the run's elapsed value, while the interrupt's frames byte keeps advancing.
+
+Watch a result for a few seconds and compare the two inspectors. One stops because the run is over; the other continues because interrupts are still enabled. That distinction will also let retry begin a new run without losing session records.
+
+<Sources>
+
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), “Interrupt Enable/Disable”, “Mode 2” and the DI, EI, HALT and RETI instruction entries. The frame-rate experiments here target the stock 48K PAL Spectrum.
+
+</Sources>

@@ -37,9 +37,14 @@ interface Props {
   visibilityScope?: string;
   traceWrites?: boolean;
   traceRoutine?: boolean;
+  /** Explicit companion filenames mapped to maintained code-samples paths. */
+  includes?: Record<string, string>;
+  inspectWords?: string[];
+  inspectRanges?: Record<string, number>;
+  downloads?: boolean;
 }
 
-const { system, src, dialect = 'pasmonext', rows = 16, executionHints = true, inspectBytes = [], inspectSymbols = [], debuggerControls = false, visibilityScope = ".sandbox", traceWrites = false, traceRoutine = false } = Astro.props;
+const { system, src, dialect = 'pasmonext', rows = 16, executionHints = true, inspectBytes = [], inspectSymbols = [], debuggerControls = false, visibilityScope = ".sandbox", traceWrites = false, traceRoutine = false, includes = {}, inspectWords = [], inspectRanges = {}, downloads = false } = Astro.props;
 
 const codeSamplesPath =
   process.env.CODE_SAMPLES_PATH || path.resolve(process.cwd(), '../code-samples');
@@ -55,10 +60,13 @@ try {
 // The tape's block header carries this, the way pasmo puts the output path
 // there. It is what the machine prints while loading, so a reader sees a name
 // they recognise rather than a path from someone else's disk.
+const companions = Object.entries(includes).map(([name, sample]) => ({
+  name, source: fs.readFileSync(path.join(codeSamplesPath, sample), 'utf-8'),
+}));
 const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
 ---
 
-<div class="sandbox" data-debugger={String(debuggerControls)} data-visibility-scope={visibilityScope} data-inspect-symbols={JSON.stringify(inspectSymbols)} data-trace-routine={String(traceRoutine)} data-trace-writes={String(traceWrites)} data-inspect-bytes={JSON.stringify(inspectBytes)} data-system={system} data-dialect={dialect} data-tape-name={tapeName} data-execution-hints={String(executionHints)}>
+<div class="sandbox" data-inspect-words={JSON.stringify(inspectWords)} data-inspect-ranges={JSON.stringify(inspectRanges)} data-debugger={String(debuggerControls)} data-visibility-scope={visibilityScope} data-inspect-symbols={JSON.stringify(inspectSymbols)} data-trace-routine={String(traceRoutine)} data-trace-writes={String(traceWrites)} data-inspect-bytes={JSON.stringify(inspectBytes)} data-system={system} data-dialect={dialect} data-tape-name={tapeName} data-execution-hints={String(executionHints)}>
   <div class="sandbox-editor">
     <label class="sandbox-label" for={`src-${tapeName}`}>Your source</label>
     <textarea
@@ -76,9 +84,17 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
     <canvas class="sandbox-screen" width="352" height="296" tabindex="0" aria-label="ZX Spectrum screen"></canvas>
   </div>
 
+  {companions.length > 0 && <details class="sandbox-companions">
+    <summary>Companion file: {companions.map(file => file.name).join(', ')}</summary>
+    <p>The include line reads this editable data when you assemble. Keep it beside your source for a local build.</p>
+    {companions.map(file => <label>{file.name}<textarea class="sandbox-companion" data-filename={file.name} rows="12" spellcheck="false" wrap="off">{file.source}</textarea></label>)}
+  </details>}
   <div class="sandbox-controls">
     <button type="button" class="sandbox-run" title="Assemble and run (Ctrl+Enter or Command+Enter)">Assemble and run</button>
     <button type="button" class="sandbox-revert" title="Put the original source back">Revert</button>
+    {downloads && <><button type="button" class="sandbox-download-source">Download source</button>
+    {companions.map(file => <button type="button" data-download-companion={file.name}>Download {file.name}</button>)}
+    <button type="button" class="sandbox-download-tape">Download tape</button></>}
     <p class="sandbox-status" role="status">Edit the source, then assemble.</p>
   </div>
 
@@ -101,6 +117,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
 </div>
 
 <script>
+  import { expandAssemblyIncludes } from '../lib/assembly-includes';
   import { SpectrumRunner, type Verdict } from '../lib/spectrum-runner';
 
   /**
@@ -148,6 +165,28 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
       const dialect = root.dataset.dialect ?? 'pasmonext';
       const tapeName = root.dataset.tapeName ?? 'program.tap';
       const original = source.value;
+      const companionEditors = Array.from(root.querySelectorAll<HTMLTextAreaElement>('.sandbox-companion'));
+      const originalFiles = companionEditors.map(editor => editor.value);
+      const files = () => Object.fromEntries(companionEditors.map(editor => [editor.dataset.filename!, editor.value]));
+      const assembledSource = () => expandAssemblyIncludes(source.value, files());
+      function download(bytes: BlobPart, name: string) {
+        const url = URL.createObjectURL(new Blob([bytes]));
+        const link = document.createElement('a'); link.href = url; link.download = name; link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      root.querySelector('.sandbox-download-source')?.addEventListener('click', () => download(source.value, tapeName.replace(/\.tap$/, '.asm')));
+      root.querySelectorAll<HTMLButtonElement>('[data-download-companion]').forEach(button => button.addEventListener('click', () => download(files()[button.dataset.downloadCompanion!], button.dataset.downloadCompanion!)));
+      root.querySelector<HTMLButtonElement>('.sandbox-download-tape')?.addEventListener('click', async (event) => {
+        const button = event.currentTarget as HTMLButtonElement; button.disabled = true;
+        try {
+          const asm = await loadAssembler();
+          const tape = asm.tape(dialect, assembledSource(), tapeName, 'tap');
+          if (!tape) throw Error('The source did not assemble into a tape.');
+          download(new Uint8Array(tape).buffer, tapeName);
+          say('Tape downloaded from your current source and companion files.');
+        } catch (error) { showDiagnostics(String(error)); say('Could not build the tape.', 'error'); }
+        finally { button.disabled = false; }
+      });
       // Highlighting is optional enhancement; failed loading leaves a plain editor.
       void import('../lib/assembly-editor').then(({ highlightAssemblyEditor }) =>
         highlightAssemblyEditor(source)).catch(() => {});
@@ -161,9 +200,11 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
       let runner: SpectrumRunner | null = null;
       let debugSymbols: Record<string,number> = {}, debugSource = '';
       let debugPaused = false;
-      root.addEventListener('sandbox:debug', ((event: CustomEvent<{action:string;label?:string;key?:string}>) => {
+      let emitInspection: (() => void) | null = null;
+      root.addEventListener('sandbox:debug', ((event: CustomEvent<{action:string;label?:string;key?:string;attempts?:number}>) => {
         if(root.dataset.debugger!=='true'||!runner)return;
         const {action,label,key}=event.detail;
+        const attempts=Math.max(1,Math.min(8,Math.trunc(event.detail.attempts??1)));
         try {
           let reached=true;
           if(action==='break'){
@@ -171,19 +212,20 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
             if(!Number.isInteger(address))throw Error('The assembled source needs that breakpoint label.');
             runner.releaseKeys();
             if(key)runner.setKey(key,true);
-            try{reached=runner.debugRunTo(address)}finally{runner.releaseKeys()}
-            debugPaused=reached;
+            try{for(let attempt=0;attempt<attempts;attempt++){reached=runner.debugRunTo(address);if(reached)break;}}finally{runner.releaseKeys()}
+            debugPaused=true;
           }else if(action==='step'){
             if(!debugPaused)throw Error('Reach a breakpoint before stepping.');
             runner.debugStep();
           }else if(action==='resume'){
             debugPaused=false;runner.wanted=true;
           }else return;
+          emitInspection?.();
           const state=runner.debugState() as {cpu:{hl:string}};
           const pointer=parseInt(state.cpu.hl.slice(1),16);
           root.dispatchEvent(new CustomEvent('sandbox:debug-state',{bubbles:true,detail:{
             action,reached,paused:debugPaused,source:debugSource,symbols:debugSymbols,
-            state,position:runner.readMemory(debugSymbols.position,1)?.[0],
+            state,position:Number.isInteger(debugSymbols.position)?runner.readMemory(debugSymbols.position,1)?.[0]:undefined,
             pointerBytes:Array.from(runner.readMemory(pointer,Math.min(8,65536-pointer))??[]),
           }}));
         }catch(error){root.dispatchEvent(new CustomEvent('sandbox:debug-error',{bubbles:true,detail:String(error)}))}
@@ -238,7 +280,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
           if (disposed) return;
           const text = source.value;
 
-          const resultJson = asm.assemble(dialect, text);
+          const resultJson = asm.assemble(dialect, assembledSource());
           const result = resultJson ? JSON.parse(resultJson) : null;
           if (!result || Array.isArray(result)) {
             showDiagnostics(resultJson ?? 'The source did not assemble.');
@@ -259,6 +301,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
           // a reader gets themselves out of having hung it. Disposed rather than
           // stopped, so the old one's memory goes with it.
           runner?.dispose();
+          emitInspection=null;
           debugPaused=false;root.dispatchEvent(new CustomEvent('sandbox:debug-reset',{bubbles:true}));
           say('Loading…');
           runner = await SpectrumRunner.create(canvas, (message) => say(message, 'error'));
@@ -269,7 +312,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
           }
           if (root.dataset.traceWrites === 'true') runner.enableScreenWriteTrace();
           if (!runner.runCode(bytes, result.origin, result.start)) {
-            const tape = asm.tape(dialect, text, tapeName, 'tap');
+            const tape = asm.tape(dialect, assembledSource(), tapeName, 'tap');
             if (!tape) throw Error('Could not build the program tape.');
             runner.load(tape, 'tape');
           }
@@ -303,16 +346,25 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
             return address;
           });
           const addresses: number[] = [...JSON.parse(root.dataset.inspectBytes ?? '[]'), ...symbolAddresses];
-          if (addresses.length) {
+          const wordNames: string[] = JSON.parse(root.dataset.inspectWords ?? '[]');
+          const ranges: Record<string, number> = JSON.parse(root.dataset.inspectRanges ?? '{}');
+          for (const name of [...wordNames, ...Object.keys(ranges)]) {
+            if (!Number.isInteger(result.symbols[name])) throw Error(`Inspection needs the ${name} label.`);
+          }
+          const executedFiles = files();
+          if (addresses.length || wordNames.length || Object.keys(ranges).length) {
             const active = runner;
             let frames = 0;
-            active.observeFrame(() => {
-              if (++frames % 6) return;
+            emitInspection = () => {
               const values = addresses.map(address => active.readMemory(address, 1)?.[0] ?? null);
               root.dispatchEvent(new CustomEvent('sandbox:memory', {
-                bubbles: true, detail: {addresses, values, source: text, symbols: result.symbols, named: Object.fromEntries(symbolNames.map((name, index) => [name, values[values.length - symbolNames.length + index]]))},
+                bubbles: true, detail: {addresses, values, source: text, files: executedFiles, symbols: result.symbols,
+                  words: Object.fromEntries(wordNames.map(name => { const bytes = active.readMemory(result.symbols[name], 2); return [name, bytes ? bytes[0] + 256 * bytes[1] : null]; })),
+                  ranges: Object.fromEntries(Object.entries(ranges).map(([name, length]) => [name, Array.from(active.readMemory(result.symbols[name], length) ?? [])])),
+                  named: Object.fromEntries(symbolNames.map((name, index) => [name, values[values.length - symbolNames.length + index]]))},
               }));
-            });
+            };
+            active.observeFrame(() => { if (++frames % 6 === 0) emitInspection?.(); });
           }
 
           debugSymbols=result.symbols;debugSource=text;
@@ -332,6 +384,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
       runButton.addEventListener('click', () => void assembleAndRun());
       revert.addEventListener('click', () => {
         source.value = original;
+        companionEditors.forEach((editor, index) => { editor.value = originalFiles[index]; editor.dispatchEvent(new Event('input')); });
         source.dispatchEvent(new Event('input'));
         clearMessages();
         say('Original source restored.');
@@ -347,6 +400,9 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
 </script>
 
 <style>
+  .sandbox-companions { grid-column: 1 / -1; min-width: 0; }
+  .sandbox-companion { display:block; width:100%; box-sizing:border-box; font:16px var(--font-family-mono,monospace); color:var(--color-text-primary); background:var(--color-surface); }
+
   .sandbox {
     display: grid;
     grid-template-columns: minmax(0, 1fr);

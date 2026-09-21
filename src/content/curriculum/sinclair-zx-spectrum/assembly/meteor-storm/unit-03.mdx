@@ -1,0 +1,59 @@
+---
+title: "Find a pixel in Spectrum memory"
+game: 1
+unit: 3
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+A position such as x=14, y=64 is useful to a player. The drawing routine needs a memory address. We will connect the two, one byte at a time.
+
+Coordinates start at zero inside the border: x=0 is the left edge and y=0 is the top. An X coordinate has two jobs. Dividing by eight selects the byte column; the remainder selects a bit within that byte. At x=14 the column is 1 and the remainder is 6.
+
+## Start with one visible bit
+
+This complete program calls `pixel_address` with D=64 and E=14. D holds Y; E holds X. The routine returns the address in HL and preserves BC and DE. AF and HL change. Those promises are its **contract**.
+
+It stores the returned address in the two-byte variable `address`, then writes `%00000010` there. That is the bit for remainder 6: bit 7 corresponds to the leftmost pixel, so bit 1 is six places along.
+
+<MeteorExperiment checkpoint="pixel-address" words={["address"]} />
+
+The inspector should show 18433, hexadecimal `$4801`. The pixel is near the left edge, one-third down the picture area. An address can be correct even when a single pixel is difficult to spot.
+
+## Why Y is split into pieces
+
+The Spectrum does not store bitmap rows in ordinary top-to-bottom order. Split the eight bits of Y into three groups:
+
+| Coordinate bits | Address bits | Job |
+|---|---|---|
+| Y bits 7–6 | address bits 12–11 | Choose a third of the screen |
+| Y bits 2–0 | address bits 10–8 | Choose a scanline within a character row |
+| Y bits 5–3 | address bits 7–5 | Choose a character row within that third |
+| X divided by 8 | address bits 4–0 | Choose one of 32 byte columns |
+
+The address also contains the fixed `$4000` bitmap base. `AND` keeps the needed bits. Rotates put them in their destination positions; `OR` combines groups that occupy different bit positions. H receives the high address byte; L receives the low byte.
+
+<AssemblyExcerpt checkpoint="pixel-address" from="pixel_address:" to="clear:" />
+
+At y=64, only Y bit 6 is set, contributing `$0800`. At x=14, the byte column contributes 1. The sum is `$4000 + $0800 + 1 = $4801`.
+
+## Check a boundary
+
+Replace `ld d,64` with `ld d,65`. Before assembling, predict `$4901`: we have changed the scanline within this character row, adding 256 to the address. Now try y=71 followed by y=72. Their addresses are `$4F01` and `$4821`; the next visible row can have a smaller memory address.
+
+<Question prompt="Changing x from 14 to 15 leaves address unchanged. Is the routine broken?">
+
+No. Both positions use byte column 1. Only their bit offsets differ. This routine returns the byte address, not the final shifted pattern. Our one-bit write is fixed, so change that pattern as well if you want the visible pixel to move from offset 6 to 7.
+
+</Question>
+
+Keep X between 0 and 255 and Y between 0 and 191 in this experiment. The routine does not reject off-screen coordinates; its caller owns that responsibility.
+
+<Sources>
+
+Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 24](https://worldofspectrum.org/ZXBasicManual/zxmanchap24.html), display-file and attribute layout. Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), instruction descriptions for shifts, logical operations and loads.
+
+</Sources>

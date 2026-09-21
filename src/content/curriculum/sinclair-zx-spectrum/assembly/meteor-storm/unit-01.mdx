@@ -1,0 +1,67 @@
+---
+title: "Carry a pixel into the next byte"
+game: 1
+unit: 1
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+Our ship needs to move less than one character at a time. First, move two pixels one place to the right without losing either of them.
+
+This is a fresh project for a **48K PAL ZX Spectrum**. We will use registers, memory addresses, calls and branches from [Meet Assembly](/systems/sinclair-zx-spectrum/assembly/meet-assembly/). You do not need BASIC. Each editor contains a complete program; **Assemble and run** starts a fresh machine without a tape wait. Save your edits before using Revert.
+
+## A row that crosses a boundary
+
+The byte `%10000001`, hexadecimal `$81`, lights its leftmost and rightmost pixels. Put an empty byte after it and we have sixteen possible pixel positions:
+
+```text
+Before: 10000001 00000000
+After:  01000000 10000000
+```
+
+The rightmost 1 of the first byte must become the leftmost bit of the second. Throw it away and one of our pixels vanishes every time it crosses a byte boundary.
+
+Run the program. The magnified view reads the actual screen bytes. Its first row is the original pair; its second is the shifted pair.
+
+<MeteorExperiment checkpoint="one-row-shift" shiftRows={2} />
+
+## Follow the carry
+
+The program sets A to `$81` and B to zero. `srl a` shifts A right, puts zero into its leftmost bit, and puts the bit that fell off the right into the **carry flag**. Carry is one bit in the flags register; here it remembers the displaced pixel.
+
+`rr b` rotates B right **through carry**. The previous carry enters B's leftmost bit. B's former rightmost bit becomes the new carry. After these two instructions A is `$40` and B is `$80`.
+
+<AssemblyExcerpt checkpoint="one-row-shift" from=" ld a,%10000001" to="hold:" />
+
+The writes to `$480C`, `$490C` and `$490D` choose two neighbouring bytes on neighbouring pixel rows. We will derive those addresses shortly. `ld (address),a` copies the value; it does not move the value out of A.
+
+## Change one thing
+
+Replace **both** occurrences of `%10000001` with `%11111111`. Predict both rows, then assemble again. The shifted pair should be `$7F,$80`: seven set bits remain in the first byte and the eighth enters the second.
+
+<Question prompt="What would happen if we replaced rr b with srl b?">
+
+B would stay zero. SRL inserts zero at the left instead of accepting the carry from A. The pixel that left A would not appear anywhere. Try that single instruction change, then Revert to recover both the original pattern and instruction.
+
+</Question>
+
+`clear` prepares black bitmap memory and white ink. It uses `LDIR`: copy the byte at HL to DE, advance both pointers, decrement BC and repeat until BC is zero. The source and destination are one byte apart, so the first value propagates through the range. Bitmap and attribute memory are cleared separately. The hold loop keeps execution away from the following helper code.
+
+Use **Download source** for `meteor-storm.asm`. For local work, [Asm198x](https://asm198x.github.io/) is the primary tool; upstream Pasmo accepts the same source:
+
+```sh
+asm198x --dialect pasmo --cpu z80 --tapbas meteor-storm.asm -o meteor-storm.tap
+# Or:
+pasmo --tapbas meteor-storm.asm meteor-storm.tap
+```
+
+A black screen is not necessarily a failed run: these two rows are tiny. Use the magnified bitmap reading to find them. Reassembling reloads the whole experiment.
+
+<Sources>
+
+Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 24](https://worldofspectrum.org/ZXBasicManual/zxmanchap24.html), display-file and attribute layout. Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), instruction descriptions for shifts, logical operations and loads.
+
+</Sources>

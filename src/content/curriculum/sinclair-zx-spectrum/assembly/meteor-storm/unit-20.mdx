@@ -1,0 +1,52 @@
+---
+title: "Draw once, check twice"
+game: 1
+unit: 20
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+The boosted game does twice as much simulation work, but the player does not need a complete redraw of every falling object between those two steps. We will save that drawing work while preserving both contact decisions.
+
+This checkpoint extends each object to seven bytes. Offsets 0..4 retain X, Y, kind, speed and drift. Offsets 5 and 6 remember the X/Y of the image currently on screen. Those can differ from the latest simulation position.
+
+<MeteorExperiment checkpoint="render-budget" bytes={["boost_time","steps_left","frame_delta","active_count"]} words={["ticks","elapsed"]} poolStride={7} controls="boost" />
+
+## Give state and image separate positions
+
+On the first boosted step, copy current X/Y into image X/Y and leave the old image in place. Advance the simulation and check contact. If the object survives, do not draw its intermediate position.
+
+On the second step, erase using the saved image position, advance and check again, then draw the final position. We save one erase and one draw per surviving object per boosted update. At normal speed, a single step still erases and redraws normally.
+
+<AssemblyExcerpt checkpoint="render-budget" from="remember_image:" to="image_ready:" />
+
+Open the active-record table and compare X/Y with Image X/Y. The inspector samples between operations, so it may catch a difference. That is useful state, not automatically an erasure fault.
+
+## Removal cannot wait for a step that may never happen
+
+A star collected on the first step becomes inactive. The second step will skip it. Therefore its old image must be removed **during that first step**, before clearing kind. Otherwise an inactive star would remain visible forever.
+
+A newly spawned object also needs its previous-image coordinates initialised: it has already been drawn at its spawn position before the next update begins. Spawn writes both coordinate pairs together.
+
+<Question prompt="Why not erase using the object's latest X/Y after both steps?">
+
+Those coordinates describe where the object has moved, not where its old pixels remain. XOR at the new position would change the wrong pixels and leave the old image behind. Save the image position before changing the simulation state.
+
+</Question>
+
+## Compare a measured budget
+
+Play the same course with Space held and compare frame_delta with the previous checkpoint. The native route test records occasional 4s before this change and only 1 or 2 afterwards; a starting difference of 1 is possible because a run can begin between the clock's alternate-frame opportunities.
+
+A browser inspector samples values and may miss a rare 4. Not seeing one in a short run is weaker evidence than recording every update. The native checks cover a full keyboard-driven passage and retain the measured differences. Both versions still check every course step.
+
+The optimisation depends on the XOR contract: no unrelated drawing may overwrite the saved old image between its draw and erase. This is appropriate for our plain playfield and separate HUD. Adding scrolling scenery would require revisiting that assumption.
+
+<Sources>
+
+The maintained Meteor Storm source linked through this page supplies the game rules and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
+
+</Sources>

@@ -1,0 +1,115 @@
+---
+import fs from 'node:fs';
+import path from 'node:path';
+import AssembleAndRun from './AssembleAndRun.astro';
+interface Props {
+  checkpoint: string;
+  bytes?: string[];
+  words?: string[];
+  poolStride?: number;
+  shiftRows?: number;
+  controls?: 'none' | 'early' | 'course' | 'boost' | 'finished';
+  breakpoint?: string;
+}
+const {checkpoint, bytes = [], words = [], poolStride = 0, shiftRows = 0, controls = 'none', breakpoint} = Astro.props;
+const base = `sinclair-zx-spectrum/assembly/meteor-storm/checkpoints/${checkpoint}`;
+const samples = process.env.CODE_SAMPLES_PATH || path.resolve(process.cwd(), '../code-samples');
+const hasAssets = fs.existsSync(path.join(samples, base, 'assets.inc'));
+const keys = controls === 'none' ? [] : [['KeyO','O · Left'], ['KeyP','P · Right'],
+  ...(controls === 'boost' || controls === 'finished' ? [['Space', controls === 'finished' ? 'Space · Launch / boost' : 'Space · Boost']] : []),
+  ['KeyR', controls === 'early' ? 'R · Restart' : 'R · Retry result'],
+  ...(controls === 'early' ? [] : [['KeyQ', controls === 'finished' ? 'Q · Title' : 'Q · Restart']])];
+const addresses = Array.from({length:shiftRows}, (_,i) => [0x480c + i*256,0x480d+i*256]).flat();
+---
+<section class="meteor-experiment" data-stride={poolStride} data-shift-rows={shiftRows} aria-label="Run and inspect this Meteor Storm experiment">
+  <AssembleAndRun system="sinclair-zx-spectrum" dialect="pasmo" src={`${base}/meteor-storm.asm`} includes={hasAssets ? {'assets.inc': `${base}/assets.inc`} : {}} executionHints={false} downloads={true} inspectBytes={addresses} inspectSymbols={bytes} inspectWords={words} inspectRanges={poolStride ? {objects:20*poolStride} : {}} debuggerControls={Boolean(breakpoint)} visibilityScope=".meteor-experiment" />
+  {keys.length > 0 && <><p>Focus the Spectrum screen to use the keyboard, or hold these buttons. Assemble again for a fresh machine.</p>
+  <div class="meteor-controls" role="group" aria-label="Spectrum keyboard">{keys.map(([code,label]) => <button type="button" data-key={code}>{label}</button>)}</div></>}
+  <p class="meteor-reading" role="status">Run the program to inspect it. Editing source does not change the running machine.</p>
+  {(bytes.length > 0 || words.length > 0) && <dl class="meteor-values">{[...bytes,...words].map(name => <div><dt><code>{name}</code></dt><dd data-value={name}>—</dd></div>)}</dl>}
+  {shiftRows > 0 && <figure><canvas class="meteor-bits" width="16" height={shiftRows} aria-label="Magnified bits read from the actual screen bitmap" role="img"></canvas><figcaption>The two bitmap bytes on each row, read from RAM. White is a set bit; black is a cleared bit.</figcaption><pre class="meteor-bit-values" aria-label="Bitmap bytes in hexadecimal">Run to read the bytes.</pre></figure>}
+  {poolStride > 0 && <details><summary>Read the active object records</summary><p>These rows read the twenty-slot pool. Empty slots are omitted. The display samples RAM while the program runs, so values can change between observations.</p><div class="meteor-table"><table><thead><tr><th>Slot</th><th>X</th><th>Y</th><th>Kind / active</th><th>Speed</th>{poolStride >=5 && <th>Drift</th>}{poolStride===7 && <><th>Image X</th><th>Image Y</th></>}</tr></thead><tbody class="meteor-pool"></tbody></table></div></details>}
+  {breakpoint && <section class="meteor-debug" aria-label="Collision debugger"><p>Stop before <code>{breakpoint}</code>, predict the next instruction, then step. This pauses the actual CPU; it does not move an object into contact for you. RAM and registers show the paused state; the screen may show its last rendered frame.</p><div class="meteor-controls"><button type="button" data-break={breakpoint} disabled>Stop at {breakpoint}</button><button type="button" data-step disabled>Step one instruction</button><button type="button" data-resume disabled>Resume</button></div><pre class="meteor-debug-state">Assemble before using the debugger.</pre></section>}
+</section>
+<script>
+  function init() {
+    for (const root of document.querySelectorAll<HTMLElement>('.meteor-experiment')) {
+      if (root.dataset.ready) continue;
+      root.dataset.ready = 'true';
+      const sandbox = root.querySelector<HTMLElement>('.sandbox')!;
+      const editor = root.querySelector<HTMLTextAreaElement>('.sandbox-source')!;
+      const reading = root.querySelector<HTMLElement>('.meteor-reading')!;
+      const companions = Array.from(root.querySelectorAll<HTMLTextAreaElement>('.sandbox-companion'));
+      let executed: string | null = null, executedFiles: Record<string,string> = {}, ready = false, paused = false;
+      const changed = () => executed !== editor.value || companions.some(file => file.value !== executedFiles[file.dataset.filename!]);
+      const update = () => {
+        reading.textContent = executed === null ? 'Run the program to inspect it. Editing source does not change the running machine.' : changed() ? 'Source changed. These readings belong to the previous run; assemble again to apply your edit.' : 'Readings from Spectrum RAM. Byte counters wrap after 255; word counters after 65535.';
+        root.querySelectorAll<HTMLButtonElement>('[data-break]').forEach(b => b.disabled = !ready || changed());
+        root.querySelectorAll<HTMLButtonElement>('[data-step], [data-resume]').forEach(b => b.disabled = !ready || changed() || !paused);
+      };
+      [editor,...companions].forEach(input => input.addEventListener('input', update));
+      function send(button: HTMLButtonElement, down: boolean) {
+        button.dataset.held = String(down);
+        sandbox.dispatchEvent(new CustomEvent('sandbox:key', {detail:{codes:[button.dataset.key],down}}));
+      }
+      const release = () => root.querySelectorAll<HTMLButtonElement>('[data-key]').forEach(b => send(b,false));
+      root.querySelectorAll<HTMLButtonElement>('[data-key]').forEach(button => {
+        button.addEventListener('pointerdown', event => { event.preventDefault(); button.focus(); button.setPointerCapture(event.pointerId); send(button,true); });
+        for (const type of ['pointerup','pointercancel','lostpointercapture','blur']) button.addEventListener(type, () => send(button,false));
+        button.addEventListener('keydown', event => { if (event.key===' ' || event.key==='Enter') {event.preventDefault();send(button,true);} });
+        button.addEventListener('keyup', event => { if (event.key===' ' || event.key==='Enter') {event.preventDefault();send(button,false);} });
+      });
+      root.querySelector('.sandbox-run')!.addEventListener('click', release);
+      root.addEventListener('sandbox:memory', ((event: CustomEvent) => {
+        const d = event.detail; executed = d.source; executedFiles = d.files ?? {}; update();
+        for (const [name,value] of Object.entries({...d.named,...d.words})) {
+          const cell = root.querySelector(`[data-value="${name}"]`);
+          if (cell) cell.textContent = value == null ? 'Unavailable' : String(value);
+        }
+        const rows = Number(root.dataset.shiftRows);
+        if (rows) {
+          const canvas=root.querySelector<HTMLCanvasElement>('.meteor-bits')!, ctx=canvas.getContext('2d')!;
+          const bytes:number[]=d.values.slice(0,rows*2);
+          for(let row=0;row<rows;row++) for(let x=0;x<16;x++) {ctx.fillStyle=bytes[row*2+(x>>3)]&(128>>(x&7))?'#fff':'#000';ctx.fillRect(x,row,1,1);}
+          root.querySelector('.meteor-bit-values')!.textContent=Array.from({length:rows},(_,i)=>bytes.slice(i*2,i*2+2).map(v=>'$'+v.toString(16).toUpperCase().padStart(2,'0')).join(' ')).join('\n');
+        }
+        const stride=Number(root.dataset.stride), body=root.querySelector('.meteor-pool');
+        if(stride && body) {
+          const values:number[]=d.ranges.objects; const fragment=document.createDocumentFragment();
+          for(let i=0;i<20;i++) {const record=values.slice(i*stride,(i+1)*stride);if(!record[2])continue;
+            const row=document.createElement('tr');
+            [i,...record].forEach((value,j)=>{const cell=document.createElement('td');cell.textContent=String(j===5&&value>127?value-256:value);row.append(cell);});fragment.append(row);
+          }
+          body.replaceChildren(fragment);
+        }
+      }) as EventListener);
+      const debug = (detail: object) => sandbox.dispatchEvent(new CustomEvent('sandbox:debug',{detail}));
+      root.querySelector<HTMLButtonElement>('[data-break]')?.addEventListener('click',event => debug({action:'break',attempts:8,label:(event.currentTarget as HTMLElement).dataset.break}));
+      root.querySelector('[data-step]')?.addEventListener('click',()=>debug({action:'step'}));
+      root.querySelector('[data-resume]')?.addEventListener('click',()=>debug({action:'resume'}));
+      root.addEventListener('sandbox:debug-ready',((event:CustomEvent)=>{ready=true;paused=false;executed=event.detail.source;executedFiles=Object.fromEntries(companions.map(f=>[f.dataset.filename!,f.value]));update();}) as EventListener);
+      root.addEventListener('sandbox:debug-reset',()=>{ready=false;paused=false;executed=null;update();});
+      root.addEventListener('sandbox:debug-error',((event:CustomEvent)=>{root.querySelector('.meteor-debug-state')!.textContent=event.detail;}) as EventListener);
+      root.addEventListener('sandbox:debug-state',((event:CustomEvent)=>{
+        const d=event.detail;paused=d.paused;update();
+        const cpu=d.state.cpu;
+        root.querySelector('.meteor-debug-state')!.textContent=d.reached ? `PC ${cpu.pc} · AF ${cpu.af} · HL ${cpu.hl}\nNext: ${d.state.instruction?.text??'—'}\n${paused?'Paused. Predict before stepping.':'Running again.'}` : 'The CPU is paused, but that label was not reached within the limit. Continue towards the label, resume, or reassemble for a fresh attempt.';
+      }) as EventListener);
+    }
+  }
+  init();document.addEventListener('astro:page-load',init);
+</script>
+<style>
+.meteor-controls {display:flex;flex-wrap:wrap;gap:.5rem}
+button {min-height:44px;padding:.6rem .8rem;font:inherit;color:var(--color-text-primary);background:var(--color-surface);border:1px solid var(--color-border);border-radius:3px;touch-action:none;cursor:pointer}
+button:disabled {opacity:.55;cursor:default}
+button:focus-visible {outline:2px solid var(--color-primary);outline-offset:3px}
+button[data-held="true"] {box-shadow:inset 0 0 0 2px var(--color-primary)}
+.meteor-reading {min-height:3em}
+.meteor-values {display:flex;flex-wrap:wrap;gap:1rem 2rem;padding:1rem;border-left:3px solid var(--color-primary);background:var(--color-surface)}
+dt {font-size:.85rem} dd {margin:0;font:1.5rem var(--font-family-mono,monospace);font-variant-numeric:tabular-nums}
+.meteor-bits {width:256px;max-width:100%;height:auto;image-rendering:pixelated;background:#000}
+.meteor-bit-values,.meteor-debug-state {white-space:pre-wrap;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.meteor-table {overflow-x:auto} table {width:100%;font-variant-numeric:tabular-nums}
+figure {margin-inline:0} .meteor-debug {margin-block:1rem}
+</style>
