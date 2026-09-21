@@ -38,8 +38,8 @@ not a native-machine performance claim or a completed lesson sequence.
 The four local lesson pages isolate immediate response and speed, acceleration,
 release braking and reversal braking. Each embeds a two-ship comparison with
 identical input and one changed setting. Repeatable input, a pause control and a
-single-update inspector expose position and velocity. Optional JavaScript is
-included from the exact functions imported by the experiment; pseudocode and
-worked arithmetic carry the main explanation. Lesson four deliberately compares
+single-update inspector expose position and velocity. The lesson pages use pseudocode and
+worked arithmetic without JavaScript disclosures. A small source-download link
+provides the actual movement routine for interested readers. Lesson four deliberately compares
 a zero-first reversal rule, distinguishing it from the published prototype's
 approach towards the opposite velocity.

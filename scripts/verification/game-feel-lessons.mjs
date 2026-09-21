@@ -23,10 +23,12 @@ try {
   await frame.locator('#setting').fill(await frame.locator('#setting').getAttribute('min'));await frame.locator('#setting').dispatchEvent('input');assert.equal(await frame.locator('#readout-1').textContent(),'x 120.00 · v 0.00');
   await frame.locator('#arena').focus();await page.keyboard.down('ArrowRight');await page.waitForTimeout(300);await page.keyboard.up('ArrowRight');assert.notEqual(await frame.locator('#readout-1').textContent(),'x 120.00 · v 0.00');
   await frame.locator('#compare').click();await page.waitForTimeout(300);assert.match(await frame.locator('#status').textContent(),/Same input/);await frame.locator('#compare').click();assert.match(await frame.locator('#status').textContent(),/stopped/);await frame.locator('#reset').click();
-  await page.getByText('Inspect the JavaScript used by this experiment',{exact:true}).click();assert.match(await page.locator('main').textContent(),/export function/);
+  assert.equal(await page.getByText('Inspect the JavaScript used by this experiment',{exact:true}).count(),0);
+  const sourceLink=page.getByRole('link',{name:'Movement rule source (JavaScript)'});assert.equal(await sourceLink.count(),1);
+  const sourceResponse=await page.request.get(base+await sourceLink.getAttribute('href'));assert(sourceResponse.ok());assert.match(await sourceResponse.text(),/export function/);
   for(const theme of ['light','dark']){await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);await page.waitForTimeout(400);const result=await new AxeBuilder({page}).include('main').analyze();assert.deepEqual(result.violations.map(v=>({id:v.id,nodes:v.nodes.map(n=>n.target)})),[],`Lesson ${n} ${theme}`);}
   for(const width of [390,1280]){await page.setViewportSize({width,height:1000});await iframe.scrollIntoViewIfNeeded();await page.waitForTimeout(200);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);assert.equal(await frame.locator('body').evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);const sizes=await iframe.evaluate(el=>({height:el.clientHeight,content:el.contentDocument.querySelector('main').getBoundingClientRect().height}));assert(Math.abs(sizes.height-sizes.content)<3,JSON.stringify(sizes));await page.evaluate(()=>scrollTo(0,0));await page.waitForTimeout(250);await page.screenshot({path:`${out}/lesson-${n}-${width}.png`,fullPage:true});}
-  checks.push(`Lesson ${n}: navigation, worked trace, setting reset, keyboard, recorded input, actual code, themes, responsive iframe and accessibility`);
+  checks.push(`Lesson ${n}: navigation, worked trace, setting reset, keyboard, recorded input, source download, themes, responsive iframe and accessibility`);
  }
  assert.deepEqual(errors,[]);await fs.writeFile(out+'/results.json',JSON.stringify({base,checks,errors},null,2));
 } finally {await browser.close();}
