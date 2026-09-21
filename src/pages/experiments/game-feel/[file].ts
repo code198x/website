@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 export function getStaticPaths() {
-  return ['index.html', 'app.mjs', 'model.mjs', 'style.css'].map(file => ({params:{file}}));
+  return ['index.html', 'app.mjs', 'model.mjs', 'style.css', 'lessons.html', 'lessons.css', 'lessons.mjs', 'lesson-model.mjs', 'immediate.mjs', 'acceleration.mjs', 'braking.mjs', 'reversal.mjs', 'approach.mjs'].map(file => ({params:{file}}));
 }
 export function GET({params}: {params:{file:string}}) {
   const root = process.env.CODE_SAMPLES_PATH || path.resolve(process.cwd(), '../code-samples');
