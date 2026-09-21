@@ -1,0 +1,111 @@
+---
+title: "Call a drawing routine"
+description: "Draw twice with one routine, follow CALL and RET, and check what a routine needs and changes."
+game: 0
+unit: 5
+---
+
+import DrawingRoutineLesson from '@components/DrawingRoutineLesson.astro';
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+Our loop draws one character. To draw another, we could copy its instructions. Instead, we will put the loop in a **routine** and call it twice, with different destinations. Both pictures use the same drawing code and the same eight pattern bytes.
+
+## Give the routine a job
+
+The routine is named `draw_character`. Its caller prepares HL with the address of eight pattern bytes and DE with a screen destination, then calls it:
+
+```z80
+ ld hl,patterns
+ ld de,$4000
+ call draw_character
+```
+
+`call draw_character` saves the address of the instruction after the call, then transfers execution to the routine. Inside it, the familiar loop draws eight rows. A new instruction, `ret`, returns to the saved address.
+
+The main program prepares another destination and calls the **same label** again. This time RET returns after the second call. A routine does not have one fixed place to return to: each call supplies its own return address.
+
+## What CALL keeps for us
+
+The saved address lives on the **stack**, an area of RAM used to keep return addresses and other temporary values. **SP**, the stack pointer, identifies the top of that stack.
+
+On the Z80, CALL stores a two-byte return address and reduces SP by two. RET reads that address and increases SP by two. The browser and the local tape loader use the ROM to establish a working stack before our program starts.
+
+CALL and RET do not automatically preserve HL, DE, A or B. If a routine changes those registers, the caller sees the changed values after it returns.
+
+## State the contract
+
+A routine’s **contract** tells its caller what to supply and what to expect afterwards. Here is ours:
+
+| Part of the contract | `draw_character` |
+|---|---|
+| Pattern input | HL points to eight readable pattern bytes. |
+| Destination input | DE is `$4000`–`$401F`, the top row of a cell in the first character row. |
+| Environment | A valid return stack; the caller has chosen the cell’s colours. |
+| Work | Write eight bitmap rows, advancing the destination by `$100` each time. |
+| Changed registers | HL advances by 8; D advances by 8 while E stays unchanged; B becomes 0; A holds the last pattern byte. Flags may change. |
+| Return | Execution resumes after the calling instruction; balanced CALL/RET restores SP to its value before CALL. |
+
+The routine sets B to 8 itself, so B is not an input the caller must prepare. It does not set attributes or clear other screen memory. The main program sets bright white ink on black paper for the first three cells, covering the destinations we will try.
+
+## Follow both calls
+
+Run the program and replay its recorded events. **Next event** reveals one call, bitmap write or return. **Through next return** advances through one routine invocation. The register table shows actual values immediately before and after the selected event.
+
+The program runs on the emulator first; replay inspects that recording. It stops at `hold`, so the endless hold loop is not part of the recording. If an edit prevents that stopping point being reached, a bounded partial trace is labelled as such.
+
+<DrawingRoutineLesson />
+
+Your edits remain in the same editor between experiments. **Use my saved character** imports the eight pattern bytes explicitly kept in lesson 3 in this tab; it leaves the routine and callers intact.
+
+## A return is not a reset
+
+At the first return, HL is eight bytes past `patterns`. That is useful evidence: the routine consumed all eight source bytes. But it means the caller must reload HL before drawing that same picture again.
+
+Likewise, DE has advanced beyond the eight destinations just written. Reloading DE chooses the next character’s position. Passing new inputs is what makes one piece of code useful in different places.
+
+<Question prompt="If both calls use DE = $4000, will two characters appear side by side?">
+
+No. Both invocations write the same eight screen bytes. The second drawing replaces the first. The replay still records two calls and two returns, but both groups of writes use `$4000`, `$4100`, through `$4700`.
+
+</Question>
+
+<Question prompt="Could we replace CALL with JP because both transfer execution to a label?">
+
+Not while relying on this routine’s RET. JP does not save a return address. RET would use whatever address was already on the stack, not the instruction after that JP. CALL and RET form a pair because they agree on how the return address is stored and recovered.
+
+</Question>
+
+## Keep code and data separate
+
+The main program’s `hold` loop appears before the routine. That prevents normal execution from falling into it after the second return. The routine ends with RET, and its pattern table follows it. Neither the caller nor the routine should continue into those data bytes as instructions.
+
+<details>
+<summary>The complete starting program</summary>
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/meet-assembly/opening/draw-routine.asm" />
+
+</details>
+
+Use **Download your source** to save `draw-routine.asm`. Build locally with Asm198x:
+
+```sh
+asm198x --dialect pasmo --cpu z80 --tapbas draw-routine.asm -o draw-routine.tap
+```
+
+Or with Pasmo:
+
+```sh
+pasmo --tapbas draw-routine.asm draw-routine.tap
+```
+
+Load the tape in a fresh 48K Spectrum as in lesson 1. Check both characters. If only the second is wrong, inspect the inputs prepared for the second call before changing a routine that already drew the first correctly.
+
+We now have a drawing operation we can call with a chosen position. That gives us a useful basis for moving something in response to input.
+
+<Sources>
+
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), instruction entries “CALL nn”, “RET”, “JP nn”, “INC ss”, “INC r” and “DJNZ, e”. Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 24](https://worldofspectrum.org/ZXBasicManual/zxmanchap24.html), display-file and attribute layout.
+
+</Sources>

@@ -1,0 +1,145 @@
+---
+import AssembleAndRun from './AssembleAndRun.astro';
+const addresses = Array.from({length: 8}, (_, row) => [0x4000 + row * 256, 0x4001 + row * 256, 0x4002 + row * 256]).flat();
+---
+<section class="routine-lesson" aria-label="Reusable drawing routine experiment">
+  <nav aria-label="Experiments">
+    <button type="button" data-stage="0" aria-current="step">1. Call and return</button>
+    <button type="button" data-stage="1">2. Change a destination</button>
+    <button type="button" data-stage="2">3. Forget an input</button>
+  </nav>
+  <h3 data-heading>One routine, two calls</h3>
+  <p data-task>Run the program. Replay the first call and its writes, then its return. Where does the second call send the same eight patterns?</p>
+  <details><summary>Explain this experiment</summary><p data-explanation>Both calls enter draw_character. The caller supplies a fresh HL and DE each time. The routine draws eight rows, then RET resumes after the call that invoked it.</p></details>
+  <button type="button" class="import-character">Use my saved character</button>
+  <p class="import-note" role="status">Optionally import the character you kept in lesson 3, in this tab.</p>
+  <AssembleAndRun system="sinclair-zx-spectrum" src="sinclair-zx-spectrum/assembly/meet-assembly/opening/draw-routine.asm" dialect="pasmo" executionHints={false} traceRoutine={true} inspectBytes={addresses} rows={24} />
+  <button type="button" class="download-source">Download your source</button>
+  <section class="routine-replay" aria-label="Recorded calls and returns">
+    <h3>Follow the recorded execution</h3>
+    <p>The program has already run. Replay shows actual calls, returns and bitmap writes up to <code>hold</code>. Light and dark show stored 1 and 0 bits; grey means no write replayed yet.</p>
+    <div class="replay-controls">
+      <button type="button" class="restart" disabled>Restart replay</button>
+      <button type="button" class="next-event" disabled>Next event</button>
+      <button type="button" class="next-return" disabled>Through next return</button>
+    </div>
+    <p class="trace-status" role="status">Run your program to capture its execution.</p>
+    <canvas class="trace-pixels" width="24" height="8" role="img" aria-label="No recorded writes replayed yet"></canvas>
+    <p class="event-description" role="status">Each cell is eight pixels wide. The replay covers the first three cells.</p>
+    <div class="register-scroll"><table class="registers"><caption>Registers around the selected event</caption><thead><tr><th>Register</th><th>Before</th><th>After</th></tr></thead><tbody>
+      {['HL','DE','B','A','SP'].map(name => <tr><th scope="row">{name}</th><td data-before={name.toLowerCase()}>—</td><td data-after={name.toLowerCase()}>—</td></tr>)}
+    </tbody></table></div>
+    <ol class="events"></ol>
+  </section>
+  <section class="live-result" aria-label="Live machine result">
+    <h3>The finished machine state</h3>
+    <p class="live-status" role="status">Run to inspect the first three screen cells.</p>
+    <canvas class="live-pixels" width="24" height="8" role="img" aria-label="First three cells from the running Spectrum"></canvas>
+    <div class="register-scroll"><table class="live-rows"><caption>Actual bitmap bytes, left to right</caption><thead><tr><th>Row</th><th>Cell 1</th><th>Cell 2</th><th>Cell 3</th></tr></thead><tbody>
+      {Array.from({length:8},(_,row)=><tr><th scope="row">{row+1}</th>{[0,1,2].map(col=><td data-byte={row*3+col}>—</td>)}</tr>)}
+    </tbody></table></div>
+  </section>
+</section>
+<script>
+  type State = {hl:number;de:number;b:number;a:number;sp:number};
+  type Event = {kind:'call'|'return'|'write';pc:number;target?:number;returnAddress?:number;addr?:number;value?:number;before:State;after:State};
+  const tasks = [
+    ['One routine, two calls', 'Run the program. Replay the first call and its writes, then its return. Where does the second call send the same eight patterns?', 'Both calls enter draw_character. The caller supplies a fresh HL and DE each time. The routine draws eight rows, then RET resumes after the call that invoked it.'],
+    ['Change the destination, keep the routine', 'Change only the second ld de,$4001 to ld de,$4002. Predict where the second character will appear. Run and replay the calls: has the routine changed, or just its input?', 'The second call now begins at the third cell. Its eight writes end at $4702. Both calls still target the same draw_character code. The caller has already set colours for these three cells. Try $4000 too: the second call overwrites the first character.'],
+    ['What if HL is not prepared again?', 'Restore the second destination to $4001. Remove only the second ld hl,patterns, then run. Compare HL at the first return with HL at the second call. Restore the missing instruction to repair the picture.', 'The routine leaves HL eight bytes past its input. Without reloading it, the next call reads bytes after the artwork, whose contents are not part of this picture. RET restores the return address, not the other registers. The caller must satisfy the routine’s input contract on every call.'],
+  ];
+  const hex = (value:number)=>'$'+value.toString(16).toUpperCase().padStart(4,'0');
+  const bits = (value:number)=>value.toString(2).padStart(8,'0');
+  function initialise(){
+    for(const root of document.querySelectorAll<HTMLElement>('.routine-lesson')){
+      if(root.dataset.ready)continue;root.dataset.ready='true';
+      const editor=root.querySelector<HTMLTextAreaElement>('textarea')!;
+      const traceCanvas=root.querySelector<HTMLCanvasElement>('.trace-pixels')!;
+      const traceContext=traceCanvas.getContext('2d')!;
+      const liveCanvas=root.querySelector<HTMLCanvasElement>('.live-pixels')!;
+      const liveContext=liveCanvas.getContext('2d')!;
+      const next=root.querySelector<HTMLButtonElement>('.next-event')!;
+      const reset=root.querySelector<HTMLButtonElement>('.restart')!;
+      const through=root.querySelector<HTMLButtonElement>('.next-return')!;
+      const status=root.querySelector('.trace-status')!;
+      const description=root.querySelector('.event-description')!;
+      const list=root.querySelector('.events')!;
+      let events:Event[]=[],position=0,traceSource:string|null=null,complete=false;
+      let symbols:Record<string,number>={};
+      const name=(address:number)=>Object.entries(symbols).find(([,value])=>value===address)?.[0] ?? hex(address);
+      const describe=(event:Event)=>event.kind==='call' ? `CALL ${name(event.target!)} at ${hex(event.target!)}. Saved return address: ${name(event.returnAddress!)} (${hex(event.returnAddress!)}).` : event.kind==='return' ? `RET resumes at ${name(event.target!)} (${hex(event.target!)}).` : `${hex(event.addr!)} ← ${bits(event.value!)}.`;
+      function render(){
+        traceContext.fillStyle='#888';traceContext.fillRect(0,0,24,8);
+        for(const event of events.slice(0,position))if(event.kind==='write'){
+          const offset=event.addr!-0x4000,row=Math.floor(offset/256),col=offset%256;
+          if(row<0||row>7||col<0||col>2)continue;
+          for(let x=0;x<8;x++){traceContext.fillStyle=event.value!&(128>>x)?'#fff':'#000';traceContext.fillRect(col*8+x,row,1,1)}
+        }
+        list.replaceChildren(...events.slice(0,position).map((event,index)=>{
+          const li=document.createElement('li');li.textContent=describe(event);li.dataset.kind=event.kind;
+          if(index===position-1)li.setAttribute('aria-current','step');return li;
+        }));
+        const selected=events[position-1];description.textContent=selected?describe(selected):'Choose Next event to begin with the first recorded call.';
+        for(const edge of ['before','after'] as const)for(const cell of root.querySelectorAll<HTMLElement>(`[data-${edge}]`)){
+          const key=cell.dataset[edge] as keyof State;const value=selected?.[edge][key];
+          cell.textContent=value===undefined?'—':key==='a'||key==='b'?String(value):hex(value);
+        }
+        next.disabled=position>=events.length;through.disabled=next.disabled;reset.disabled=!events.length;
+        status.textContent=traceSource===null?'Run your program to capture its execution.':`${position} of ${events.length} recorded events shown. ${complete?'Reached hold.':'Recording stopped before hold; this is a partial trace.'}${editor.value!==traceSource?' Source changed; run again to capture the edit.':''}`;
+        traceCanvas.setAttribute('aria-label',`Reconstruction of the first three cells after ${position} recorded events. Event details follow.`);
+      }
+      render();
+      next.addEventListener('click',()=>{position=Math.min(events.length,position+1);render()});
+      reset.addEventListener('click',()=>{position=0;render()});
+      through.addEventListener('click',()=>{do{position++}while(position<events.length&&events[position-1].kind!=='return');render()});
+      root.addEventListener('sandbox:routine',((event:CustomEvent)=>{
+        traceSource=event.detail.source;symbols=event.detail.symbols;events=event.detail.trace.events;complete=event.detail.trace.complete;position=0;render();
+      }) as EventListener);
+      let liveSource:string|null=null;
+      const liveStatus=root.querySelector('.live-status')!;
+      const showLiveStatus=()=>{liveStatus.textContent=liveSource===null?'Run to inspect the first three screen cells.':editor.value===liveSource?'Live result from the last assembled program.':'Source changed. This is the previous run; run again to test the edit.'};
+      editor.addEventListener('input',()=>{render();showLiveStatus()});
+      root.addEventListener('sandbox:memory',((event:CustomEvent)=>{
+        if(event.detail.values.some((value:unknown)=>value===null)){liveStatus.textContent='Live memory inspection is unavailable.';return}
+        liveSource=event.detail.source;showLiveStatus();
+        root.querySelectorAll<HTMLElement>('[data-byte]').forEach((cell,index)=>cell.textContent=bits(event.detail.values[index]));
+        liveContext.imageSmoothingEnabled=false;liveContext.drawImage(root.querySelector<HTMLCanvasElement>('.sandbox-screen')!,48,48,24,8,0,0,24,8);
+      }) as EventListener);
+      root.querySelectorAll<HTMLButtonElement>('[data-stage]').forEach(button=>button.addEventListener('click',()=>{
+        root.querySelectorAll('[data-stage]').forEach(item=>item.removeAttribute('aria-current'));button.setAttribute('aria-current','step');
+        const task=tasks[Number(button.dataset.stage)];root.querySelector('[data-heading]')!.textContent=task[0];root.querySelector('[data-task]')!.textContent=task[1];root.querySelector('[data-explanation]')!.textContent=task[2];root.querySelector('details')!.open=false;
+      }));
+      root.querySelector('.import-character')!.addEventListener('click',()=>{
+        const note=root.querySelector('.import-note')!;
+        try{
+          const bytes:unknown=JSON.parse(sessionStorage.getItem('meet-assembly-character')??'null');
+          if(!Array.isArray(bytes)||bytes.length!==8||bytes.some(b=>!Number.isInteger(b)||b<0||b>255)){note.textContent='No character kept in this tab. Use the supplied picture or keep yours in lesson 3.';return}
+          const pattern=/\bdefb\s+%[01]{8}\b/gi;
+          if([...editor.value.matchAll(pattern)].length!==8){note.textContent='Import needs eight binary DEFB entries. Restore the source or copy the bytes manually.';return}
+          let row=0;editor.value=editor.value.replace(pattern,()=>`defb %${bits(bytes[row++])}`);editor.dispatchEvent(new window.Event('input'));note.textContent='Your character is in the data table. The routine and both callers are unchanged.';
+        }catch{note.textContent='Tab storage is unavailable. Copy your eight pattern bytes into the data table.'}
+      });
+      root.querySelector('.download-source')!.addEventListener('click',()=>{const url=URL.createObjectURL(new Blob([editor.value],{type:'text/plain'}));const a=document.createElement('a');a.href=url;a.download='draw-routine.asm';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+    }
+  }
+  initialise();document.addEventListener('astro:page-load',initialise);
+</script>
+<style>
+  .routine-lesson { margin-block: 2rem; }
+  .routine-lesson nav,.replay-controls { display:flex;flex-wrap:wrap;gap:.5rem; }
+  .routine-lesson button { min-height:44px;padding:.5rem .75rem;font:inherit;color:inherit;background:var(--color-surface,#f6f1e9);border:1px solid var(--color-border,#bbb);border-radius:3px;cursor:pointer;touch-action:manipulation; }
+  .routine-lesson button:disabled { opacity:.55;cursor:default; }
+  .routine-lesson button:focus-visible { outline:2px solid var(--color-primary,#ad3818);outline-offset:3px; }
+  .routine-lesson nav [aria-current] { border-bottom:3px solid var(--color-primary,#ad3818); }
+  .routine-lesson details { margin-bottom:1rem; }
+  .routine-lesson summary { padding-block:.75rem;cursor:pointer; }
+  .routine-replay,.live-result { border-left:3px solid var(--color-primary,#ad3818);padding:1rem;margin-top:1.5rem;background:var(--color-surface,#f6f1e9); }
+  .trace-pixels,.live-pixels { display:block;width:min(100%,576px);height:auto;aspect-ratio:3;image-rendering:pixelated;border:1px solid #888; }
+  .routine-lesson .trace-status,.routine-lesson .live-status,.routine-lesson .import-note { font-size:.85rem;min-height:3em; }
+  .register-scroll { overflow-x:auto; }
+  .routine-lesson table { width:100%;font:.8rem/1.6 var(--font-family-mono,monospace); }
+  th,td { padding:.3rem;text-align:left;white-space:nowrap; }
+  .routine-lesson .events :global(li) { font:.8rem/1.8 var(--font-family-mono,monospace);overflow-wrap:anywhere; }
+  .events :global(li[aria-current]) { border-left:3px solid var(--color-primary,#ad3818);padding-left:.5rem; }
+  .event-description { min-height:4em; }
+</style>

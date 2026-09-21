@@ -26,6 +26,13 @@ import { meetBasicRedirects } from './src/lib/meet-basic-redirects.mjs';
 // https://astro.build/config
 export default defineConfig({
   site: 'https://code198x.com',
+  // Local browser API trials can use an unpublished wasm-bindgen web build.
+  // No local binaries or firmware are copied into the repository.
+  vite: {
+    resolve: { alias: process.env.SPECTRUM_WEB_PACKAGE ? {
+      '@emu198x/zx-spectrum': `${process.env.SPECTRUM_WEB_PACKAGE}/emu198x_spectrum_web.js`,
+    } : {} },
+  },
   // Redirects from the pre-modules `game-NN-slug` landing URLs to the bare module
   // slugs. Base pages only (Astro can't validate a spread destination against our
   // statically-generated routes); focused on the shipped Spectrum BASIC games plus

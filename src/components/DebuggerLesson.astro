@@ -1,0 +1,152 @@
+---
+import AssembleAndRun from './AssembleAndRun.astro';
+import fs from 'node:fs';
+import path from 'node:path';
+const base=path.resolve(process.env.CODE_SAMPLES_PATH||'../code-samples','sinclair-zx-spectrum/assembly/meet-assembly/opening');
+const cases=['debug-branch.asm','debug-trail.asm'].map(name=>fs.readFileSync(path.join(base,name),'utf8'));
+---
+<section class="debugger-lesson" aria-label="Guided fault investigation">
+  <script type="application/json" class="case-sources" set:html={JSON.stringify(cases).replaceAll('<','\\u003c')} />
+  <nav class="stages" aria-label="Investigation stages">{['Reproduce','Choose a hypothesis','Inspect','Repair and retest','Try another fault'].map((name,i)=><button type="button" data-stage={i} aria-current={i===0?'step':undefined}>{i+1}. {name}</button>)}</nav>
+  <section class="guide" aria-label="Your current investigation">
+    <h2 class="guide-title">What works, and what fails?</h2>
+    <p class="guide-task">Assemble this supplied program. Hold P, then O. Describe what happens in each direction before looking for a cause. Focus the screen to use your keyboard, or use the buttons below it.</p>
+    <label class="observation-label">My observation <input class="observation" type="text" placeholder="What happened? What did you expect?" /></label>
+    <fieldset class="hypotheses" hidden><legend>Where would you investigate first?</legend>
+      <label><input type="radio" name="debug-hypothesis" value="input" /> The program is not reading O.</label>
+      <label><input type="radio" name="debug-hypothesis" value="position" /> The position is not being updated.</label>
+      <label><input type="radio" name="debug-hypothesis" value="drawing" /> The new position is not being drawn.</label>
+    </fieldset>
+    <p class="hypothesis-note" role="status"></p>
+    <div class="repair-guide" hidden>
+      <p>Change only the instruction you believe is responsible. Assemble again, reproduce the original test, then test at the left edge. Record what would convince you the repair works.</p>
+      <details><summary>Show a repair to compare with mine</summary><p>In case 1, the left guard should be <code>jr z,wait_frame</code>. A non-zero position should reach DEC A; zero should return to waiting. Test both cases. A useful edge test is to assemble with <code>position: defb 0</code>, stop at left, and inspect the branch.</p></details>
+    </div>
+    <div class="challenge-guide" hidden>
+      <p>Case 2 moves in both directions, but something is left behind. Reproduce it, choose what to inspect, and distinguish the stored position from the picture at the old address.</p>
+      <button type="button" class="load-challenge">Load case 2 into the editor</button>
+      <details><summary>Give me a hint</summary><p>Stop at <code>move</code>. Follow the erase setup and inspect HL before the drawing call. What bytes will that pointer supply?</p></details>
+      <details><summary>Show the case 2 diagnosis</summary><p>The erase call points HL at <code>patterns</code>, so it draws the artwork again at the old address. Point that call at <code>blank</code>, then retest both directions. The position and keyboard were working.</p></details>
+    </div>
+  </section>
+  <AssembleAndRun system="sinclair-zx-spectrum" src="sinclair-zx-spectrum/assembly/meet-assembly/opening/debug-branch.asm" dialect="pasmo" rows={18} executionHints={false} debuggerControls={true} visibilityScope=".debugger-lesson" inspectSymbols={['position']} />
+  <div class="play-controls" aria-label="Movement controls"> <button type="button" data-hold="KeyO">Hold O · Left</button><button type="button" data-hold="KeyP">Hold P · Right</button><span class="live-position">Run to read position.</span></div>
+  <p class="case-note" role="status">Case 1 is in the editor. Revert restores this supplied faulty case; it does not repair it.</p>
+  <section class="investigator" hidden aria-label="Debugger investigation">
+    <p class="break-help">Reassemble for a fresh starting position, then choose <strong>Stop at left</strong>. This supplies O until the machine reaches the left decision, pauses before its first instruction, then releases O.</p>
+    <div class="debug-controls">
+      <button type="button" data-break="left" data-key="KeyO" disabled>Stop at left</button>
+      <button type="button" data-break="right" data-key="KeyP" disabled>Stop at right</button>
+      <button type="button" data-break="move" data-key="KeyP" disabled>Stop at move</button>
+      <button type="button" class="debug-step" disabled>Test my prediction · step</button>
+      <button type="button" class="debug-resume" disabled>Resume</button>
+    </div>
+    <p class="debug-status" role="status">Assemble and run to enable the debugger.</p>
+    <section class="debug-state" aria-label="Paused machine state">
+      <h3 class="inspect-question">Did the program recognise the key?</h3>
+      <p class="inspect-prompt">Reaching the left decision in response to O is evidence about input. We have not yet established whether the position or drawing is correct.</p>
+      <div class="source-comparison"><div><h4 class="source-heading">Relevant assembled source</h4><pre class="source-context">Stop at a label to see its source.</pre></div><div><h4>Next instruction in the machine</h4><p class="next-instruction">No breakpoint reached yet.</p></div></div>
+      <dl><div><dt>position in RAM</dt><dd data-register="position">—</dd></div><div><dt>A</dt><dd data-register="A">—</dd></div><div class="z-value" hidden><dt>Z · zero flag</dt><dd data-register="Z">—</dd></div><div class="pc-value" hidden><dt>PC · next address</dt><dd data-register="PC">—</dd></div></dl>
+      <label>My prediction <input class="prediction" type="text" placeholder="Which value or instruction will change?" /></label>
+      <p class="prediction-record">Write a prediction, step, then compare.</p>
+      <p class="observed-change" role="status" hidden></p>
+      <details class="step-explanation" hidden><summary>Explain the step I just saw</summary><p></p></details>
+      <details class="more-state"><summary>More machine state and recent steps</summary><dl>{['HL','DE','SP'].map(name=><div><dt>{name}</dt><dd data-register={name}>—</dd></div>)}</dl><p class="pointer-bytes"></p><ol class="debug-history" aria-label="Recent debugger steps"></ol></details>
+      <p>These are actual paused-machine readings. Source edits need reassembly. The screen may show its last rendered frame; registers and RAM let you inspect work before another frame is drawn.</p>
+    </section>
+  </section>
+</section>
+<script>
+const guides=[
+ ['What works, and what fails?','Assemble this supplied program. Hold P, then O. Describe what happens in each direction before looking for a cause. Focus the screen to use your keyboard, or use the buttons below it.'],
+ ['Choose a question you can test','Pick a possible cause. This is a starting hypothesis, not a quiz with one correct choice. What observation would support or rule it out?'],
+ ['Follow the evidence, one instruction at a time','Reassemble for a fresh start, then stop at left. Read the question at the stop, predict the next change, and step. Open the explanation only after comparing your prediction with the result.'],
+ ['Repair one thing, then challenge the repair','Edit the instruction responsible for the first unexpected result. Test an ordinary move and an edge case; one successful move is not enough evidence.'],
+ ['Use the method with less guidance','Load the second case when you are ready to replace the editor contents. This time choose your own breakpoint and decide which values matter.'],
+];
+function init(){for(const root of document.querySelectorAll<HTMLElement>('.debugger-lesson')){
+ if(root.dataset.ready)continue;root.dataset.ready='true';
+ const sandbox=root.querySelector('.sandbox')!,source=root.querySelector<HTMLTextAreaElement>('textarea')!,status=root.querySelector('.debug-status')!;
+ const step=root.querySelector<HTMLButtonElement>('.debug-step')!,resume=root.querySelector<HTMLButtonElement>('.debug-resume')!,explanation=root.querySelector<HTMLDetailsElement>('.step-explanation')!;
+ const cases:string[]=JSON.parse(root.querySelector('.case-sources')!.textContent!);
+ let ready=false,paused=false,executed='',last:any=null,lastPosition:number|undefined,stage=0,showZ=false,showPC=false;
+ const enable=()=>{const usable=ready&&source.value===executed;root.querySelectorAll<HTMLButtonElement>('[data-break]').forEach(b=>b.disabled=!usable);step.disabled=!usable||!paused;resume.disabled=!usable||!paused};
+ const request=(detail:object)=>sandbox.dispatchEvent(new CustomEvent('sandbox:debug',{detail}));
+ root.querySelectorAll<HTMLButtonElement>('[data-stage]').forEach(button=>button.addEventListener('click',()=>{
+  stage=Number(button.dataset.stage);root.querySelectorAll('[data-stage]').forEach(b=>b.removeAttribute('aria-current'));button.setAttribute('aria-current','step');
+  root.querySelector('.guide-title')!.textContent=guides[stage][0];root.querySelector('.guide-task')!.textContent=guides[stage][1];
+  for(const [selector,show] of [['.observation-label',stage===0],['.hypotheses',stage===1],['.repair-guide',stage===3],['.challenge-guide',stage===4],['.investigator',stage>=2]] as const)(root.querySelector(selector) as HTMLElement).hidden=!show;
+ }));
+ const hypotheses:Record<string,string>={input:'Test it by asking whether O brings execution to the left decision. Reaching that label would be evidence that the key was recognised.',position:'Compare the position in RAM with A as the decision runs. Find whether a new candidate is calculated, then whether it is stored.',drawing:'First establish whether the stored position changes. If it does, inspect what the drawing routine reads and where it writes.'};
+ root.querySelectorAll<HTMLInputElement>('[name="debug-hypothesis"]').forEach(input=>input.addEventListener('change',()=>root.querySelector('.hypothesis-note')!.textContent=hypotheses[input.value]));
+ root.querySelectorAll<HTMLButtonElement>('[data-hold]').forEach(button=>{
+  const send=(down:boolean)=>sandbox.dispatchEvent(new CustomEvent('sandbox:key',{detail:{codes:[button.dataset.hold],down}}));
+  button.addEventListener('pointerdown',e=>{e.preventDefault();button.focus();button.setPointerCapture(e.pointerId);send(true)});
+  for(const event of ['pointerup','pointercancel','lostpointercapture','blur'])button.addEventListener(event,()=>send(false));
+  button.addEventListener('keydown',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();send(true)}});
+  button.addEventListener('keyup',e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();send(false)}});
+ });
+ root.addEventListener('sandbox:memory',((event:CustomEvent)=>{root.querySelector('.live-position')!.textContent=`Position in RAM: ${event.detail.named.position}${source.value!==event.detail.source?' · previous run':''}`}) as EventListener);
+ root.querySelectorAll<HTMLButtonElement>('[data-break]').forEach(button=>button.addEventListener('click',()=>request({action:'break',label:button.dataset.break,key:button.dataset.key})));
+ step.addEventListener('click',()=>request({action:'step'}));resume.addEventListener('click',()=>request({action:'resume'}));
+ source.addEventListener('input',()=>{enable();explanation.hidden=true;(root.querySelector('.observed-change') as HTMLElement).hidden=true;status.textContent=source.value===executed?'Source matches this machine.':'Source changed. Assemble again to inspect the edit.'});
+ root.querySelector('.load-challenge')!.addEventListener('click',()=>{source.value=cases[1];source.dispatchEvent(new Event('input'));root.querySelector('.case-note')!.textContent='Case 2 is in the editor. Assemble to investigate it. Revert returns to supplied case 1.'});
+ root.querySelector('.sandbox-revert')!.addEventListener('click',()=>root.querySelector('.case-note')!.textContent='Supplied case 1 restored. Revert is not a repair.');
+ root.addEventListener('sandbox:debug-reset',()=>{ready=false;paused=false;last=null;enable();explanation.hidden=true;(root.querySelector('.observed-change') as HTMLElement).hidden=true;root.querySelector('.debug-history')!.replaceChildren();root.querySelector('.next-instruction')!.textContent='Waiting for a breakpoint.';root.querySelectorAll('[data-register]').forEach(el=>el.textContent='—');status.textContent='Loading a fresh machine…'});
+ root.addEventListener('sandbox:debug-ready',((event:CustomEvent)=>{ready=true;executed=event.detail.source;enable();status.textContent='Running. Reproduce the symptom or stop at a decision.'}) as EventListener);
+ root.addEventListener('sandbox:debug-error',((event:CustomEvent)=>{status.textContent=event.detail}) as EventListener);
+ root.addEventListener('sandbox:debug-state',((event:CustomEvent)=>{
+  const d=event.detail,cpu=d.state.cpu,pc=parseInt(cpu.pc.slice(1),16),op=d.state.instruction?.bytes[0];
+  const contextPC=d.action==='step'&&last?parseInt(last.cpu.pc.slice(1),16):pc;
+  if(d.action==='step'&&last){
+   const prediction=root.querySelector<HTMLInputElement>('.prediction')!.value;
+   root.querySelector('.prediction-record')!.textContent=prediction?`You predicted: ${prediction}`:'No prediction recorded for this step.';
+   const item=document.createElement('li');item.textContent=`${last.cpu.pc}: ${last.instruction?.text} → PC ${cpu.pc}; A ${cpu.a}; Z ${Number(cpu.flags.z)}; position ${d.position}.`;
+   const list=root.querySelector('.debug-history')!;list.prepend(item);while(list.children.length>12)list.lastElementChild!.remove();
+   const previousOp=last.instruction?.bytes[0],a=parseInt(cpu.a.slice(1),16);
+   const observed=root.querySelector<HTMLElement>('.observed-change')!;observed.hidden=false;
+   observed.textContent=`Observed: A ${last.cpu.a} → ${cpu.a}; position ${lastPosition} → ${d.position}.${showZ||previousOp===0xb7?' Z '+Number(last.cpu.flags.z)+' → '+Number(cpu.flags.z)+'.':''}${showPC||previousOp===0x20||previousOp===0x28?' PC '+last.cpu.pc+' → '+cpu.pc+'.':''}`;
+   let text=`After ${last.instruction?.text}, A is ${a}, Z is ${Number(cpu.flags.z)} and position is ${d.position}. Compare these readings with your prediction.`;
+   if(previousOp===0x3a)text=`The load put ${a} in A. Position was ${lastPosition} and is now ${d.position}: reading a byte does not store a new position. LD leaves Z unchanged; do not use that old flag as a test of this value.`;
+   if(previousOp===0xb7)text=`OR A left A at ${a} and set Z to ${Number(cpu.flags.z)}. It has now established whether this value is zero. Use this flag to predict the branch.`;
+   if(previousOp===0x20||previousOp===0x28)text=`The branch left PC at ${cpu.pc}${pc===d.symbols.wait_frame?' (wait_frame)':''}. Its condition was ${previousOp===0x20?'NZ: Z must be 0':'Z: Z must be 1'}; before it, Z was ${Number(last.cpu.flags.z)}. Does that destination agree with the movement you expected at position ${d.position}? Compare the condition with that requirement.`;
+   explanation.querySelector('p')!.textContent=text;explanation.hidden=false;explanation.open=false;
+  }else{explanation.hidden=true;(root.querySelector('.observed-change') as HTMLElement).hidden=true}
+  if(d.action==='break'){root.querySelector('.debug-history')!.replaceChildren();showZ=false;showPC=false}
+  paused=d.paused;enable();last=d.state;lastPosition=d.position;
+  status.textContent=d.action==='resume'?'Running again. The debugger values below are from the previous stop.':!d.reached?'Breakpoint not reached within the run budget. No successful stop; repair/reassemble or try another label.':d.action==='break'?'Reached the requested label. The machine is paused before its instruction.':'Paused after the step. Compare your prediction with the readings.';
+  const label=Object.entries(d.symbols).find(([,address])=>address===pc)?.[0];
+  root.querySelector('.next-instruction')!.textContent=`${d.state.instruction?.text??'No disassembly'}${label?' · '+label:''}`;
+  root.querySelector('.source-heading')!.textContent=d.action==='step'?'Source around the step':'Source at the stop';
+  const lines=executed.split('\n');
+  const nearby=Object.entries(d.symbols).filter(([name,address])=>(address as number)<=contextPC&&lines.some(l=>l.trim().startsWith(name+':'))).sort((a,b)=>(b[1] as number)-(a[1] as number))[0]?.[0];
+  const start=lines.findIndex(l=>l.trim().startsWith(nearby+':'));
+  const nextLabel=lines.findIndex((line,index)=>index>start&&/^\s*[A-Za-z_][\w.]*:/.test(line));
+  root.querySelector('.source-context')!.textContent=start<0?'No matching source label.':lines.slice(start,Math.min(start+28,nextLabel<0?lines.length:nextLabel)).join('\n');
+  root.querySelectorAll<HTMLElement>('[data-register]').forEach(el=>{const n=el.dataset.register!;el.textContent=n==='position'?String(d.position):n==='Z'?String(Number(cpu.flags.z)):cpu[n.toLowerCase()]});
+  showZ ||= op===0xb7||op===0x20||op===0x28;showPC ||= op===0x20||op===0x28;
+  (root.querySelector('.z-value') as HTMLElement).hidden=stage!==4&&!showZ;
+  (root.querySelector('.pc-value') as HTMLElement).hidden=stage!==4&&!showPC;
+  let question='What changes next?',prompt='Use the source and machine instruction to predict a register or memory change.';
+  if(d.action==='break'&&pc===d.symbols.left){question='Did O reach the left decision?';prompt='It did: the key brought execution here. That weakens the input hypothesis. Next, predict what loading position will put in A, and whether RAM itself will change.'}
+  else if(op===0xb7){question='Is the position zero?';prompt='The load has supplied A. OR A tests it without changing its value. Z records whether the result is zero. Predict Z before stepping.'}
+  else if(op===0x20||op===0x28){question='Should this move wait or continue?';prompt='PC is the address of the next instruction. Z is now the result of the test. At this position, should the program return to waiting or reach the position change? Predict the branch, then inspect the actual next instruction.'}
+  else if(pc===d.symbols.wait_frame){question='Where did execution go?';prompt='Compare the next instruction with the move you expected. Did execution reach the position change? Use the step explanation if you need help interpreting the condition.'}
+  if(stage===4){question='Which evidence would distinguish your hypotheses?';prompt='Choose the next value to inspect. The source, registers and memory are available; hints for this case are above.'}
+  root.querySelector('.inspect-question')!.textContent=question;root.querySelector('.inspect-prompt')!.textContent=prompt;
+  root.querySelector('.pointer-bytes')!.textContent=`Eight bytes at HL: ${d.pointerBytes?.join(', ')??'unavailable'}. Compare with the data table in your source.`;
+ }) as EventListener);
+}}
+init();document.addEventListener('astro:page-load',init);
+</script>
+<style>
+[hidden] {display:none!important}.stages,.debug-controls,.play-controls {display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+button {min-height:44px;padding:.6rem .8rem;font:inherit;color:inherit;background:var(--color-surface,#f6f1e9);border:1px solid var(--color-border,#bbb);border-radius:3px;cursor:pointer;touch-action:manipulation}
+button:disabled {opacity:.55;cursor:default} button:focus-visible,input:focus-visible {outline:2px solid var(--color-primary,#ad3818);outline-offset:3px}.stages [aria-current] {border-bottom:3px solid var(--color-primary,#ad3818)}
+.guide,.debug-state {border-left:3px solid var(--color-primary,#ad3818);padding:1rem;background:var(--color-surface,#f6f1e9);margin-block:1rem}.debug-status {min-height:3em}
+dl {display:flex;flex-wrap:wrap;gap:1.5rem} dt {font-size:.85rem} dd {margin:0;font:1.3rem var(--font-family-mono,monospace);font-variant-numeric:tabular-nums}
+input[type="text"] {display:block;width:100%;box-sizing:border-box;min-height:44px;font:inherit;padding:.5rem;background:var(--color-surface,#fff);color:inherit;border:1px solid var(--color-border,#bbb)}
+.hypotheses label {display:flex;align-items:center;gap:.5rem;min-height:44px} summary {cursor:pointer;padding-block:.75rem}
+.source-comparison {display:grid;grid-template-columns:1fr 1fr;gap:1rem;min-width:0}.source-comparison>div {min-width:0}pre {overflow:auto;max-height:24em;font-size:.85rem}.next-instruction,.debug-history,.pointer-bytes {font-family:var(--font-family-mono,monospace);overflow-wrap:anywhere}.debug-history {font-size:.85rem}
+@media(max-width:600px){.source-comparison{grid-template-columns:1fr}}
+</style>

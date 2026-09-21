@@ -2,9 +2,8 @@
 /**
  * The write → assemble → run loop, in the page.
  *
- * Sits *after* a unit's build instructions, never instead of them: the local
- * toolchain is what the unit teaches, and this is a second way to try it. See
- * Code198x docs/website.md#code-and-artefacts.
+ * The editable experiment and the local build use the same maintained source.
+ * Lessons explain both routes; see Code198x docs/website.md#code-and-artefacts.
  *
  * The assembler is the same one the lesson tells the reader to install —
  * @asm198x/z80, producing the bytes `asm198x --tapbas` produces — so this is
@@ -28,9 +27,19 @@ interface Props {
   dialect?: string;
   /** Rows of source shown before the editor scrolls. */
   rows?: number;
+  /** Legacy PC-range hints are unsuitable for intentional tight hold loops. */
+  executionHints?: boolean;
+  /** Addresses exposed to an accompanying lesson inspector. */
+  inspectBytes?: number[];
+  inspectSymbols?: string[];
+  debuggerControls?: boolean;
+  /** Keep running while an associated inspector or controls are visible. */
+  visibilityScope?: string;
+  traceWrites?: boolean;
+  traceRoutine?: boolean;
 }
 
-const { system, src, dialect = 'pasmonext', rows = 16 } = Astro.props;
+const { system, src, dialect = 'pasmonext', rows = 16, executionHints = true, inspectBytes = [], inspectSymbols = [], debuggerControls = false, visibilityScope = ".sandbox", traceWrites = false, traceRoutine = false } = Astro.props;
 
 const codeSamplesPath =
   process.env.CODE_SAMPLES_PATH || path.resolve(process.cwd(), '../code-samples');
@@ -49,7 +58,7 @@ try {
 const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
 ---
 
-<div class="sandbox" data-system={system} data-dialect={dialect} data-tape-name={tapeName}>
+<div class="sandbox" data-debugger={String(debuggerControls)} data-visibility-scope={visibilityScope} data-inspect-symbols={JSON.stringify(inspectSymbols)} data-trace-routine={String(traceRoutine)} data-trace-writes={String(traceWrites)} data-inspect-bytes={JSON.stringify(inspectBytes)} data-system={system} data-dialect={dialect} data-tape-name={tapeName} data-execution-hints={String(executionHints)}>
   <div class="sandbox-editor">
     <label class="sandbox-label" for={`src-${tapeName}`}>Your source</label>
     <textarea
@@ -63,12 +72,14 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
   </div>
 
   <div class="sandbox-machine">
+    <span class="sandbox-label">ZX Spectrum</span>
     <canvas class="sandbox-screen" width="352" height="296" tabindex="0" aria-label="ZX Spectrum screen"></canvas>
-    <div class="sandbox-controls">
-      <button type="button" class="sandbox-run">Assemble and run</button>
-      <button type="button" class="sandbox-revert" title="Put the original source back">Revert</button>
-      <p class="sandbox-status" role="status">Edit the source, then assemble.</p>
-    </div>
+  </div>
+
+  <div class="sandbox-controls">
+    <button type="button" class="sandbox-run" title="Assemble and run (Ctrl+Enter or Command+Enter)">Assemble and run</button>
+    <button type="button" class="sandbox-revert" title="Put the original source back">Revert</button>
+    <p class="sandbox-status" role="status">Edit the source, then assemble.</p>
   </div>
 
   <!--
@@ -119,110 +130,220 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
       return module;
     }));
 
-  for (const root of document.querySelectorAll<HTMLElement>('.sandbox')) {
-    const source = root.querySelector<HTMLTextAreaElement>('.sandbox-source')!;
-    const canvas = root.querySelector<HTMLCanvasElement>('.sandbox-screen')!;
-    const runButton = root.querySelector<HTMLButtonElement>('.sandbox-run')!;
-    const revert = root.querySelector<HTMLButtonElement>('.sandbox-revert')!;
-    const status = root.querySelector<HTMLParagraphElement>('.sandbox-status')!;
-    const buildBox = root.querySelector<HTMLElement>('.sandbox-message--build')!;
-    const runBox = root.querySelector<HTMLElement>('.sandbox-message--run')!;
-    const diagnostics = root.querySelector<HTMLPreElement>('.sandbox-diagnostics')!;
-    const verdictText = root.querySelector<HTMLParagraphElement>('.sandbox-verdict')!;
+  const cleanups = new Set<() => void>();
+  function initialiseSandboxes() {
+    for (const root of document.querySelectorAll<HTMLElement>('.sandbox')) {
+      if (root.dataset.sandboxReady) continue;
+      root.dataset.sandboxReady = 'true';
+      const source = root.querySelector<HTMLTextAreaElement>('.sandbox-source')!;
+      const canvas = root.querySelector<HTMLCanvasElement>('.sandbox-screen')!;
+      const runButton = root.querySelector<HTMLButtonElement>('.sandbox-run')!;
+      const revert = root.querySelector<HTMLButtonElement>('.sandbox-revert')!;
+      const status = root.querySelector<HTMLParagraphElement>('.sandbox-status')!;
+      const buildBox = root.querySelector<HTMLElement>('.sandbox-message--build')!;
+      const runBox = root.querySelector<HTMLElement>('.sandbox-message--run')!;
+      const diagnostics = root.querySelector<HTMLPreElement>('.sandbox-diagnostics')!;
+      const verdictText = root.querySelector<HTMLParagraphElement>('.sandbox-verdict')!;
 
-    const dialect = root.dataset.dialect ?? 'pasmonext';
-    const tapeName = root.dataset.tapeName ?? 'program.tap';
-    const original = source.value;
-
-    let runner: SpectrumRunner | null = null;
-
-    const say = (message: string, state?: string) => {
-      status.textContent = message;
-      if (state) status.dataset.state = state;
-      else delete status.dataset.state;
-    };
-
-    /** The assembler's own output, kept monospace because its columns line up. */
-    const showDiagnostics = (text: string | null) => {
-      buildBox.hidden = text === null;
-      diagnostics.textContent = text ?? '';
-    };
-
-    /** What the machine did, in prose, so it wraps like prose. */
-    const showVerdict = (text: string | null) => {
-      runBox.hidden = text === null;
-      verdictText.textContent = text ?? '';
-    };
-
-    const clearMessages = () => {
-      showDiagnostics(null);
-      showVerdict(null);
-    };
-
-    // Only run while on screen: a page may hold several of these, and a
-    // machine nobody can see should not be burning a core.
-    const observer = new IntersectionObserver((entries) => {
-      const visible = entries.some((entry) => entry.isIntersecting);
-      if (runner) runner.visible = visible;
-    });
-    observer.observe(root);
-
-    async function assembleAndRun() {
-      runButton.disabled = true;
-      clearMessages();
-      try {
-        say('Assembling…');
-        const asm = await loadAssembler();
-        const text = source.value;
-
-        const extentJson = asm.extent(dialect, text);
-        const bytes = asm.tape(dialect, text, tapeName, 'tap');
-        if (!bytes) {
-          // `tape` returns null and leaves `assemble` to say why, so there is
-          // one place to look for diagnostics rather than two.
-          showDiagnostics(asm.assemble(dialect, text) ?? 'The source did not assemble.');
-          say('Nothing to run.', 'error');
-          return;
+      const dialect = root.dataset.dialect ?? 'pasmonext';
+      const tapeName = root.dataset.tapeName ?? 'program.tap';
+      const original = source.value;
+      // Highlighting is optional enhancement; failed loading leaves a plain editor.
+      void import('../lib/assembly-editor').then(({ highlightAssemblyEditor }) =>
+        highlightAssemblyEditor(source)).catch(() => {});
+      source.addEventListener('keydown', (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+          event.preventDefault();
+          if (!runButton.disabled) runButton.click();
         }
+      });
 
-        // A fresh machine every time. The Spectrum has no reset in this API,
-        // and re-loading a tape into a machine that is already running the last
-        // program would be loading into a running program — which is also how
-        // a reader gets themselves out of having hung it. Disposed rather than
-        // stopped, so the old one's memory goes with it.
+      let runner: SpectrumRunner | null = null;
+      let debugSymbols: Record<string,number> = {}, debugSource = '';
+      let debugPaused = false;
+      root.addEventListener('sandbox:debug', ((event: CustomEvent<{action:string;label?:string;key?:string}>) => {
+        if(root.dataset.debugger!=='true'||!runner)return;
+        const {action,label,key}=event.detail;
+        try {
+          let reached=true;
+          if(action==='break'){
+            const address=debugSymbols[label??''];
+            if(!Number.isInteger(address))throw Error('The assembled source needs that breakpoint label.');
+            runner.releaseKeys();
+            if(key)runner.setKey(key,true);
+            try{reached=runner.debugRunTo(address)}finally{runner.releaseKeys()}
+            debugPaused=reached;
+          }else if(action==='step'){
+            if(!debugPaused)throw Error('Reach a breakpoint before stepping.');
+            runner.debugStep();
+          }else if(action==='resume'){
+            debugPaused=false;runner.wanted=true;
+          }else return;
+          const state=runner.debugState() as {cpu:{hl:string}};
+          const pointer=parseInt(state.cpu.hl.slice(1),16);
+          root.dispatchEvent(new CustomEvent('sandbox:debug-state',{bubbles:true,detail:{
+            action,reached,paused:debugPaused,source:debugSource,symbols:debugSymbols,
+            state,position:runner.readMemory(debugSymbols.position,1)?.[0],
+            pointerBytes:Array.from(runner.readMemory(pointer,Math.min(8,65536-pointer))??[]),
+          }}));
+        }catch(error){root.dispatchEvent(new CustomEvent('sandbox:debug-error',{bubbles:true,detail:String(error)}))}
+      }) as EventListener);
+      root.addEventListener('sandbox:key', ((event: CustomEvent<{codes: string[]; down: boolean}>) => {
+        for (const code of event.detail.codes) runner?.setKey(code, event.detail.down);
+      }) as EventListener);
+
+      const say = (message: string, state?: string) => {
+        status.textContent = message;
+        if (state) status.dataset.state = state;
+        else delete status.dataset.state;
+      };
+
+      /** The assembler's own output, kept monospace because its columns line up. */
+      const showDiagnostics = (text: string | null) => {
+        buildBox.hidden = text === null;
+        diagnostics.textContent = text ?? '';
+      };
+
+      /** What the machine did, in prose, so it wraps like prose. */
+      const showVerdict = (text: string | null) => {
+        runBox.hidden = text === null;
+        verdictText.textContent = text ?? '';
+      };
+
+      const clearMessages = () => {
+        showDiagnostics(null);
+        showVerdict(null);
+      };
+
+      // Only run while on screen: a page may hold several of these, and a
+      // machine nobody can see should not be burning a core.
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries.some((entry) => entry.isIntersecting);
+        if (runner) runner.visible = visible;
+      });
+      observer.observe(root.closest(root.dataset.visibilityScope ?? ".sandbox") ?? root);
+      let disposed = false;
+      cleanups.add(() => {
+        disposed = true;
+        observer.disconnect();
         runner?.dispose();
-        say('Loading…');
-        runner = await SpectrumRunner.create(canvas, (message) => say(message, 'error'));
-        runner.load(bytes, 'tape');
+      });
 
-        // Watch what the reader's code does once it has control, so the page
-        // can say why it stopped rather than offering a reset and moving on.
-        if (extentJson) {
-          runner.watch(JSON.parse(extentJson), (verdict) => {
-            showVerdict(EXPLAIN[verdict.kind](verdict));
-            say('Stopped running your program.', 'error');
+      async function assembleAndRun() {
+        runButton.disabled = true;
+        clearMessages();
+        try {
+          say('Assembling…');
+          const asm = await loadAssembler();
+          if (disposed) return;
+          const text = source.value;
+
+          const resultJson = asm.assemble(dialect, text);
+          const result = resultJson ? JSON.parse(resultJson) : null;
+          if (!result || Array.isArray(result)) {
+            showDiagnostics(resultJson ?? 'The source did not assemble.');
+            say('Nothing to run.', 'error');
+            return;
+          }
+          if (result.origin == null || result.start == null) {
+            showDiagnostics('Set an origin with ORG and an entry point with END label.');
+            say('Nothing to run.', 'error');
+            return;
+          }
+          const bytes = new Uint8Array(result.bytes);
+          const extent = {origin: result.origin, length: bytes.length};
+
+          // A fresh machine every time. The Spectrum has no reset in this API,
+          // and re-loading a tape into a machine that is already running the last
+          // program would be loading into a running program — which is also how
+          // a reader gets themselves out of having hung it. Disposed rather than
+          // stopped, so the old one's memory goes with it.
+          runner?.dispose();
+          debugPaused=false;root.dispatchEvent(new CustomEvent('sandbox:debug-reset',{bubbles:true}));
+          say('Loading…');
+          runner = await SpectrumRunner.create(canvas, (message) => say(message, 'error'));
+          if (disposed) { runner.dispose(); return; }
+          if (root.dataset.traceRoutine === 'true') {
+            if (!Number.isInteger(result.symbols?.hold)) throw Error('Keep a hold label so the recording has a stopping point.');
+            runner.enableRoutineTrace(result.symbols.hold);
+          }
+          if (root.dataset.traceWrites === 'true') runner.enableScreenWriteTrace();
+          if (!runner.runCode(bytes, result.origin, result.start)) {
+            const tape = asm.tape(dialect, text, tapeName, 'tap');
+            if (!tape) throw Error('Could not build the program tape.');
+            runner.load(tape, 'tape');
+          }
+
+          // Watch what the reader's code does once it has control, so the page
+          // can say why it stopped rather than offering a reset and moving on.
+          if (root.dataset.executionHints !== 'false') {
+            runner.watch(extent, (verdict) => {
+              showVerdict(EXPLAIN[verdict.kind](verdict));
+              say('Stopped running your program.', 'error');
+            });
+          }
+
+          if (root.dataset.traceRoutine === 'true') {
+            root.dispatchEvent(new CustomEvent('sandbox:routine', {bubbles: true, detail: {
+              source: text, symbols: result.symbols, trace: runner.routineTrace(),
+            }}));
+          }
+          if (root.dataset.traceWrites === 'true') {
+            const trace = runner.screenWriteTrace();
+            root.dispatchEvent(new CustomEvent('sandbox:trace', {bubbles: true, detail: {
+              source: text, full: trace.full,
+              writes: trace.writes.filter(write => write.pc >= result.origin && write.pc <= result.origin + bytes.length),
+            }}));
+          }
+
+          const symbolNames: string[] = JSON.parse(root.dataset.inspectSymbols ?? '[]');
+          const symbolAddresses = symbolNames.map(name => {
+            const address = result.symbols[name];
+            if (!Number.isInteger(address)) throw Error(`Inspection needs the ${name} label.`);
+            return address;
           });
+          const addresses: number[] = [...JSON.parse(root.dataset.inspectBytes ?? '[]'), ...symbolAddresses];
+          if (addresses.length) {
+            const active = runner;
+            let frames = 0;
+            active.observeFrame(() => {
+              if (++frames % 6) return;
+              const values = addresses.map(address => active.readMemory(address, 1)?.[0] ?? null);
+              root.dispatchEvent(new CustomEvent('sandbox:memory', {
+                bubbles: true, detail: {addresses, values, source: text, symbols: result.symbols, named: Object.fromEntries(symbolNames.map((name, index) => [name, values[values.length - symbolNames.length + index]]))},
+              }));
+            });
+          }
+
+          debugSymbols=result.symbols;debugSource=text;
+          if(root.dataset.debugger==='true')root.dispatchEvent(new CustomEvent('sandbox:debug-ready',{bubbles:true,detail:{source:text}}));
+          runner.visible = true;
+          runner.wanted = true;
+
+          say(`Running — ${bytes.length} bytes.`);
+          canvas.focus({ preventScroll: true });
+        } catch (error) {
+          say(`Could not run it: ${error}`, 'error');
+        } finally {
+          runButton.disabled = false;
         }
-
-        runner.visible = true;
-        runner.wanted = true;
-
-        say(`Running — ${bytes.length} bytes on tape.`);
-        canvas.focus({ preventScroll: true });
-      } catch (error) {
-        say(`Could not run it: ${error}`, 'error');
-      } finally {
-        runButton.disabled = false;
       }
-    }
 
-    runButton.addEventListener('click', () => void assembleAndRun());
-    revert.addEventListener('click', () => {
-      source.value = original;
-      clearMessages();
-      say('Original source restored.');
-    });
+      runButton.addEventListener('click', () => void assembleAndRun());
+      revert.addEventListener('click', () => {
+        source.value = original;
+        source.dispatchEvent(new Event('input'));
+        clearMessages();
+        say('Original source restored.');
+      });
+    }
   }
+  initialiseSandboxes();
+  document.addEventListener('astro:page-load', initialiseSandboxes);
+  document.addEventListener('astro:before-swap', () => {
+    for (const dispose of cleanups) dispose();
+    cleanups.clear();
+  });
 </script>
 
 <style>
@@ -233,21 +354,47 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
     margin: 1.5rem 0;
   }
 
-  @media (min-width: 60rem) {
-    .sandbox {
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: start;
-    }
-  }
-
-  .sandbox-editor {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
+  .sandbox-editor,
+  .sandbox-machine {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0.5rem;
     min-width: 0;
   }
 
+  .sandbox-editor :global(.assembly-editor) {
+    min-height: 0;
+  }
+
+  .sandbox-editor .sandbox-source {
+    box-sizing: border-box;
+    width: 100%;
+    height: 22rem;
+  }
+
+  @media (min-width: 60rem) {
+    .sandbox {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: stretch;
+    }
+
+    /* The screen sets the row height; source scrolls inside its matching box. */
+    .sandbox-editor :global(.assembly-editor) {
+      contain: size;
+      height: 100%;
+    }
+
+    .sandbox-editor .sandbox-source {
+      height: 100%;
+      min-height: 0;
+      resize: none;
+    }
+  }
+
   .sandbox-label {
+    display: block;
+    margin: 0;
+    line-height: 1.5;
     font-family: var(--font-family-mono, monospace);
     font-size: 0.7rem;
     letter-spacing: 0.1em;
@@ -275,16 +422,11 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
     outline-offset: 1px;
   }
 
-  .sandbox-machine {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    min-width: 0;
-  }
-
   .sandbox-screen {
     display: block;
-    width: 352px;
+    box-sizing: border-box;
+    width: 100%;
+    aspect-ratio: 352 / 296;
     max-width: 100%;
     height: auto;
     /* The machine's pixels are the point; do not let the browser blur them. */
@@ -299,6 +441,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
   }
 
   .sandbox-controls {
+    grid-column: 1 / -1;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -306,6 +449,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
   }
 
   .sandbox-controls button {
+    min-height: 44px;
     font: inherit;
     font-size: 0.85rem;
     padding: 0.35rem 0.75rem;
@@ -325,7 +469,10 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
     cursor: default;
   }
 
-  .sandbox-status {
+  .sandbox-controls .sandbox-status {
+    flex: 1 1 16rem;
+    max-width: none;
+    line-height: 1.5;
     margin: 0;
     font-size: 0.8rem;
     color: var(--color-text-secondary, #555);
@@ -350,6 +497,8 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
        scrolling inside it. */
     min-width: 0;
   }
+
+  .sandbox-message[hidden] { display: none; }
 
   .sandbox-message-label {
     margin: 0;

@@ -1,0 +1,117 @@
+---
+import AssembleAndRun from './AssembleAndRun.astro';
+interface Props { clocked?: boolean }
+const {clocked=false}=Astro.props;
+const filename=clocked?'clocked-character.asm':'move-character.asm';
+const addresses=Array.from({length:8},(_,row)=>Array.from({length:32},(_,col)=>0x4000+row*256+col)).flat();
+---
+<section class="movement-lesson" data-clocked={String(clocked)} data-filename={filename} aria-label="Keyboard and position experiment">
+  <AssembleAndRun system="sinclair-zx-spectrum" src={`sinclair-zx-spectrum/assembly/meet-assembly/opening/${filename}`} dialect="pasmo" executionHints={false} visibilityScope=".movement-lesson" rows={24} inspectBytes={clocked?[...addresses,23672,23673,23674]:addresses} inspectSymbols={['position','previous','keys','moves','move_keys',...(clocked?['interval','remaining','frames','updates']:['armed'])]} />
+  <p>Focus the Spectrum screen and press <kbd>O</kbd> or <kbd>P</kbd>, or hold a button below. {clocked ? "Keep a key held to continue moving." : "Release before pressing again."} These controls send keys to the Spectrum.</p>
+  <div class="movement-controls" role="group" aria-label="Spectrum keys">
+    <button type="button" data-keys="KeyO">O · Left</button>
+    <button type="button" data-keys="KeyP">P · Right</button>
+    <button type="button" data-keys="KeyO,KeyP">O + P · Both</button>
+  </div>
+  {clocked && <section class="clock-inspector" aria-label="Frame clock experiment">
+    <h3>One clock, different movement rates</h3>
+    <div class="movement-controls" role="group" aria-label="Edit the source interval">{[3,6,12].map(n=><button type="button" data-interval={n}>Use {n} frames</button>)}</div>
+    <p class="interval-note" role="status">These buttons edit the interval byte. Assemble and run to apply your choice.</p>
+    <dl>{[['rom','ROM frames'],['frames','Program frame byte'],['remaining','Frames until update'],['updates','Update byte'],['interval','Interval byte']].map(([name,label])=><div><dt>{label}</dt><dd data-clock={name}>—</dd></div>)}</dl>
+    <p class="clock-rate">Run to read the interval from RAM.</p>
+    <p>The inspector samples the running machine; it may skip numbers. The two program counters wrap after 255. Update opportunities continue when no key is held or a boundary blocks movement.</p>
+  </section>}
+  <p class="movement-status" role="status">Assemble and run to inspect your character.</p>
+  <section class="movement-inspector" aria-label="Live position and screen memory">
+    <h3>Position is a byte in RAM</h3>
+    <dl><div><dt>Column (0–31)</dt><dd data-value="position">—</dd></div><div><dt>O/P bits</dt><dd data-value="keys">—</dd></div>{!clocked && <div><dt>Ready for a press</dt><dd data-value="armed">—</dd></div>}</dl>
+    <p class="key-reading">No keyboard reading yet.</p>
+    <canvas width="256" height="8" class="row-pixels" role="img" aria-label="First screen row reconstructed from actual bitmap RAM"></canvas>
+    <p class="move-reading">Make a move to compare its old and new cells.</p>
+    <div class="cells"><figure><canvas width="8" height="8" class="old-pixels" role="img" aria-label="Actual bitmap at the previous position"></canvas><figcaption>Old cell: <span class="old-address">—</span></figcaption></figure><figure><canvas width="8" height="8" class="new-pixels" role="img" aria-label="Actual bitmap at the current position"></canvas><figcaption>Current cell: <span class="new-address">—</span></figcaption></figure></div>
+    <details><summary>Inspect all eight addresses</summary><div class="table-scroll"><table><thead><tr><th>Row</th><th>Old address</th><th>Bits now</th><th>New address</th><th>Bits now</th></tr></thead><tbody>{Array.from({length:8},(_,i)=><tr data-row={i}><th scope="row">{i+1}</th><td></td><td></td><td></td><td></td></tr>)}</tbody></table></div></details>
+    <p>This is sampled live memory, not an instruction replay. The old cell is read after the move; its zero bytes show the erase. An edit that skips erasing will leave its picture here.</p>
+  </section>
+  <button type="button" class="download-movement">Download your source</button>
+</section>
+<script>
+  const bits=(n:number)=>n.toString(2).padStart(8,'0');
+  const hex=(n:number)=>'$'+n.toString(16).toUpperCase().padStart(4,'0');
+  function init(){for(const root of document.querySelectorAll<HTMLElement>('.movement-lesson')){
+    if(root.dataset.ready)continue;root.dataset.ready='true';
+    const clocked=root.dataset.clocked==='true';
+    const sandbox=root.querySelector('.sandbox')!,editor=root.querySelector<HTMLTextAreaElement>('textarea')!;
+    const status=root.querySelector('.movement-status')!;
+    let executed:string|null=null;
+    const updateStatus=()=>{
+      status.textContent=executed===null?'Assemble and run to inspect your character.':editor.value===executed?'Live RAM from your running program.':'Source changed. The inspector shows the previous run; assemble again to test the edit.';
+      if(clocked){
+        const interval=editor.value.match(/^\s*interval:\s*defb\s+(\d+)/m)?.[1];
+        root.querySelector('.interval-note')!.textContent=interval===undefined?'Edit the interval in your source, then assemble and run.':`Source interval: ${interval}. ${editor.value===executed?'This source is running.':'Assemble and run to apply it.'}`;
+      }
+    };
+    editor.addEventListener('input',updateStatus);
+    root.querySelectorAll<HTMLButtonElement>('[data-interval]').forEach(button=>button.addEventListener('click',()=>{
+      const pattern=/^(\s*interval:\s*defb\s+)\d+/m;
+      const note=root.querySelector('.interval-note')!;
+      if(!pattern.test(editor.value)){note.textContent='Keep an interval: defb decimal-byte line, or edit the interval yourself.';return}
+      editor.value=editor.value.replace(pattern,(_,prefix)=>prefix+button.dataset.interval);
+      editor.dispatchEvent(new Event('input'));
+      note.textContent=`Source now uses ${button.dataset.interval} frames. Assemble and run to test it.`;
+    }));
+    const releaseAll=()=>root.querySelectorAll<HTMLButtonElement>('[data-keys]').forEach(button=>send(button,false));
+    function send(button:HTMLButtonElement,down:boolean){
+      button.dataset.held=String(down);
+      sandbox.dispatchEvent(new CustomEvent('sandbox:key',{detail:{codes:button.dataset.keys!.split(','),down}}));
+    }
+    root.querySelectorAll<HTMLButtonElement>('[data-keys]').forEach(button=>{
+      button.addEventListener('pointerdown',event=>{event.preventDefault();button.focus();button.setPointerCapture(event.pointerId);send(button,true)});
+      for(const type of ['pointerup','pointercancel','lostpointercapture','blur'])button.addEventListener(type,()=>send(button,false));
+      button.addEventListener('keydown',event=>{if(event.key===' '||event.key==='Enter'){event.preventDefault();send(button,true)}});
+      button.addEventListener('keyup',event=>{if(event.key===' '||event.key==='Enter'){event.preventDefault();send(button,false)}});
+    });
+    root.querySelector('.sandbox-run')!.addEventListener('click',releaseAll);
+    const paint=(selector:string,bytes:number[],width:number)=>{
+      const canvas=root.querySelector<HTMLCanvasElement>(selector)!,ctx=canvas.getContext('2d')!;
+      for(let i=0;i<bytes.length;i++)for(let bit=0;bit<8;bit++){ctx.fillStyle=bytes[i]&(128>>bit)?'#fff':'#000';ctx.fillRect((i%(width/8))*8+bit,Math.floor(i/(width/8)),1,1)}
+    };
+    root.addEventListener('sandbox:memory',((event:CustomEvent)=>{
+      const {named:n,values,source}=event.detail;
+      if(values.some((v:unknown)=>v===null)){status.textContent='Memory inspection is unavailable.';return}
+      executed=source;updateStatus();
+      for(const key of clocked?['position','keys']:['position','keys','armed'])root.querySelector(`[data-value="${key}"]`)!.textContent=key==='keys'?n[key].toString(2).padStart(2,'0'):key==='armed'?(n[key]?'Yes':'No'):String(n[key]);
+      root.querySelector('.key-reading')!.textContent=({0:'Both keys held.',1:'O held: left.',2:'P held: right.',3:'Both keys released.'} as Record<number,string>)[n.keys]??'Edited keyboard value.';
+      if(clocked){
+        const rom=values[256]+256*values[257]+65536*values[258];
+        root.querySelectorAll<HTMLElement>('[data-clock]').forEach(el=>el.textContent=String(el.dataset.clock==='rom'?rom:n[el.dataset.clock!]));
+        const interval=n.interval||256;
+        root.querySelector('.clock-rate')!.textContent=`One update every ${interval} frames: about ${(50/interval).toFixed(1)} cells per second while moving on a 48K PAL Spectrum.${n.interval===0?' A zero byte counts down through 255, so it takes 256 frames.':''}`;
+      }
+      paint('.row-pixels' ,values.slice(0,256),256);
+      if(n.position>31||n.previous>31){root.querySelector('.move-reading')!.textContent='Position is outside the first row. The cell inspector only covers columns 0–31.';return}
+      const old=Array.from({length:8},(_,r)=>values[r*32+n.previous]);
+      const current=Array.from({length:8},(_,r)=>values[r*32+n.position]);
+      paint('.old-pixels',old,8);paint('.new-pixels',current,8);
+      root.querySelector('.old-address')!.textContent=hex(0x4000+n.previous);
+      root.querySelector('.new-address')!.textContent=hex(0x4000+n.position);
+      root.querySelector('.move-reading')!.textContent=n.move_keys===3?'No move yet. Old and current positions refer to the same starting cell.':`Last completed move: column ${n.previous} → ${n.position}, with O/P bits ${n.move_keys.toString(2).padStart(2,'0')}. Move counter: ${n.moves} (wraps after 255).`;
+      root.querySelectorAll('[data-row]').forEach((row,i)=>{const data=[hex(0x4000+i*256+n.previous),bits(old[i]),hex(0x4000+i*256+n.position),bits(current[i])];row.querySelectorAll('td').forEach((cell,j)=>cell.textContent=data[j])});
+    }) as EventListener);
+    root.querySelector('.download-movement')!.addEventListener('click',()=>{const url=URL.createObjectURL(new Blob([editor.value],{type:'text/plain'}));const a=document.createElement('a');a.href=url;a.download=root.dataset.filename!;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)});
+  }}
+  init();document.addEventListener('astro:page-load',init);
+</script>
+<style>
+.movement-controls {display:flex;flex-wrap:wrap;gap:.5rem}
+button {min-height:44px;padding:.6rem .8rem;font:inherit;color:inherit;background:var(--color-surface,#f6f1e9);border:1px solid var(--color-border,#bbb);border-radius:3px;touch-action:none;cursor:pointer}
+button:focus-visible {outline:2px solid var(--color-primary,#ad3818);outline-offset:3px}
+button[data-held="true"] {box-shadow:inset 0 0 0 2px var(--color-primary,#ad3818)}
+.movement-status,.key-reading,.move-reading {min-height:3em}
+.movement-inspector,.clock-inspector {border-left:3px solid var(--color-primary,#ad3818);padding:1rem;background:var(--color-surface,#f6f1e9);margin-block:1rem}
+dl {display:flex;flex-wrap:wrap;gap:1.5rem} dt {font-size:.85rem} dd {margin:0;font:1.5rem var(--font-family-mono,monospace);font-variant-numeric:tabular-nums}
+canvas {image-rendering:pixelated;border:1px solid #888;display:block}
+.row-pixels {width:100%;height:auto;aspect-ratio:32}
+.cells {display:flex;flex-wrap:wrap;gap:2rem} figure {margin:0} figure canvas {width:128px;height:128px} figcaption {font-size:.85rem}
+.table-scroll {overflow-x:auto} table {font:.8rem/1.6 var(--font-family-mono,monospace);white-space:nowrap} td,th {padding:.3rem}
+summary {cursor:pointer;padding-block:1rem}
+</style>

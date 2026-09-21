@@ -1,0 +1,110 @@
+---
+title: "Give movement a clock"
+description: "Hold a direction, count frame interrupts, and change movement speed without changing the machine’s clock."
+game: 0
+unit: 7
+---
+
+import MovementLesson from '@components/MovementLesson.astro';
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+Last time, releasing both keys prepared the next move. Now **hold O or P to keep moving**. Our character gets one movement opportunity every six display frames. The keyboard and drawing routine are familiar; the new ingredient is a clock.
+
+## Change the pace
+
+Assemble and run, then hold a direction. Watch the position, countdown and frame counters. Try **Use 12 frames**, assemble again and compare. Then try three frames. The buttons edit your source; they do not secretly change the running machine.
+
+<MovementLesson clocked />
+
+Six frames gives roughly eight cells per second on this 48K PAL Spectrum. Twelve frames halves that rate; three doubles it. The display still runs at about 50 frames per second. We are changing how often the program moves, not how fast the computer runs.
+
+The counters continue while you release both keys, hold both keys or reach an edge. **An update opportunity is not necessarily a move.** At each opportunity the familiar key and boundary checks decide whether the position changes.
+
+## Wait for the machine, not a busy loop
+
+The display hardware signals a maskable interrupt once per frame. An interrupt lets the processor suspend its current work, execute a service routine, then resume. We use the stock 48K ROM’s service rather than writing our own handler here.
+
+After clearing and drawing the starting row, the program establishes its environment:
+
+```z80
+ ld iy,$5C3A
+ im 1
+ ld a,(interval)
+ ld (remaining),a
+ ei
+wait_frame:
+ halt
+```
+
+`im 1` selects the Z80 mode that sends accepted maskable interrupts to `$0038`, where the 48K ROM’s handler lives. IY is a register pair the ROM uses as a pointer to its system variables; `$5C3A` is the value this service expects. Leave it intact.
+
+`ei` enables maskable interrupts. `halt` waits instead of proceeding to the next instruction immediately. The frame interrupt invokes the ROM handler; after its return, our program continues after HALT. The interrupt pushes a return address on the stack, so the valid stack established by the ROM loader is still essential.
+
+The ROM service saves and restores AF, BC, DE and HL, updates its three-byte `FRAMES` counter at `$5C78`–`$5C7A`, and scans the keyboard. Its temporary saves also use stack space. Our code keeps its own keyboard decisions by reading the O/P port directly. It leaves the ROM’s system-variable area and IY available to the service.
+
+This is a dependency on the **stock 48K ROM**, not a promise that every interrupt handler preserves those registers. We keep interrupts disabled during initial drawing, then explicitly select IM 1 and enable them. As before, reset the machine to leave this program; it does not return to BASIC.
+
+## Count frames, then decide
+
+Each time execution resumes after HALT, `frames` increments and the program reads the keys. It then counts down:
+
+```z80
+ ld a,(remaining)
+ dec a
+ ld (remaining),a
+ jr nz,wait_frame
+```
+
+If the result is non-zero, it returns to HALT. On zero, it reloads `remaining` from `interval`, increments `updates`, and offers one movement decision. After that decision it returns to HALT too. There is no release-to-rearm byte in this version.
+
+The default countdown repeats **6, 5, 4, 3, 2, 1**, then reloads 6 at the update. The inspector samples actual RAM less frequently than the machine updates it, so you will not necessarily see every number. It is not an animation inventing intermediate values.
+
+The ROM frame total includes time spent booting. Our one-byte `frames` starts at zero for this program and wraps after 255, as does `updates`. Neither reset means the clock stopped. The ROM counter has three bytes and takes much longer to wrap.
+
+## Predict, then break the timing
+
+1. With interval 12, predict the countdown and movement rate. Hold a direction and inspect the result. Release it: which counters keep changing?
+2. Hold **Both**. The update counter should continue while the position stays still. Release one direction: the remaining direction can move at the next opportunity. This differs from the previous lesson’s rearm rule.
+3. Change `interval: defb 6` to `interval: defb 0`. Decrementing zero wraps to 255, so each opportunity now takes **256 frames**, roughly five seconds. It is slow, not instant. Restore six afterwards.
+4. Replace the startup `ei` with `di`, assemble and run. The initial character appears, but this program cannot progress beyond HALT without an interrupt that can wake it. Its frame byte stays zero. Restore `ei` and rerun to repair it.
+
+A short tap that begins and ends between movement opportunities may produce no move. The program checks the held state at an opportunity; it does not queue taps for later. Keep a direction held while comparing rates.
+
+<Question prompt="Could we replace HALT with a loop that counts to a large number?">
+
+That would count executed instructions rather than display frames. Its duration would depend on the instructions, memory contention and target machine. Here the frame interrupt supplies the rhythm, and the countdown chooses how many of those ticks to wait.
+
+</Question>
+
+## Know the limit of this clock
+
+The drawing and input work must finish before the next frame if this loop is to process one tick per frame. If work takes longer, interrupts can occur while it is busy; the ROM still counts them, but our HALT loop does not catch up automatically. Our small character experiment fits. A busier game will need to measure its workload and choose what to do when it overruns.
+
+The browser also pauses the emulator when the whole experiment is offscreen. Its counters describe emulated execution, not a stopwatch that continues while you read elsewhere.
+
+<details>
+<summary>The complete starting program</summary>
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/meet-assembly/opening/clocked-character.asm" />
+
+</details>
+
+Download your edited source and build a tape with either assembler:
+
+```sh
+asm198x --dialect pasmo --cpu z80 --tapbas clocked-character.asm -o clocked-character.tap
+```
+
+```sh
+pasmo --tapbas clocked-character.asm clocked-character.tap
+```
+
+Load it on a fresh 48K Spectrum. Check held movement, both directions together, both edges and at least two intervals. You now have input, state, drawing and a named update rhythm: a small, inspectable basis for a game.
+
+<Sources>
+
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), “HALT”, “EI”, “DI” and “IM 1”. Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 25](https://worldofspectrum.org/ZXBasicManual/zxmanchap25.html), the FRAMES system variable. Ian Logan and Frank O’Hara, *The Complete Spectrum ROM Disassembly* (Melbourne House, 1983), MASK-INT at `$0038` and KEY-INT at `$0048`: register saves, frame counting, keyboard service and return.
+
+</Sources>
