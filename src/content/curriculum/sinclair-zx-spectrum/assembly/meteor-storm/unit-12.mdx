@@ -1,0 +1,50 @@
+---
+title: "Walk the pool and reuse a slot"
+game: 1
+unit: 12
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+A pool needs two operations: find somewhere to put a new object, and visit the objects that already exist. Both are short walks through the same memory layout.
+
+Use the same complete program as the previous lesson. Our three events are deliberately small enough to follow: X=80 at speed 2, X=116 at speed 3, then X=170 at speed 4, with twenty course steps between spawns.
+
+<MeteorExperiment checkpoint="object-pool" bytes={["active_count","pool_overflow","wave","hull"]} poolStride={4} controls="course" />
+
+## Find a free record
+
+`spawn` sets IX to the first record and B to the twenty-slot capacity. At `spawn_find` it reads offset 2. Zero means free, so the search branches to `spawn_found`. Otherwise `ld de,4` and `add ix,de` advance one record; DJNZ decrements the remaining count.
+
+At a free slot, the routine writes X, Y=24, active=1 and speed, then draws the new meteor. Setting an active flag without initialising position and speed would let old values become a new object.
+
+<AssemblyExcerpt checkpoint="object-pool" from="spawn:" to=" ; XOR removes" />
+
+If every slot is occupied, the routine sets `pool_overflow` and returns. It does not write beyond the reserved pool. This schedule should never fill twenty slots; the flag makes a broken capacity assumption observable.
+
+## Visit occupied records only
+
+`advance_meteors` starts at the first slot and tests active before doing any work. An active object erases its image, advances by its own speed, checks retirement/contact and draws its surviving image. Then IX advances by four and B counts down. Empty slots take the skip path but still advance the pointer and counter.
+
+Drawing changes B, so the caller uses `push bc` and `pop bc` around `draw_meteor`. Without that preservation, the drawing row counter would replace the pool's remaining-slot counter. A routine's clobber list matters most when it is called inside another loop.
+
+<Question prompt="Why does count_objects visit all twenty slots instead of assuming the occupied ones come first?">
+
+Objects leave at different times. Slot 1 can become free while slot 2 is still active, and the next spawn may reuse slot 1. The occupied records need not form one unbroken prefix. Testing each active byte handles those holes.
+
+</Question>
+
+## Make the capacity problem visible
+
+Change `SLOTS equ 20` to `SLOTS equ 1`. Assemble, steer away from the first meteor and watch `pool_overflow` when the next event tries to spawn. This is a deliberate capacity experiment, not a new difficulty mode: failed spawns still consume events in this small implementation. Restore twenty slots before continuing.
+
+A pool makes storage predictable, but it does not prove the chosen capacity is enough. The eventual course is checked against that bound. We have made one explicit allocation rule—first free slot—not built a general-purpose object framework.
+
+<Sources>
+
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), instruction descriptions for the operations shown in this lesson. The running experiment supplies the program-specific observations.
+
+</Sources>

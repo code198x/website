@@ -1,0 +1,54 @@
+---
+title: "Draw the whole ship"
+game: 1
+unit: 4
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+A ship is a set of rows, not a special kind of screen object. We will draw our original artwork by selecting one shifted table and copying its rows into bitmap memory.
+
+## Two files, one program
+
+This checkpoint has `meteor-storm.asm` and `assets.inc`. The assembly file's `include "assets.inc"` places the companion's data at that point in the program. Open **Companion file** to inspect it. Download both files and keep them in the same directory for a local build.
+
+The data starts at `ship_sprites`. It contains eight offset blocks. Each has sixteen rows of four bytes, so a block occupies 64 bytes and the whole table occupies 512. The comments mark each offset. The first byte pair in the previous experiment is the small version of this arrangement.
+
+<MeteorExperiment checkpoint="draw-ship" bytes={["sprite_height"]} words={["sprite_ptr"]} />
+
+The ship appears at x=116, y=160. The call supplies D=Y, E=X, HL=the start of the table and A=16 rows. `draw_sprite` changes AF, BC, DE and HL, so callers must not expect those registers to retain their arguments.
+
+## Select the shifted copy
+
+`x AND 7` is the remainder after division by eight. At x=116 it is 4. Multiply that by 64 and add 256 to `ship_sprites` to find the chosen block.
+
+The code builds this offset in DE by shifting left six times. `sla e` doubles the low byte; `rl d` carries any overflow into the high byte. Six doublings multiply by 64. The original X/Y are saved with `push de` and recovered with `pop de` before finding the destination screen address.
+
+<AssemblyExcerpt checkpoint="draw-ship" from="draw_sprite:" to="draw_sprite_row:" />
+
+## Walk down the bitmap
+
+`draw_sprite_row` processes four adjacent bytes. `rept 4` is an assembler directive: it emits four copies of the enclosed instructions. The Z80 does not execute a REPT instruction. After those four copies, the saved HL returns to the start of that row and `next_scanline` advances to the next visible row.
+
+Within an eight-scanline group, increment H. At its boundary, add 32 to L to select the next character row, adjusting H unless that addition has crossed into the next screen third. This handles the address jump you observed at y=71→72.
+
+<AssemblyExcerpt checkpoint="draw-ship" from="next_scanline:" to="clear:" />
+
+The pixel operation is `old bitmap XOR image byte`. XOR leaves a bit unchanged when the image bit is zero and flips it when the image bit is one. On the cleared black bitmap this displays the ship; using the identical image twice removes it.
+
+<Question prompt="The meteor will draw twelve rows. Should its offset blocks be 48 bytes apart?">
+
+Not with this routine. Offset selection always multiplies by 64. Meteor tables retain sixteen stored rows per block, padding the unused rows, while A tells the drawing loop to use only twelve. Changing the stored stride without changing the lookup would select the wrong bytes.
+
+</Question>
+
+Change `ld e,116` to `ld e,117`. The ship should move one pixel right. Keep X between 8 and 224 and Y at 160 for this test: four-byte writes must stay on the screen. If the picture fragments, compare the offset stride, the number of stored bytes per row and the row count before changing the address routine.
+
+<Sources>
+
+Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 24](https://worldofspectrum.org/ZXBasicManual/zxmanchap24.html), display-file and attribute layout. Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), instruction descriptions for shifts, logical operations and loads.
+
+</Sources>

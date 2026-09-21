@@ -1,0 +1,57 @@
+---
+title: "Erase before moving"
+game: 1
+unit: 5
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+To move a picture, first remove it at its old position. Changing the position byte alone cannot take away pixels that were already written.
+
+This complete checkpoint adds input and a repeated loop around the drawing work. The helper `ship` supplies the current `ship_x`, fixed Y=160, the ship table and sixteen rows to the drawing routine. Each call toggles that image with XOR.
+
+## Three operations, in order
+
+The main loop calls `ship`, then `steer`, then `ship` again. The first call removes the old image. `steer` changes the stored X. The second call draws at the new position. If no movement is requested, the two XOR calls cancel: the ship ends up exactly as it was.
+
+<MeteorExperiment checkpoint="pixel-motion" bytes={["ship_x","updates"]} controls="early" />
+
+Hold O or P. Both keys held together cancel, as do both keys released. R resets the ship to x=116. `ship_x` is state; the bitmap is the picture made from that state. The inspector samples real RAM and may skip intermediate values.
+
+## Read the active-low keys
+
+The O/P row is read using port `$DFFE`. `and 3` keeps the two bits we need. Pressing a key clears its bit. The four possible masked values are:
+
+| Value | Keys | Action |
+|---|---|---|
+| 3 | Neither | Stay |
+| 1 | O | Left |
+| 2 | P | Right |
+| 0 | Both | Stay |
+
+`steer` changes X by two and clamps it to 8..224. We leave space for the sprite's four-byte writes at both sides. The comparisons apply to a proposed new position, before storing it.
+
+<AssemblyExcerpt checkpoint="pixel-motion" from="steer:" to="; Toggle exactly" />
+
+## Keep the old image until it is removed
+
+Find the three calls in `main_loop`. Delete only the **first** `call ship`, assemble and move. The trail is evidence that the old pixels remain. Revert, then repeat the move to confirm that erasing repairs the picture.
+
+<Question prompt="Would replacing the old image with four zero bytes always be a safe eraser?">
+
+It would clear our empty background, but it could also erase pixels belonging to another object. XORing the same image again restores the bits beneath it, including other XOR images, provided nobody has overwritten that background in the meantime. A scrolling or repainted background needs a different agreement between drawing and erasing.
+
+</Question>
+
+The small `text` helper draws the control line by copying eight ROM-font bytes per character. It takes B=character row, C=column and DE=zero-terminated text; it changes the primary registers. It writes outside the ship's rows. We will examine that helper when building the game's instruction screens.
+
+This version uses a counted delay between updates. `dec bc` does not set the zero flag, so `ld a,b` followed by `or c` checks whether both bytes have reached zero. It slows the loop, but more drawing would also slow movement. Next we will give the program a clock that does not depend on how much work that loop contains.
+
+<Sources>
+
+Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 23](https://worldofspectrum.org/ZXBasicManual/zxmanchap23.html), the keyboard input ports. Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), IN, AND, CP and conditional branch entries.
+
+</Sources>

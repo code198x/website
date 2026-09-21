@@ -1,0 +1,48 @@
+---
+title: "Make a storm with an end"
+game: 1
+unit: 13
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+A longer storm can be data rather than a longer sequence of special-case instructions. We will replace the three-event exercise with a prepared course of one hundred meteors.
+
+The event table lives after the sprite data in `assets.inc`, at `meteor_events`. At this stage each event has three bytes: **X, speed, delay until the next event**. The event index is called `wave` in the source; it counts individual spawns, not a whole row of meteors.
+
+<MeteorExperiment checkpoint="fixed-course" bytes={["wave","active_count","phase","pool_overflow"]} words={["ticks"]} poolStride={4} controls="course" />
+
+The X positions and speeds vary, but the table is fixed. Retry gives the same course. A host-side generator prepared the scattered values; the Spectrum is not choosing new random numbers during each run. Repeatability lets a player learn a route and lets us reproduce a failure.
+
+## Count down, then read a record
+
+`wave_timer` begins at twenty. Each course step decrements it. When it reaches zero, `waves` calculates the event address as `meteor_events + wave*3`, reads the three fields, and loads the next delay into the timer. Then it increments wave and calls spawn.
+
+<AssemblyExcerpt checkpoint="fixed-course" from="waves:" to="spawn:" />
+
+The multiplication here is three additions of the index to HL. It is short because the event record is only three bytes. When we later add drift and kind, the event stride must change with the data layout.
+
+A delay belongs to the event just read: it says how long to wait **after this spawn** before reading the next. The initial twenty-step wait comes from `new_game`, before any event has been read.
+
+## Do not finish while the last meteor is falling
+
+Reaching `WAVES` means there are no more events to read. It does not mean the screen is clear. Completion also requires `active_count` to be zero.
+
+Watch the final spawn on a successful route: wave reaches 100 while active_count remains positive. The game keeps updating those objects until they leave. Contact is checked before the completion decision, so a fatal hit does not become a win just because the table is exhausted.
+
+<Question prompt="The final event's speed is 3 and it spawns at y=24. Can the game finish on that spawn's step?">
+
+No. The new meteor is active and still near the top. At that speed it needs fifty movement updates to reach retirement at y=174. Event exhaustion and object exhaustion describe different things.
+
+</Question>
+
+For a shorter experiment, set `WAVES equ 3` without deleting the longer table. The program reads only the first three entries. Steer through them and check that it still waits for the last object. Restore 100 to play the full meteor-only course. Do not increase WAVES beyond the number of complete records: the routine trusts that bound.
+
+<Sources>
+
+The maintained Meteor Storm source linked through this page supplies the game rules and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
+
+</Sources>

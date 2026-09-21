@@ -1,0 +1,50 @@
+---
+title: "Show seconds and hundredths"
+game: 1
+unit: 18
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+A frame count is good for measuring a run. Seconds and hundredths are easier to compare at the finish. We will convert the counter for display without changing the counter itself.
+
+On our 48K PAL target, fifty frames make one second. Divide elapsed by 50: the quotient is whole seconds and the remainder is leftover frames. Multiplying the remainder by two gives hundredths, because one frame is two hundredths of a second.
+
+<MeteorExperiment checkpoint="timed-course" words={["elapsed"]} bytes={["time_seconds","time_fraction"]} controls="course" />
+
+The live display updates when the game updates. It does not claim finer timing resolution than a frame: the hundredths advance in multiples of two, and ordinary two-frame updates often change them by four.
+
+## Division by repeated subtraction
+
+`seconds` takes elapsed in HL and sets DE to 50. It subtracts 50 repeatedly, counting successful subtractions in B. `or a` clears carry before `sbc hl,de`, so a carry left by earlier work cannot subtract an extra one.
+
+When a subtraction borrows, the routine has gone one subtraction too far. It adds 50 back, leaving the remainder in HL, and returns the quotient in A. In this game's short runs the quotient fits in a byte and the remainder fits in L.
+
+<AssemblyExcerpt checkpoint="timed-course" from="seconds:" to="format_time:" />
+
+For 2092 frames, forty-one successful subtractions leave 42. That means 41 seconds plus 84 hundredths: 41.84 seconds.
+
+## Reuse decimal conversion carefully
+
+`format_time` saves the quotient and doubled remainder, then uses `decimal3` to fill the digit buffers. Its output pointer refers to a five-character `SS.CC` area with **one writable padding byte before it**. The three-digit seconds conversion begins in that padding position; the fraction conversion temporarily uses the dot position, which is restored afterwards.
+
+This is a compact buffer arrangement with a specific contract. The source reserves `time_pad` before `time_digits`, and a corresponding pad before the best-time digits. If you call this routine with an arbitrary five-byte buffer, it writes one byte before that buffer. Name the required padding instead of hoping unused memory happens to be available.
+
+The complete time line includes that leading position, so the supplied HUD can show a leading zero. The significant short-course time is still seconds and hundredths. This formatter is intended for runs below 100 seconds; hours and long sessions need a different format.
+
+<Question prompt="A run takes 1046 frames. Is the display 20.46 seconds?">
+
+No. 1046 divided by 50 is 20 remainder 46. Forty-six frames are 92 hundredths, giving 20.92 seconds. The remainder counts frames until we convert its units.
+
+</Question>
+
+Try changing the fraction's `add a,a` to `nop`. The timer in RAM still measures the same frames, but the displayed fraction is wrong. Revert after observing the mismatch. Display conversion can lie about correct state; that is why we inspect both.
+
+<Sources>
+
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), instruction descriptions for the operations shown in this lesson. The running experiment supplies the program-specific observations.
+
+</Sources>

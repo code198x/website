@@ -1,0 +1,48 @@
+---
+title: "Give the game clear phases"
+game: 1
+unit: 22
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+The same key can mean different things at different moments. Space launches from the title, then acts as held boost during flight. We will make those moments explicit.
+
+The complete game uses phase 0 for the title, 1 for flight, 2 for a loss and 3 for a successful finish. Phase is useful for inspection, but it does not magically dispatch the game: jumps and calls still decide which code runs.
+
+<MeteorExperiment checkpoint="finished" bytes={["phase","hull","score","wave"]} words={["elapsed","best_time"]} controls="finished" />
+
+## Follow one whole attempt
+
+The title clears the screen, draws its instructions and waits for Space. It then waits for key release before calling `new_game`. That routine sets phase 1, clears per-run state and draws the opening flight.
+
+During play, Q jumps back to the title. A meteor hit reaches `lost`, which saves any score record and selects phase 2. Completion reaches `won`, calculates the bonus and records, and selects phase 3. Both outcomes enter the shared result display.
+
+At a result, R waits for key release, calls new_game and jumps to the main loop. Q goes to the title instead. Records remain in their longer-lived memory throughout these transitions.
+
+## Release is part of a button press
+
+Without release handling, the same held Space that selected launch could immediately count as boost. A held R could also retrigger the next screen before the player sees what happened. `release_keys` waits for Space, Q and R to be up; it does not change ship position or course state.
+
+<AssemblyExcerpt checkpoint="finished" from="release_keys:" to="name_text:" />
+
+HALT inside that wait keeps it responsive to the frame clock. The private interrupt must therefore remain enabled on title and result screens too. Waiting for a released key with interrupts disabled would strand the program at HALT.
+
+<Question prompt="Why can elapsed freeze on the result screen while the program still responds to R?">
+
+Elapsed is updated by the flight loop, which is no longer running. The interrupt handler and result input loop still run. Freezing one piece of game state does not require stopping the CPU.
+
+</Question>
+
+Test launch while holding Space longer than usual: the title should remain until release. During flight, hold Space again to boost and release it to slow down. Lose, retry, then return to the title. This sequence tests transitions that a single successful flight would miss.
+
+If a retry inherits a score, position or partly used course, inspect the reset range and initial values. If a control triggers too soon, inspect press/release handling. Keeping these failures distinct makes the phase structure easier to investigate.
+
+<Sources>
+
+Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 23](https://worldofspectrum.org/ZXBasicManual/zxmanchap23.html), the keyboard input ports. Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), IN, AND, CP and conditional branch entries.
+
+</Sources>

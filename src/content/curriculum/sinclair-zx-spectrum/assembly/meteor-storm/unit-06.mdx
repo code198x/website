@@ -1,0 +1,50 @@
+---
+title: "Give the interrupt a small job"
+game: 1
+unit: 6
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+A frame interrupt can tell us that time has passed while the main program is doing other work. Before it controls the ship, we will give it one job: increment a byte.
+
+An **interrupt** temporarily diverts the CPU to a handler, then returns to the interrupted program. Main code might be halfway through a calculation, so a handler must preserve the registers it changes. This one uses A and flags; it saves AF on the stack and restores AF before returning.
+
+<AssemblyExcerpt checkpoint="interrupt-clock" from="interrupt:" to="main_loop:" />
+
+`reti` returns from the interrupt using the saved return address. `ei` permits another maskable interrupt after the following instruction; here that instruction is RETI. The handler is deliberately short. Drawing and keyboard input stay in the main program.
+
+## Reserve the memory first
+
+This complete experiment disables interrupts with DI, sets SP to `$FCF0`, and prepares a private **interrupt mode 2** route. The stack grows down from SP. Our code and data are much lower in memory; the vector area sits above the stack start.
+
+In IM2 the CPU combines register I with a low byte supplied during interrupt acknowledgement to find a two-byte handler address in memory. We set I to `$FE` and fill `$FE00` through `$FF00` with `$FD`. Whichever low byte is used, the two neighbouring bytes read as the address `$FDFD`.
+
+Why 257 bytes? A vector starting at `$FEFF` still needs its second byte at `$FF00`. We do not rely on a particular low byte to make the last entry safe.
+
+At `$FDFD` we store opcode `$C3`, a JP instruction, followed by the two-byte address of `interrupt`. This extra jump lets the handler live wherever the assembler places its label. Only after that setup does the program select IM2 and enable interrupts.
+
+<MeteorExperiment checkpoint="interrupt-clock" bytes={["frames"]} words={["updates"]} />
+
+The border changes every 32 main-loop updates. `frames` is the handler's byte; `updates` is a word incremented by main code after each HALT. HALT waits for an interrupt instead of spending time in a counted delay. With this short main loop, one update follows each frame interrupt on the target PAL machine.
+
+## Predict a wrap
+
+A byte can hold 0..255. Incrementing 255 produces zero; it has not stopped counting. The word holds 0..65535, using a low byte and a high byte.
+
+<Question prompt="After the frame byte has advanced 600 times, how far should updates have advanced? Does the byte wrapping lose updates?">
+
+Updates advances 600 in this experiment. The frame byte wraps twice and advances another 88. Main code wakes for each interrupt; it does not wait for the byte to reach a permanently increasing value. The inspector samples rather than records every frame, so use the longer-running word to see continuing progress.
+
+</Question>
+
+Do not change vector addresses yet. First trace their contents: 257 copies of `$FD`, then the separate JP instruction and its destination. If a version freezes at HALT, check interrupt enable, the selected mode and the route to the handler. Reloading the supplied source recovers from a broken experiment.
+
+<Sources>
+
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), “Interrupt Enable/Disable”, “Mode 2” and the DI, EI, HALT and RETI instruction entries. The frame-rate experiments here target the stock 48K PAL Spectrum.
+
+</Sources>
