@@ -80,6 +80,7 @@ export default defineConfig({
     '/vault/communities/demo-scene-101': '/vault/communities/demo-scene',
     '/vault/techniques/raster-tricks-101': '/vault/techniques/raster-tricks',
     '/vault/people/tim-stamper': '/vault/people/stamper-brothers',
+    '/vault/phenomena/video-game-crash': '/vault/phenomena/1983-crash',
     // Duplicate entries merged 2026-08-25: each game had two pages differing
     // only in slug punctuation, both AI-drafted and unreviewed.
     '/vault/games/sonic': '/vault/games/sonic-the-hedgehog',
