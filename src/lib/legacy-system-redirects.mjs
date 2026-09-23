@@ -61,7 +61,9 @@ export function legacySystemRedirects() {
     if (SECTIONS.has(top)) continue;
     const url = rel.replace(/\.mdx$/, '').replace(/\/index$/, '');
     const dir = path.dirname(file);
-    const hasUnits = readdirSync(dir).some((name) => /^unit-\d+\.mdx$/.test(name));
+    // Match the unit-pages collection's own glob (unit-*.mdx): BASIC lessons
+    // carry descriptive suffixes such as unit-01-make-the-spectrum-answer.mdx.
+    const hasUnits = readdirSync(dir).some((name) => /^unit-.+\.mdx$/.test(name));
     if (rel.endsWith('/index.mdx') && !hasUnits) {
       const track = url.split('/').slice(0, 2).join('/');
       redirects[`/${url}`] = `/systems/${track}`;
