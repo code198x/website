@@ -205,6 +205,8 @@ export default defineConfig({
     '/vault/systems/game-and-watch': '/vault/systems/nintendo-game-and-watch',
     '/vault/systems/naomi': '/vault/systems/sega-naomi',
     '/vault/systems/xbox': '/vault/systems/microsoft-xbox',
+    // Processor entries use the bare part number, like 6502, 68000 and z80.
+    '/vault/hardware/motorola-6809': '/vault/hardware/6809',
     // The ZX81's system ID follows the same convention.
     '/systems/zx81': '/systems/sinclair-zx81',
     '/zx81': '/systems/sinclair-zx81',
