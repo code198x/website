@@ -134,8 +134,8 @@ and theme colours. Cartridge selection starts play; firmware is disclosed only
 for computer systems. Both sites use the same source
 and catalogue in Emu198x's `web-player/`; change the player there, not here.
 The local catalogue exposes 30 families and 91 selectable models, with runtime-owned
-firmware/media setup. Broader software and real-browser performance validation
-remain publication gates. No proprietary firmware or
+firmware/media setup. Broader software and real-browser performance validation are still
+to be done, but no longer block publication. No proprietary firmware or
 visitor media is copied into the site. The player offers explicit device saves, downloadable save files, supported
 disk-image exports, optional remembered firmware and fullscreen. Storage is
 local to this site and original files are never overwritten.
