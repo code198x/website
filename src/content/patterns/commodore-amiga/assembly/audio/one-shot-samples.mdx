@@ -15,14 +15,14 @@ related:
 
 ## Overview
 
-Enable a channel and Paula [loops the sample forever](/patterns/commodore-amiga/assembly/audio/playing-a-sample) — right for a held note, wrong for an explosion. To play a sound **once**, you need to know the moment it finishes. Paula tells you: at the end of every pass it raises that channel's **audio interrupt**. Catch it, silence the channel, and you have a one-shot. That same interrupt, instead of stopping the sound, is how a tracker hands the channel its *next* note — so this pattern is the doorway to music too.
+Enable a channel and Paula [loops the sample forever](/patterns/commodore-amiga/assembly/audio/playing-a-sample) — right for a held note, wrong for an explosion. To play a sound **once**, you need to know when the first pass is over, and Paula's **audio interrupt** tells you — though not the way you might guess. The interrupt fires each time the channel copies its location and length into its internal back-up registers: once just after DMA starts, then again as each new pass begins. So the *first* interrupt means "the sound has started", and the *second* means "the first pass is done and Paula is starting it again". Ignore the first, silence the channel on the second, and you have a one-shot. That same interrupt, used to hand the channel its *next* sound instead, is how a tracker keeps a voice going, so this pattern is the doorway to music too.
 
 ## Code
 
 ```m68k
 ; =============================================================================
 ; ONE-SHOT SAMPLES - AMIGA (Paula)
-; Fire a sample on channel 0; its interrupt stops it after one pass
+; Fire a sample on channel 0; its second interrupt stops it after one pass
 ; Assumes master interrupts on, and the level-4 autovector ($70) -> audio_irq
 ; =============================================================================
 
@@ -49,19 +49,27 @@ play_shot:
             move.w  #64,AUD0VOL(a5)
 
             ; --- Arm channel 0's interrupt, then start the DMA ---
+            clr.w   shot_irqs                   ; no interrupts seen yet
+            move.w  #AUD0INT,INTREQ(a5)         ; clear any stale request first
             move.w  #$8080,INTENA(a5)           ; SET | AUD0INT ($8000|$0080) — arm ch 0
             move.w  #$8201,DMACON(a5)           ; SET | DMAEN | AUD0 — Paula plays
 
             rts
 
-; --- Level-4 interrupt handler: fires when the pass ends ---
+; --- Level-4 interrupt handler: Paula has just (re)loaded LC/LEN ---
 audio_irq:
-            move.w  #AUD0INT,INTREQ(a5)     ; acknowledge (bit 15 = 0 -> CLEAR)
-            move.w  #$0001,DMACON(a5)       ; CLR | AUD0 — stop the channel
+            move.w  #AUD0INT,CUSTOM+INTREQ      ; acknowledge (bit 15 = 0 -> CLEAR)
+            addq.w  #1,shot_irqs
+            cmp.w   #2,shot_irqs
+            blo.s   .started                    ; 1st: DMA has started, pass 1 is playing
+            move.w  #$0001,CUSTOM+DMACON        ; 2nd: pass 1 is over — CLR | AUD0, stop
+            move.w  #AUD0INT,CUSTOM+INTENA      ; and disarm channel 0's interrupt
+.started:
             rte
 
             section data,data_c
             even
+shot_irqs:  dc.w    0                           ; interrupts seen for this shot
 sample:
             dc.b    0,60,110,127,100,50,-10,-70,-120,-127,-90,-40,10,55,30,0
 sample_end:
@@ -71,30 +79,39 @@ sample_end:
 
 | Aspect | Cost |
 |--------|------|
-| CPU | A tiny interrupt per sound |
-| Memory | Sample in chip RAM, plus a handler |
-| Limitation | The interrupt fires *after* the pass — a stopped channel can replay a sliver |
+| CPU | Two tiny interrupts per sound |
+| Memory | Sample in chip RAM, plus a handler and a counter |
+| Limitation | The first interrupt means "started", not "finished" — stop on the first and you hear almost nothing |
+| Limitation | To restart a sound that is still playing, the channel must be off for more than two sample periods first, or Paula carries on where it was |
 
 **When to use:** Sound effects — shots, jumps, hits — and as the tick that drives a tracker's sequencing.
 
 **When to avoid:** Sustained instrument tones that are *meant* to loop; leave those looping.
 
-## The glitch-free variant
+## Why two interrupts
 
-Because the interrupt arrives at the *end* of the pass, Paula may already be a moment into the next loop before the handler stops it — a faint replay. The classic cure needs no interrupt at all: right after enabling DMA (once Paula has latched the real sample), point the channel at a **one-word silent loop**:
+The *Amiga Hardware Reference Manual* spells out the order of events when audio DMA starts: the channel copies `AUDxLEN` and `AUDxLC` into back-up registers, raises the interrupt to say it has done so, and only then starts fetching sample data. Each time the length counter runs out, it reloads from the registers and interrupts again, just as the last word of the pass starts to play. So the second interrupt is the first moment you know a whole pass has gone out. Clearing `AUD0` in `DMACON` there stops the channel before the repeat is heard. At worst it cuts short that final word, two samples or about a quarter of a millisecond at period 428. The counter must be reset for each shot, which is why `play_shot` clears it.
+
+## The silent-loop variant
+
+The manual's own use for this interrupt is joining sounds: once Paula has copied `LC`/`LEN` into its back-up registers, you can write the registers again, and the new values take effect when the current pass ends. Queue a **one-word silent loop** on the first interrupt and the sample plays once, then Paula loops the silence inaudibly:
 
 ```m68k
-            move.l  #silence,AUD0LC(a5)     ; queue silence as the loop...
-            move.w  #1,AUD0LEN(a5)          ; ...one word of zero
+audio_irq:
+            move.w  #AUD0INT,CUSTOM+INTREQ      ; acknowledge
+            move.l  #silence,CUSTOM+AUD0LC      ; queue silence as the next pass...
+            move.w  #1,CUSTOM+AUD0LEN           ; ...one word of zero
+            move.w  #AUD0INT,CUSTOM+INTENA      ; one interrupt is all this needs
+            rte
 ; ...
-silence:    dc.w    0                       ; in chip RAM
+silence:    dc.w    0                           ; in chip RAM
 ```
 
-The real sample plays once, then Paula loops the silence — inaudibly. The catch is timing: you must write the silence pointer *after* Paula has copied the real `LC`/`LEN` into its internal registers (a scanline's wait is ample), or the sample never plays.
+This version needs no counter, and nothing has to happen at the end of the sample: the switch to silence is already queued. The catch is that the channel's DMA stays on, looping silence, so the next shot must turn `AUD0` off (for more than two sample periods) before starting again, and the queued write must come *after* the first interrupt. Write the silence pointer before Paula has copied the real `LC`/`LEN` and the sample never plays.
 
 ## From one-shot to music
 
-Don't silence the channel in the handler — hand it the **next** sample instead (new `LC`/`LEN`/`PER`/`VOL`) — and you've built the core of a sample sequencer. A [four-channel MOD player](/patterns/commodore-amiga/assembly/audio/four-channel-music) is exactly this on all four voices: a tick, a pattern of notes, and the [period table](/patterns/commodore-amiga/assembly/audio/playing-a-sample) turning note numbers into pitches.
+Instead of queuing silence, queue the **next** sample (new `LC`/`LEN`/`PER`/`VOL`) each time the interrupt says Paula has taken the last one, and you've built the core of a sample sequencer. A [four-channel MOD player](/patterns/commodore-amiga/assembly/audio/four-channel-music) is exactly this on all four voices: a tick, a pattern of notes, and the [period table](/patterns/commodore-amiga/assembly/audio/playing-a-sample) turning note numbers into pitches.
 
 ## Related
 
