@@ -9,6 +9,7 @@ tags: ["assembly", "2a03", "input", "controller", "joypad", "control-flow", "nes
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 import Figure from "@components/Figure.astro";
+import Sources from "@components/Sources.astro";
 
 A program that decides things (Unit 8) gets interesting when the thing it decides on is *you*. So: how does the NES know a button is pressed?
 
@@ -17,7 +18,7 @@ There's no `INKEY$` waiting around. You **read the controller yourself**, from a
 1. **Strobe.** Write a `1` then a `0` to `$4016`. That snapshot-latches the current state of all eight buttons and rewinds the belt to the start.
 2. **Read, eight times.** Each read of `$4016` hands you *one* button in **bit 0**, in a fixed order: **A, B, Select, Start, Up, Down, Left, Right.** The first read is A; read again for B; and so on.
 
-To test the button you've got, you **mask** it: `and #%00000001` keeps bit 0 and zeroes the rest. Then you branch on whether the result is zero. And here's the flip from the C64: on the NES a pressed button reads as **1**, not 0. (The C64's joystick read backwards — pushed was 0. The NES reads the natural way.)
+To test the button you've got, you **mask** it: `and #%00000001` keeps bit 0 and zeroes the rest. Then you branch on whether the result is zero. And here's the flip from the C64: on the NES a pressed button reads as **1**, not 0. Those are different hardware conventions, not a more natural or less natural way to represent a press.
 
 ## What you'll see by the end
 
@@ -33,21 +34,42 @@ A green screen — *while A is held*. Let go and it springs back to red. The pro
 
 <CodeFromFile src="nintendo-entertainment-system/assembly/meet-the-machine/unit-10/read-pad.asm" />
 
-It's the test-then-branch from Unit 8, now fed by the controller instead of a fixed value. The loop you've had since Unit 1 finally earns its keep: each time round, it strobes, reads A afresh, and paints accordingly. That "read, decide, draw, repeat" rhythm is the heartbeat of every game's input — and from Unit 9 you know where the real version of that loop will live: the NMI.
+It's the test-then-branch from Unit 8, now fed by the controller instead of a fixed value. The loop you've had since Unit 1 finally earns its keep: each time round, it strobes, reads A afresh, and paints accordingly. We now have a "read, decide, draw, repeat" loop. Here **NMI and rendering are both disabled**: `$2000` and `$2001` remain zero.
+This loop is not synchronised to display frames and may sample the controller
+many times in one frame. It is a small controller experiment, not a complete
+game-loop design.
+
+In a rendered game, we can sample input and update rules in the main loop,
+prepare a display change, then transfer it in a bounded VBlank handler. Some
+games make other scheduling choices, but input, simulation and display work
+need not all live in NMI. Unit 9's VBlank boundary still matters: this sample's
+continuous palette writes rely on rendering being disabled.
 
 **Why strobe every time?** The strobe is what *takes the snapshot*. Without it you'd read stale buttons, or read them out of order. Strobe, then read A: that pairing is the habit to keep.
 
 ## One button now; the rest later
 
-This reads exactly **one button** — A, the first off the belt. Reading several at once (A, B, and a direction, all in a pass) means reading `$4016` eight times and stashing each bit, usually shifting them into one byte with `lsr`. That's a job of its own, and it belongs to the **first game**, where moving a character needs the D-pad. For now, the machine can hear one press, and that's the whole idea.
+This reads exactly **one button** — A, the first off the belt. Reading several at once (A, B, and a direction, all in a pass) means reading `$4016` eight times and stashing each bit, usually using shifts and rotates to collect them into one byte. That's a job of its own, and it belongs to the **first game**, where moving a character needs the D-pad. For now, the machine can hear one press, and that's the whole idea.
 
 ## Assemble and run
 
 ```
-ca65 read-pad.asm -o read-pad.o && ld65 -C nes.cfg read-pad.o -o read-pad.nes
+make
 ```
 
 Load it, and **hold A**: the screen turns green, and releases back to red when you let go. The machine is answering you in real time.
+
+## Predict a missed press
+
+If we press and release A entirely between two reads, will this program know?
+No: it samples the state; it does not receive a history of every press. A
+longer job between samples can make a brief press easier to miss. Reading
+quickly here does not establish a zero-latency response: sampling, the palette
+write, display scanout and the emulator's host input each have timing costs.
+
+The two colours are a convenient laboratory readout. In a game, an important
+state should also have a marker, position or text cue, so colour is not the
+only way to recognise it.
 
 ## Try this: a different button
 
@@ -79,3 +101,13 @@ You read the NES controller by **strobing** `$4016` (a `1` then a `0`), then **r
 ## What's next
 
 You've stepped back to a one-cell screen for these CPU lessons. Time to fill it again — but cleverly. Next — **A Finger on the Boxes** — we stop baking a fixed address into every instruction and meet indexing: a register used as a finger that slides along a table, reading or writing as it goes.
+
+
+<Sources>
+
+NESdev public hardware research: [Standard controller](https://www.nesdev.org/wiki/Standard_controller)
+and [PPU registers](https://www.nesdev.org/wiki/PPU_registers). The sample keeps
+PPUMASK rendering bits clear; its access pattern is not a rendered game's
+VBlank transfer routine.
+
+</Sources>

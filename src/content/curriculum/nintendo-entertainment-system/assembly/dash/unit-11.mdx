@@ -13,15 +13,15 @@ The score ticks up — but silently. The jump has a sound; collecting a coin doe
 
 ## The Triangle Channel
 
-The NES APU has five channels. Unit 5 used pulse channel 1 for the jump sound. The triangle channel is different in one important way: **it has no volume control**. The pulse channel has a 4-bit volume setting; the triangle is either on or off. When it's on, it outputs a triangle wave at full volume — a smooth, pure tone.
+The NES APU has five channels. Unit 5 used pulse channel 1 for the jump sound. The triangle channel is different in one important way: **it has no programmable volume envelope**. Its 32-step waveform either advances or holds its current value. Both its length counter and its linear counter must be non-zero for it to advance. When either expires, the waveform stops moving; the hardware does not force its output to zero. Stopping and restarting can produce clicks. It is a stepped triangle, not a pure sine wave.
 
 The triangle channel uses three registers:
 
 | Register | Address | Purpose |
 |----------|---------|---------|
-| TRI_LINEAR | `$4008` | Linear counter (controls duration) |
+| TRI_LINEAR | `$4008` | Linear reload value and shared control flag |
 | TRI_LO | `$400A` | Timer low byte (controls pitch) |
-| TRI_HI | `$400B` | Timer high + length counter (triggers the note) |
+| TRI_HI | `$400B` | Timer high, length-table index and linear reload request |
 
 ```ca65
 TRI_LINEAR = $4008
@@ -47,7 +47,7 @@ Bit 2 enables the triangle channel. Set both bits:
     sta APU_STATUS
 ```
 
-Without bit 2 set, writes to the triangle registers are ignored. The channel stays silent no matter what values you write.
+Clearing bit 2 clears the triangle length counter and prevents length reloads. Other settings, including the timer, can still be written. Setting the bit again does not restore the old length: we must write `$400B` again. In this game we enable pulse 1 and triangle together during setup; repeatedly writing `%00000101` would also disable any other channels we later add.
 
 ## Playing the Note
 
@@ -55,11 +55,11 @@ The collect sound triggers inside `check_collect`, immediately after hiding the 
 
 ```ca65
     ; Play collect sound (triangle channel)
-    lda #%00011000          ; Linear counter: halt=0, reload=24 (~100ms)
+    lda #%00011000          ; Control=0, linear reload=24; length may stop first
     sta TRI_LINEAR
     lda #$29                ; Timer low — bright pitch (~1330 Hz)
     sta TRI_LO
-    lda #$00                ; Timer high=0, length counter=0 (10 frames)
+    lda #$00                ; Timer high=0, length index=0 loads 10 half-frame ticks
     sta TRI_HI
 ```
 
@@ -67,11 +67,15 @@ Three writes, one sound. Each register does something different.
 
 ### TRI_LINEAR ($4008) — Duration
 
-The **linear counter** controls how long the note plays. Bits 6–0 hold the reload value; bit 7 is the control flag.
+The **linear counter** is one of two gates on the waveform. Bits 6–0 set its reload value; bit 7 controls both linear reloading and length-counter halting.
 
-With bit 7 clear (0), the counter loads the reload value and counts down. When it reaches zero, the channel goes silent. The counter ticks at 240 Hz (four times per frame). A reload value of 24 produces a note lasting about 100 milliseconds — long enough to hear, short enough to feel snappy.
+Writing `$400B` sets a reload flag. At the next APU quarter-frame clock, the linear counter takes the reload value. With bit 7 clear, the flag then clears and subsequent quarter-frame clocks count down towards zero.
 
-If bit 7 were set (1), the counter would keep reloading and never reach zero. The note would play indefinitely. That's useful for music, not for a sound effect.
+Dash selects the APU’s four-step sequence with `$40` at `$4017`. On NTSC hardware, its quarter-frame clocks occur at roughly 240 Hz; length-counter clocks occur at roughly 120 Hz. These are APU timing events, not calls made by our VBlank NMI. The APU sequencer is not locked to the display refresh. PAL has different timings, so these millisecond estimates are for NTSC.
+
+A reload of 24 offers roughly 100 ms of linear-counter time **if the length counter permits it**. Our `$400B = $00` chooses length-table entry zero, which loads 10. At roughly 120 decrements per second, that length expires after about 75–83 ms depending on where the trigger falls in the APU sequence. It stops this cue first. Ten length ticks do not mean ten display frames.
+
+Setting bit 7 before writing `$400B` keeps the resulting reload flag from clearing and halts the length countdown. Setting bit 7 alone does not create a missing reload request. With non-zero reload and length values, the note can continue until we explicitly stop it. That is a different policy, not a longer one-shot cue.
 
 ### TRI_LO ($400A) — Pitch
 
@@ -87,19 +91,19 @@ A timer value of `$29` (41 decimal) gives:
 1,789,773 / (32 × 42) = 1,331 Hz
 ```
 
-That's close to E6 — a bright, cheerful pitch. Higher timer values produce lower notes; lower values produce higher ones. The timer is 11 bits total: 8 in TRI_LO and 3 in the low bits of TRI_HI.
+That is close to E6. This calculation uses the nominal NTSC CPU clock; a PAL machine needs a different clock value and, for the same tuning, a different timer setting. Higher timer values produce lower notes; lower values produce higher ones. The timer is 11 bits total: 8 in TRI_LO and 3 in the low bits of TRI_HI.
 
 ### TRI_HI ($400B) — Trigger
 
-Writing to TRI_HI does two things: it sets the top 3 bits of the timer period, and it **triggers the note** by reloading the linear counter. The length counter load value (bits 7–3) provides a second duration limit — but for a short sound effect, the linear counter runs out first.
+Writing to TRI_HI sets the top three timer bits, loads the length counter from the table when the channel is enabled, and sets the linear reload flag. It does **not** reload the linear counter immediately or reset the waveform phase.
 
-The write to TRI_HI is what starts the sound. Without it, setting the other two registers has no effect.
+For our stopped cue, the length must be loaded and the next quarter-frame clock must reload the linear counter before the waveform advances. That introduces a small, phase-dependent delay. While a channel is already playing, writes to `$4008` or `$400A` can still change its behaviour; they are not ignored just because we have not retriggered it.
 
 ## The Full Subroutine
 
 <CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-11/snippets/01-collect-sound.asm" />
 
-The sound plays at the moment of collection. The subroutine already checks overlap and hides the sprite — the triangle writes sit naturally after `inc score`. No new subroutine needed. No new variable needed. Three instructions added to existing code.
+We request the sound at collection; the hardware counters determine when it begins. The subroutine already checks overlap and hides the sprite — the triangle writes sit naturally after `inc score`. No new subroutine needed. No new variable needed. Three register writes, each preceded by a load: six instructions added to existing code.
 
 ## Two Channels, Two Sounds
 
@@ -116,45 +120,64 @@ The channels are independent. A jump and a collection can happen on the same fra
 
 ![Dash Unit 11](/images/nintendo-entertainment-system/assembly/dash/unit-11/screenshot.png)
 
-The screen looks the same as Unit 10 — score in the top-left, three coins, the platform, the wall. The difference is audible. Touch a coin and a bright ding plays. The triangle channel's clean tone cuts through clearly, distinct from the pulse channel's buzzy jump sound. Here's a leap up through the high coin — the pulse chirp, then the triangle ding as it's taken:
+The screen looks the same as Unit 10 — score in the top-left, three coins, the platform, the wall. The difference is audible. Touch a coin and a bright ding plays. We can compare its stepped triangle tone with the pulse channel’s buzz. Here's a leap up through the high coin — the pulse chirp, then the triangle ding as it's taken:
 
 <audio controls src="/images/nintendo-entertainment-system/assembly/dash/unit-11/collect.wav"></audio>
 
 ## Try This: Lower Pitch
 
-Change TRI_LO to `$80` (128 decimal). The frequency drops to about 434 Hz — close to A4, a full two octaves lower. The collect sound becomes a warm thud instead of a bright ding. Different timer values give different characters to the same event.
+Change TRI_LO to `$80` (128 decimal). The frequency drops to about 434 Hz — close to A4, about an octave and a half lower. The collect sound becomes a warm thud instead of a bright ding. Different timer values give different characters to the same event.
 
 ## Try This: Longer Note
 
-Change the linear counter reload from 24 to 96:
+Before changing anything, predict what happens if we change only the linear reload from 24 to 96. Does the cue become four times as long?
+
+Try it, then compare with the original. The length gate still closes first, so the cue remains short. Hearing little change is evidence of another limit, not proof that our write failed.
+
+<details>
+  <summary>Let the linear counter set the duration</summary>
+
+Keep control bit 7 clear. Change the high-register write from `$00` to `$08`: the timer high bits remain zero, but length-table index 1 loads 254 instead of 10. Then compare these two linear reloads:
 
 ```ca65
-    lda #%01100000          ; Linear counter: reload=96 (~400ms)
+    lda #24                 ; compare with #96 on a second run
     sta TRI_LINEAR
+    lda #$29                ; same pitch on both runs
+    sta TRI_LO
+    lda #$08                ; length index 1: 254; timer high still 0
+    sta TRI_HI
 ```
 
-The note sustains for nearly half a second. It sounds more like a musical tone than a quick effect. For a collect sound, shorter is usually better — but longer notes are useful for power-ups or level-complete jingles.
+Now the linear gate expires first: roughly 100 ms versus 400 ms on NTSC, plus the small trigger-to-reload delay. We have changed duration while keeping pitch fixed. Restore `24` and `$00` afterwards to recover the game’s original cue.
+
+</details>
+
+Which version communicates a pickup more clearly? A longer tone may suit a rare reward, but repeated pickups can keep interrupting and restarting it. Duration is a design choice as well as a counter setting.
 
 ## Try This: Collision Sound
 
-Add a sound when the player hits the obstacle. Use a low triangle note (timer `$FF`) with a short duration (reload 8) for a deep "bonk". Place the triangle writes in the obstacle collision section, before resetting the player position.
+Add a sound when the player hits the obstacle. Use a low triangle note (timer `$FF`) with a short duration (reload 8) for a deep "bonk". Place the triangle writes in the obstacle collision section, before resetting the player position. This reuses the collection channel: the latest request can replace the previous cue. Predict which sound should win if both events happen together, then inspect the code’s call order.
 
 ## If It Doesn't Work
 
 - **No collect sound?** Check `APU_STATUS`. Bit 2 must be set (`%00000101`). If it's still `%00000001`, the triangle channel is disabled.
-- **Sound plays constantly?** Bit 7 of `TRI_LINEAR` must be clear (0). If set, the linear counter never decrements and the note plays forever until the length counter expires.
+- **Sound plays constantly?** For this one-shot cue, bit 7 of `TRI_LINEAR` must be clear. When set before the trigger, it keeps the linear counter reloading and halts the length counter too. The length counter will not rescue an unintentionally sustained note.
 - **Sound plays on every frame?** The triangle writes must be inside `check_collect`, after the overlap passes and the sprite is hidden. If they're in the main loop, the sound triggers every frame regardless of collection.
-- **Can't hear the triangle?** The triangle channel has no volume control — it's always at full output when active. If the note is very short (reload < 4), it might be too brief to hear. Try increasing the reload value.
+- **Can't hear the triangle?** Check both gates. A tiny linear reload may be difficult to hear, but increasing it will not overcome an expired length counter. A `$4015` status read reports length-counter activity, not whether the linear gate is open; it is not an “audible now” flag.
 - **Wrong pitch?** The timer value in `TRI_LO` directly sets the frequency. `$29` is bright; `$80` is warm; `$FF` is deep. Check you haven't swapped TRI_LO and TRI_LINEAR.
 
 ## What You've Learnt
 
-- **Triangle channel** — the APU's third channel. No volume control: it's on or off. Produces a smooth, pure tone distinct from the buzzy pulse channels.
-- **Linear counter** — the triangle's duration mechanism. A reload value sets how many 240 Hz ticks the note plays. Bit 7 controls whether the counter is one-shot (clear) or continuous (set).
+- **Triangle channel** — a stepped waveform with no programmable volume envelope. Gating holds its current output rather than forcing zero.
+- **Two duration gates** — both counters must allow playback. The first to expire wins; bit 7 affects both counters.
 - **Timer period** — an 11-bit value split across two registers. Determines the output frequency. The formula is `CPU_clock / (32 × (timer + 1))`.
 - **Channel independence** — each APU channel has its own registers. Multiple sounds play simultaneously with no mixing code required.
-- **Sound as feedback** — a 100ms triangle note transforms a silent event into a satisfying moment. Audio reinforces what the player sees.
+- **Sound as feedback** — compare cues at the same pitch, and judge whether their duration helps communicate the event. Keep the score and disappearing coin as visible feedback too.
 
 ## What's Next
 
 The level is safe except for the obstacle. In Unit 12, certain tiles become hazards — touch them and the player takes damage. The nametable gains a new role: not just scenery, but danger.
+
+## Hardware references
+
+NESdev’s hardware research documents the [triangle channel](https://www.nesdev.org/wiki/APU_Triangle), [length table and enable behaviour](https://www.nesdev.org/wiki/APU_Length_Counter), and [APU frame sequencer](https://www.nesdev.org/wiki/APU_Frame_Counter). Its [mixer description](https://www.nesdev.org/wiki/APU_Mixer) explains why channel independence does not mean their analogue levels are independent.

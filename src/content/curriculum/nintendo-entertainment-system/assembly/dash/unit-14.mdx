@@ -44,7 +44,7 @@ A new zero-page variable controls when the text is drawn:
 game_over_drawn: .res 1
 ```
 
-At startup, it's cleared to 0. When the NMI handler writes the "GAME OVER" text, it sets `game_over_drawn` to 1. On every subsequent frame, the NMI checks this flag and skips the text write. Nine PPUDATA writes happen exactly once — the frame after the last life is lost.
+At startup, it's cleared to 0. When the NMI handler writes the "GAME OVER" text, it sets `game_over_drawn` to 1. On every subsequent frame, the NMI checks this flag and skips the text write. The next NMI that sees `game_over` set writes the nine tiles once. Later NMIs still check the flags.
 
 Without this guard, NMI would rewrite the same nine tiles every frame. That wastes VBlank time and is unnecessary — nametable tiles stay put until something overwrites them.
 
@@ -62,9 +62,43 @@ Notice the "O" in "OVER": `lda #DIGIT_ZERO` loads tile 5 — the digit 0. Same g
 
 ## VBlank Budget
 
-The text write adds 9 tile writes to NMI — but only on one frame. Each `LDA immediate` + `STA PPUDATA` costs about 6 cycles. Nine writes = ~54 extra cycles. Combined with OAM DMA (513 cycles), the HUD writes (~40 cycles), and the PPUADDR setup (~16 cycles), the total is about 623 cycles — well within the ~2,273-cycle VBlank window.
+We need to count the whole handler, including the work around the tile writes. Our boundary here is the first `PHA` through the completed `RTI`, with rendering enabled on an **NTSC NES** and DMC sample playback disabled.
 
-After that one frame, the flag ensures the text code is skipped entirely. NMI returns to its normal cost.
+For the frame that first draws the message:
+
+| Work | CPU cycles |
+| --- | ---: |
+| Save A, X and Y | 13 |
+| Set OAMADDR and write OAMDMA | 12 |
+| OAM DMA stall | 513 or 514 |
+| Update both HUD digits, including address setup | 50 |
+| Check both game-over flags | 10 |
+| Set the message address | 12 |
+| Nine immediate loads and tile writes | 54 |
+| Set `game_over_drawn` | 5 |
+| Restore scroll | 10 |
+| Set `nmi_flag` | 5 |
+| Restore registers and return | 22 |
+| **Handler total** | **706 or 707** |
+
+Each tile pair takes six cycles, but those 54 cycles are only part of the job. OAM DMA adds a stall after the register write: 513 or 514 cycles depending on alignment. The write instruction itself is counted separately. DMC sample transfers can extend the stall; Dash does not enable them. [NESdev: DMA](https://www.nesdev.org/wiki/DMA).
+
+NTSC VBlank provides roughly 2,273 CPU cycles before the pre-render scanline. Our handler uses less than a third of that interval. We must also allow for finishing the interrupted instruction and the CPU's seven-cycle interrupt entry, which happen before our first `PHA`. This is a VBlank transfer budget, not permission to write graphics throughout the roughly 16.6 ms display frame. [NESdev: the frame and NMIs](https://www.nesdev.org/wiki/The_frame_and_NMIs) and [CPU interrupts](https://www.nesdev.org/wiki/CPU_interrupts).
+
+Stepping the unchanged ROM in Emu198x 0.25.0, configured for NTSC, measured 706–707 cycles for this handler path, including DMA. Each observed return was still within VBlank. That is evidence for this workload and configuration; adding work means checking again.
+
+Before opening the explanation, predict: once the message has been drawn, does the handler save exactly the 54 cycles used by the nine tile pairs? Which other work changes?
+
+<details>
+<summary>Trace the shorter path</summary>
+
+We also skip the message's address setup and the write to `game_over_drawn`, while the second flag check now takes its branch. Later game-over frames take **637–638 cycles**, saving 69 instruction cycles. Playing frames take **632–633 cycles**, because the first flag check skips the second one too.
+
+In this assembled ROM, both taken branches cross from addresses in `$83xx` to `$8433`. A taken branch costs an extra cycle, and crossing a page adds another. Moving code can change that cost even when the source instructions look the same. [NESdev: 6502 cycle times](https://www.nesdev.org/wiki/6502_cycle_times).
+
+The flag avoids repeated writes; it does not remove the flag checks themselves. We count the path we actually execute, then measure it against its deadline.
+
+</details>
 
 ## The Complete Code
 
@@ -99,7 +133,7 @@ Place the "GAME OVER" text in a nametable region that uses a different attribute
 - **Letter tiles** — text on the NES is just tiles. Design the glyphs in CHR-ROM, write the tile indices to the nametable. Same mechanism as ground tiles and digits.
 - **Tile reuse** — the letter "O" and the digit "0" are the same tile. Tile indices are just numbers — their meaning comes from context.
 - **One-shot flags** — `game_over_drawn` prevents repeated work. Check a flag, do the action, set the flag. A common pattern for events that should happen exactly once.
-- **VBlank budgeting** — nine tile writes fit easily in VBlank alongside OAM DMA and HUD updates. The NES gives you ~2,273 cycles; careful counting prevents overruns.
+- **VBlank budgeting** — nine tile writes fit easily in VBlank alongside OAM DMA and HUD updates. For this NTSC workload, we count the complete handler and DMA stall, allow for interrupt entry, and check completion before rendering resumes.
 - **State communication** — the main loop sets `game_over`, NMI reads it and responds. The two code paths run at different times (game logic vs. VBlank) but share state through zero-page variables.
 
 ## What's Next

@@ -39,7 +39,7 @@ The title was silent; the endings were silent. One routine fixes all three, beca
 
 <CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-17/snippets/03-tune-tick.asm" />
 
-The APU holds each note by itself: `tune_tick` touches the chip twice per note — once to start it, once when its time is up — and the game runs on regardless. A period of zero is a **rest**: silence is a note too, so the channel gates off and the clock keeps counting.
+The APU generates the waveform between player updates. Most calls to `tune_tick` only decrement a countdown. Loading a note writes its settings; a rest or stop silences it. There is no separate note-off write at every note boundary: the next row decides what happens. A period of zero is a **rest**: silence is a note too, so the channel gates off and the clock keeps counting.
 
 The part worth keeping is the *two terminators*. `$FF` loops to the top — that's the title jingle, round and round until START. `$FE` stops for good — that's a fanfare or a sting, which says its piece once and goes quiet. Win and lose having voices cost the sequencer exactly one extra marker:
 
@@ -58,6 +58,245 @@ And the lose sting — the damage buzz finishes its own sentence, then two steps
 <audio controls src="/images/nintendo-entertainment-system/assembly/dash/unit-17/sting.wav"></audio>
 
 One confession from the building of it: our first jingle was completely silent, and the code was correct on paper. The culprit was the sweep-disable write — the classic NES idiom is `$08` (negate set, shift zero), and the emulator's sweep unit mutes pulse 1 on exactly that pattern (bug filed). `$00` disables the sweep just as thoroughly for every period in our tables, so that's what ships. When your sound is silent and your code looks right, read the sweep register twice.
+
+
+## Timing investigation: which clock changed?
+
+Before changing the game, trace one call. `start_phrase` sets `tune_timer` to 1. On the next `tune_tick`, the decrement reaches zero, so we read a row and load its duration. A duration of 6 means the next row starts **six further player updates** later. It does not mean six waveform cycles.
+
+In this game, NMI performs display work and sets `nmi_flag`. Main notices and clears the flag, reads input, then calls `tune_tick` before dispatching the game state. The tune runs in main code, after that notification. The CPU does not execute main and NMI simultaneously, and notification does not guarantee immediate service. A busy loop can delay music; a one-bit flag cannot count every missed notification. We will investigate those problems separately.
+
+### Predict, then listen
+
+We keep the same title phrase, period values, pulse shape and pitch-clock reference. Only the player update rate changes. Predict which version will finish sooner, and whether its notes should sound higher. What happens to the six-update breath between the two “doo-dah” phrases?
+
+These are **host-generated listening models at exact rates**, not NES emulator recordings or PAL/NTSC captures. Both render a simple pulse with the same pitch settings. There is a quarter-second of silence before and after each complete phrase.
+
+**50 player updates per second**
+
+<audio controls preload="none" aria-label="Title phrase model at 50 player updates per second" src="/audio/nintendo-entertainment-system/assembly/dash/unit-17/tempo/tempo-50.wav"></audio>
+
+**60 player updates per second**
+
+<audio controls preload="none" aria-label="Title phrase model at 60 player updates per second" src="/audio/nintendo-entertainment-system/assembly/dash/unit-17/tempo/tempo-60.wav"></audio>
+
+Try them one at a time. Without sound, we can make the same comparison using the trace below. Describe which version feels more hurried and whether the shorter rests leave enough space; faster is not automatically better.
+
+<details>
+<summary>Hint: count intervals between events</summary>
+
+If a row starts at update 96 and lasts six updates, the next starts at 102. Divide the six intervals by the updates per second. Keep this duration calculation separate from the pulse period stored in the other two bytes.
+
+</details>
+
+<details>
+<summary>Compare the countdown and phrase lengths</summary>
+
+The existing six-update rest begins at update 96. At that call the old timer reaches zero and the rest loads 6. The next five calls leave 5, 4, 3, 2 and 1; update 102 reaches zero and loads the next note.
+
+| Event or interval | 50 updates/s | 60 updates/s |
+|---|---|---|
+| Rest requested and serviced at update 96 | 1.92 s | 1.60 s |
+| Next note requested and serviced at update 102 | 2.04 s | 1.70 s |
+| Six-update rest | 120 ms | 100 ms |
+| Whole 286-update phrase | 5.72 s | About 4.767 s |
+
+Times start at the first player call and exclude the audio files' padding. In this model service happens exactly when requested; the equality is an assumption, not a measurement of Dash. The [inspectable companion](https://github.com/Code198x/code-samples/tree/main/nintendo-entertainment-system/assembly/dash/unit-17/tempo) records every call, countdown and event, and reads the phrase bytes from the maintained source.
+
+At 60 updates/s the unchanged sequence runs 20% faster than at 50. Its duration is one sixth shorter. All 27 pitch/rest events occur at the same update indices in both traces. The note frequencies stay fixed because the pitch settings and reference clock stay fixed.
+
+</details>
+
+### Explain what the comparison does not change
+
+The display's refresh, input sampling, game updates, player updates and waveform generation are different jobs. Dash currently connects several of them through its main loop, but the APU continues generating the current waveform between calls. A late musical update can therefore extend an old note or rest; it need not corrupt the waveform.
+
+A real regional machine change may alter the hardware clock and tuning as well as the display rate. The pulse timer frequency depends on that clock and its period value, as documented in [NESdev's pulse-channel research](https://www.nesdev.org/wiki/APU_Pulse). These exact 50/60 rates isolate one variable; they are not precision measurements of NES refresh. Frame-stepped vibrato, arpeggios or envelopes would also change speed if we tied their progress to the same calls. This player does not yet implement those effects.
+
+Finish by explaining how the melody can keep the same pitches while its phrases become shorter. Then identify the code we would need to change to preserve musical tempo without slowing the whole game. Changing every pitch period would address a different problem. Keep the working game intact: deciding how to schedule player updates, account for uneven spacing and handle overdue work is the next experiment.
+
+
+## Keep musical time between updates
+
+Now give the same phrase a target: **50 musical updates per second**, even when we can check it 60 times per second. We keep the game update rate and pitch settings separate. Work in the [scheduler companion](https://github.com/Code198x/code-samples/tree/main/nintendo-entertainment-system/assembly/dash/unit-17/tempo/scheduler), which generates experimental copies and preserves the working game.
+
+Use units of 1/300 second. A musical update costs 6 units. A caller running at exactly 50 Hz adds 6 each time; one at exactly 60 Hz adds 5. Keep any unused units for the next call. After the first note, predict the next six calls with input 5: which call does no musical work, and what remains after each call?
+
+<details>
+<summary>Hint: subtract six only when enough time has accumulated</summary>
+
+Start with phase zero. The first interval contributes five: too little for an update, but that time is not lost. The next contributes another five. Ten permits one update and leaves four.
+
+</details>
+
+<details>
+<summary>Compare the six calls</summary>
+
+| Call after the first note | Units before service | Player updates | Units retained |
+|---|---|---|---|
+| 1 | 5 | 0 | 5 |
+| 2 | 10 | 1 | 4 |
+| 3 | 9 | 1 | 3 |
+| 4 | 8 | 1 | 2 |
+| 5 | 7 | 1 | 1 |
+| 6 | 6 | 1 | 0 |
+
+Six caller intervals produce five player updates. Keeping the remainder prevents a small rounding error from accumulating on every note.
+
+</details>
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-17/tempo/scheduler/scheduler.asm" />
+
+The companion supplies the state bytes and resets them when a phrase starts. `A` carries the caller's elapsed-time value; this routine does not read a hardware clock. The first call loads the first note immediately. On later calls, phase remains between 0 and 5. With inputs limited to 1–6, their sum cannot exceed 11: one subtraction and at most one player call are enough.
+
+### Listen for what improved—and what remains
+
+Compare the earlier **50-update model** with this **60-opportunity model using retained musical phase**. The pitch and phrase data still match. Predict whether their endings must coincide exactly before playing them separately.
+
+<audio controls preload="none" aria-label="Title phrase with 50 musical updates per second scheduled at 60 opportunities per second" src="/audio/nintendo-entertainment-system/assembly/dash/unit-17/tempo/scheduled-60.wav"></audio>
+
+<details>
+<summary>Compare requested and serviced time</summary>
+
+The intended phrase lasts 5.72 seconds. The 50 Hz model services its loop boundary at 5.72 seconds; the 60 Hz model reaches it at about 5.733 seconds. We can only change a note when the caller runs. In this phrase the greatest event delay is about 13.33 ms, less than one 60 Hz interval. The audio files include the same padding as before.
+
+Individual note lengths can still vary slightly: one event may be later than its neighbour. This is uneven spacing, or **jitter**. The retained phase preserves the average tempo; it does not create a timer interrupt between calls. The companion's event tables show requested time, service time and lateness separately.
+
+</details>
+
+The companion also runs the actual player in a native NTSC emulator. One copy requests service every main-loop opportunity; another omits every sixth request. Both produce the same 28 events through the next loop's first note, with timings at most one opportunity apart. That second cadence is uneven and is not a PAL machine. These native observations support the implementation; the exact 50/60 arithmetic belongs to the labelled model.
+
+### Decide what happens when we cannot keep up
+
+Predict what input 30 would do. Five musical updates are due, but this routine promises at most one. Its deliberate policy is to set `tempo_fault`, stop the experimental music and wait for a new phrase. The overload companion triggers that case; its event trace ends and its audio becomes silent. We have made the missed music observable rather than writing several overdue notes at once and calling that a repair.
+
+Stopping optional music may be an acceptable diagnostic response. Silently dropping movement, collisions or score events would change the game rules. A finished game needs a policy suited to each job, and a way to make a relevant failure understandable to the player.
+
+There is another limit: if the caller reports 5 after a long delay, the routine cannot discover that the report was wrong. Dash's existing notification flag still needs its own investigation. This companion is not a complete regional conversion or missed-frame detector.
+
+Finish by explaining both the improvement and its cost: one phase byte carries time, while event spacing is limited by service opportunities. Identify the owner of that byte, the reset needed for a new phrase, and the observable result of overload. The native companion also checks a short Start/movement/jump sequence against the original game; that is useful regression evidence, not proof of every play path.
+
+
+## Pass a complete request to NMI
+
+The player above runs in main code. Suppose we now want main to prepare a sound request and NMI to apply it. Before moving a whole player, try the [isolated handoff companion](https://github.com/Code198x/code-samples/tree/main/nintendo-entertainment-system/assembly/dash/unit-17/handoff). It replaces gameplay with a short experiment while keeping Dash's title display and interrupt handler. This is a new requirement, not a fault we have found in the ordinary player.
+
+Our request is just a pulse period: low byte and high byte. The old storage contains `$011C`; we want `$00D5`. Main writes the new low byte, then NMI interrupts before the high byte changes. Predict the pair the handler would read. Does either context need to execute simultaneously for that to happen?
+
+<details>
+<summary>Hint: write the two bytes in separate columns</summary>
+
+The old high byte is `$01`. The new low byte is `$D5`. Main has not reached the store that makes the high byte `$00`.
+
+</details>
+
+<details>
+<summary>Inspect the interrupted request</summary>
+
+The handler reads `$01D5`, a pair we never intended to request. Main is suspended while NMI runs, then resumes. The problem is an interruption between two stores, not two CPUs writing at once.
+
+The companion makes this repeatable by deliberately waiting for a real NMI between the low and high stores. Its native trace records `$D5` and `$01` being written to the pulse timer. Finishing the high-byte store afterwards cannot undo the request already consumed.
+
+</details>
+
+### Fill first, publish last
+
+Give the slot a `request_ready` byte. Zero means main owns the empty slot. Main fills both payload bytes, then stores 1 to publish the complete request. While ready is 1, main must leave both bytes alone. NMI consumes them and returns the slot only after its last read.
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-17/handoff/mailbox.asm" />
+
+X and Y supply the low and high bytes. Carry clear reports acceptance; carry set reports a full slot without changing its contents. In this experiment, one producer runs in main and one consumer runs in NMI. The existing handler saves and restores A, X and Y around its work.
+
+Predict the repaired outcome with the same deliberate wait between stores. NMI sees ready zero and ignores the unfinished pair. After main completes the high byte and publishes, the next NMI consumes `$00D5`. A later empty call must not play it again.
+
+This is **atomic publication** relative to this interrupt observer: NMI sees the ready-byte store completed or not yet executed. The payload still takes several instructions to prepare. The [NES NMI mechanism](https://www.nesdev.org/wiki/NMI) interrupts CPU execution at an instruction boundary; it does not turn a sequence of stores into one operation.
+
+### What if the slot is full?
+
+Try requesting `$0152`, then `$017C` before the consumer has run. Predict which value survives and what main must remember.
+
+<details>
+<summary>Compare full, retry and empty</summary>
+
+The second call returns carry set. The slot still contains `$0152`, so NMI consumes the first request intact. Main explicitly retries its retained `$017C` request after the slot becomes empty. That request is then consumed once. The following empty call performs no pulse-period writes.
+
+This refusal is information the caller must handle. Ignoring carry would silently lose the second request. Waiting for space inside NMI would prevent main from making progress and is not a repair.
+
+</details>
+
+The native companion checks all six stages in both versions and repeats them from a fresh process. Its instrumented title handlers return within VBlank with registers preserved. That is evidence for these paths, not permission to add unlimited work to NMI. The consumer performs at most one request and never waits.
+
+SEI masks IRQ, **not NMI**; it cannot protect this handoff. The [CPU interrupt distinction](https://www.nesdev.org/wiki/Interrupts) matters more than a generic “disable interrupts” recipe. Our repair leaves notification enabled and makes ownership explicit.
+
+Finish by explaining why main may fill an empty slot safely even if NMI arrives after the empty check. Then identify what would break the argument if another producer could fill the slot. As an optional extension, consider a request containing a pointer: consuming the pointer does not mean the data it points to can immediately be reused. We need a lifetime agreement as well as a complete request.
+
+## Optional investigation: where did the notification go?
+
+The request slot above passes a complete value from main to NMI. Now reverse the direction: NMI tells main that an update opportunity has arrived. Dash's main loop reads `nmi_flag`, then clears it before doing work. This is a different problem from publishing two payload bytes.
+
+We can investigate it with the [isolated notification companion](https://github.com/Code198x/code-samples/tree/main/nintendo-entertainment-system/assembly/dash/unit-17/notification). Keep the ordinary game as our baseline. The companion deliberately waits for a real NMI between a successful flag check and its clear; it does not establish that we have encountered this window during normal play.
+
+Predict the last row before opening the explanation:
+
+| Execution | Operation | Flag |
+|---|---|---|
+| First NMI | Store 1 | 1 |
+| Main | Read 1 and decide to work | 1 |
+| Second NMI | Store 1 | 1 |
+| Main resumes | Store 0, then service one notification | ? |
+
+<details>
+<summary>Hint: which instruction runs last?</summary>
+
+Main resumes where it was interrupted. Its pending clear does not know that another notification has arrived.
+
+</details>
+
+<details>
+<summary>Explain the missing notification</summary>
+
+The flag ends at zero. Two notifications arrived, but main services only one. The companion reproduces that result on a native NTSC emulator using actual VBlank interrupts.
+
+Even without that interruption window, two writes of 1 merge into one flag. A flag is useful for “something needs redrawing”; it cannot count how many events arrived. First decide whether merging is acceptable for the work we are scheduling.
+
+</details>
+
+### Count only when the count matters
+
+For this experiment, we require one acknowledgement per notification. NMI owns a byte called `produced`; main owns `consumed`. Initialise them equally before starting the producer. Their unsigned byte difference gives the number still pending.
+
+<CodeFromFile src="nintendo-entertainment-system/assembly/dash/unit-17/notification/counter.asm" />
+
+`take_one` acknowledges at most one notification. Carry set means it took one; carry clear means empty or stopped by overflow. Main must inspect the separate overflow flag to distinguish those outcomes. Taking a notification does not itself run a simulation update or play a note.
+
+Suppose main sees produced 1 and consumed 0. NMI arrives before `INC consumed`, making produced 2. Main then advances consumed to 1. **One notification remains.** Main has not overwritten NMI's byte. If a notification arrives just after an empty check, we discover it on a later call.
+
+This relies on one producer, one consumer, ordinary RAM and a handler that does not nest. NMI suspends main; it does not run on another CPU. The handler preserves the registers main was using. [NES interrupt handling](https://www.nesdev.org/wiki/Interrupts) does not let SEI block NMI, so “disable interrupts around it” is not our repair.
+
+### Wrap, backlog and overload
+
+Predict these three cases, then compare the companion's recorded results:
+
+- Start at produced 255, consumed 254. Another notification arrives during the take. What remains after produced wraps to zero?
+- Start with three pending notifications. One more arrives; main takes two in separate calls. How many remain?
+- Start with 254 pending notifications and attempt three more without consuming. What must happen before the count becomes indistinguishable from empty?
+
+<details>
+<summary>Compare the boundaries</summary>
+
+After the wrapped first take, produced is 0 and consumed is 255: unsigned byte subtraction gives one pending notification. The next take makes both zero. A further empty take does nothing.
+
+The backlog case retains two notifications. We have bounded each call, not made the backlog disappear.
+
+The first new notification takes the full case to 255 pending. The second would make produced equal consumed, falsely suggesting empty. Instead, the producer sets a sticky overflow flag and refuses further increments. Main stops taking new work once it observes that flag; an already-started take may finish. The third producer call remains stopped. Restarting would require stopping the producer before resetting both counters; this companion does not implement live recovery.
+
+</details>
+
+The five native cases repeat from fresh processes, preserve A/X/Y and stack use, and return from the instrumented title NMI within the measured NTSC VBlank window. That checks these paths, not every possible game workload.
+
+A counter preserves evidence of backlog; it does not repair lateness. Repeating simulation with today's input cannot reconstruct missed button presses. Playing several late notes immediately cannot restore their rhythm. We must choose what may be merged, deferred or stopped, and keep important game events reliable. A 255-event capacity is a representation limit, not an acceptable delay.
+
+Finish by choosing between a flag and a counter for two requirements: “redraw the latest score” and “account for every earned point”. Explain what additional data the second might need. Neither routine stores event payloads, and neither makes an unlimited catch-up loop safe.
 
 ## The Blink
 
