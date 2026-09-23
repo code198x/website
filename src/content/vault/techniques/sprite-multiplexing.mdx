@@ -1,253 +1,194 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Sprite Multiplexing"
 subtitle: "More sprites than hardware allows"
-summary: "By repositioning hardware sprites mid-frame as the raster beam passes, programmers displayed far more objects than the hardware officially supported."
+summary: "A sprite multiplexer shows more moving objects than a machine has hardware sprites, by moving each sprite further down the screen once the beam has finished drawing it. On the Commodore 64 it meant sorting objects by height and a chain of raster interrupts every frame; the Amiga's sprite hardware could reuse sprites by itself; the NES rotated its sprite list and accepted flicker."
 category: "techniques"
 platforms: ['commodore-64', 'commodore-amiga', 'nintendo-entertainment-system']
 tags: ['graphics', 'raster', 'advanced']
-originated: 1980
-
-sources:
-  the_information_did_not_exist:
-    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing', mirrored on Codebase64 as 'Rant 3'"
-      kind: technical-doc
-      page: "base:sprite_multiplexing"
-      note: "Why the article exists: 'Sprite multiplexing in its full extent (as seen in games like Green Beret or Ghosts'n Goblins, which allow free usage of over 8 sprites anywhere on the screen, any colors and frames) is a subject seldom discussed in magazines and such. Often they just discuss re-using the sprites or the \"zone split\" technique... I tried to search the net for information but basically came up with nothing, except some programmer diaries, for example Andrew Braybrook's Morpheus diary, which was referring to some of the issues involved quite cryptically. What I had to do was to start reverse-engineering the sprite sorting/multiplexing routines of games like Green Beret, Midnight Resistance etc.'"
-  the_zone_split_worked_example:
-    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing'"
-      kind: technical-doc
-      page: "base:sprite_multiplexing"
-      note: "A named game dissected sprite by sprite: in Turrican's first boss fight there is 'the player character composed of 3 sprites (2 multicolors sprites and a singlecolor white sprite Y-expanded on top of that) and the \"fist\", composed of 5 sprites per row and 4 rows (20 sprites total)'. A raster interrupt before each row rewrites Y-coordinates, frames and colours for sprites 4-8; 'X-coordinates do not change between rows so they can be set beforehand'"
-  the_timing_rule:
-    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing'"
-      kind: technical-doc
-      page: "base:sprite_multiplexing"
-      note: "'The most important hardware feature to take into account: The Y-coordinate for a sprite must have been set before the raster line reaches that Y-position, or the re-used sprite won't display at all!' But it is not tight: 'The Y-coordinate can actually be set well beforehand, right after the previous sprite row has started displaying (modifying the Y-coord in the middle of a sprite display won't \"cut\" it or anything). In fact, more trouble will come from the frames and colors. It will take at least one rasterline to rewrite the frame & color registers'"
-  the_21_pixel_rule:
-    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing'"
-      kind: technical-doc
-      page: "base:sprite_multiplexing"
-      note: "The test for refusing a sprite that would be the ninth on a row, stated exactly: 'if (spry[next_sprite] - sortspry[sorted_sprites - 8] < 21) then reject()' - 'if the difference is less than 21 pixels then the sprite would be too close and couldn't be displayed by the hardware'. The first eight sprites need no test"
-  ocean_sorting_is_named_after_a_publisher:
-    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing'"
-      kind: technical-doc
-      page: "base:sprite_multiplexing"
-      note: "'Named this way because it can be found from many Ocean/Imagine games, like Green Beret or Midnight Resistance. A similar algorithm is also in Dragon Breed.' What makes it different: 'It uses an order-array that is not resetted each time, therefore each sorting operation is a continuation of the previous and if not much changes have happened (sprites not moving past each other in Y-direction much) it will be very fast... However, there's the possibility that on some frame it'll eat a lot of time, when there's a lot of changes in the sprite order'"
-  the_sorts_were_benchmarked:
-    - title: "Falco Paul, 'On sprite sorting methods' (derived from 'Rant 14'), on Codebase64"
-      kind: technical-doc
-      page: "base:sprite_multiplexer_sorting"
-      note: "A test framework run over random Y values 'a million times', alternating extremes, reverse order and 'a typical gaming pattern'. Its conclusions: 'The Ocean sort performs very fast for typical ingame patterns'; 'The Ocean sort performs lousy (bubbesort like) for pure random patterns, and extremly bad for extreme values'; 'The bucket sort performs pretty stable most of the time... only 18% slower than the Ocean sort in the Java version'"
-  where_the_flicker_really_comes_from:
-    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing'"
-      kind: technical-doc
-      page: "base:sprite_multiplexing"
-      note: "Not overlap but a missed interrupt: flicker and slowdown are 'caused by the new raster interrupt being higher or at same position than the current $d012 value'. The guard is to compare against $d012 and jump straight into the next handler if late - 'sta $d012 / sec / sbc #$03 / cmp $d012 ;Late from next IRQ? / bcc go_to_irq_directly'. On the margin: '3 lines feel like paranoidically much \"safety\" for the interrupt but in fact I got flicker in some rare cases if I was subtracting less'"
-  how_to_find_it_in_someone_elses_game:
-    - title: "Lasse Oorni (Cadaver), 'Sprite multiplexing'"
-      kind: technical-doc
-      page: "base:sprite_multiplexing"
-      note: "The article closes by teaching the reverse-engineering method it was built on: 'When you look at the indexed accesses made in the sprite display interrupt code, you'll usually notice one memory access whose result doesn't go into any sprite I/O register, but is used as an index... This is likely the sprite order array, and by looking for memory references to it you'll find the sortroutine.' And: 'Remember, when you get your multiplexer running, stress-test it with abnormal amounts of sprites'"
-
 ---
+import Sources from '@components/Sources.astro';
 
-The VIC-II has 8 sprites. The NES has 64 sprites but only 8 per scanline. The Amiga has 8 sprites. Yet games routinely displayed dozens of moving objects. The trick: reposition sprites after the raster beam has drawn them, allowing the same hardware sprite to appear multiple times per frame.
+The Commodore 64's video chip has eight sprites. Commodore's own *Programmer's Reference Guide* admitted in 1982 that this was not the real limit: "Up to 8 sprites at a time can be maintained by the VIC-II chip automatically. More sprites can be displayed using RASTER INTERRUPT techniques." It added a warning that held for the rest of the decade: "Unfortunately BASIC isn't fast enough to do this very well."
 
-## The principle
+The trick works because a sprite is not an object the chip keeps track of. It is a set of registers the chip reads as the picture is drawn. Once the beam has drawn a sprite, the program can give it a new position lower down, with a new shape and colour, and the chip will draw it again there. Do that for all eight, several times a frame, and eight sprites become twenty or thirty. By 1991 *ZZAP!64* could promise that Chris Butler's *Turbo Charge* had, "for the technically minded", "22 multiplexed hardware sprites on screen". Making it work took a sort, a chain of [raster interrupts](/vault/techniques/raster-interrupts), careful timing and a fair share of every frame. Martin Walker, planning his next game in his *ZZAP!64* diary after *Hunter's Moon*, noted the other catch: "simply having 32 sprites whizzing about does not a game make."
 
-```
-Frame start:
-  Sprite 0 at Y=50
-  Raster draws sprite at line 50
+## The rules on the C64
 
-Raster reaches line 71 (sprite done):
-  Move sprite 0 to Y=150
-  Raster draws "second" sprite at line 150
+The [VIC-II](/vault/hardware/vic-ii) sets the terms:
 
-Result: One hardware sprite appears twice
-```
+- **No more than eight sprites on one line.** Each sprite has one shift register, filled from memory once per line. A ninth object on the same line needs a ninth sprite, and there is none.
+- **A sprite can be reused only below itself.** A sprite is 21 lines tall, so the next object that shares its hardware must start at least 21 lines further down.
+- **The new Y position must be written before the beam reaches it.** Lasse Öörni, who writes as Cadaver, calls this "the most important hardware feature to take into account": if the Y coordinate is late, "the re-used sprite won't display at all!" It is not as tight as it sounds. The Y register can be rewritten as soon as the previous use has started drawing, since changing it in the middle "won't 'cut' it or anything".
+- **Shape and colour are the harder part.** "It will take at least one rasterline to rewrite the frame & color registers," Öörni wrote, so a badly timed write shows the next object's graphics on the last line of the previous one.
 
-## Commodore 64 implementation
+## Reusing sprites in rows
 
-### Simple approach
+The simplest multiplexer does not sort anything. It shows the eight sprites in one row, and when the beam has passed the row, a raster interrupt moves all eight down to the next. Öörni calls this the "zone split" and dissects an example from [*Turrican*](/vault/games/turrican), where the first boss, a giant fist, is "5 sprites per row and 4 rows (20 sprites total)". An interrupt before each row rewrites the Y positions, shapes and colours of five sprites; the X positions stay the same, so they are set once.
 
-```asm
-; Wait for raster to pass sprite's bottom
-    lda #71             ; line after first sprite
-.wait:
-    cmp $d012
-    bcs .wait
-
-; Reposition sprite for second appearance
-    lda #150
-    sta $d001           ; sprite 0 Y position
-    lda new_x
-    sta $d000           ; sprite 0 X position
-```
-
-### Full multiplexer
-
-A proper multiplexer:
-
-1. Sorts all virtual sprites by Y position
-2. Assigns hardware sprites to the nearest virtual sprites
-3. Uses raster interrupts to reposition at exact moments
+This program does the same with all eight sprites, four rows of them, 32 boxes in four colours. One handler serves every row, taking the next row's Y position, colour and interrupt line from small tables.
 
 ```asm
-; Simplified multiplexer structure
-virtual_sprites:        ; array of Y,X,pointer for each object
-    .res MAX_SPRITES * 4
+; eight hardware sprites shown four times each: 32 objects (ACME syntax)
+; start it from a BASIC SYS line
+start   sei
+        ldx #62             ; sprite shape: a hollow box in block 13 ($0340)
+-       lda shape,x
+        sta $0340,x
+        dex
+        bpl -
+        ldx #7
+-       lda #13
+        sta $07f8,x         ; all eight sprites use block 13
+        lda xpos,x
+        pha
+        txa
+        asl
+        tay                 ; Y = 2 * sprite number
+        pla
+        sta $d000,y         ; X position
+        lda #60
+        sta $d001,y         ; first row at Y = 60
+        lda #1
+        sta $d027,x         ; white
+        dex
+        bpl -
+        lda #$ff
+        sta $d015           ; all eight sprites on
+        lda #$7f
+        sta $dc0d           ; switch off CIA 1's interrupts
+        lda $dc0d
+        lda #<irq
+        sta $0314
+        lda #>irq
+        sta $0315
+        lda #84
+        sta $d012           ; first interrupt: row 0 has been drawn
+        lda $d011
+        and #$7f
+        sta $d011
+        lda #$01
+        sta $d01a
+        sta $d019
+        cli
+        rts
 
-sorted_indices:         ; Y-sorted order
-    .res MAX_SPRITES
+irq     lda #$01
+        sta $d019           ; acknowledge
+        ldx zone
+        lda newy,x          ; move all eight sprites down to the next row
+        sta $d001
+        sta $d003
+        sta $d005
+        sta $d007
+        sta $d009
+        sta $d00b
+        sta $d00d
+        sta $d00f
+        lda newcol,x        ; and give that row its own colour
+        sta $d027
+        sta $d028
+        sta $d029
+        sta $d02a
+        sta $d02b
+        sta $d02c
+        sta $d02d
+        sta $d02e
+        lda nextline,x
+        sta $d012           ; where the next interrupt happens
+        inx
+        cpx #4
+        bne +
+        ldx #0
+        stx zone
+        jmp $ea31           ; once a frame, let the KERNAL run
++       stx zone
+        jmp $ea81
 
-; IRQ chain repositions sprites as raster descends
+zone     !byte 0
+newy     !byte 100, 140, 180, 60   ; row each interrupt sets up
+newcol   !byte 7, 5, 3, 1          ; yellow, green, cyan, white
+nextline !byte 124, 164, 212, 84   ; each just below the row now showing
+xpos     !byte 30, 62, 94, 126, 158, 190, 222, 254
+shape    !byte $ff,$ff,$ff         ; top edge
+         !for r, 1, 19 {
+         !byte $80,$00,$01         ; left and right edges
+         }
+         !byte $ff,$ff,$ff         ; bottom edge
 ```
 
-### Sorting requirement
+Each interrupt comes a few lines below a row that has finished drawing and well above the next, so the timing has plenty of slack. Move the interrupt for the second row to line 105, after that row should have started, and the whole second row vanishes: the Y positions arrive too late, exactly as Öörni warned. The last interrupt of the frame, at line 212, puts the sprites back at the top ready for the next frame.
 
-Sprites must be Y-sorted because the raster moves top to bottom and a sprite can only
-be reused after it has been drawn. Two hardware facts set the constraints:
+Rows are easy because the program decides where everything goes. In a game, objects move where they like.
 
-- **The Y-coordinate must be written before the beam reaches it**, or the reused sprite
-  does not appear at all. This is less tight than it sounds — writing Y mid-display
-  "won't 'cut' it or anything", so the value can be set as soon as the previous row
-  starts drawing. Frames and colours are the harder problem: rewriting those registers
-  takes at least a raster line.
-- **Sprites less than 21 pixels apart cannot share a physical sprite.** Cadaver gives
-  the rejection test exactly: `if (spry[next_sprite] - sortspry[sorted_sprites - 8] <
-  21) then reject()`. The first eight sprites need no test, because there is nothing
-  yet to collide with.
+## A general multiplexer
 
-### Which sort
+Games such as *Green Beret* and [*Ghosts'n Goblins*](/vault/games/ghosts-n-goblins), in Öörni's words, "allow free usage of over 8 sprites anywhere on the screen, any colors and frames". To do that, a multiplexer treats the game's objects as *virtual* sprites and does four jobs every frame:
 
-The sort is the multiplexer's real cost, and the scene benchmarked the options rather
-than arguing about them. The one that carries a name carries a publisher's:
+1. **Sort** the virtual sprites by Y position, top of the screen first.
+2. **Map** them onto the eight real sprites in turn: the first eight sorted objects go to sprites 0 to 7, the ninth to sprite 0 again, the tenth to sprite 1, and so on round.
+3. **Reject** any object that would be a ninth sprite on a line. With round-robin mapping, object *n* shares a sprite with object *n* − 8, so the test is whether they are less than 21 lines apart. Öörni gives it as `if (spry[next_sprite] - sortspry[sorted_sprites - 8] < 21) then reject()`. The first eight never need the test.
+4. **Display** them with a chain of raster interrupts down the screen, each writing the registers for the next few objects, Y positions first because they are the ones that must not be late.
 
-> **"Ocean" sorting.** Named this way because it can be found from many Ocean/Imagine
-> games, like Green Beret or Midnight Resistance. A similar algorithm is also in Dragon
-> Breed.
+The sort is where the time goes. Öörni named the one he preferred "Ocean" sorting, "because it can be found from many Ocean/Imagine games, like Green Beret or Midnight Resistance". It keeps the sorted order from the previous frame and repairs it, swapping neighbours that have changed places. Objects in a game rarely overtake each other vertically, so most frames need almost no work, but "on some frame it'll eat a lot of time, when there's a lot of changes in the sprite order". Falco Paul later tested the candidates in Java over random, extreme and game-like data. On the game-like pattern the Ocean sort "performs very fast"; on random data it "performs lousy (bubbesort like)". A bucket sort, grouping objects by Y, was steadier, and in his tests "only 18% slower than the Ocean sort" on game-like data.
 
-It keeps the order array between frames instead of resetting it, so a frame where
-little has moved costs almost nothing — at the price of an occasional frame that costs
-a great deal.
+### What it cost the programmer
 
-Falco Paul later built a test framework and ran the candidates over a million random
-frames plus deliberately hostile patterns:
+Programmers learned this from each other and by taking games apart. [Andrew Braybrook](/vault/people/andrew-braybrook)'s diary of *Morpheus* in *ZZAP!64* shows the process from the inside. In January 1987 he saw Gary Liddon's multiplexer and could not "understand why his runs faster", so he borrowed Liddon's method of "building a table in the system stack so I can use faster instructions to read the table". The multiplexer then set its own traps. In April the sprites vanished between the title screen and the game, because "the sprite multiplexor clears out the sprite table ready for the next position", and no new positions arrived while the program was busy setting up the screen; he asked readers what to do about the pause mode. In August, arranging the enemy line-up on the title screen, he found "the sprite positioning had to be pixel perfect to actually work properly, there's no room for any play in the vertical positioning at all".
 
-| Pattern | Ocean sort | Bucket sort |
-|---|---|---|
-| Typical in-game | "performs very fast" | 18% slower than Ocean |
-| Pure random | "performs lousy (bubbesort like)" | "pretty stable most of the time" |
-| Extreme values | "extremly bad" | stable |
+Öörni, writing years later, had found no better written guide. Full multiplexing was "a subject seldom discussed in magazines", and the Braybrook diary was "referring to some of the issues involved quite cryptically", so he reverse-engineered "the sprite sorting/multiplexing routines of games like Green Beret, Midnight Resistance etc." himself.
 
-Which is the case for choosing by measurement: the fast sort is fast only on the input
-that games produce.
+Game design had to live with the eight-per-line rule. Walker put it plainly in his *Citadel* diary in November 1988: "the main problem with any multiplexor is making sure that it is *never* possible for more than eight sprites to attempt to occupy the same horizontal 'strip'". Fixing some of *Citadel*'s sprites in position on the landscape would help. "If all the sprites may be moving, the alternatives are a lot of effort to ensure that the wrong combination can never occur (*Armalyte*) or nasty flickers and lurchers ([*Zynaps*](/vault/games/zynaps), for one)."
 
-## NES sprite considerations
+### Flicker and the late interrupt
 
-The NES has different constraints:
+Some of the flicker in C64 games came not from too many sprites on a line but from interrupts that arrived late. A raster interrupt fires only when the beam reaches its line exactly. If a handler runs long and then sets the next interrupt for a line the beam has already passed, that interrupt does not come until the next frame, and the sprites it should have moved are missing or wrong. Öörni describes the result as "flicker & slowdown (caused by the new raster interrupt being higher or at same position than the current $d012 value)".
 
-- 64 sprites in OAM (Object Attribute Memory)
-- Only 8 sprites per scanline (hardware limit)
-- Excess sprites on a line become invisible
-- Sprite 0 is always evaluated first — never flickered, and used for sprite-0-hit timing
-
-### NES solution: cycling priority
-
-The PPU evaluates OAM in order, keeping the first 8 sprites it finds on each scanline. Rotating the OAM start offset each frame distributes the flicker:
+His fix checks before returning. If the next interrupt's line is already close, the handler jumps straight to the next handler's code instead:
 
 ```asm
-; Rotate which sprites get priority each frame
-; Spreads flicker across all objects instead of
-; always hiding the same ones
-
-    inc frame_count
-    lda frame_count
-    and #$1C            ; 0, 4, 8, 12, 16, 20, 24, 28
-    tay                 ; OAM start index
-    ; Build OAM buffer starting at offset Y, wrapping at 256
+        sta $d012           ; A = line of the next interrupt
+        sec
+        sbc #$03
+        cmp $d012           ; late from next IRQ?
+        bcc go_to_irq_directly
 ```
 
-The mask `#$1C` gives 8 different start offsets cycling every 32 frames, so each sprite spends roughly 1/8 of its time at low priority. This is the standard *Super Mario Bros.* / *Contra* idiom.
+The margin of three lines is from experience: "3 lines feel like paranoidically much 'safety' for the interrupt but in fact I got flicker in some rare cases if I was subtracting only 2." He also advises keeping objects that are off the visible screen out of the list, and keeping sprites a couple of lines clear of the top of a score panel, so that the panel's own interrupt is not pushed late.
 
-## Amiga sprite multiplexing
+## On the Amiga
 
-The Copper makes Amiga multiplexing elegant:
+The Amiga's [Denise](/vault/hardware/denise) chip also has eight sprites, but Amiga sprites are fetched by DMA from a list in memory, and the list can describe several uses of the same sprite down the screen. Commodore's *Hardware Reference Manual* says so plainly: "Sprite DMA channels can be reused several times within the same display field. Thus, you are not limited to having only eight sprites on the screen at the same time." The only restriction is a gap: "the bottom line of one usage of a sprite must be separated from the top line of the next usage by at least one horizontal scan line", because the channel uses that line to fetch the next position. No interrupt is needed. The one thing the list cannot change is colour; for that the manual has the [copper](/vault/hardware/copper) wait for the last line of one use and rewrite the sprite's colour registers before the next.
 
-```asm
-copper_list:
-    ; Sprite 0 first appearance
-    dc.w    $0120, sprite0_hi
-    dc.w    $0122, sprite0_lo
-    dc.w    $0140, $5050        ; position 1
+Amiga games still needed sorting, because the list must run top to bottom. Braybrook, writing his *Uridium 2* diary for *The One* in 1992, explained the term for its readers: "Multi-plexor's a fancy name for a routine which sorts the objects to be displayed into vertical position sequence and re-uses hardware sprites to show them".
 
-    ; Wait for sprite to pass
-    dc.w    $6007, $fffe
+## On the NES
 
-    ; Sprite 0 second appearance
-    dc.w    $0140, $a070        ; position 2
-    dc.w    $0144, new_data
-```
+The NES works the other way round. Its [PPU](/vault/hardware/ppu) holds 64 sprites, but draws only the first eight it finds on each line, in the order they sit in sprite memory. The rest on that line are not drawn. Reusing sprites down the screen is not the problem; too many on one line is. The usual answer was to change the order of sprite memory from frame to frame, so that a different sprite drops out each time and every object is visible some of the time. That trades missing objects for [sprite flicker](/vault/techniques/sprite-flicker), the shimmer familiar from busy NES games.
 
-No CPU interrupts needed — the Copper handles repositioning. The Copper can also reposition sprites *mid-scanline* by writing to SPRxPOS at the right horizontal position; the constraint is the Copper DMA budget, not "after the sprite has finished drawing" as on the C64.
+<Sources>
 
-## Limitations
+- Commodore, *Commodore 64 Programmer's Reference Guide* (1982): "More sprites can be displayed using RASTER INTERRUPT techniques" (p. 131); displaying more than 8 sprites with interrupts, and "BASIC isn't fast enough" (pp. 151–152).
+- *ZZAP!64* issue 24, April 1987, p. 90: Andrew Braybrook's *Morpheus* diary, on Gary Liddon's multiplexer and the table in the stack. Issue 26, June 1987, p. 70: the multiplexer clearing the sprite table. Issue 30, October 1987, p. 51: the title screen and "pixel perfect" positioning.
+- *ZZAP!64* issue 36, April 1988, p. 51: Martin Walker's diary, "32 sprites whizzing about does not a game make". Issue 43, November 1988, p. 114: Walker on the eight-sprite problem, *Armalyte* and *Zynaps*.
+- *ZZAP!64* issue 75, July 1991, p. 39: preview of Chris Butler's *Turbo Charge*, "22 multiplexed hardware sprites".
+- *The One* issue 51, December 1992: Andrew Braybrook's *Uridium 2* diary, the definition of a multiplexor.
+- Lasse Öörni (Cadaver), "Sprite multiplexing", mirrored on the Codebase64 wiki (web, secondary): the zone split and *Turrican*, the Y-coordinate rule, frames and colours, round-robin mapping, the 21-line rejection test, "Ocean" sorting, late interrupts and the three-line margin, and his search for published information. https://codebase.c64.org/doku.php?id=base:sprite_multiplexing
+- Falco Paul, "On sprite sorting methods", Codebase64 wiki (web, secondary): the Java test framework and its conclusions. https://codebase.c64.org/doku.php?id=base:sprite_multiplexer_sorting
+- *Amiga Hardware Reference Manual*, 3rd edition (Commodore-Amiga, Addison-Wesley, 1991): changing sprite colours between uses with the copper (pp. 26–27); sprites reusable within a field (p. 97); the data list for reuse and the one-line gap (pp. 116–117).
+- NESdev Wiki, "PPU sprite evaluation" (community reference, web, secondary): the first eight sprites in memory order are drawn on each line. https://www.nesdev.org/wiki/PPU_sprite_evaluation
 
-| Constraint | Cause | Mitigation |
-|------------|-------|------------|
-| Vertical only | Can't reuse until raster passes | Sort by Y, design levels accordingly |
-| Flicker | Too many sprites at same Y | Spread objects vertically |
-| CPU cost | Sorting, repositioning | Pre-sort static objects |
-| Per-line limits | Hardware constraint | Design around it |
+The row-reuse listing was assembled with ACME and run in the VICE emulator (x64sc) as PAL and NTSC machines, and again with the second row's interrupt moved to line 105.
 
-## Games that used multiplexing
-
-These are the C64 games named in Cadaver's article, which reverse-engineered them
-because no published account existed:
-
-| Game | What it shows |
-|---|---|
-| *Turrican* | Zone split, dissected sprite by sprite: 3 sprites for the player, 20 for the first boss in 4 rows of 5 |
-| *Green Beret* (Ocean) | The "Ocean" sort, and one of two games named for "free usage of over 8 sprites anywhere on the screen" |
-| *Midnight Resistance* (Ocean) | The "Ocean" sort |
-| *Dragon Breed* | "A similar algorithm" |
-| *Ghosts'n Goblins* | Full multiplexing, "any colors and frames" |
-
-Andrew Braybrook's published *Morpheus* development diary was the only prior written
-source Cadaver could find, and it "was referring to some of the issues involved quite
-cryptically."
-
-## Flicker management
-
-On the C64 the usual cause of flicker is not overlap but a missed interrupt — "the new
-raster interrupt being higher or at same position than the current `$d012` value." The
-fix is to check before returning, and to jump straight into the next handler if you are
-already late:
-
-```asm
-    sta $d012
-    sec
-    sbc #$03
-    cmp $d012        ; Late from next IRQ?
-    bcc go_to_irq_directly
-```
-
-Three lines of margin is empirical, not theoretical: "3 lines feel like paranoidically
-much 'safety' for the interrupt but in fact I got flicker in some rare cases if I was
-subtracting less."
-
-Two design measures help before any of that: do not display sprites outside the visible
-screen, and keep sprites clear of the last couple of lines above a score panel.
-
-For platforms without a raster interrupt to miss, the mitigations are different — see
-[sprite flicker](/vault/techniques/sprite-flicker).
+</Sources>
 
 ## See also
 
 - [VIC-II](/vault/hardware/vic-ii)
-- [Raster Tricks](/vault/techniques/raster-tricks)
+- [Raster interrupts](/vault/techniques/raster-interrupts)
+- [Stable raster](/vault/techniques/stable-raster)
+- [Sprite flicker](/vault/techniques/sprite-flicker)
+- [Denise](/vault/hardware/denise)
 - [PPU](/vault/hardware/ppu)
-- [Copper](/vault/hardware/copper)
+- [Andrew Braybrook](/vault/people/andrew-braybrook)
