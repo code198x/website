@@ -16,8 +16,11 @@ if(process.argv.includes('--built')) {
   const catalog=JSON.parse(readFileSync(new URL('catalog.json',root),'utf8'));
   const codeSite=true;
   for(const entry of catalog) {
-    const slug=codeSite ? entry.aliases[0] : entry.siteId || entry.id;
-    const page=readFileSync(new URL(`../dist/systems/${slug}/index.html`,import.meta.url),'utf8');
+    // The site's system page is whichever alias it builds as a real page; an
+    // alias may now be an old ID that only redirects (zx81 -> sinclair-zx81).
+    const systemPage=(s)=>{const u=new URL(`../dist/systems/${s}/index.html`,import.meta.url);if(!existsSync(u))return null;const html=readFileSync(u,'utf8');return html.includes('http-equiv="refresh"')?null:html;};
+    const slug=codeSite ? entry.aliases.find((a)=>systemPage(a)) ?? entry.aliases[0] : entry.siteId || entry.id;
+    const page=systemPage(slug) ?? readFileSync(new URL(`../dist/systems/${slug}/index.html`,import.meta.url),'utf8');
     if(!page.includes(`<emu198x-player system="${entry.id}"`))throw new Error(`Inline player missing from ${slug}`);
     if(page.includes(`src="/emulators/index.html?`))throw new Error(`Old iframe player remains on ${slug}`);
     if(codeSite)for(const [alias,variant] of Object.entries(entry.variantAliases || {})) {
