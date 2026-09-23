@@ -141,13 +141,13 @@ export default defineConfig({
     // Machines filed under hardware/ moved to systems/, where whole machines
     // belong. hardware/ keeps components, peripherals and add-ons. Old slugs
     // redirect so existing links and bookmarks still resolve.
-    '/vault/hardware/dreamcast': '/vault/systems/dreamcast',
-    '/vault/hardware/naomi': '/vault/systems/naomi',
+    '/vault/hardware/dreamcast': '/vault/systems/sega-dreamcast',
+    '/vault/hardware/naomi': '/vault/systems/sega-naomi',
     '/vault/hardware/vectrex': '/vault/systems/vectrex',
     '/vault/hardware/sega-saturn': '/vault/systems/sega-saturn',
     // playstation-hardware duplicated systems/playstation, which covers the same
     // silicon better from Sony's own manual. Merged; its sound system survives there.
-    '/vault/hardware/playstation-hardware': '/vault/systems/playstation',
+    '/vault/hardware/playstation-hardware': '/vault/systems/sony-playstation',
     // culture/uk-games-industry restated culture/british-game-development at summary
     // length — same subject, a third the size, with its "Industry evolution" and
     // "Regional strengths" duplicating that entry's fuller "The transitions" and
@@ -184,10 +184,29 @@ export default defineConfig({
     // there.
     '/vault/culture/coverdisks': '/vault/distribution/magazine-cover-disks',
     '/vault/hardware/galaksija': '/vault/systems/galaksija',
-    '/vault/hardware/trs-80-color-computer': '/vault/systems/trs-80-color-computer',
+    '/vault/hardware/trs-80-color-computer': '/vault/systems/tandy-coco',
     '/vault/hardware/famiclone': '/vault/systems/famiclone',
-    '/vault/hardware/game-and-watch': '/vault/systems/game-and-watch',
+    '/vault/hardware/game-and-watch': '/vault/systems/nintendo-game-and-watch',
     '/vault/hardware/nintendo-ds': '/vault/systems/nintendo-ds',
+    // Vault system entries use the site's system ID where one exists, otherwise
+    // the family's <manufacturer>-<model> convention (umbrella decision
+    // by-system-slug-convention.md). The old slugs redirect.
+    '/vault/systems/zx-spectrum': '/vault/systems/sinclair-zx-spectrum',
+    '/vault/systems/zx81': '/vault/systems/sinclair-zx81',
+    '/vault/systems/nes': '/vault/systems/nintendo-entertainment-system',
+    '/vault/systems/n64': '/vault/systems/nintendo-64',
+    '/vault/systems/dreamcast': '/vault/systems/sega-dreamcast',
+    '/vault/systems/game-gear': '/vault/systems/sega-game-gear',
+    '/vault/systems/vic-20': '/vault/systems/commodore-vic-20',
+    '/vault/systems/playstation': '/vault/systems/sony-playstation',
+    '/vault/systems/playstation-2': '/vault/systems/sony-playstation-2',
+    '/vault/systems/trs-80-color-computer': '/vault/systems/tandy-coco',
+    '/vault/systems/game-and-watch': '/vault/systems/nintendo-game-and-watch',
+    '/vault/systems/naomi': '/vault/systems/sega-naomi',
+    '/vault/systems/xbox': '/vault/systems/microsoft-xbox',
+    // The ZX81's system ID follows the same convention.
+    '/systems/zx81': '/systems/sinclair-zx81',
+    '/zx81': '/systems/sinclair-zx81',
     // /browse retired — the fleet lenses (era/region/maker/tier) cover its live axes;
     // the genre/technique/difficulty scaffolds were never built. Technique's real home
     // is the Pattern Library.
