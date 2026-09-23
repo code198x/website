@@ -1,182 +1,185 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "MMC3"
-subtitle: "The NES power expander"
-summary: "Nintendo's MMC3 mapper chip enabled larger, more sophisticated NES games through bank switching, scanline counting, and expanded capabilities."
+subtitle: "The mapper that counted scanlines"
+summary: "Nintendo's third memory controller for NES cartridges added fine-grained bank switching and an interrupt partway down the screen. Its counter never sees a scanline: it counts the pulses the PPU makes on one address line, and Nintendo made licensees lay out their graphics so there was one per line."
 category: "hardware"
 platforms: ['nintendo-entertainment-system']
-tags: ['mapper', 'nes', 'enhancement']
+tags: ['mapper', 'nes', 'nintendo', 'irq', 'bank-switching']
 introduced: 1988
 sources:
-  naming:
-    - title: "MMC3 programming specification, Nintendo (15 December 1987)"
+  introduced:
+    - title: "NESdev Wiki, MMC3"
+      kind: database
+      note: "Community reference (web, secondary): 'This chip first appeared in the fourth quarter of 1988.'"
+    - title: "Nintendo, MMC3 Specification, third edition, 24 May 1988 (unpublished licensee document)"
       kind: technical-doc
-      page: "11"
-      note: "⚠ Japanese; this line survives in Latin script — '( Multi-Memory Controller 3 )' — which is what the part was called when it was designed, against the 'Memory Management Controller' of later English-language documentation"
-  irq:
-    - title: "NESdev Wiki, MMC3"
-      kind: database
-      page: "§27"
-      note: "⚠ Community reference, cited by segment. 'The MMC3 scanline counter is based entirely on PPU A12, triggered on a rising edge after the line has remained low for three falling edges of M2. The counter is based on the following trick: whenever rendering is turned on in the PPU, it fetches nametable and BG pattern tiles from dots 0-255 and 320-340 of a scanline and fetches sprite patterns from dots 256-319, even if no sprites are visible. Because of this, if BG uses the left pattern table ($0000), and if sprites always use the right pattern table ($1000), this filtered copy of A12 will remain low during all nametable and BG pattern fetches, and high during all sprite pattern fetches, causing it to oscillate exactly one time per scanline and 241 times per frame'"
-  revisions:
-    - title: "NESdev Wiki, MMC3"
-      kind: database
-      page: "§27, §29"
-      note: "'The MMC3 most commonly exists in a 44-pin TQFP package. Three revisions are known to exist - MMC3A, MMC3B, and MMC3C. No major behavioral differences are known, except for the IRQ counter. MMC3 chips manufactured by NEC are implemented within a 13x56 CMOS gate array. The implementation method used by Sharp is not yet known.' On the split: 'MMC3 made by NEC generates only a single IRQ when $C000 is $00. This version of the MMC3 generates IRQs when the scanline counter is decremented to 0 ... known as the \"alternate\" or \"old\" behavior. MMC3 made by Sharp generates an IRQ on each scanline while $C000 is $00. This version of the MMC3 generates IRQs when the scanline counter is equal to 0 ... known as the \"normal\" or \"new\" behavior.' And an admission: 'Because this behavior is not fully understood, emulators do not yet emulate it'"
+      page: "1"
+      note: "The specification's design dates: a provisional draft dated 15 December 1987 and the third edition of 24 May 1988. Named, not linked or reproduced, under the project's rule for unpublished manufacturer documents"
 ---
 
 import Sources from '@components/Sources.astro';
 
-The NES's base hardware had limitations that mapper chips overcame. The MMC3 (Memory Management Controller 3) was Nintendo's most widely used advanced mapper, enabling bank switching for larger ROMs, scanline IRQs for split-screen effects, and additional RAM. Games like *Super Mario Bros. 3* and *Kirby's Adventure* used MMC3 to exceed what the base NES could achieve.
+The MMC3 is the chip that let an NES game stop partway down the screen and do something different. In January 1991 *Nintendo Power* explained it to its readers through *[Super Mario Bros. 3](/vault/games/super-mario-bros-3)*: "The scoreboard at the bottom of the picture is actually a second screen, which stays put even as Mario sprints from left to right. It's made possible by a timer function that was specially built into the MMC3."
 
-## The scanline counter that does not count scanlines
+That timer is the surprising part. The NES has no line counter a program can set, and the MMC3, sitting on the cartridge, cannot see the picture at all. It watches a single address line of the [PPU](/vault/hardware/ppu) and counts the pulses the PPU makes there while it fetches graphics. Nintendo made that count come out at one per scanline by telling licensees exactly where to put their tiles.
 
-The MMC3's headline feature is a scanline interrupt, which let *Super Mario Bros.
-3* hold a status bar still while the world scrolled behind it. The mapper has no
-idea what a scanline is. It watches one wire.
-
-> The MMC3 scanline counter is based entirely on PPU A12, triggered on a rising
-> edge after the line has remained low for three falling edges of M2.
-
-`A12` is address line 12 of the picture processing unit. The mapper infers the
-passage of a scanline from a *side effect* of how the PPU fetches graphics:
-
-> whenever rendering is turned on in the PPU, it fetches nametable and BG pattern
-> tiles from dots 0-255 and 320-340 of a scanline and fetches sprite patterns
-> from dots 256-319, **even if no sprites are visible**.
-
-So if a game puts its background tiles in the low pattern table and its sprites
-in the high one, A12 stays low through the background fetches and goes high
-through the sprite fetches — "causing it to oscillate exactly one time per
-scanline and 241 times per frame".
-
-The interrupt is not a timer. It is a cartridge eavesdropping on the video chip's
-address bus and counting a pattern that only exists because the PPU fetches
-sprite data whether or not there are sprites. A game that arranges its pattern
-tables the other way round breaks its own interrupts.
-
-## Two chips, two behaviours
-
-The MMC3 came from more than one manufacturer, and they do not agree:
-
-| Maker | When `$C000` is `$00` | Fires when the counter is |
-|---|---|---|
-| NEC | a single IRQ | *decremented* to 0 |
-| Sharp | an IRQ every scanline | *equal* to 0 |
-
-The community calls NEC's the "alternate" or "old" behaviour and Sharp's the
-"normal" or "new" one. Three revisions exist — MMC3A, MMC3B and MMC3C — with "no
-major behavioral differences known, except for the IRQ counter", and while NEC's
-part is "implemented within a 13x56 CMOS gate array", "the implementation method
-used by Sharp is not yet known".
-
-There is also a case nobody has pinned down. Writing `$C001` on consecutive
-scanlines "can cause pathological behavior", and the documentation is candid
-about where that leaves things: "Because this behavior is not fully understood,
-emulators do not yet emulate it."
-
-Two cartridges bearing the same mapper number, holding the same game, can
-interrupt at different moments depending on which company etched the chip.
+Nintendo's own specification names the part the Multi-Memory Controller 3. *Nintendo Power*, writing for players, called MMCs "Memory Management Controllers". The chip first appeared in cartridges in the last quarter of 1988, and the NESdev Wiki counts about 300 games on its boards.
 
 ## Fast facts
 
-- **Manufacturer:** [Nintendo](/vault/companies/nintendo).
-- **iNES mapper number:** 4 (board family TxROM, including TGROM, TKROM, TLROM, TSROM).
-- **Purpose:** extend NES capabilities beyond the base hardware's 32 KB PRG / 8 KB CHR ceiling.
-- **Features:** PRG and CHR bank switching, A12-clocked IRQ counter for mid-frame splits, mirroring control, optional 8 KB battery-backed PRG-RAM.
-- **PRG ROM:** up to 512 KB (8 KB granularity).
-- **CHR ROM/RAM:** up to 256 KB (1 KB granularity).
-- **PRG-RAM:** 8 KB at $6000-$7FFF (battery-backed in TKROM/TSROM boards).
-- **Notable games:** *[Super Mario Bros. 3](/vault/games/super-mario-bros-3)*, *Mega Man 3-6*, *Kirby's Adventure*, *[Crystalis](/vault/games/crystalis)*, *Castlevania III*.
+- **Maker:** [Nintendo](/vault/companies/nintendo); chips were manufactured by both Sharp and NEC.
+- **Boards:** Nintendo's TxROM family, iNES mapper 4 (two board variants are mappers 118 and 119).
+- **Program ROM:** up to 512 KB, switched in 8 KB banks.
+- **Character ROM or RAM:** up to 256 KB, switched as two 2 KB banks and four 1 KB banks.
+- **Work RAM:** optional 8 KB at `$6000-$7FFF`, which can be battery-backed for saved games.
+- **Nametable mirroring:** horizontal or vertical, chosen by the program.
+- **Interrupt:** an 8-bit counter clocked by PPU address line A12, raising an IRQ when it reaches zero.
+- **Games:** *Super Mario Bros. 3*, *NES Play Action Football* and Taito's *The Flintstones* and *G.I. Joe*, all named in *Nintendo Power*; *[Crystalis](/vault/games/crystalis)*, *Wario's Woods* and *Star Trek: 25th Anniversary*, named in NESdev's notes on how they use the counter.
 
 ## Bank switching
 
-### PRG banking ($8000-$FFFF)
+### Program ROM ($8000-$FFFF)
 
-PRG ROM is split into four 8 KB windows. Two are switchable, one is switchable, and one is fixed to the last bank — but the bank-mode bit (bit 6 of the value written to $8000) decides *which* two are switchable:
+The CPU sees program ROM through four 8 KB windows. Two can be switched, using bank registers R6 and R7. The other two are fixed: `$E000-$FFFF` always holds the last 8 KB of the ROM, and one more window holds the second-last. Bit 6 of the value written to `$8000` decides which end of the map R6 controls:
 
 | PRG mode (bit 6 of $8000) | $8000-$9FFF | $A000-$BFFF | $C000-$DFFF | $E000-$FFFF |
 |---|---|---|---|---|
-| 0 | bank R6 | bank R7 | second-to-last | last |
-| 1 | second-to-last | bank R7 | bank R6 | last |
+| 0 | R6 | R7 | second-last bank | last bank |
+| 1 | second-last bank | R7 | R6 | last bank |
 
-The last bank is always fixed at $E000-$FFFF (so reset/IRQ/NMI vectors stay reachable). R6 and R7 are general 8 KB bank registers.
+The last bank never moves because the 6502's reset, NMI and IRQ vectors live at its top. The bank registers hold unknown values when the power comes on, so the reset code has to sit in `$E000-$FFFF` and set them before jumping anywhere else. R6 and R7 use only six bits, which is where the 512 KB limit comes from: 64 banks of 8 KB.
 
-### CHR banking ($0000-$1FFF in PPU space)
+### Character ROM ($0000-$1FFF in PPU space)
 
-CHR is split into two 2 KB regions and four 1 KB regions. The CHR-mode bit (bit 7 of $8000) decides which half of pattern-table space gets the 2 KB banks:
+The PPU's pattern tables are split into two 2 KB banks (R0 and R1) and four 1 KB banks (R2 to R5). Bit 7 of the value written to `$8000` decides which half of pattern space gets the 2 KB banks:
 
 | CHR mode (bit 7 of $8000) | $0000-$07FF | $0800-$0FFF | $1000-$13FF | $1400-$17FF | $1800-$1BFF | $1C00-$1FFF |
 |---|---|---|---|---|---|---|
 | 0 | R0 (2 KB) | R1 (2 KB) | R2 | R3 | R4 | R5 |
 | 1 | R2 | R3 | R4 | R5 | R0 (2 KB) | R1 (2 KB) |
 
-R0 and R1 are 2 KB-aligned (their low bit is ignored). R2-R5 are 1 KB banks.
+Bank numbers always count 1 KB units, so R0 and R1 ignore their lowest bit. A 1 KB bank is 64 tiles, so a game can swap a single character's animation frames in and out without touching the rest of its graphics.
 
-## Register map
+## Registers
 
-| Address | Even (A0=0) | Odd (A0=1) |
+The MMC3 sees only three CPU address lines (A0, A13 and A14) in the cartridge space, so each register answers across a whole 8 KB range: even addresses reach one register of a pair, odd addresses the other.
+
+| Address | Even (e.g. $8000) | Odd (e.g. $8001) |
 |---|---|---|
-| $8000-$9FFF | Bank select (bits 0-2 = R0-R7 select; bit 6 = PRG mode; bit 7 = CHR mode) | Bank data (writes the selected R-register) |
-| $A000-$BFFF | Mirroring (bit 0: 0=vertical, 1=horizontal) | PRG-RAM protect (bit 6 = read-only, bit 7 = enable) |
-| $C000-$DFFF | IRQ latch (8-bit reload value) | IRQ reload (writes here force counter reload on next clock) |
-| $E000-$FFFF | IRQ disable + acknowledge | IRQ enable |
+| $8000-$9FFF | **Bank select:** bits 0-2 choose R0-R7 for the next bank-data write; bit 6 is the PRG mode; bit 7 is the CHR mode | **Bank data:** the bank number for the register just selected |
+| $A000-$BFFF | **Mirroring:** bit 0 = 0 for vertical mirroring, 1 for horizontal | **Work RAM protect:** bit 7 = 1 enables the RAM; bit 6 = 1 refuses writes |
+| $C000-$DFFF | **IRQ latch:** the value the counter reloads from | **IRQ reload:** any write clears the counter so it reloads on its next clock |
+| $E000-$FFFF | **IRQ disable:** any write disables the interrupt and acknowledges one that is pending | **IRQ enable:** any write enables the interrupt |
 
-Each register pair is selected by the address's low bit — write to even addresses for the first column, odd addresses for the second. Mirroring control via $A000 has no effect on cartridges hard-wired for four-screen mirroring (which use 4 KB of cartridge VRAM instead of CIRAM).
+Every bank-select write also rewrites the two mode bits, so a program has to include its chosen modes each time. The mirroring bit does nothing on boards wired for four separate screens.
 
-## How the IRQ works
+## The scanline counter that does not count scanlines
 
-MMC3's IRQ counter is **not** clocked by a scanline counter. It clocks on each **rising edge of PPU address bit A12** — which happens whenever the PPU fetches from $1000-$1FFF after a fetch from $0000-$0FFF.
+NESdev's documentation puts the mechanism in one sentence:
 
-During normal rendering, the PPU performs background tile fetches in one half of pattern-table space and sprite fetches in the other half. The standard idiom: put background tiles in $0000-$0FFF and sprite tiles in $1000-$1FFF (PPUCTRL bits 3 and 4). On most scanlines this produces exactly one A12 rising edge per scanline (during sprite fetch cycles), so the IRQ counter behaves as a scanline counter — but only if the game arranges its pattern tables that way. Nintendo did not leave that to chance; see below.
+> The MMC3 scanline counter is based entirely on PPU A12, triggered on a rising edge after the line has remained low for three falling edges of M2.
 
-Sequence to schedule an IRQ N scanlines into the visible frame:
+A12 is the address line that tells the PPU's two pattern tables apart: low for `$0000-$0FFF`, high for `$1000-$1FFF`. M2 is the CPU clock. While it draws a line, the PPU fetches background tiles for most of the line and sprite patterns for a stretch near its end, and it fetches sprite patterns even when there are no sprites to draw. So if the background uses the table at `$0000` and sprites use the table at `$1000`, A12 goes high once per line, during the sprite fetches. Filtered this way, NESdev explains, A12 stays low through all the background fetches and high through all the sprite fetches, so it rises exactly once per line.
 
-1. Write N to `$C000` (IRQ latch).
-2. Write any value to `$C001` to flag "reload on next A12 edge".
-3. Write any value to `$E001` to enable IRQs.
-4. Counter reloads on the first A12 edge, then decrements once per A12 edge thereafter; when it reaches zero (and IRQs are enabled), the IRQ line asserts.
-5. Acknowledge by writing any value to `$E000` (this also disables further IRQs until you re-enable).
+Each counted rise does one of two things. If the counter is zero, or a reload was requested through `$C001`, the counter is loaded from the latch at `$C000`. Otherwise it goes down by one. When it is zero and the interrupt is enabled, the MMC3 pulls the CPU's IRQ line.
 
-The A12-edge mechanism means MMC3 IRQs land slightly differently between background-mode and sprite-mode fetches; emulators that model this correctly require a small low-time filter (~10 PPU cycles) to match real-hardware behaviour.
+Two consequences catch programmers out:
 
-One more trap for implementers: the interval between interrupts is **the latch value plus one** scanline, not the latch value. In hardware the counter runs *upwards* from the one's complement of the value written, and its carry is registered through a flip-flop before it reaches the interrupt line — that extra stage is the extra scanline. Model it as "load, count up to full, fire" and every split lands one line early.
+- **The interval is the latch value plus one.** Reaching zero takes N decrements, and reloading takes a clock of its own, so a latch of N gives an interrupt every N + 1 lines once the counter is running. A latch of 1 is the safe minimum: what a latch of 0 does depends on who made the chip.
+- **The counter only counts while the PPU draws.** With rendering switched off there are no pattern fetches and nothing happens on A12, so the counter stops. Writing `$2006` to point the PPU at `$1000-$1FFF` also raises A12, so code that updates video memory can clock the counter by accident.
+
+A game that swaps the tables round, with background tiles at `$1000` and sprites at `$0000`, still gets one rise per line, but at a different point in it, and the pre-render line can then count twice on alternate frames. NESdev gives *Wario's Woods* as the example: on some resets the rightmost pixels of the bottom line of its grass flicker, because an extra count fires the interrupt a line early. In 8×16 sprite mode each sprite's tile number chooses its own pattern table, so games using that mode have to keep every sprite in the `$1000` table as well.
+
+## Programming a split
+
+The program below draws a red screen and turns the background off partway down, so the split shows as a clean line. The NMI handler, which runs at the start of vertical blank, arms the counter for the frame; the IRQ handler acknowledges the interrupt and changes `PPUMASK`.
+
+```asm
+N = 99                 ; lines above the split
+
+nmi:
+    pha
+    lda #$1E           ; background and sprites on
+    sta $2001
+    lda #0
+    sta $2005          ; scroll to the top-left
+    sta $2005
+    lda #$88           ; NMI on; sprites from $1000, background from $0000
+    sta $2000
+    lda #N
+    sta $C000          ; latch
+    sta $C001          ; reload on the next A12 rise
+    sta $E001          ; enable the interrupt
+    pla
+    rti
+
+irq:
+    pha
+    sta $E000          ; acknowledge (this also disables it)
+    lda #$16           ; background off, sprites still on
+    sta $2001
+    pla
+    rti
+```
+
+The reset code, not shown, turns the NES's own interrupt sources off before it clears the interrupt-disable flag: `$40` to `$4017` stops the APU frame counter's IRQ, and `0` to `$4010` stops the sample channel's. The 6502 has one IRQ line and cannot tell who pulled it. Leave the frame counter's IRQ on and the handler above runs at the wrong time, never clears it, and the program locks up in a storm of interrupts. The reset code also sets all eight bank registers, because they start undefined.
+
+In the counter's own reckoning, the reload during the pre-render line counts as its first clock. So with a latch of 99, lines 0 to 98 are drawn with the background on and the change takes effect from line 99. For a second split in the same frame, the handler writes `$E000` and then `$E001` again: the counter has already reloaded itself from the latch and fires N + 1 lines later. With a latch of 20 and that change, the splits land at lines 20, 41, 62 and on down the screen, 21 lines apart.
+
+Commercial games worked the same way. NESdev notes that many update only `$C000` in the handler, setting the latch one interrupt ahead, and avoid writing `$C001` on consecutive lines, which can make the chip misbehave in ways that are still not fully understood. Most also toggle A12 at reset by writing `$2006` repeatedly, to put the counter into a known state before the first frame.
+
+## Two makers, two behaviours
+
+The MMC3 was made by more than one company, and the chips disagree about a latch of zero:
+
+| Maker | With `$C000` set to `$00` | Fires when the counter |
+|---|---|---|
+| NEC | a single IRQ | is *decremented* to 0 |
+| Sharp | an IRQ on every line | *equals* 0 |
+
+NESdev calls NEC's the "alternate" or "old" behaviour and Sharp's the "normal" or "new" one. Three revisions are known, MMC3A, MMC3B and MMC3C, with "no major behavioral differences known, except for the IRQ counter", and MMC3B chips came from both makers. NESdev also records that "some games have been manufactured with both versions", so two copies of one game can hold different chips. *Star Trek: 25th Anniversary* relies on the Sharp behaviour and glitches during its split-screen scenes on chips that lack it.
 
 ## What Nintendo told licensees
 
-Everything above is drawn from the community's reverse engineering, documented on the [NESdev Wiki](https://www.nesdev.org/wiki/MMC3) and verifiable by anyone with a cartridge and a logic analyser. What follows comes from somewhere you cannot check: Nintendo's own specification for the part, written for licensees and never published.
+Everything above can be checked against the NESdev Wiki and against real cartridges. Nintendo's own *MMC3 Specification* was written for licensees and never published; a provisional draft is dated 15 December 1987 and the third edition 24 May 1988. It adds the rules Nintendo set, and some of the reasons.
 
-It is worth reading the two against each other, because they describe the same silicon and agree on none of the vocabulary.
+**The timer is a one-line clock.** Nintendo describes the interval timer as clocked once per horizontal line, and its timing diagram measures that period at 63.51 microseconds. A12 is not mentioned. To a game programmer the counter was a line counter, and Nintendo's rules kept it one.
 
-Nintendo's *MMC3 Specification*, third edition dated 24 May 1988, describes the interval timer in terms no emulator author would use — and both descriptions are correct.
+**The rules fix the pattern tables.** A game using the timer had to set sprites to the upper pattern table and background to the lower one, permanently, and repeat those bits every time it wrote `PPUCTRL`. With 8×16 sprites, every sprite tile number had to be odd, which puts it in the upper table. The specification states the rules without explaining them; the A12 mechanism is the reason.
 
-**Nintendo calls it a one-line timer.** Its summary of the part gives the timer's clock as one horizontal line, and its timing diagram measures the period at 63.51 microseconds. There is no mention of A12 at that level, because from a game programmer's seat the counter *is* a scanline counter.
+**Blanking both layers breaks the clock.** Nintendo warns that with sprites and background both switched off, the timer's clock is undefined. Instead of blanking the screen in a scene that uses the timer, the specification tells programmers to change brightness through the palette, or to blank only one layer at a time. *G.I. Joe*, which turns sprites off and leaves the background on, depends on the second approach.
 
-**It is a scanline counter because Nintendo made it compulsory.** Games using the timer were required to fix the PPU's sprite pattern table high and its background pattern table low, permanently — the exact arrangement that makes A12 rise once per scanline. Where a game used 8×16 sprites, the specification added a further rule: sprite tile numbers **must be odd**, because in that mode the tile number's low bit picks the pattern table and an even number would put sprite fetches back in the wrong half. The A12 mechanism is the implementation; the one-line clock is the contract, and the rules exist to keep the two identical.
+**Acknowledging is two writes.** In Nintendo's worked example the interrupt handler writes the disable address and then the enable address, and on the last interrupt of the frame leaves the timer disabled.
 
-**Blanking the screen stops the counter.** The specification states plainly that when both sprites and background are switched off, the timer's clock is permanently undefined — no rendering means no pattern fetches, so nothing toggles A12 and the counter stops. Nintendo offered two workarounds, both of which turn up in real games: change the apparent brightness using the PPU's colour controls instead of blanking, or blank only one layer at a time.
+**The worked example and the formula disagree.** The specification works a three-split frame through step by step, and both of its later latch values are the gap between interrupts minus one, matching the N + 1 interval above. The general formula printed next to them gives different values. The draft and the third edition carry the same mismatch. Nintendo's equivalent circuit shows the underlying design: an up-counter preset with the one's complement of the latch value, which software can treat as counting down to zero.
 
-**And Nintendo's own worked example confirms the plus-one — while the formula printed beside it does not.** The specification works two consecutive timer values through a three-interrupt frame, and both come out as the gap between interrupts *minus one*, exactly matching the "latch plus one" behaviour described above. The general formula printed alongside those two examples gives a different answer from either of them. Two editions of the document, a year apart, carry the same mismatch. **Trust the worked values and the timing diagram, which agree with each other and with the hardware; the printed formula is the odd one out.** It is the sort of thing that costs an emulator author an afternoon.
+Nintendo's names for the registers are its own. Bank select is the POINTER, the latch is JAM, and the reload, disable and enable addresses are P&SIT (preset and start interval timer), DITIRQ and EITIRQ. Those last three are marked as soft switches: the data written is ignored and the address alone is the command.
 
-Nintendo's names for the registers are its own, and nothing like the community's: the bank-select port is the **POINTER**, the IRQ latch is **JAM**, and the three write-only commands are **P&SIT** (preset and start interval timer), **DITIRQ** and **EITIRQ** (disable and enable its interrupt). The specification marks those last three "soft switches" — the value written is irrelevant, the address alone is the command, which is why writing any byte works.
-
-## Why it mattered
-
-MMC3 hit the sweet spot of capability versus cost: it gave developers PRG sizes for sprawling games (SMB3 is 384 KB), CHR-bank rotation for tile animation, and a reliable mid-frame IRQ for status bars and parallax — all at a price low enough for first-party use. By the late NES era, MMC3 (and its variants MMC3A/B/C, which differ subtly in IRQ behaviour) was the default choice for any game that needed more than NROM or MMC1 could provide.
+The specification also covers saved games. It asks for battery-backed cartridges to carry a label telling players to hold RESET while switching off, for the save to be written twice or protected by error correction, and for four addresses (`$6000`, `$6001`, `$7000` and `$7001`) to be left out of the save area because their contents tend to be lost at power-off. Between the draft and the third edition the chip also moved from a 42-pin DIP to a 44-pin flat package.
 
 <Sources>
 
-The register map, bank behaviour and IRQ mechanism above follow the [NESdev Wiki's MMC3 page](https://www.nesdev.org/wiki/MMC3), whose content is public domain and which remains the best place to check any of it.
+- *Nintendo Power* volume 20, January 1991, p. 30: MMCs described as "Memory Management Controllers"; the MMC3's timer and the *Super Mario Bros. 3* scoreboard; angled scrolling in *NES Play Action Football*.
+- *Nintendo Power* volume 22, March 1991, p. 64: Game Pak data box for Taxan's *G.I. Joe*, memory "MMC3".
+- *Nintendo Power* volume 30, November 1991, p. 8: data box for Taito's *The Flintstones*, memory "MMC3".
+- NESdev Wiki, "MMC3" (community reference, web, secondary): first appearance in the fourth quarter of 1988; about 300 games; banks, registers and bit layouts; the A12 counter and its operation; the N + 1 interval; the NEC and Sharp behaviours, revisions and games made with both; the `$C001` behaviour; *Wario's Woods*; *Star Trek: 25th Anniversary*. https://www.nesdev.org/wiki/MMC3
+- NESdev Wiki, "MMC3 pinout" (community reference, web, secondary): the CPU address inputs A0, A13 and A14. https://www.nesdev.org/wiki/MMC3_pinout
+- NESdev Wiki, "Programming MMC3" (community reference, web, secondary): the commercial IRQ sequence, setting the latch one split ahead, the reset-time A12 toggle and the safe pattern-table layout. https://www.nesdev.org/wiki/Programming_MMC3
+- NESdev Wiki, "Tricky-to-emulate games" (community reference, web, secondary): *Crystalis*'s moving split, *G.I. Joe* turning sprites off, *Star Trek: 25th Anniversary* and *Wario's Woods*. https://www.nesdev.org/wiki/Tricky-to-emulate_games
+- Nintendo, *MMC3 Specification*, third edition, 24 May 1988, bound with the provisional draft of 15 December 1987 (unpublished licensee document): the part's name; register names; the one-line timer clock and its measured period; the pattern-table and odd-tile rules; the blanking warning and workarounds; the worked example and formula; the equivalent circuit; the save-RAM cautions; the package change. Every other statement in this entry stands on the public sources above.
 
-The section on what Nintendo told licensees draws on the company's *MMC3 Specification*, third edition dated 24 May 1988 — an internal document written for cartridge developers, never publicly released. We describe what it says and do not reproduce it; if it were struck from this page entirely, everything above it would still stand.
+The split-screen program was assembled with ca65 into an iNES mapper 4 image and run in the Emu198x NES emulator; screenshots showed the change at line 99 with a latch of 99, and at lines 20, 41, 62 and onward at 21-line intervals with a latch of 20.
 
 </Sources>
 
 ## See also
 
-- [NES](/vault/systems/nintendo-entertainment-system)
-- [MMC1](/vault/hardware/mmc1)
+- [Nintendo Entertainment System](/vault/systems/nintendo-entertainment-system)
 - [PPU](/vault/hardware/ppu)
+- [MMC1](/vault/hardware/mmc1)
+- [Cartridge](/vault/hardware/cartridge)
 - [Bank switching](/vault/techniques/bank-switching)
+- [Raster interrupts](/vault/techniques/raster-interrupts)
 - [Super Mario Bros. 3](/vault/games/super-mario-bros-3)
