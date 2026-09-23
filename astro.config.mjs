@@ -8,6 +8,9 @@ import {
   code198xTableAccessibilityPlugin,
 } from './src/lib/satteri-highlight.ts';
 import { legacySystemRedirects } from './src/lib/legacy-system-redirects.mjs';
+import { unreviewedVaultPaths } from './src/lib/unreviewed-vault-paths.mjs';
+
+const unreviewedVault = unreviewedVaultPaths();
 import { foundationsSplitRedirects } from './src/lib/foundations-split-redirects.mjs';
 
 import { basicRetirementRedirects } from './src/lib/basic-retirement-redirects.mjs';
@@ -196,7 +199,14 @@ export default defineConfig({
     '/browse/by-difficulty': '/systems',
     '/browse/by-technique': '/patterns',
   },
-  integrations: [mdx(), sitemap()],
+  integrations: [
+    mdx(),
+    // Unreviewed Vault entries carry a robots noindex tag; leave them out of
+    // the sitemap too, so search engines are not invited to the same pages.
+    sitemap({
+      filter: (page) => !unreviewedVault.has(new URL(page).pathname),
+    }),
+  ],
   markdown: {
     processor: satteri({
       hastPlugins: [
