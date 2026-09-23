@@ -1,7 +1,8 @@
 # Game Feel — teaching direction
 
 The organising question is: how do actions and consequences feel moment by moment?
-These are planned sequences, not six authored units or a fixed lesson count.
+Controls and response now has four locally authored lessons for review. The other
+sequences remain planned; this is not a fixed lesson count.
 
 Use **play, compare, explain**. Let the reader experience a difference, identify
 its cause, inspect the rule and apply it deliberately. Distinguish player intent,
@@ -25,7 +26,7 @@ Accessibility belongs in each comparison: keyboard and touch controls, redundant
 cues, adjustable disruptive effects, and no unnecessary motion. Distinguish
 purposeful game motion from decorative UI animation.
 
-## First local prototype
+## Published comparison and focused lessons
 
 `code-samples/craft/game-feel/movement/` contains a browser comparison, surfaced
 at `/experiments/game-feel/index.html`. Three ships receive the same input and
@@ -33,3 +34,12 @@ share top speed. Acceleration and stopping rules differ. A repeatable comparison
 lets readers observe the same hold, release and reversal without timing their
 own input. The model uses seconds and fixed 1/60-second simulation steps; it is
 not a native-machine performance claim or a completed lesson sequence.
+
+The four local lesson pages isolate immediate response and speed, acceleration,
+release braking and reversal braking. Each embeds a two-ship comparison with
+identical input and one changed setting. Repeatable input, a pause control and a
+single-update inspector expose position and velocity. The lesson pages use pseudocode and
+worked arithmetic without JavaScript disclosures. A small source-download link
+provides the actual movement routine for interested readers. Lesson four deliberately compares
+a zero-first reversal rule, distinguishing it from the published prototype's
+approach towards the opposite velocity.

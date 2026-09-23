@@ -120,3 +120,44 @@ The retained `new-items` artifact contains both the feed difference and prepared
 ## Live site
 
 [code198x.com](https://code198x.com)
+
+## Browser players
+
+Run `npm run build:player` before the first development or site build. Set
+`EMU198X_SOURCE_ROOT` to the emulator checkout when it is outside the family
+layout. This needs the checkout's Rust toolchain, `wasm32-unknown-unknown` and
+`wasm-pack` (or a matching `WASM_BINDGEN` CLI). The existing Pages workflow
+builds these assets before Astro; land the Emu198x source changes first.
+
+`public/emulators/` is generated and ignored. Both sites mount the same inline custom element, inheriting their typography
+and theme colours. Cartridge selection starts play; firmware is disclosed only
+for computer systems. Both sites use the same source
+and catalogue in Emu198x's `web-player/`; change the player there, not here.
+The local catalogue exposes 30 families and 91 selectable models, with runtime-owned
+firmware/media setup. Broader software and real-browser performance validation are still
+to be done, but no longer block publication. No proprietary firmware or
+visitor media is copied into the site. The player offers explicit device saves, downloadable save files, supported
+disk-image exports, optional remembered firmware and fullscreen. Storage is
+local to this site and original files are never overwritten.
+
+The shared player also provides owned demo cartridges, visible control help,
+remembered presentation and console-key preferences, and diagnostic text for
+user-submitted bug reports. Demo sources, provenance and licences ship beside
+the binaries. Lessons with staged runnable outputs expose a Run this lesson player pinned
+to the lesson model; cumulative-step units use their final built step.
+
+The NES introductory lesson uses `NesAssembleAndRun`: the maintained source is
+assembled in a worker by the existing Asm198x `mos6502` WASM shell, then handed to
+the shared player's `loadMedia()` API. Build it locally with
+`npm run build:nes-assembler` (`ASM198X_SOURCE_ROOT` selects an Asm198x checkout).
+CI and deployment build it from source; no unpublished npm dependency is needed.
+`npm run build` compares its output with the native-built lesson download.
+`inlinePlayer: true` on a unit means its authored content supplies the player,
+so the layout omits the additional generic launcher.
+
+`PLAYWRIGHT_BROWSERS_PATH=/path/to/browsers node scripts/verification/nes-assembly.mjs`
+checks the live lesson in Chrome and WebKit against the local preview. `SITE_URL`,
+`CODE_SAMPLES_PATH`, `BLUE_CARTRIDGE` and `OUTPUT_DIR` can override its inputs.
+The worker loads only when assembling or downloading a cartridge; source edits
+stay local. Downloads always assemble the current editor contents. Failed builds
+leave the running machine intact and report source-line diagnostics.

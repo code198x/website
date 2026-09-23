@@ -1,6 +1,6 @@
 ---
 title: "The Black Sheep"
-description: "One sheep in eight is black — worth four crossings' score, and quicker on her feet than you're used to. Randomness on a machine that has none, palette pokes into a live Copper list, and the game's best sound."
+description: "An occasional black sheep brings a bonus and a quicker stride. A stored seed, player timing and palette changes give the next sheep a different role."
 pubDate: 2026-06-12
 game: 1
 unit: 15
@@ -9,7 +9,7 @@ tags: ["assembly", "68000", "random", "copper", "risk-reward", "audio"]
 
 import CodeFromFile from "@components/CodeFromFile.astro";
 
-Every sheep so far has been worth the same twenty-five points, and the only reason to hurry was boredom. This unit instals a gamble. Rarely — one roll in eight — the next sheep out of the field is **black**: worth a fat bonus at the fold, and a touch quicker on her feet than the flock you've learnt to steer. Quicker sounds like a gift until you're threading the rhythm you grooved over fourteen units with a sheep who arrives everywhere half a beat early. Risk, reward, and a chime at the pen that makes the whole detour feel earned.
+Every sheep so far has been worth the same twenty-five points, and the only reason to hurry was boredom. This unit instals a gamble. Occasionally — aiming for roughly one roll in eight — the next sheep out of the field is **black**: worth a fat bonus at the fold, and a touch quicker on her feet than the flock you've learnt to steer. Quicker sounds like a gift until you're threading the rhythm you grooved over fourteen units with a sheep who arrives everywhere half a beat early. Risk, reward, and a chime at the pen that makes the whole detour feel earned.
 
 ## The Display
 
@@ -19,11 +19,13 @@ The gamble herself, mid-bridge — pale face forward, the duck paddling one way 
 
 ## Where Randomness Comes From
 
-The Amiga has no dice. No instruction returns an unpredictable number; the machine will do exactly the same thing every time you switch it on, forever. Randomness has to be *manufactured*, and the standard machinery is the **xorshift generator**: take a seed, fold it into itself with shifts and exclusive-ORs, and the bits churn through a sequence thousands of states long with no visible pattern.
+We use a **pseudorandom generator**: calculations transform a stored seed into the next value. This routine uses 16-bit xorshift steps (7, 9, 8). With the frame-counter mixing removed, a non-zero seed visits all 65,535 non-zero words before repeating. That long cycle is useful, but does not guarantee independent choices or invisible patterns.
 
 <CodeFromFile src="commodore-amiga/assembly/flock/unit-15/snippets/01-newsheep-and-rnd.asm" />
 
-But a generator alone isn't random — it's just a long, fixed list read in order. The same machine booting the same game would roll the same sheep at the same moments, every single time. The entropy comes from the second ingredient: `framecnt`, a counter that has been ticking once a frame since the farm woke up, folded into the seed at each roll. The roll happens when a sheep steps up — which is to say, when the *previous* sheep died or came home — and that moment depends on every hop you've made all game. **The machine borrows its randomness from you.** Two players, identical machines: different sheep. It's the same trick every 8-bit and 16-bit game leaned on, from card shuffles waiting on a keypress to invader patterns seeded by the title screen.
+The game also XORs `framecnt` into the seed before each roll. That word-sized counter advances once per main-loop update, wraps after 65,536 increments, and is mixed in when the next sheep steps up. It is game state, not an independent clock counting from power-on. Player timing can therefore change the sequence. It does not guarantee different sheep for different players: matching state, frame-counter values and random-call order repeat the calculation. If the mixed calculation produces zero, the routine substitutes `$ACE1` so it can continue from a non-zero state.
+
+`and.w #7,d0` keeps the lowest three bits, and zero selects black. Eight bit patterns are possible; that does **not** prove each has equal probability in this game. Without the frame stir, zero appears 8,191 times in those low bits over the complete 65,535-state cycle, while each other pattern appears 8,192 times. With the stir, the call schedule changes the sequence and those full-cycle counts no longer describe it. Short runs can contain streaks either way.
 
 `newsheep` itself is the factoring this code wanted for three units — losesheep and the pen both used to place the next sheep by hand, in duplicate. Now there is one doorway every sheep steps through, and the dice live in the doorway.
 
@@ -45,9 +47,9 @@ Listen to her come home — the quick trot first (her five-frame rhythm re-steal
 
 ## Experiment: Load the Dice
 
-- `and.w #7,d0` is the odds. `#3` makes one sheep in four black; `#15`, one in sixteen. Feel how the gamble's *frequency* changes the game's whole temperature.
+- `and.w #7,d0` selects black when three low bits are zero. Predict how changing the mask to `#3` or `#15` affects frequency: they test two or four bits, targeting roughly one in four or one in sixteen if those patterns are well distributed. Record black and total counts over several runs, keeping the input schedule fixed for comparisons. A short run need not match those proportions. Which version feels worthwhile to play?
 - `SKITTISH equ 2` — a black sheep with a three-frame rhythm. Somewhere between thrilling and unsteerable is a line; find it and ask what the bonus would have to pay to make crossing it worth your while.
-- Remove the `framecnt` stir and play twice. Same sheep, same moments, both runs. Determinism isn't broken randomness — but feel how dead it goes when you can predict the gamble.
+- In a separate experimental copy, remove the `framecnt` stir and reset `seed` to the same value before each run. Predict the sheep-colour sequence, then compare the same input sequence. Matching seeds and random-call order can repeat the colours; matching their appearance times also requires matching game state and input/update timing. Restore the ordinary version afterwards. Repetition can be useful for diagnosis or a deliberately learnable challenge.
 - Make the chime three notes. `soundtick` plays two; Unit 11's Try This sketched the sequencer. The black sheep is the right excuse to build it.
 
 ## The Complete Code
@@ -57,8 +59,8 @@ Listen to her come home — the quick trot first (her five-frame rhythm re-steal
 ## If It Doesn't Work
 
 - **Every sheep is black, forever?** The poke works; the un-poke doesn't. White sheep must write the white palette back — the Copper list remembers whatever was poked last.
-- **No sheep is ever black?** Check the roll's mask against the branch sense: `and.w #7` leaves zero one time in eight, and zero takes the `beq`. An inverted branch makes seven sheep in eight black — loud — but a wrong mask makes none, silently.
-- **The same sheep every game?** Your seed never moves, or the stir got lost. A xorshift with a constant seed is a metronome.
+- **No sheep is ever black?** Inspect the value returned by `rnd`, its masked low bits and the branch sense: zero takes `beq` to black. Reversing that branch selects the other seven bit patterns, not a guaranteed seven-out-of-eight schedule. A short run without black sheep can be ordinary variation; reproduce the calls before blaming the palette or generator.
+- **The same sheep every game?** Inspect whether the seed advances and whether each run begins from the same state. The same starting seed and call order deliberately repeat a sequence when the frame-counter stir is removed; that is not itself a fault. With the stir present, record the frame counter at each call too.
 - **She rolls black but moves like a white sheep?** `steer` must read `hopgap`, not the `COOLDOWN` constant. An assembler will happily keep the old immediate and never warn you the variable exists.
 
 ## Try This
@@ -69,9 +71,9 @@ Listen to her come home — the quick trot first (her five-frame rhythm re-steal
 
 ## What You've Learnt
 
-- **Pseudo-randomness** — xorshift folds a seed into itself; the sequence is fixed, long, and patternless to the eye.
-- **Entropy from the player** — a free-running frame counter stirred in at event time makes the fixed sequence land differently every game. The human is the dice.
-- **The Copper list is writable data, part two** — sprite pointers in Unit 13, palette entries now. Anything the list sets, the CPU can re-set between frames.
+- **Pseudo-randomness** — xorshift folds a seed into itself; the unmixed sequence is deterministic; its period and visible patterns depend on the exact shifts and word width.
+- **Entropy from the player** — mixing the frame counter at event time can vary results with the player’s timing. It does not guarantee a different result or a fair distribution.
+- **The Copper list is writable data, part two** — `newsheep` changes the stored palette values. The Copper must still reach those entries before the display uses the new colours; editing the list is not the same event as seeing the result.
 - **Character is a constant** — one rhythm variable distinguishes the gamble from the flock; personality costs a word.
 - **One doorway for every spawn** — factoring duplicated "next sheep" code into `newsheep` is what made a per-sheep roll possible at all. Features land easiest where the architecture already has a door.
 

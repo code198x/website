@@ -1,6 +1,6 @@
 ---
 title: "Four Ways to Make a Sound"
-summary: "The tune driver is the same on every machine — but what it talks to isn't. Paula streams a sample, the APU synthesises fixed voices, the SID shapes a rich one, and the Spectrum toggles a single bit. Four answers to 'how does a computer make a sound?', and each one shaped the music."
+summary: "Compare CPU-driven beeper sound, NES channels, SID synthesis and Amiga samples, with their timing and ownership costs."
 platform: "cross-platform"
 category: "audio"
 difficulty: "beginner"
@@ -15,92 +15,188 @@ related:
 
 ## Overview
 
-The [tune sequencer](/patterns/cross-platform/audio/tune-sequencer) is nearly identical on every machine: a table of notes, a tick that serves them. This pattern is its mirror image — the part that is *never* the same. Ask "how does this computer turn a number into a sound?" and the four platforms give four fundamentally different answers, and those answers are why an Amiga tune and a Spectrum tune don't just sound different, they sound like different *kinds* of thing.
+The [tune sequencer](/patterns/cross-platform/audio/tune-sequencer) introduces a reusable idea: store events and advance through them. That does not make the drivers interchangeable. Their timing, voice state and sound-generation work depend on the target. We can compare where each machine does the work, which resources a cue needs and what continues after our routine returns.
 
-Four models, cheapest hardware to richest:
+Four approaches place the work in different parts of the machine:
 
-- **Spectrum — a single bit.** There is no sound chip. The CPU flips one speaker line on and off, and the *rate* of flipping is the pitch. You generate the waveform yourself, edge by edge.
-- **NES — fixed synthesis.** The APU has five voices with shapes baked in silicon: two pulse waves, a triangle, noise, a sample channel. You don't make a waveform; you pick one and set its pitch and volume.
-- **C64 — subtractive synthesis.** The SID gives each of three voices a choice of rich oscillators, an ADSR envelope, and a real analogue filter. You start with a bright source and *carve* it into a sound.
-- **Amiga — sample playback.** Paula reads 8-bit samples straight from memory by DMA. You supply the actual recorded waveform; the chip just streams four of them. This is the only one where the sound can be *anything*.
+- **Spectrum 16K/48K — CPU-driven beeper.** The CPU changes the speaker output through the ULA. Repeating those changes produces a tone; the spacing of the edges determines its waveform and pitch. The 128K also has an AY sound chip.
+- **NES — specialised channels.** Two pulse channels, triangle, noise and DMC sample playback each have different controls. We arrange sounds around those differences.
+- **C64 — oscillators and envelopes.** Each of the SID's three voices has waveform selection and an ADSR envelope. Selected voices can feed a shared analogue filter; synchronisation and ring modulation connect particular oscillators.
+- **Amiga — sample playback.** Four audio channels stream signed 8-bit sample data from Chip RAM using DMA. We can supply recorded sounds or draw our own waveforms, within memory and playback-rate limits.
 
-## The same note, four ways
+## The comparison
 
-Each snippet below is the minimal "make one sound" for its machine — the first pattern in each platform's audio arc, boiled to its essence.
+| Machine | We provide | The hardware provides | Cost or constraint to keep visible |
+| --- | --- | --- | --- |
+| Spectrum beeper | Timed output changes | ULA output and speaker circuitry | CPU time for each edge; shared border/MIC port |
+| Spectrum 128K AY | Tone periods, mixer settings, levels | Three tone generators, shared noise and envelope generators | Shared generators constrain independent instruments |
+| NES APU | Channel-specific settings and DPCM data | Two pulse, triangle, noise and DMC channels | Different controls per channel; DMC DMA costs |
+| C64 SID | Frequency, waveform, ADSR and filter settings | Three oscillators/envelopes and a shared analogue filter | Filter ownership; oscillator relationships for sync/ring modulation |
+| Amiga Paula | Sample data, address, length, period and volume | Four DMA-fed audio channels | Chip RAM, bus use, looping and fixed stereo routing |
+
+Hardware-generated audio can continue while the CPU does other work. That does not make the whole music player free: someone still advances notes, applies effects and decides which sound owns each resource.
+
+## Starting a sound, four ways
+
+The comparison above and the completion question below can be explored without
+reading assembly. Open a fragment when we know that machine’s registers and
+instructions; we do not need to learn all four syntaxes together.
+
+These are **illustrative fragments**, not complete programs or four versions of
+the same note. Startup, duration, stopping and resource ownership belong to the
+surrounding program. Read each fragment’s assumptions before adapting it.
+
+<details>
+<summary>Inspect the Spectrum fragment</summary>
 
 **Spectrum — the CPU is the oscillator** ([Sound Beep](/patterns/sinclair-zx-spectrum/assembly/audio/sound-beep)):
 
 ```z80
+    ld   b,50          ; 50 complete high/low pairs
 loop:
     ld   a,$10
-    out  ($fe),a       ; speaker high — bit 4 of port $FE
-    call delay         ; the delay length IS the pitch
+    out  ($fe),a       ; speaker bit high, black border, MIC bit clear
+    call delay         ; supplied delay routine must preserve B
     xor  a
-    out  ($fe),a       ; speaker low
+    out  ($fe),a       ; speaker bit low, same border and MIC bits
     call delay
-    djnz loop          ; every edge hand-made by the CPU
+    djnz loop
 ```
 
-**NES — pick a voice the chip already generates** ([A Square Wave](/patterns/nintendo-nes/assembly/audio/square-wave)):
+We supply `delay` and a valid stack. The whole loop, including calls and branches, determines the edge spacing; it is not just the delay routine. Changing the delay changes pitch, while B counts waveform cycles rather than milliseconds. A longer period also makes these 50 cycles last longer. Interrupt work and contention can disturb the timing. This loop occupies the CPU until it ends and leaves the speaker bit low. A coloured-border game must preserve its border bits in both output values.
+
+</details>
+
+<details>
+<summary>Inspect the NES fragment</summary>
+
+**NES — configure pulse channel 1** ([A Square Wave](/patterns/nintendo-nes/assembly/audio/square-wave)):
 
 ```ca65
     lda #$01
-    sta $4015          ; enable pulse 1
+    sta $4015          ; enable pulse 1; disable other channels
     lda #%10111111
-    sta $4000          ; the chip makes the square; you set duty + volume
+    sta $4000          ; 50% duty, length halt, constant volume 15
+    lda #$08
+    sta $4001          ; sweep disabled, negate set to avoid upward overflow mute
     lda #$fd
-    sta $4002          ; 11-bit period = pitch
+    sta $4002          ; timer low byte
     lda #$00
-    sta $4003
+    sta $4003          ; timer high bits 0, load length, restart pulse phase
 ```
 
-**C64 — shape a rich source** ([SID Note Trigger](/patterns/commodore-64/assembly/audio/sid-note-trigger)):
+We assume initialised APU/frame-interrupt handling and exclusive ownership of the channels affected by `$4015`. The timer is `$0FD`; it gives approximately 440 Hz on NTSC, with different tuning on PAL. The non-zero length load permits playback, and the halt bit prevents that counter from expiring. The tone continues after these writes. For this isolated example, writing zero to `$4015` stops it; in a game we must preserve other channels' enable bits.
+
+The pulse channels offer duty choices and volume envelopes. Triangle has neither a programmable duty cycle nor a volume envelope. Noise has selectable periods and sequence modes rather than a musical note timer. DMC reads delta-encoded sample data and can steal CPU cycles for its memory fetches. A shared “pitch and volume” interface cannot describe all five faithfully.
+
+</details>
+
+<details>
+<summary>Inspect the C64 fragment</summary>
+
+**C64 — give a pulse voice an envelope** ([SID Note Trigger](/patterns/commodore-64/assembly/audio/sid-note-trigger)):
 
 ```asm
+    lda #$00
+    sta $d404          ; gate off before this trigger
+    sta $d417          ; no voices routed through the shared filter
+    sta $d402          ; pulse-width low byte
+    lda #$08
+    sta $d403          ; pulse width $800: half of the oscillator cycle
+    lda #$0f
+    sta $d418          ; master volume 15, filter modes off
     lda #$67
     sta $d400
     lda #$11
-    sta $d401          ; frequency
+    sta $d401          ; frequency $1167: approximately middle C on PAL
+    lda #$09
+    sta $d405          ; attack 0, decay 9
     lda #$f9
-    sta $d406          ; ADSR — attack/decay/sustain/release
+    sta $d406          ; sustain 15, release 9
     lda #$41
-    sta $d404          ; sawtooth waveform + gate on
+    sta $d404          ; pulse waveform ($40) + gate on ($01)
 ```
 
-**Amiga — hand the chip a waveform** ([Playing a Sample](/patterns/commodore-amiga/assembly/audio/playing-a-sample)):
+We assume SID registers are visible through the C64's memory mapping and the program owns the SID; other voices are already silent. The filter routing and master volume writes affect shared resources. `$D405` supplies attack/decay and `$D406` supplies sustain/release. With sustain at maximum, this example does not demonstrate an audible decay to a lower level. Later, write `$40` to `$D404` to release the note while retaining its waveform. Gate-off starts release; it does not promise instant silence or reset the envelope to zero.
+
+Sawtooth would use `$21` for waveform plus gate. The pulse-width registers affect pulse, not sawtooth. We can keep the frequency unchanged and compare their tone colour, but the result is not the same instrument as an NES pulse voice.
+
+</details>
+
+<details>
+<summary>Inspect the Amiga fragment</summary>
+
+**Amiga — hand the audio channel a waveform** ([Playing a Sample](/patterns/commodore-amiga/assembly/audio/playing-a-sample)):
 
 ```m68k
-    move.l  #sample,AUD0LC(a5)   ; YOU provide the waveform...
-    move.w  #len,AUD0LEN(a5)
-    move.w  #428,AUD0PER(a5)     ; ...Paula streams it by DMA
-    move.w  #$8201,DMACON(a5)
+    move.l  #sample,AUD0LC(a5)
+    move.w  #sample_words,AUD0LEN(a5) ; length in 16-bit words
+    move.w  #428,AUD0PER(a5)          ; spacing between output samples
+    move.w  #64,AUD0VOL(a5)           ; full channel volume
+    move.w  #$8201,DMACON(a5)         ; set master DMA and channel 0 DMA
 ```
 
-## The comparison
+We assume `a5` points at the custom registers, the named offsets are defined, channel 0 DMA is initially off, audio modulation is disabled, and the program has safely obtained hardware ownership. Under AmigaOS, use its audio facilities rather than taking registers away from another owner. `sample` must be word-aligned in Chip RAM, with an even number of signed 8-bit samples; `sample_words` is half that byte count and must fit the length register. Keep the memory valid while DMA can read it.
 
-| Machine | Sound model | You provide | The hardware provides |
-|---------|-------------|-------------|-----------------------|
-| **Spectrum** (beeper) | 1-bit, CPU-timed | every single edge | nothing — it's a wire |
-| **Spectrum 128K** ([AY](/patterns/sinclair-zx-spectrum/assembly/audio/ay-tone)) | PSG | period, volume, envelope shape | 3 tone voices + noise |
-| **NES** (APU) | fixed-function synthesis | which voice, pitch, volume | 2 pulse, triangle, noise, DMC |
-| **C64** (SID) | subtractive synthesis | waveform, ADSR, filter cutoff | rich oscillators + analogue filter |
-| **Amiga** (Paula) | 8-bit PCM playback | the recorded waveform itself | DMA streaming + mixing, 4 channels |
+Paula repeats the configured block unless we arrange a different continuation or stop. Period 428 specifies a playback rate, not an absolute musical pitch: a short repeating waveform and a recording of a whole note can sound very different at that rate. Lowering the period plays the data faster, raising pitch and shortening one traversal of the sample block. A looping cue can still have a separately timed overall duration in software. DMA saves per-sample CPU writes but still uses memory bandwidth; arrangement, effects and channel ownership still require software.
 
-The ladder runs from "the CPU does everything and the hardware is a single wire" to "the CPU does almost nothing and the hardware plays whatever you recorded". Every step up hands more of the work to silicon and gives the programmer a richer starting point.
+</details>
 
-## Why the model shaped the music
+## Choosing a sound that communicates
 
-The hardware didn't just constrain the music — it *characterised* it, and each scene grew around what its chip did best:
+For a collected item, we might use a short beeper tone, a bright NES pulse, a SID note with a quick attack, or a small Amiga sample. Those can communicate the same success without having identical waveforms.
 
-- **The Spectrum's clicky ingenuity.** With no chip, every Spectrum sound is a feat of CPU timing, which is exactly why its multi-channel [beeper engines](/patterns/sinclair-zx-spectrum/assembly/audio/beeper-music) are so admired — musicians coaxed chords out of a component that could only be on or off.
-- **The NES's bright, instantly-recognisable timbre.** Fixed pulse-and-triangle voices give a clean, hard-edged sound with a narrow palette — the reason a few bars of NES music are unmistakable.
-- **The SID as an instrument in its own right.** Oscillators plus envelopes plus a filter make the SID a genuine synthesiser, not just a tone generator; sweep the filter and it *sings*. It's why people still compose SID music on hardware decades later.
-- **The Amiga and the sample.** Because Paula plays *anything*, Amiga music used real recorded instruments — and the [four-channel MOD](/patterns/commodore-amiga/assembly/audio/four-channel-music) it enabled became the bridge from chiptune to the sampled, tracker-driven sound of the demoscene and early PC games.
+Compare a sharp attack with a slower one. Does the cue still feel connected to the collection? Compare a short tail with a long one. Do repeated collections remain distinct, or do they obscure one another? Keep the visible collection feedback too, so the information does not depend on hearing the sound.
 
-Same job — play a tune — four philosophies of how a machine makes a noise, and four musical cultures that grew from them.
+Our creative choices follow the available controls. On triangle we cannot simply turn down an amplitude envelope. On the beeper, delaying waveform work changes the sound itself. On Paula, playing a sample faster changes both its pitch and the time to traverse its data. Understanding those differences helps us choose an effect that works in the game.
+
+## When a shared operation stops fitting
+
+Consider an operation called `play_cue` that takes a cue number. In our first memory
+game it returns **after the cue finishes**. The caller then restores the panel and
+checks input. That is a useful, simple promise.
+
+Before tracing, write down two separate moments: when the call returns and when
+the cue finishes. They coincide in the waiting version.
+
+Now we want another implementation that starts hardware playback and returns while
+it continues. Predict what the unchanged caller does: does the panel stay active
+until the sound ends? When can it read input again?
+
+<details>
+<summary>Inspect the mismatch</summary>
+
+The caller can restore the panel before the sound finishes. Input can be checked
+sooner, but the old promise has changed. The same operation name and argument did
+not preserve the meaning of completion.
+
+We have choices:
+
+- Keep a separate waiting routine for the small memory game, accepting its delay.
+- Expose `start_cue` and a completion check when the game needs other work to continue.
+- Keep different playback routines and share only the event's meaning, such as
+  “choice accepted”, when their lifetimes and capabilities differ too much.
+
+For each choice, name who advances the sound, who owns its channel or CPU time, and
+what happens if another cue arrives. A completion check alone does not make a
+CPU-driven beeper play in the background.
+
+</details>
+
+A cue identifier need not promise an identical instrument. SID envelopes, NES
+channel-specific controls and Amiga sample data are not interchangeable parameters.
+Keep those choices visible in each implementation. Compare whether the cue communicates
+the same event, then account separately for its sound, storage and execution cost.
+
+## Hardware references
+
+- Sinclair, [ZX Spectrum BASIC Programming, chapter 23](https://worldofspectrum.org/ZXBasicManual/zxmanchap23.html): port `$FE`, speaker, MIC and border bits.
+- MOS Technology, [6581 SID datasheet](https://www.cpcwiki.eu/imgs/9/9d/Mos_6581_sid.pdf), register descriptions: waveform bits, ADSR and filter routing.
+- NESdev's hardware research: [APU channels](https://www.nesdev.org/wiki/APU), [pulse](https://www.nesdev.org/wiki/APU_Pulse), [sweep](https://www.nesdev.org/wiki/APU_Sweep) and [DMC](https://www.nesdev.org/wiki/APU_DMC).
+- Commodore, [Amiga Hardware Reference Manual, Audio Hardware](https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node00D8.html): waveform data, length, volume, period and DMA.
 
 ## Related
 
-**Patterns:** [Tune Sequencer](/patterns/cross-platform/audio/tune-sequencer) — the *driver* that's the same everywhere · foundational audio: [Sound Beep](/patterns/sinclair-zx-spectrum/assembly/audio/sound-beep) (Spectrum) · [A Square Wave](/patterns/nintendo-nes/assembly/audio/square-wave) (NES) · [SID Note Trigger](/patterns/commodore-64/assembly/audio/sid-note-trigger) (C64) · [Playing a Sample](/patterns/commodore-amiga/assembly/audio/playing-a-sample) (Amiga)
+**Patterns:** [Tune Sequencer](/patterns/cross-platform/audio/tune-sequencer) — event data and playback updates, with target-specific contracts · foundational audio: [Sound Beep](/patterns/sinclair-zx-spectrum/assembly/audio/sound-beep) (Spectrum) · [A Square Wave](/patterns/nintendo-nes/assembly/audio/square-wave) (NES) · [SID Note Trigger](/patterns/commodore-64/assembly/audio/sid-note-trigger) (C64) · [Playing a Sample](/patterns/commodore-amiga/assembly/audio/playing-a-sample) (Amiga)
 
 **Vault:** [Paula](/vault/hardware/paula) | [APU](/vault/hardware/apu) | [The SID Chip](/vault/hardware/sid-chip) | [ULA](/vault/hardware/ula) | [AY-3-8912](/vault/hardware/ay-3-8912)

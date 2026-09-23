@@ -3,6 +3,7 @@ import { createHighlighterCore } from 'shiki/core';
 import { createOnigurumaEngine } from 'shiki/engine/oniguruma';
 import theme from 'shiki/themes/github-dark.mjs';
 import grammar from '../syntax/z80.tmLanguage.json';
+import ca65Grammar from '../syntax/ca65.tmLanguage.json';
 import basicGrammar from '../syntax/sinclair-basic.tmLanguage.json';
 import './assembly-editor.css';
 
@@ -11,11 +12,11 @@ const highlighter = createHighlighterCore({
     ...theme.tokenColors,
     { scope: 'comment', settings: { foreground: '#9ba7b4' } },
   ] }],
-  langs: [{ ...grammar, name: 'z80' }, { ...basicGrammar, name: 'sinclair-basic' }],
+  langs: [{ ...ca65Grammar, name: 'ca65' }, { ...grammar, name: 'z80' }, { ...basicGrammar, name: 'sinclair-basic' }],
   engine: createOnigurumaEngine(import('shiki/wasm')),
 });
 
-export async function highlightAssemblyEditor(source: HTMLTextAreaElement, language: 'z80' | 'sinclair-basic' = 'z80') {
+export async function highlightAssemblyEditor(source: HTMLTextAreaElement, language: 'z80' | 'sinclair-basic' | 'ca65' = 'z80') {
   const hl = await highlighter;
   if (!source.isConnected || source.closest('.assembly-editor')) return;
   const wrapper = document.createElement('div');

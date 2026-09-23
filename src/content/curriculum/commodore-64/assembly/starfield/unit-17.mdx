@@ -55,7 +55,7 @@ Here is the moment the curve bends — the tenth kill's explosion with the wave-
 
 The title music is the same table idea pointed at the SID. A melody is rows of *pitch* and *duration*; `jingle_tick` runs once per title frame, counts the current note down, and serves the next row when it expires. A pitch of zero is a **rest** — gate the voice off and keep counting, because silence is a note too — and `$ff` loops back to the top.
 
-Notice how little the 6510 does. On the Spectrum, in Gloaming, a beeper tune *owns the processor* — every half-cycle of every note is a CPU loop, and the game stops while music plays. Here the SID holds each note by itself: `jingle_tick` touches the chip **twice per note**, at the start and at the end, and the starfield scrolls on regardless. That is what a sound *chip* buys you over a sound *bit* — and the tune is Twinkle Twinkle, Little Star, because what else would a starfield play?
+Notice how little the 6510 does. On the Spectrum, in Gloaming, a beeper tune *owns the processor* — every half-cycle of every note is a CPU loop, and the game stops while music plays. Here the SID generates the waveform between player calls. A sounding row makes four register writes: frequency high, frequency low, gate off and gate on. A rest writes gate off; other calls still count down the timer. The starfield can continue while the SID sounds, provided the game meets its update budget. Compare the [sequencer contracts](/patterns/cross-platform/audio/tune-sequencer) before adapting the table or timer. That is what a sound *chip* buys you over a sound *bit* — and the tune is Twinkle Twinkle, Little Star, because what else would a starfield play?
 
 One catch worth meeting now: voice 1 already belongs to the laser. The title lends it to the band — `enter_title` installs a softer envelope, `enter_game` gates the voice off and hands the laser its envelope back. One voice, two owners, and the transitions are exactly where the handover lives. Miss half of it and the laser comes back sounding like a flute.
 
@@ -96,7 +96,7 @@ The design-stress pass named it and its fix in one breath: give the spawn a *rea
 
 ### A real random column — the LFSR
 
-Raster-as-random was a fair beginner shortcut; the grown-up version is a **linear-feedback shift register** — one byte walking a maximal 255-long pseudo-random cycle, one step per spawn:
+We replace the repeated raster sample with a **linear-feedback shift register** — one byte walking a maximal 255-long pseudo-random cycle, one step per spawn:
 
 ```
 advance_rng:
@@ -108,11 +108,13 @@ advance_rng:
         rts
 ```
 
-Eight bytes, no state but its own, and no pattern you can stand under. Seeded from the raster *once* at the start of each game, it gives every game a different run while keeping the columns scattered within a run.
+The routine advances one byte of state per spawn. A non-zero seed walks all 255 non-zero byte values before repeating. Seeding from the raster once at game entry can vary the starting point, but two starts can choose the same seed. The same seed and call order reproduce the sequence; this generator is predictable, not a security tool.
 
 ### Enemies across the whole field — the 9th bit
 
-To threaten the sky the ship can reach, an enemy has to cross X=255 — and a sprite's X is 9 bits: the low eight in its position register, the ninth over in `$d010`. You met that bit in the Primer, on the ship. Now the enemies use it too: an `enemy_xhi_tbl` byte each, written into `$d010` beside the low X, and both collision tests taught to compare the full nine bits instead of skipping the right half. The safe corner is gone — an enemy can be anywhere the ship can.
+To threaten the sky the ship can reach, an enemy has to cross X=255 — and a sprite's X is 9 bits: the low eight in its position register, the ninth over in `$d010`. You met that bit in the Primer, on the ship. Now the enemies use it too: an `enemy_xhi_tbl` byte each, written into `$d010` beside the low X, and both collision tests taught to compare the full nine bits instead of skipping the right half. The enemies can now spawn on both sides of X=255. The mapping is `24 + b + floor(b/8)`. For an arbitrary byte 0–255 that would span 24–310, as the source comment describes. Our LFSR never supplies zero, so its actual spawn set contains **255 distinct columns from 25 through 310**, with gaps. For example, b=7 gives X=31 and b=8 gives X=33: X=32 is skipped. It is not a uniform choice among all screen columns.
+
+Predict whether X=24 can appear as a spawn, and whether that makes it a permanently safe place to park. The first answer comes from the mapping; the second also depends on enemy width, collisions and the hunt movement below. [LFSR range mapping](/patterns/cross-platform/framework/lfsr-random) explains why reaching a useful range does not establish fairness.
 
 <Figure src="/images/commodore-64/assembly/starfield/unit-17/step-03-spread.png" alt="Three green enemies at widely different X positions across the whole width of the screen, the white ship near the bottom." caption="The LFSR spawn: the three enemies scatter across the whole field, past the old X=175 ceiling. No single column to park under, and no right-side corner the danger can't reach." />
 
@@ -230,6 +232,222 @@ Four digits is room for 9,999 kills — more than any sitting will spend, which 
 </details>
 
 The design-stress pass asked for a second escalation axis once the speed table gave out. Enemy count is that axis, the tightening hunt is a third, and the score finally counts high enough to prove you climbed. Starfield isn't just un-broken now — it's a game with somewhere to go.
+
+## Restart investigation: does game three begin like game one?
+
+A title screen returning is useful evidence, but it does not prove that the next
+game starts cleanly. Use the [optional restart companion](https://github.com/Code198x/code-samples/tree/main/commodore-64/assembly/starfield/unit-17/restart)
+with step 4. It builds a baseline, one deliberately faulty copy and a repair.
+Keep the original game as our working checkpoint.
+
+We call the real entry and wave-growth routines in a controlled test. After each
+of the first two entries, five calls to `advance_wave` grow the swarm to six.
+The fixture also supplies a non-zero score, one remaining life, an active bullet
+and seven kills. It then returns to the title and enters the game again. These
+are prepared test conditions, not three played-through games.
+
+Before running, predict the state immediately after each `enter_game`:
+
+| State | First, second and third entry should each have |
+|---|---|
+| Enemy count | 3 |
+| Score, including its high byte | 0000 |
+| Lives | 3 |
+| Wave, kills, fall speed | 1, 0, 1 |
+| Bullet active | 0 |
+| Sprite enable bits | Ship and first three enemies on; bullet off |
+
+The faulty copy omits just `sta enemy_count` from `enter_game`. The fixture
+explicitly sets the count to three **once** before the first entry. That makes
+the first faulty game look correct without relying on initial RAM contents.
+Deleting the store in an ordinary launch could fail on the first game instead.
+
+Run the baseline, then the faulty copy. Record all three displayed enemy counts.
+Does a correct first entry establish that restart works? Choose a hypothesis:
+a wrong starting count, a wrong wave-growth rule, or a missing per-game reset.
+What evidence would distinguish them?
+
+<details>
+<summary>Hint 1: follow the lifetime of the count</summary>
+
+Find the store in `enter_game` before the spawn loop. Then find the increment
+in `advance_wave`. Does entering the title restore that value? Which value does
+the next spawn loop use if the store is missing?
+
+</details>
+
+<details>
+<summary>Hint 2: compare a rule with its presentation</summary>
+
+`enter_game` still resets wave to 1 and enables the first three enemy sprites.
+Neither operation changes `enemy_count`. Inspect the recorded count as well as
+the readout and sprite-enable bits.
+
+</details>
+
+<details>
+<summary>Explain the evidence and check the repair</summary>
+
+The baseline reports **3, 3, 3**. The faulty copy reports **3, 6, 6**: the first
+entry borrows the fixture's initial value, then the larger count survives each
+restart. Wave 1 and three enabled sprites do not make the logical count three.
+The later loops can still process the extra entries.
+
+Restore `sta enemy_count` after `lda #$03`, **before** spawning the starting wave.
+Rebuild and repeat the three entries. Expect **3, 3, 3**, and check the other
+fields in the table too. The companion records them in memory and includes a
+native verification script; repairing the count must not undo score, lives,
+wave or bullet initialisation.
+
+Changing the wave table, hiding more sprites or setting the count only at launch
+would not repair this lifetime error. The count belongs to each play session,
+so each new session must establish it.
+
+</details>
+
+Explain the fault without naming the missing instruction: which old state
+crossed a boundary where it no longer belonged? Then identify another field in
+the entry table with the same lifetime. Keep random-call order and sound handover
+out of this investigation; one reliable fault is enough. Return to the original
+step-04 game after the experiment.
+
+## Position investigation: repeat the choices, find the first difference
+
+After the restart investigation, use the [optional fixed-seed companion](https://github.com/Code198x/code-samples/tree/main/commodore-64/assembly/starfield/unit-17/position).
+It makes twelve calls to the existing spawn routine with seed **1**, always
+using enemy 0, which is sprite 2. There are no joystick, movement or collision
+updates between calls. The same launch input schedule runs each copy. We have
+fixed the starting state and call order as well as the seed; this is a small
+routine experiment, not a recorded playthrough.
+
+One deliberately faulty copy omits the call to `set_enemy_hibit` at the end of
+`spawn_enemy`. The random generator and coordinate calculation are unchanged.
+Predict whether the first error will appear in the random byte, the logical
+coordinate or the sprite registers. Run the baseline and fault, then compare
+their records in order instead of hunting for an arbitrary difference on screen.
+
+Each record contains the random byte, logical X low/high bytes, `$d004` and
+`$d010`. The screen shows the last three records in **hexadecimal**. The companion
+records all twelve for inspection. Initially `$d010=$ab`: sprite 2's high bit is
+clear, while several other bits are set so we can check that the helper preserves
+them. Its mask for this sprite is `$04`.
+
+| Call | Random byte (decimal) | Calculate `24 + b + floor(b/8)` | Predict low byte / high byte |
+|---|---:|---|---|
+| 10 | 116 | Write our result | Write before running |
+| 11 | 232 | Write our result | Write before running |
+| 12 | 205 | Write our result | Write before running |
+
+<details>
+<summary>Hint 1: find where the representations separate</summary>
+
+For X above 255, subtract 256 to find its low byte. Compare the logical high byte
+with bit 2 of `$d010`. A correct random byte does not prove that its position
+reached the display correctly.
+
+</details>
+
+<details>
+<summary>Hint 2: follow the next spawn too</summary>
+
+The same sprite is reused. After setting its high bit, what must happen when its
+next coordinate is below 256? What would happen if we left the bit set, or wrote
+the logical high byte over all of `$d010`?
+
+</details>
+
+<details>
+<summary>Compare the first divergence and repair</summary>
+
+The coordinates are **154, 285, 254**. Calls 1–10 agree. On call 11, both programs
+calculate X=285: low byte 29 (`$1d`), high byte 1. Both write 29 to `$d004`.
+The working helper changes `$d010` from `$ab` to `$af`; the faulty copy leaves
+it at `$ab`. The register-selected position is therefore 29, not 285. This is a
+handoff fault, not a different random choice.
+
+Restore the original `jsr set_enemy_hibit`. On call 12, the helper must also clear
+sprite 2's high bit, returning `$d010` to `$ab` for X=254. Leaving it set would
+select X=510. The other sprite bits must survive both operations.
+
+The companion's checks compare all twelve random bytes and coordinates, verify
+the register values on both sides of 255, and repeat the baseline from a cold
+start. The repair reproduces the baseline PRG byte for byte. A single plausible
+sprite position would be weaker evidence than this ordered trace.
+
+</details>
+
+Explain the first wrong value and which routine owns the transfer. Then explain
+why changing the seed would hide or move this failure without repairing it.
+Keep the random calls in their original order for this investigation. We will
+change that variable separately; a seed alone cannot guarantee reproducibility.
+Return to the original step-04 game afterwards.
+
+## Call-order investigation: who gets the next byte?
+
+Now keep the position handling correct. The [optional call-order companion](https://github.com/Code198x/code-samples/tree/main/commodore-64/assembly/starfield/unit-17/call-order)
+reuses the fixed-seed fixture and adds **one** cosmetic draw for a border colour.
+This decoration belongs to the experiment, not the normal game's starfield.
+Both versions consume thirteen bytes: twelve for enemies and one for decoration.
+We move the cosmetic draw from just before the first spawn to just after it.
+
+Keep seed 1, the initial state and the launch inputs identical. Before running,
+assign the first four bytes—**2, 4, 8, 16**—to their consumers. Use
+`24 + b + floor(b/8)` to predict the first two enemy positions. Will every later
+spawn differ, or can the two traces agree again?
+
+Run both copies. The display shows their first three spawn records in hexadecimal;
+the companion also logs each draw as a consumer ID and its byte. We can inspect
+those values without distinguishing the border colours. Compare the raw random
+sequence **and** the consumers: matching seeds alone do not answer both questions.
+
+<details>
+<summary>Hint 1: label the draws before calculating positions</summary>
+
+In one version the order begins decoration, enemy, enemy. In the other it begins
+enemy, decoration, enemy. Each request advances the same generator once.
+
+</details>
+
+<details>
+<summary>Hint 2: count what has happened before spawn two</summary>
+
+How many bytes has each version consumed by then? There are no collision or
+movement updates between these calls that could introduce another difference.
+
+</details>
+
+<details>
+<summary>Compare the consumers and explain the result</summary>
+
+| Draw | Decoration before spawn 1 | Decoration after spawn 1 |
+|---|---|---|
+| Byte 2 | Decoration | Spawn 1: X=26 |
+| Byte 4 | Spawn 1: X=28 | Decoration |
+| Byte 8 | Spawn 2: X=33 | Spawn 2: X=33 |
+| Byte 16 | Spawn 3: X=42 | Spawn 3: X=42 |
+
+The generator produces exactly the same sequence. The first enemy receives a
+different byte because decoration takes a different turn. Unlike the previous
+fault, the logical position and sprite registers agree in both versions.
+
+Spawns 2–12 agree: both versions have consumed two bytes before spawn 2. That
+does **not** mean a real game would automatically recover the same history.
+A changed first position could affect a collision, score or later random calls.
+Our isolated fixture excludes those consequences so we can see this one cause.
+
+</details>
+
+Explain what we should do if a harmless-looking decoration edit changes an
+important test scenario. Restoring the old call order restores these choices;
+accepting a deliberate behaviour change means recording a new baseline. A separate
+random state for decoration is another possible design when that independence
+is needed, but it brings another seed and reset responsibility. We do not need
+a new generator or replay engine to investigate this example.
+
+Finish by describing the evidence a bug report needs beyond its seed: which
+build, initial state, inputs and random consumers produced the result? Return
+to the original step-04 game afterwards. These three investigations isolate a
+reset fault, a representation handoff and a change in who consumes the data.
 
 ## When it's wrong, see why
 

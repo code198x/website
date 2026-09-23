@@ -1,0 +1,153 @@
+---
+import fs from 'node:fs';
+import path from 'node:path';
+import {createHash} from 'node:crypto';
+const playerVersion=createHash('sha256').update(fs.readFileSync('public/emulators/embed.js')).update(fs.readFileSync('public/emulators/player.js')).digest('hex').slice(0,16);
+interface Props { src: string; title?: string }
+const source=fs.readFileSync(path.resolve(process.env.CODE_SAMPLES_PATH || '../code-samples',Astro.props.src),'utf8');
+const filename=path.basename(Astro.props.src,'.asm');
+---
+<code198x-nes-editor data-filename={filename} data-title={Astro.props.title || `${filename}.asm`}>
+ <label class="source-label">Your source — edit the line between YOUR CODE markers
+  <textarea class="nes-source sandbox-source" rows="20" spellcheck="false" autocomplete="off" autocapitalize="off" wrap="off">{source}</textarea>
+ </label>
+ <div class="editor-actions" aria-label="Assembly controls">
+  <button type="button" data-action="run" disabled>Assemble &amp; run</button>
+  <button type="button" data-action="cartridge" disabled>Download cartridge</button>
+  <button type="button" data-action="source" disabled>Download source</button>
+  <button type="button" data-action="revert" disabled>Revert source</button>
+  <button type="button" class="show-emulator" aria-expanded="false" disabled>Show emulator</button>
+ </div>
+ <p class="editor-status" role="status" aria-live="polite">Ready. Assemble &amp; run starts the source shown above.</p>
+ <pre class="editor-diagnostics" hidden></pre>
+ <aside class="emulator-panel" popover="manual" role="dialog" aria-label="NES emulator">
+  <header class="panel-heading"><div><strong>NES emulator</strong><p class="panel-source"></p></div><button type="button" class="close-emulator">Close emulator</button></header>
+ <emu198x-player external-source system="nintendo-nes" variant="nintendo-nes-ntsc"><p>Loading player…</p></emu198x-player>
+ <p class="panel-note">Closing pauses your program. Reopen and press Resume to continue.</p>
+ </aside>
+ <p class="editor-note">Assembly runs on your device. Download cartridge builds the current source, even if you haven't run it. Revert source restores the lesson text; assemble again to run it.</p>
+ <p><a href="https://emu198x.github.io/downloads/">Download Emu198x for desktop</a> · <a href="/wasm/asm198x-mos6502/LICENSE.txt">Assembler licence</a> · <a href="https://github.com/asm198x/asm198x">Assembler source</a></p>
+ <noscript>Enable JavaScript to assemble here, or use the source and cartridge downloads in the lesson.</noscript>
+</code198x-nes-editor>
+<script is:inline type="module" src={`/emulators/embed.js?v=${playerVersion}`}></script>
+<script>
+ type Player = HTMLElement & {loadMedia(program:{name:string;bytes:Uint8Array}):Promise<boolean>;pause():void};
+ type Diagnostic = {message?:string;span?:{line?:number;col?:number}};
+ class NesEditor extends HTMLElement {
+  static activePanel: {close:(restoreFocus?:boolean)=>void} | undefined;
+  dispose?:()=>void;
+  connectedCallback() {
+   if(this.dispose)return;
+   const editor=this.querySelector<HTMLTextAreaElement>('.nes-source')!;
+   void import('../lib/assembly-editor').then(({highlightAssemblyEditor})=>highlightAssemblyEditor(editor,'ca65')).catch(()=>{});
+   const initial=editor.defaultValue, filename=this.dataset.filename || 'program';
+   const status=this.querySelector<HTMLElement>('.editor-status')!;
+   const diagnostics=this.querySelector<HTMLElement>('.editor-diagnostics')!;
+   const player=this.querySelector<Player>('emu198x-player')!;
+   const buttons=Array.from(this.querySelectorAll<HTMLButtonElement>('[data-action]'));
+   const events=new AbortController();
+   const panel=this.querySelector<HTMLElement>('.emulator-panel')!;
+   const show=this.querySelector<HTMLButtonElement>('.show-emulator')!;
+   const close=this.querySelector<HTMLButtonElement>('.close-emulator')!;
+   let returnFocus:HTMLElement | null=null;
+   const openPanel=()=>{
+    if(panel.matches(':popover-open'))return;
+    NesEditor.activePanel?.close(false);
+    const samples=Array.from(document.querySelectorAll('code198x-nes-editor'));
+    const title=`${samples.length>1?`Sample ${samples.indexOf(this)+1} · `:''}${this.dataset.title}`;
+    panel.querySelector('.panel-source')!.textContent=title;
+    panel.setAttribute('aria-label',`NES emulator — ${title}`);
+    NesEditor.activePanel=controller;
+    returnFocus=document.activeElement instanceof HTMLElement && this.contains(document.activeElement)?document.activeElement:show;
+    panel.showPopover();show.setAttribute('aria-expanded','true');close.focus({preventScroll:true});
+   };
+   const closePanel=(restoreFocus=true)=>{
+    if(!panel.matches(':popover-open'))return;
+    player.pause();panel.hidePopover();show.setAttribute('aria-expanded','false');
+    if(NesEditor.activePanel===controller)NesEditor.activePanel=undefined;
+    if(restoreFocus)(returnFocus?.isConnected?returnFocus:show).focus({preventScroll:true});
+   };
+   const controller={close:closePanel};
+   show.addEventListener('click',openPanel,{signal:events.signal});
+   close.addEventListener('click',()=>closePanel(),{signal:events.signal});
+   document.addEventListener('keydown',event=>{if(event.key==='Escape' && panel.matches(':popover-open')){event.preventDefault();closePanel();}},{signal:events.signal});
+   let worker:Worker | undefined, timer:ReturnType<typeof setTimeout> | undefined, disposed=false, busy=false;
+   const say=(message:string)=>{status.textContent=message;};
+   const clearWorker=()=>{worker?.terminate();worker=undefined;clearTimeout(timer);};
+   const save=(data:BlobPart,name:string)=>{
+    const url=URL.createObjectURL(new Blob([data]));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+   };
+   function report(items:Diagnostic[]) {
+    diagnostics.textContent=items.map(item=>`${item.span?.line?`Line ${item.span.line}: `:''}${item.message || 'Assembly failed.'}`).join('\n');diagnostics.hidden=false;
+    const line=items.find(item=>item.span?.line)?.span?.line;
+    if(line){const lines=editor.value.split('\n');const start=lines.slice(0,line-1).reduce((n,s)=>n+s.length+1,0);editor.focus();editor.setSelectionRange(start,start+(lines[line-1]?.length || 0));}
+   }
+   async function build(action:string) {
+    if(busy || disposed)return;
+    if(editor.value.length>262144){say('Keep this example below 256 KiB of source.');return;}
+    busy=true;buttons.forEach(button=>button.disabled=true);diagnostics.hidden=true;
+    const source=editor.value;say('Assembling with Asm198x…');
+    try {
+     const result=await new Promise<{bytes?:Uint8Array;diagnostics?:Diagnostic[];error?:string;warnings?:Diagnostic[]}>((resolve,reject)=>{
+      worker=new Worker('/nes-assembler-worker.js',{type:'module'});
+      timer=setTimeout(()=>{clearWorker();reject(new Error('Assembly took too long. Check the source and try again.'));},15000);
+      worker.onmessage=({data})=>{clearWorker();resolve(data);};
+      worker.onerror=()=>{clearWorker();reject(new Error('The browser assembler could not load or stopped. Try again, or download the source to build locally.'));};
+      worker.postMessage({source});
+     });
+     if(disposed)return;
+     if(editor.value!==source){say('Source changed while assembling. Assemble again to use your latest edit.');return;}
+     if(result.error)throw new Error(result.error);
+     if(result.diagnostics){report(result.diagnostics);say('Build failed. The player has not been changed.');return;}
+     if(!result.bytes)throw new Error('The assembler returned no cartridge.');
+     if(action==='cartridge'){save(result.bytes as BlobPart,filename+'.nes');say(`Cartridge downloaded — ${result.bytes.length.toLocaleString()} bytes from the current source.`);}
+     else {
+      await Promise.race([customElements.whenDefined('emu198x-player'),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('The player could not load. Reload the page, or download the cartridge to run elsewhere.')),15000);})]);
+      clearTimeout(timer);
+      if(disposed)return;
+      const started=await player.loadMedia({name:filename+'.nes',bytes:result.bytes});
+      if(!disposed && started){show.disabled=false;openPanel();}
+      if(!disposed)say(started?`Running your build — ${result.bytes.length.toLocaleString()} bytes.`:'Cartridge ready. Complete the player setup to run it.');
+     }
+     if(result.warnings?.length)report(result.warnings);
+    } catch(error) {if(!disposed)say(error instanceof Error?error.message:String(error));}
+    finally {clearWorker();busy=false;if(!disposed)buttons.forEach(button=>button.disabled=false);}
+   }
+   buttons.forEach(button=>{button.disabled=false;button.addEventListener('click',()=>{
+    const action=button.dataset.action!;
+    if(action==='source')save(editor.value,filename+'.asm');
+    else if(action==='revert'){editor.value=initial;editor.dispatchEvent(new Event('input'));diagnostics.hidden=true;say('Lesson source restored. Assemble & run to restart it.');}
+    else void build(action);
+   },{signal:events.signal});});
+   editor.addEventListener('input',()=>{if(!busy)say('Source changed. Assemble & run to update the player.');},{signal:events.signal});
+   this.dispose=()=>{closePanel(false);disposed=true;clearWorker();events.abort();};
+  }
+  disconnectedCallback(){this.dispose?.();this.dispose=undefined;}
+ }
+ if(!customElements.get('code198x-nes-editor'))customElements.define('code198x-nes-editor',NesEditor);
+</script>
+<style>
+ code198x-nes-editor { display: block; min-width: 0; margin-block: 1.5rem; }
+ .source-label { display: block; max-width: 36rem; font-weight: 600; }
+ .nes-source { display: block; width: 100%; min-width: 0; margin-top: .5rem; padding: .8rem; resize: vertical; font: 1rem/1.6 var(--font-family-mono,monospace); color: var(--color-text,inherit); background: var(--color-surface,Canvas); border: 1px solid var(--color-border); border-radius: 3px; tab-size: 4; }
+ .editor-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: .75rem; }
+ button { font: inherit; min-height: 44px; padding: .5rem .8rem; color: inherit; background: var(--color-surface,Canvas); border: 1px solid var(--color-border); border-radius: 3px; cursor: pointer; }
+ button:disabled { opacity: .5; cursor: default; }
+ button:focus-visible { outline: 3px solid var(--color-primary,#3988e8); outline-offset: 3px; }
+ .nes-source:focus-visible { outline: none; box-shadow: inset 0 0 0 2px #9ba7b4; }
+ @media (forced-colors: active) { .nes-source:focus-visible { border-color: Highlight; } }
+ .editor-status { min-height: 1.6em; }
+ .editor-diagnostics { white-space: pre-wrap; overflow-wrap: anywhere; padding: .75rem; border-left: 3px solid currentColor; }
+ .emulator-panel { position: fixed; inset: 0 0 0 auto; box-sizing: border-box; width: min(440px,100vw); height: 100dvh; max-height: none; margin: 0; padding: 1rem; overflow: auto; color: var(--color-text,#e6edf3); background: var(--color-surface,#15191f); border: 0; border-left: 1px solid var(--color-border,#657584); box-shadow: -8px 0 30px #0004; }
+ .panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+ .panel-note { font-size: .875rem; }
+ .panel-source { margin: .25rem 0 0; font-size: .875rem; overflow-wrap: anywhere; }
+ @media (prefers-reduced-motion: no-preference) {
+  .emulator-panel { transform: translateX(100%); transition: transform 180ms ease-out, display 180ms allow-discrete, overlay 180ms allow-discrete; }
+  .emulator-panel:popover-open { transform: translateX(0); }
+  @starting-style { .emulator-panel:popover-open { transform: translateX(100%); } }
+ }
+ emu198x-player { display: block; margin-block: 1rem; }
+ .editor-note { font-size: .9rem; }
+ @media (hover:hover) { button:not(:disabled):hover { border-color: currentColor; } }
+</style>

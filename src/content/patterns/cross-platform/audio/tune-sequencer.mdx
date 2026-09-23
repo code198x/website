@@ -1,6 +1,6 @@
 ---
 title: "Tune Sequencer with Two Terminators"
-summary: "A melody is a table of pitch and duration; a once-per-frame tick serves it. One terminator loops (title music), the other stops (fanfares and stings) — win and lose having voices costs one extra marker."
+summary: "Store a phrase as timed events, distinguish looping from stopping, and trace the player separately from the hardware that makes the sound."
 platform: "cross-platform"
 category: "audio"
 difficulty: "intermediate"
@@ -16,82 +16,226 @@ related:
 
 ## Overview
 
-Every game music driver ever written is this routine with more columns. A melody is rows of **pitch** and **duration**; a tick routine runs once per frame, counts the current note down, and serves the next row when it expires. The sound chip holds each note by itself — the CPU touches it twice per note, and the game runs on regardless.
+A title tune repeats until we start playing. A victory phrase reaches its end and
+stops. We can describe both as data: notes, rests, and an instruction at the end.
+The player remembers its position and advances when an event's duration expires.
 
-Three details carry the pattern:
+Start with [Four Ways to Make a Sound](/patterns/cross-platform/audio/making-a-sound).
+We need to understand how our chosen machine starts and ends one sound before
+asking a table to organise several. Here we compare the players in
+[Flock 17](/systems/commodore-amiga/assembly/flock/unit-17),
+[Flock 18](/systems/commodore-amiga/assembly/flock/unit-18),
+[Starfield 17](/systems/commodore-64/assembly/starfield/unit-17) and
+[Dash 17](/systems/nintendo-entertainment-system/assembly/dash/unit-17).
+They share an idea, not an identical format or driver.
 
-- **A rest is a note.** A pitch of zero gates the channel off and keeps counting. Silence is part of the phrase — run notes together and they smear.
-- **Two terminators, two meanings.** One marker loops to the top: that's title music, round and round until the player presses start. A second marker stops for good: that's a fanfare or a sting, which says its piece once. Win and lose having voices costs the sequencer exactly one extra marker.
-- **Retrigger on every note.** Gate the voice off then on (or rewrite the period register that restarts the phase) so each note attacks cleanly instead of sliding.
+## Which clock counts the notes?
 
-The exception that proves the pattern: on a one-bit beeper (ZX Spectrum), the tune *owns the CPU* — every half-cycle of every note is a software loop, and the game stops while music plays. The table idea survives; the "game runs on regardless" part is what a sound *chip* buys you over a sound *bit*.
+A **player update** advances musical state. Sound generation happens on another
+clock: SID oscillators, NES channel timers or Paula sample DMA continue between
+player calls. Software still chooses notes, handles effects and owns the channels.
+A CPU-driven Spectrum beeper needs software to generate its output edges too;
+putting notes in a table does not make that waveform work happen in the background.
+A blocking beeper routine pauses other work. Interleaving work requires a different,
+carefully timed implementation.
 
-## Pseudocode
+Our examples use frame-paced game loops. That is a scheduling choice, not a rule
+for all music players. Six player intervals last 120 ms at nominal 50 updates per
+second, or 100 ms at nominal 60: unchanged event spacing plays 20% faster at 60.
+Pitch is separate, although regional hardware clocks can also change tuning.
+Count the actual calls and countdown order before interpreting a stored duration.
+A missed update can delay the next event while hardware continues its current state.
+
+## An explicit countdown contract
+
+This **schematic pseudocode** defines a small alternative we can trace. It is not
+a transcription of any of the games. Rows have a named `kind` (NOTE, REST, LOOP or
+STOP); notes and rests also have a positive whole-number `duration`. Notes carry
+machine-specific sound data. Named fields describe the format here, not a required
+binary layout. The table and player state remain valid for the whole phrase.
+
+We start with `active = TRUE`, `index = 1` and `remaining = 0`. A duration of two
+means two player intervals between this event's start and the next event's start.
+`start_note` and `rest_voice` act only on the resource owned by this player.
+`stop_player` ends ownership according to the driver's agreed mute or release policy
+and sets `active = FALSE`. `data_error` reports a useful development error and calls
+`stop_player`; it does not silently turn malformed music into a valid phrase.
 
 ```text
-; A phrase: rows of (pitch, frames)
-; pitch 0        = rest
-; frames LOOP    = back to the top (title music)
-; frames STOP    = played once, now silent (fanfare / sting)
+DEFINE player_update
+    IF NOT active THEN RETURN
+    IF remaining > 0 THEN
+        LET remaining = remaining - 1
+        IF remaining > 0 THEN RETURN
+    END
 
-tune_tick:                      ; called once per frame, every state
-    if sequencer_off: return
-    tune_timer -= 1
-    if tune_timer > 0: return
-
-next_row:
-    (pitch, frames) = table[tune_idx]
-    tune_idx += 1
-    if frames == LOOP:  tune_idx = 0; goto next_row
-    if frames == STOP:  silence channel; sequencer_off = true; return
-    tune_timer = frames
-    if pitch == 0:      silence channel; return     ; the rest
-    set channel pitch
-    retrigger channel                               ; gate off, gate on
+    # At most one LOOP followed by one timed event or STOP.
+    FOR attempt = 1 TO 2
+        IF index < 1 OR index > LENGTH(rows) THEN
+            CALL data_error("Missing ending or invalid position")
+            RETURN
+        END
+        LET row = rows[index]
+        IF row.kind = STOP THEN
+            CALL stop_player
+            RETURN
+        END
+        IF row.kind = LOOP THEN
+            LET index = 1
+        ELSE
+            IF row.kind <> NOTE AND row.kind <> REST THEN
+                CALL data_error("Unknown event")
+                RETURN
+            END
+            IF row.duration < 1 OR row.duration > MAX_DURATION THEN
+                CALL data_error("Invalid duration")
+                RETURN
+            END
+            LET index = index + 1
+            LET remaining = row.duration
+            IF row.kind = REST THEN
+                CALL rest_voice
+            ELSE
+                CALL start_note(row.sound)
+            END
+            RETURN
+        END
+    END
+    CALL data_error("Loop without a timed event or stop")
+END
 ```
 
-## Implementation Notes
+Markers are interpreted **before** duration or pitch fields. A one-word marker
+must not make us read a nonexistent second word. On a target machine we choose
+`MAX_DURATION` to fit the counter and reserved marker values, and validate pitch,
+sample references and table bounds as well. A small authoring check can reject bad
+built-in data before assembly. Runtime checking is especially useful for loaded
+data; it has a cost we should account for.
 
-**68000 + Paula (Amiga — Flock):** rows are `dc.w period, frames`; period 0 is a rest (audio DMA off), `-1` loops, `-2` stops. Each note is an ordinary one-shot sample play with steady pitch.
+The two-row limit prevents an empty loop from trapping the game inside its music
+update. It deliberately supports only this simple phrase format. Adding jumps or
+commands requires a new bounded-work contract.
 
-```asm
-tunetick:
-            subq.w  #1,jingletimer
-            bne.s   .out
-.next:      move.l  jinglep,a0
-            move.w  (a0)+,d0            ; period — or a marker
-            cmp.w   #-1,d0
-            beq.s   .loop               ; round again
-            cmp.w   #-2,d0
-            beq.s   .halt               ; played once, now stop
-            move.w  (a0)+,d1            ; frames
-            move.l  a0,jinglep
-            move.w  d1,jingletimer
-            tst.w   d0
-            beq.s   .rest               ; silence is a note too
-            ; ...point Paula at the sample, set AUDxPER from d0, DMA on...
-```
+## Predict the next event
 
-**6510 + SID (C64 — Starfield):** three parallel tables (`jingle_lo`, `jingle_hi`, `jingle_dur`), `$FF` in the high byte as the loop marker. Retrigger by writing gate-off then gate-on to the voice control register. The title lends the laser's voice to the band — both halves of the envelope handover live in the state transitions (`enter_title` installs the music envelope, `enter_game` restores the laser's).
+Trace `NOTE A, 2; REST, 1; NOTE B, 1; STOP` with the contract above. Which calls
+start A, the rest and B? When does STOP run? Then replace the whole table with
+`LOOP`. Can that update return?
 
-**6502 + APU (NES — Dash):** rows of three bytes (`period_lo, period_hi, frames`); `$FF` loops, `$FE` stops. Writing the period high register restarts the note. Watch the sweep unit: disable it with a write that can't mute your period range.
+<details>
+<summary>Compare the trace</summary>
 
-**Z80 + beeper (Spectrum — the honest "before"):** Gloaming Unit 21 plays its three phrases as straight-line `beep` calls with `HALT`-loop rests — blocking, like every beeper sound. Shadowkeep's theme is the table version, still CPU-held: the tick *is* the note. Same data idea, no free lunch.
+| Call | Event or countdown | Remaining afterwards |
+| --- | --- | --- |
+| 1 | Start A | 2 |
+| 2 | Count down | 1 |
+| 3 | Count down to zero; start rest | 1 |
+| 4 | Count down to zero; start B | 1 |
+| 5 | Count down to zero; stop | 0 |
 
-## Trade-offs
+The LOOP-only table consumes both allowed row inspections, then reports a data
+error and stops. An empty table fails its bounds check immediately. A zero-duration
+note is rejected rather than wrapping an unsigned counter.
 
-| Aspect | Cost |
-|--------|------|
-| CPU | Negligible on a sound chip (two register writes per note); the whole CPU on a beeper |
-| Memory | 2–3 bytes per note plus a ~30-instruction tick |
-| Complexity | Low — and tempo, key and melody become data edits |
+Now change only the update rate. The event order stays the same; the time between
+events changes. That observation establishes a scheduling result, not whether a
+particular instrument sounds good or releases instantly.
 
-**When to use:** any game that wants title music, a fanfare, or a sting — which is any finished game.
+</details>
 
-**When to avoid:** when you need chords, instruments, or per-channel effects — at that point you're building a tracker replayer, which is this pattern with more columns.
+## What the existing players actually do
 
-## Benefits
+### Amiga: two timers and a repeating waveform
 
-- **Melody is data** — transpose by multiplying pitches, change tempo by scaling durations, swap tunes by swapping a pointer
-- **Endings get voices cheaply** — the stop terminator turns the title-music engine into a fanfare/sting engine for free
-- **The game never waits** — on real sound hardware the tick costs two writes per note, not per frame
+Flock 17 stores normal rows as two words, `period, duration`: four bytes per row.
+Period zero is a rest; a single negative word marks the ending. Unit 17 loops;
+unit 18 distinguishes `-1` (return to the title jingle) from `-2` (stop advancing).
+Its pointer stays on the stop marker. The marker itself does not mute the channel:
+`soundtick` completes the previously timed sound.
+
+`tunetick` starts with a zero timer. It tests for zero **before** decrementing;
+a non-zero timer is decremented and the routine returns even when it becomes zero.
+A row loaded with duration D therefore starts its successor D + 1 player calls
+later. A loop marker also uses a call to reset the pointer before a later call
+loads the first note. This is different from the schematic contract above.
+
+`playsound` points Paula channel 0 at an eight-byte square waveform, sets a
+four-word sample length and enables DMA. The waveform repeats; it is not a
+one-shot recording. `sndtimer` and `soundtick` determine when playback stops.
+On the title path, `tunetick` runs before `soundtick`, so a newly loaded sound timer
+is decremented in that same game update. Trace both routines when explaining the
+note's sounding length and the gap before its successor. A rest disables channel
+DMA. Music and effects share this channel; transitions must decide who may write it.
+
+### C64: the title borrows the laser's voice
+
+Starfield 17 uses three parallel byte tables: frequency low, frequency high and
+duration. Its **high byte alone** determines the marker: zero means rest, `$FF`
+loops. Consequently this particular format cannot express a sounding frequency
+with a zero high byte. It has no STOP marker; leaving the title stops music updates.
+
+`enter_title` sets the timer to one. `jingle_tick` decrements first, so the first
+note loads on the next call; a positive duration D gives D calls between starts.
+A normal note writes four SID registers: frequency high, frequency low, gate off,
+gate on. A rest writes gate off. The countdown still costs CPU instructions on
+calls with no SID writes.
+
+The loop path loads the first row in the same call, assuming it is a valid timed
+row. The built-in tables must have matching lengths, positive durations and a
+valid first row. This is not a general malformed-data parser. `enter_title`
+installs the music envelope; `enter_game` gates the voice off and restores the
+laser's envelope. Gate-off requests release, not an immediate reset to silence.
+A quick off/on pair does not promise the same attack from every previous envelope
+state. Listen to repeated notes as well as isolated ones.
+
+### NES: duration bytes also carry commands
+
+Dash 17 stores `period_low, period_high, duration`, three bytes per row. Duration
+`$FF` loops and `$FE` stops; ordinary durations must be 1–253. Both period bytes
+zero mean rest. `start_phrase` initialises the timer to one, then `tune_tick`
+decrements before testing. A zero timer would wrap to 255 rather than immediately
+load the next row.
+
+The routine checks the duration markers before playing the row. LOOP immediately
+reads again from the start; a LOOP-only table would never return. STOP silences
+pulse 1 by selecting constant volume zero and clears the active pointer flag.
+Validate the built-in tables, including the byte index: each complete three-byte
+row must fit before that index wraps. The active flag also assumes the phrase
+address has a non-zero high byte.
+
+A sounding row writes four APU registers: volume/duty, sweep and two timer bytes.
+The timer-high write resets pulse phase and starts the envelope process; Dash
+selects constant volume, so this is not an audible envelope attack. Its sweep
+setting is chosen for its existing period range, not every possible pulse note.
+The player runs in the main loop after an NMI notification, not inside NMI. The
+one-bit notification does not queue every missed frame.
+
+## Choosing and measuring the result
+
+We can preserve one event idea without requiring identical note starts, rests or
+release tails. Does the phrase articulate repeated notes clearly? Does its ending
+leave room for the next cue? If a sound effect takes the channel, decide whether
+the interrupted musical voice resumes, restarts or stays silent. Keep that policy
+visible in the game's [state transitions](/patterns/cross-platform/framework/state-machine).
+
+Measure the countdown-only path, a new note and the loop boundary separately.
+Include the driver's writes, any effect updates and DMA costs where applicable.
+Hardware-generated sound saves waveform work; it does not guarantee negligible
+player cost or punctual updates. Avoid changing countdown order merely to make the
+listings alike: it changes an existing tune's rhythm and needs a new listening check.
+
+A single-voice phrase is a useful first solution for title music or a short cue.
+Multiple voices, instrument state and effects deserve later additions when a game
+needs them. They do not require one universal tracker architecture. Transposition
+also depends on representation: SID frequency values and Paula/NES periods move
+in opposite directions, and rounding and valid ranges matter.
+
+## Hardware references
+
+- Commodore, *Amiga Hardware Reference Manual*, [Audio Hardware](https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node00D8.html): sample DMA, repeating blocks and software stopping.
+- MOS Technology, [6581 SID datasheet](https://www.cpcwiki.eu/imgs/9/9d/Mos_6581_sid.pdf), voice control and envelope descriptions: gate and release behaviour.
+- NESdev hardware research: [pulse registers](https://www.nesdev.org/wiki/APU_Pulse), [envelope](https://www.nesdev.org/wiki/APU_Envelope) and [sweep](https://www.nesdev.org/wiki/APU_Sweep).
+
+The game descriptions above follow their maintained sources. The schematic trace
+checks countdown and marker logic; it does not establish audible output or original
+hardware behaviour.

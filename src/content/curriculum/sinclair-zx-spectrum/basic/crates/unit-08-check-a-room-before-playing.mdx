@@ -35,21 +35,70 @@ Line 4005 resets three counts and clears `e$`, the error message. Line 4015 chec
 
 The cell loop counts players, crates and goals. P and + each count as a player. Codes 3 and 4 each count as a crate; codes 2 and 4 each count as a target. After all rows, the loader requires exactly one player, at least one crate and equal crate and target totals. The final goal check states that requirement too; with positive crates and equal totals, it is already satisfied.
 
-## Try mistakes one at a time
+## Investigate one row
 
-After each experiment, restore the original line and RUN again. These changes are temporary map data, not additions to the game:
+Keep the complete working program above as our recovery copy. We will change **only line 8010**, leaving the loader and drawing code alone. If the game is running, press Q to return to BASIC before editing.
+
+First establish the working case:
+
+```basic
+8010 DATA "#------#"
+```
+
+Enter `RUN`, then press S at the title. Check that the room appears with one player, one crate and one target. Make one legal move, then press R: the original positions and zero steps should return. Press Q before the next edit.
+
+Now predict each result **before running it**. Count the symbols inside the quotes; the quotes themselves are not map cells.
+
+| Case | Line to enter | Our prediction | Observed message and row |
+| --- | --- | --- | --- |
+| Valid control | `8010 DATA "#------#"` | Room plays | Record the working result |
+| Short row | `8010 DATA "#-----#"` | Write this before RUN | Record what actually appears |
+| Unknown symbol | `8010 DATA "#--X---#"` | Write this before RUN | Record what actually appears |
+
+For each faulty case, enter its line, `RUN`, and press S. Does the game draw a playable room, or stop with a message? Record the exact message and row number. The error screen stops in BASIC, so we can edit the line there.
+
+Restore the valid line and run it successfully **between the two faults**, and once more after the last fault. That gives us a working comparison each time, rather than letting one broken edit influence the next investigation.
+
+Before opening the explanation, choose a hypothesis: is the loader rejecting the row's **length**, rejecting a **symbol**, or accepting data that the drawing routine cannot display? Which observed message would support or contradict that explanation?
+
+<details>
+<summary>Hint: find the first check that can reject this row</summary>
+
+Read line 4015 before following the symbol tests. Does it reach `m$(c)` for both faulty rows? For the eight-symbol row, follow what happens to `v` when `b$` is X.
+
+</details>
+
+<details>
+<summary>Compare our evidence and repair</summary>
+
+The short row has seven symbols. Line 4015 sets `e$` to **Use eight symbols per row.** and returns before indexing its characters. The screen reports **Row 2**.
+
+The X row has eight symbols, so it passes the length check. At column 4, X matches none of the supported symbols, leaving `v` at -1. Line 4095 sets **Unknown map symbol.** and returns. The screen again reports **Row 2**; this version reports a row, not the column. We locate column 4 by inspecting the DATA ourselves.
+
+Neither case reaches room drawing or movement: line 21 directs the returned error to the diagnostic screen. Some earlier cells may already be in `g()`, but the program does not offer that partial room for play. We have evidence of a data-format fault, so changing colours or movement code would not repair its cause.
+
+For each case, restore `8010 DATA "#------#"`, then `RUN` and S. Check the initial room, make a legal move and press R again. A message disappearing is useful evidence; a working move and restart also check that the repaired data still reaches the game correctly.
+
+</details>
+
+Finish by explaining why the two bad rows reach different checks even though they report the same row number. We have described the expected behaviour, reproduced a fault, tested a specific explanation, changed one relevant value and checked the repair.
+
+## More mistakes to explore
+
+These are optional extensions. Keep changing one line at a time, predict first, and restore the original DATA after each trial.
+
+<details>
+<summary>Other edits and their expected results</summary>
 
 | Temporary edit | Expected result |
 |---|---|
-| Line 8010: remove one dash inside the quotes | Eight-symbol row error, row 2 |
-| Line 8010: add one dash | The same length error, row 2 |
-| Line 8010: replace one dash with `?` | Unknown-symbol error, row 2 |
+| Line 8010: add one dash | Eight-symbol row error, row 2 |
 | Line 8050: replace P with a dash | Exactly-one-player error |
 | Line 8010: replace one dash with P | Exactly-one-player error |
 | Line 8040: replace C with a dash | At-least-one-crate error |
 | Line 8010: replace one dash with a dot | Crate/target count mismatch |
 
-The original lines are in the complete program above. RUN after restoring all of them; the original room should play normally.
+</details>
 
 A missing DATA statement is different. READ can run out of values before our checks can run, and the ROM reports **Out of DATA**. This validator is not a general BASIC error handler. Check that all eight map lines exist and that RESTORE selects the right section.
 
@@ -62,6 +111,48 @@ No. Those checks establish a usable structure, not a route through the puzzle. A
 Combined symbols matter to that distinction too. `*` contributes both a crate and a target; `+` contributes a player and a target. A structurally valid map with every crate already delivered starts completed because line 86 sees zero uncovered targets. A malformed map never reaches that line.
 
 If the program enters play after an error, check line 21. If a bad row produces a subscript error instead of our message, check that the length test precedes `m$(c)`. Good diagnostics happen before the operation that would fail.
+
+## Optional: which room did we build?
+
+Once our handwritten DATA works, we can try a small tool on our development computer. This needs Python 3.10 or later; it is optional, and the Spectrum game still uses the same BASIC loader.
+
+Open the [converter and its instructions](https://github.com/Code198x/code-samples/tree/main/sinclair-zx-spectrum/basic/crates/teaching/tools). Keep the original unit-08 program and `room.txt` as recovery copies. Work on a copy named `trial-room.txt`, in the tool's folder. Run:
+
+```sh
+python3 map_to_data.py trial-room.txt -o trial-room.bas
+```
+
+The output is **eight DATA lines, not a complete game or a tape**. Compare all eight with lines 8000–8070 above: they should match. In particular, authoring row 6 becomes `8050 DATA "#-P----#"`. When the loader reads it, P becomes `pr=6`, `pc=3` and floor in `g(6,3)`.
+
+Press Q to leave the game before editing. Replace only lines 8000–8070 in our working program with the generated lines, then RUN and press S. Move left once and press R. Check that the player returns to row 6, column 3 and the steps return to zero.
+
+### Leave an old output behind
+
+In `trial-room.txt`, change row 2 to `#--X---#`. Before rerunning the command, predict: will it replace the output, remove it, or leave the previous output alone?
+
+Run the command and read its diagnostic. Compare `trial-room.bas` with its earlier contents. For this controlled experiment only, put those remaining DATA lines into BASIC and run the game again. Why can it show a playable room when our authoring file contains X?
+
+<details>
+<summary>Hint: follow the files before following the loader</summary>
+
+Does the generated file contain X? Which file does our command read, and which DATA does BASIC actually consume? A working game cannot tell us whether a separate conversion succeeded.
+
+</details>
+
+<details>
+<summary>Explain the evidence, then repair the chain</summary>
+
+The converter reports row 2, column 4 and fails. It preserves the last successful output, so that file still describes the original room. BASIC accepts the DATA we gave it; it never reads `trial-room.txt`. The output is valid but stale.
+
+Restore row 2 to `#------#`. Now change row 6 to `#--P---#`, moving P one column right. Regenerate successfully and inspect line 8050. Before replacing it in BASIC, predict whether RUN alone will show our change. It will not: generating a file does not edit the program already in the Spectrum.
+
+Replace the eight DATA lines, RUN and press S. The player should start at row 6, column 4. Move left and restart: column 4 should return. Finally restore the original authoring map, regenerate successfully, replace the DATA and repeat the movement/restart check at column 3.
+
+</details>
+
+We have finished when we can point to the authoring row, generated line and runtime position, and explain which step was missing. Keep conversion errors visible; an output file's existence is not evidence that the latest edit reached it.
+
+This puts [unit 07's three representations](/systems/sinclair-zx-spectrum/basic/crates/unit-07-read-the-room-from-a-map/#one-room-three-representations) into practice. Later, [Night Patrol prepares changes to the guard's view](/systems/sinclair-zx-spectrum/basic/night-patrol/unit-07/): that preparation happens inside the game, whereas this converter runs before play. In both cases, we must know which prepared data the next operation actually uses.
 
 <Sources>
 

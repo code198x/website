@@ -1,6 +1,6 @@
 ---
 title: "The Vertical Blank"
-description: "Fifty times a second the video beam finishes the screen and returns to the top — the vertical blank. A game does one frame's work in that gap and waits for the next. Wait for the beam, do a little, repeat: that's the loop every game lives inside."
+description: "Poll the Amiga’s beam position to pace a small colour update, distinguish a frame from vertical blanking, and discover why a late loop can miss its turn."
 pubDate: 2026-06-08
 game: 0
 unit: 9
@@ -8,23 +8,24 @@ tags: ["assembly", "68000", "vertical-blank", "loop", "amiga"]
 ---
 
 import CodeFromFile from "@components/CodeFromFile.astro";
-import Figure from "@components/Figure.astro";
+import VideoPlayer from "@components/VideoPlayer.astro";
 
-Every unit so far ran once and then spun forever on `bra.s forever`, holding a still screen. A game isn't still — it moves. And it moves in time with the display, because the screen redraws itself fifty times a second whether your code is ready or not.
+So far, we have run a small job and then held a still screen. Now we want a job that repeats at a steady pace. Our ordinary PAL display refreshes at roughly 50 Hz, giving us about 20 ms between successive frames. Those are useful round numbers; exact timing depends on the machine and display mode.
 
-The Amiga draws the screen with a **beam** that sweeps left to right, top to bottom. When it reaches the bottom it switches off and races back to the top to start again. That brief pause is the **vertical blank** — the vblank — and it happens fifty times a second on a PAL machine.
+The video hardware scans across the display, line by line. During **vertical blanking**, the picture is blanked while the beam returns towards the top. Blanking occupies only part of the frame. We do not have 20 ms of blanking in which to change anything we like.
 
-That gap is the game's heartbeat. Wait for the vblank, do one frame's worth of work — move the player a pixel, nudge a colour, count down a timer — then wait for the next. Sync your work to the beam and the motion is smooth; ignore the beam and the screen tears. This unit builds the heartbeat with the smallest possible job: change the colour a little, every frame.
+We will watch the beam counter for line zero and change one colour value. This is **polling**: the CPU repeatedly reads a register until a condition is true. It is not an interrupt handler. The sample disables custom-chip interrupts during setup; later, we can learn how an interrupt lets hardware request our attention.
 
 ## What you'll see by the end
 
-<Figure
-  src="/images/commodore-amiga/assembly/meet-the-machine/unit-09/screenshot.png"
-  alt="The Amiga screen filled with solid cyan, one colour from a continuous cycle."
-  caption="A single frame caught mid-cycle. On a running machine the colour drifts on and on — proof the loop is turning over, one step per frame."
+<VideoPlayer
+  src="/images/commodore-amiga/assembly/meet-the-machine/unit-09/heartbeat.mp4"
+  poster="/images/commodore-amiga/assembly/meet-the-machine/unit-09/heartbeat-poster.png"
+  loop={false}
+  caption="About twelve seconds of the unchanged program running in Emu198x as a PAL Amiga A500. Each update adds $0011 to the Copper-list colour value. There is no sound."
 />
 
-A screen that won't sit still. The colour creeps through the whole spectrum and round again, changing a touch every frame. A screenshot can only freeze one instant of it — here, a cyan caught mid-cycle — but on the machine it never stops, because the loop never stops.
+Press play to watch the background change over time. The packed RGB addition produces both small shifts and larger jumps when colour components wrap. The clip contains full-screen colour changes; we can pause it at any point. Its important result is the repeated update, which a still image cannot show.
 
 ## Wait for the beam, then work
 
@@ -44,9 +45,35 @@ The loop has three parts:
         beq.s   .leave              ; wait for the beam to leave the top
 ```
 
-`VPOSR` is a hardware register that reports where the beam is. The `and.l` keeps the bits that hold the **line number** and discards the rest. The first wait loops *until* the line is zero — the top of the screen, the vblank. Then it does its one job: add a small step to the colour.
+The long-word read starts at `VPOSR` (`$DFF004`) and also reads the adjacent `VHPOSR` (`$DFF006`). Together they contain the vertical position: its high bit comes from `VPOSR`, and its lower eight bits from `VHPOSR`. The mask `$1FF00` keeps those nine bits in place. We only test whether they are zero, so we do not need to shift them down.
 
-The second wait is the part beginners forget. The beam sits at line zero for many processor cycles, so without it the code would race round and bump the colour dozens of times during a single vblank. Waiting for the beam to *leave* the top guarantees one bump per frame. The pattern is "wait for the edge, act once, wait for it to pass" — and it's exactly how you'll read input and move sprites later, one clean step per frame.
+The first loop waits for **line zero**, a position near the start of the frame. That is our chosen timing marker, not a test for the whole blanking interval.
+
+The `add.w` changes `colourval`, a word in our Copper list. The Copper reads that word when it reaches the `COLOR00` instruction. Changing the list is therefore different from the CPU writing the colour register directly: the visible result depends on when the Copper consumes the value.
+
+The second wait prevents another colour bump while the beam is still on line zero. With this small workload, we can return to `.wait` in time for the next frame. That gives us the intended once-per-frame update.
+
+```text
+line 0                                         next line 0
+  |---------------- one whole frame ----------------|
+  |-- blanking --| ... visible scan ...              |
+  wait → small job → leave line 0 → wait again
+```
+
+This is a schematic, not a scale drawing. Waiting for a frame boundary does not give every graphics operation a whole frame of safe access. Each operation has its own deadline: for example, a Copper-list value must be ready before the Copper reads it.
+
+### What if the job runs late?
+
+Before running anything, predict this: our job takes so long that the next line zero has already passed when we return to `.wait`. Does the colour update twice to catch up, or wait?
+
+<details>
+  <summary>Compare your prediction</summary>
+
+It waits for a later line zero. The display keeps scanning, but our program has missed an update opportunity. The loop has no elapsed-frame counter and performs no catch-up updates. If we used its iterations as a clock, that clock would run slow whenever work missed a turn.
+
+The `.leave` loop prevents repeated work during one visit to line zero. It cannot guarantee that we visit every frame. A late update may hold an old colour for longer; it does not automatically mean the picture is corrupted.
+
+</details>
 
 ## Assemble, master, and run
 
@@ -58,11 +85,13 @@ The background cycles through colour after colour, smoothly, forever.
 
 ## Try this: change the speed
 
-The step is `$0011`. Make it bigger — `$0044`, `$0111` — and the colour races; make it `$0001` and it crawls. The number is how far round the colour wheel you turn on each beat of the heartbeat.
+The step is `$0011`. Make it bigger — `$0044`, `$0111` — and the colour races; make it `$0001` and it crawls. This changes the amount added per update, not the update frequency. The value is packed RGB: carries between its colour components can produce jumps rather than a smooth trip around a colour wheel.
 
 ## Try this: count the frames
 
-Add a counter. Before the loop, `moveq #0,d2`; inside, after the colour bump, `addq.w #1,d2`. After fifty frames `d2` reaches 50 — one second of real time. Counting frames *is* how a game keeps time: "fifty frames" and "one second" are the same sentence on a PAL Amiga.
+Add a counter. Before the loop, `moveq #0,d2`; inside, after the colour bump, `addq.w #1,d2`. Predict its value after 50 completed updates, then inspect `d2` in the emulator. It should be 50.
+
+If every frame receives one update, that is roughly a second on this PAL setup. The counter measures completed loop updates, however, not elapsed time independently. Missed updates break that equivalence; an ordinary NTSC display also has a different refresh rate. We will need a more deliberate clock when consistent timing becomes a game requirement.
 
 ## If it doesn't work
 
@@ -72,8 +101,12 @@ Add a counter. Before the loop, `moveq #0,d2`; inside, after the colour bump, `a
 
 ## What you've learnt
 
-The screen redraws fifty times a second, and the **vertical blank** is the gap between frames. Polling `VPOSR` for line zero — and then waiting for the beam to leave it — gives a clean once-per-frame heartbeat. Do one small job each beat and you have the loop every game runs inside: wait, work, repeat.
+We can pace a small job by polling the beam position. Waiting for line zero and then leaving it prevents repeated updates on that line, provided we keep the work short enough to return for the next frame. A frame is longer than its blanking interval, and counting updates is only a reliable measure of time when none are missed.
 
 ## What's next
 
 The loop turns; now let's make it listen. Next — **Reading the Player** — we test the mouse button every frame and paint the screen to match. Wire a person's hand into that heartbeat and the program stops being a demo and starts being a game.
+
+## Hardware reference
+
+Commodore-Amiga’s *Amiga Hardware Reference Manual*, second edition, describes the beam-position bits in chapter 7, Table 7-5 (printed pp. 210–211), and the combined long-word read in chapter 8 (p. 233). Chapter 2, “Location Registers” (pp. 20–21), describes restarting the Copper list. See the [manual scan](https://www.ikod.se/wp-content/uploads/2020/08/Amiga_Hardware_Reference_Manual_1989.pdf) and the [beam-counter section](https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node015F.html).

@@ -4,7 +4,6 @@ summary: "Linear Feedback Shift Register for fast, deterministic pseudo-random n
 platform: "cross-platform"
 category: "framework"
 difficulty: "intermediate"
-taught_in: "Maths for Games, Unit 6 (The Craft)"
 tags: ["random", "lfsr", "prng", "math"]
 evolution:
   previous: null
@@ -16,9 +15,9 @@ related:
 
 ## Overview
 
-A Linear Feedback Shift Register (LFSR) generates pseudo-random numbers by shifting bits and XORing feedback taps. It's fast (no multiplication), deterministic (same seed = same sequence), and produces a long cycle before repeating.
+A Linear Feedback Shift Register (LFSR) generates pseudo-random numbers by shifting bits and XORing feedback taps. The version below uses no multiplication and repeats the same sequence from the same seed. Its period and cost depend on the chosen width, feedback and implementation.
 
-The 8-bit Galois LFSR shown here cycles through all 255 non-zero values before repeating — perfect for games.
+The 8-bit Galois LFSR shown here cycles through all 255 non-zero values before repeating — a small, inspectable sequence for some game choices, not a guarantee of good game design.
 
 ## Algorithm
 
@@ -43,7 +42,7 @@ get_random:
 ; Initialise with any non-zero value
 random_seed = $01
 
-; Get next random number (0-255, never 0)
+; Get next random number (1-255)
 get_random:
     seed = random_seed
     carry = seed AND 1
@@ -102,7 +101,7 @@ get_random:
 
 A Galois LFSR transitions to 0 only when fed 0 — the all-zero state has no `1` bit to shift out, so the carry is 0, no XOR happens, and the result stays 0 forever. Once the LFSR enters this trap it produces 0 every call.
 
-**Always seed with 1 or higher.** If your seed value can come from external state (RAM contents, player input timing), test for zero and substitute 1:
+**Initialise this byte to a value from 1 to 255.** If your seed value can come from external state (RAM contents, player input timing), test for zero and substitute 1:
 
 ```asm
 ; 6502: defensive seed
@@ -113,34 +112,67 @@ lda #$01
 sta random_seed
 ```
 
-The same caveat applies to corruption: if any code path can write to `random_seed` (e.g. accidental zero-page clear), guard the LFSR routine with the same check.
+An unexpected zero after valid initialisation is a fault to investigate: another routine may have cleared the seed. A diagnostic check can expose it. Substituting 1 for an external zero seed is an explicit input policy; silently doing that after corruption can hide the cause.
 
 ## Trade-offs
 
 | Aspect | Cost |
 |--------|------|
-| CPU | ~10-20 cycles |
+| CPU | Depends on CPU, branch path, storage and calling convention; count the actual routine |
 | Memory | 1 byte for seed |
 | Period | 255 values before repeat |
-| Distribution | Uniform across 1-255 (never generates 0) |
+| Distribution | Each non-zero byte occurs once per complete 255-step cycle; mapped ranges may be biased |
 
 **When to use:** Enemy spawn positions, random delays, shuffling, procedural generation.
 
-**When to avoid:** Cryptography (this is not secure!), or when you need 0 in your range.
+**When to avoid:** Security-sensitive choices: this generator is predictable. Also avoid it when its short period or correlations harm the game. Mapping can produce zero, but the mapping needs its own distribution check.
+
+## A useful range is not automatically an even one
+
+The raw sequence excludes zero, but `value AND $0F` can produce zero. Over a
+complete 255-value cycle, the masked result is zero 15 times and each value
+1–15 appears 16 times. Masking reaches the intended range; it does not make
+these outcomes equally frequent. A short sample can vary further.
+
+Before choosing a mapping, state the source range and the desired outcomes.
+For example, an ideal uniform byte from 0–255 mapped by remainder 6 gives
+four outcomes 43 source values each and two outcomes 42 each. Rejecting
+252–255 before taking the remainder gives 42 source values per outcome,
+but requires another draw when rejected. That example assumes all 256 input
+values are equally likely; this non-zero LFSR is a different source.
+
+Rejection also changes random-call counts and has a variable execution cost.
+An empty set of legal placements needs an explicit failure policy, not an
+unbounded “try again” loop. Equal counts do not establish independence or
+whether the resulting game is fair or enjoyable.
+
+The same seed repeats this generator's raw sequence only for the same algorithm
+and call order. A game also needs matching initial state, input/update timing
+and external values mixed into the generator. Adding a cosmetic random draw
+can change which later value becomes an enemy position. Log a call number and
+purpose when investigating a divergence; do not call the generator again just
+to print a diagnostic value.
 
 ## Seeding
 
-For variety between play sessions, seed from player input timing:
+For variation between sessions, we can count observed update opportunities while waiting for Start. This illustrative loop depends on a machine-specific wait and a normalised input reader; it does not promise a different seed on every run:
 
 ```text
-; Count frames until player presses start
+; One increment per chosen update opportunity; keep an unsigned byte
 seed_counter = 0
 wait_for_start:
-    seed_counter = seed_counter + 1
+    wait_for_next_update()
+    seed_counter = (seed_counter + 1) AND $FF
+    start_pressed = read_start_button()
     if not start_pressed: goto wait_for_start
     random_seed = seed_counter
     if random_seed == 0: random_seed = 1  ; Never zero!
 ```
+
+The counter wraps after 256 updates. The same observed delay can repeat a seed;
+zero is deliberately mapped to one. This provides variation, not security or an
+even distribution of starting states. For debugging, use a recorded non-zero seed
+and preserve random-call order instead.
 
 ## Larger Periods
 

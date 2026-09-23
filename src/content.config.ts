@@ -544,6 +544,7 @@ const unitPages = defineCollection({
     feedPath: z.string().startsWith('/').optional(),
     game: z.number(),
     unit: z.number(),
+    inlinePlayer: z.boolean().default(false),
     sequence: z.string().optional(),
     tags: z.array(z.string()).default([]),
     status: z.string().optional(),
