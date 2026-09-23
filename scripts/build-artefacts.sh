@@ -82,6 +82,11 @@ if [ "$failed" -gt 0 ]; then
 fi
 echo "  built $built unit(s)"
 
+# The introductory border programs have no Makefile; build their documented
+# outputs explicitly so lesson launchers receive the same source readers see.
+asm198x --dialect acme --prg "$SAMPLES/commodore-64/assembly/meet-the-machine/unit-01/border.asm" -o "$SAMPLES/commodore-64/assembly/meet-the-machine/unit-01/border.prg"
+asm198x --dialect pasmonext --tapbas "$SAMPLES/sinclair-zx-spectrum/assembly/meet-the-machine/unit-01/border.asm" -o "$SAMPLES/sinclair-zx-spectrum/assembly/meet-the-machine/unit-01/border.tap"
+
 # Stage the outputs under the same relative path the unit has in code-samples,
 # so a page can link to a unit's program without a lookup table.
 mkdir -p "$OUT"
@@ -91,6 +96,13 @@ while IFS= read -r artefact; do
     mkdir -p "$OUT/$(dirname "$rel")"
     cp "$artefact" "$OUT/$rel"
     staged=$((staged + 1))
-done < <(find "$SAMPLES" \( -name '*.adf' -o -name '*.nes' -o -name '*.sna' -o -name '*.prg' \) -not -path '*/_*' | sort)
+done < <(find "$SAMPLES" \( -name '*.adf' -o -name '*.nes' -o -name '*.sna' -o -name '*.prg' -o -name '*.tap' \) -not -path '*/_*' | sort)
 
 echo "  staged $staged artefact(s) under $OUT"
+
+# Unit 1 offers the exact source and optional reference-toolchain layout beside
+# its cartridge, so readers can reproduce the download without a repository clone.
+nes_intro="nintendo-entertainment-system/assembly/meet-the-machine/unit-01"
+for file in screen.asm nes.cfg; do
+    cp "$SAMPLES/$nes_intro/$file" "$OUT/$nes_intro/$file"
+done
