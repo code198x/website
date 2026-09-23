@@ -1,95 +1,153 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Inside the VIC-II"
 subtitle: "The graphics chip that defined the Commodore 64"
-summary: "Sprites, smooth scrolling, and 16 colours on a budget — the VIC-II (6567/6569) generated everything you saw on a Commodore 64. This entry covers both the historical context and the full programmer's reference."
+summary: "The MOS 6567 (NTSC) and 6569 (PAL) VIC-II drew every picture on a Commodore 64: 40×25 text, 320×200 bitmaps, 16 colours and eight hardware sprites. It shares one memory bus with the processor, and the way it takes that bus shapes almost every piece of timing-critical C64 code."
 category: "hardware"
 platforms: ['commodore-64']
 tags: ['vic-ii', 'raster-interrupts', 'sprites', 'badlines', 'registers', 'display-modes']
 introduced: 1982
 discontinued: 1994
 sources:
-  technical:
-    - title: "syntheses/commodore-c64/vic-ii-rendering-and-badlines.md"
+  introduced:
+    - ref: magazines/compute-magazine
+      kind: magazine
+      date: "1982-03"
+      issue: 22
+      page: "26"
+      note: "David D. Thornburg's report on the January 1982 Winter CES, where the Commodore 64 was shown with 'the 6566 graphics controller', the static-RAM member of the same chip family"
+  discontinued:
+    - title: "Guinness World Records, 'Best-selling desktop computer'"
+      kind: database
+      note: "Web, secondary: the Commodore 64 was manufactured until April 1994. The date is the end of the machine the chip was made for; no separate end date for VIC-II production has been found in public sources"
+  timing:
+    - title: "The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64 (Christian Bauer, 1996)"
       kind: technical-doc
-      note: "the three badline conditions — raster within $30-$F7, the DEN latch sampled once per frame at raster $30, and (raster AND 7) == YSCROLL evaluated at cycle 14 of the line; first badline $33 with the default YSCROLL of 3, then every eight lines to $F3; the 43-cycle steal over cycles 12-54 leaving 20 of a 63-cycle PAL line"
-    - title: "syntheses/commodore-c64/vic-ii-screen-memory-modes-sprites.md"
-      kind: technical-doc
-      note: "the sprite register block: $D000-$D00F positions, $D010 X-MSB, $D015 enable, $D017 Y-expand, $D01B priority, $D01C multicolour, $D01D X-expand"
-    - title: "syntheses/commodore-c64/6510-cpu-and-memory-map.md"
-      kind: technical-doc
-      note: "$D000-$D02E are the registers; $D02F-$D3FF are mirrors repeating every 64 bytes, and writes to a mirror still reach the chip"
-
+      note: "Section 3.4: 6567R56A 262 lines of 64 cycles, 6567R8 263 lines of 65 cycles, 6569 312 lines of 63 cycles. Section 3.5: the processor is stunned 'for 40-43 cycles during the first pixel line of each text line'; the Bad Line Condition is 'RASTER >= $30 and RASTER <= $f7 and the lower three bits of RASTER are equal to YSCROLL and if the DEN bit was set during an arbitrary cycle of raster line $30'"
+    - title: "MOS 6567 Video Interface Chip (VIC II), preliminary data sheet (Commodore Semiconductor Group)"
+      kind: manual
+      note: "'47 Addressable control registers'; 'On chip color generation (16 colors)'; sync generation mask-programmable as NTSC 6567, PAL 6569, PAL-N 6572 and PAL-M 6573; 'one horizontal raster line is 520 video clock cycles'; BA goes low and 'On the fourth Phase 2 after BA low' the chip takes the bus; character pointer fetches 'occur every eighth raster line during the display window and require 40 consecutive Phase 2 accesses'"
 ---
 
-The MOS Technology VIC-II (6567 NTSC / 6569 PAL) is the Commodore 64's video chip. It paints the 40×25 character screen, drives eight hardware sprites, scrolls backgrounds smoothly in hardware, and exposes 47 registers that let programmers control every aspect of the display. Its quirks — especially **badlines** — defined the timing tricks that demo coders exploited for decades.
+import Sources from '@components/Sources.astro';
+
+Al Charpentier, who led the design of the Commodore 64's video chip at MOS Technology, started from a budget. A television line lasted about 63 microseconds, and the memory he planned to use allowed "only 114 memory fetches per line—period." Those fetches had to be shared between the processor, the characters on screen and the sprites. Three bytes per sprite per line was what was left, and that fixed the size of a sprite: "The 3 bytes per sprite determined the horizontal size of the sprite—24 pixels." Twenty-one lines made 63 bytes, which fits a 64-byte block.
+
+That budget is the key to the VIC-II. The chip and the 6510 processor share one memory bus. Most of the time they take turns so neatly that the processor never notices. But on every eighth line of the picture the VIC-II needs more than its share, and it stops the processor to get it. Every C64 programmer who wanted something to happen at an exact moment, such as a colour change halfway down the screen or a smooth-scrolling playfield under a fixed score panel, had to write code around those stolen cycles.
+
+The chip is the MOS 6567 in NTSC machines and the 6569 in PAL ones. Commodore's preliminary data sheet lists the features: 47 control registers, up to 16K of display memory, 16 colours generated on the chip, and "up to eight independent movable image blocks", which everyone else called sprites.
 
 ## Fast facts
 
-- **Display modes:** 320×200 hi-res (two colours per cell) or 160×200 multicolour (four colours per cell), plus bitmap and extended-colour variants.
-- **Palette:** 16 fixed colours with famously rich blues and browns.
-- **Sprites:** eight 24×21 pixel sprites, independently positioned, with 2× horizontal stretch (`$D01D`) and 2× vertical stretch (`$D017`).
-- **Registers:** 47 at `$D000-$D02E` (53248-53294 decimal).
-- **Timing:** steals CPU cycles on certain scanlines, so code must dance around the raster beam.
+- **Text:** 40×25 characters of 8×8 pixels, each with its own foreground colour from colour RAM.
+- **Bitmaps:** 320×200 with two colours in each 8×8 cell, or 160×200 with up to four colours in each 4×8 cell.
+- **Colours:** a fixed palette of 16.
+- **Sprites:** eight, each 24×21 pixels (12×21 in multicolour), with double-width and double-height options, priority against the background, and collision detection.
+- **Scrolling:** hardware fine scroll of 0–7 pixels in each direction.
+- **Interrupts:** on a chosen raster line, on sprite collisions and on the light pen.
+- **Registers:** 47, at `$D000`–`$D02E` (53248–53294).
 
-## Chip variants
+## PAL and NTSC
 
-- **6567** (NTSC) — ~60Hz, 263 raster lines per frame, 65 CPU cycles per line
-- **6569** (PAL) — ~50Hz, 312 raster lines per frame, 63 CPU cycles per line
+The chip generates the video timing and the processor clock, so the two versions give the whole machine different timing. The processor runs at 985,248 Hz on a PAL C64 and 1,022,727 Hz on an NTSC one.
 
-Most programming is identical between variants. Timing-critical code (raster interrupts, sprite multiplexing, music players) needs region-specific values.
+| Chip | TV standard | Lines per frame | Cycles per line |
+|---|---|---|---|
+| 6569 | PAL | 312 | 63 |
+| 6567R8 | NTSC | 263 | 65 |
+| 6567R56A | NTSC | 262 | 64 |
+
+The data sheet gives the NTSC figure from the other end: "one horizontal raster line is 520 video clock cycles", and the processor clock is the video clock divided by eight, which gives 65. Bauer singles out the 64-cycle 6567R56A as the one NTSC stepping whose timing differs from the others. Commodore's data sheet also names PAL-N (6572) and PAL-M (6573) versions. Later C64 boards use the 8562 (NTSC) and 8565 (PAL), which Bauer describes as functionally equivalent; Commodore's 1992 service manual lists the 8562 on the C64C board.
+
+Most programs behave the same on every version. Anything that counts cycles, such as raster effects, sprite multiplexers or music players that are called once per frame, needs values for each.
+
+## Where the cycles go: badlines
+
+Each raster line gives the VIC-II one memory access per cycle in the half of the cycle the 6510 does not use. That is enough to fetch the pixel data for 40 characters, refresh the dynamic RAM and read the eight sprite pointers. It is not enough to fetch the 40 character codes as well. So on the first pixel line of each character row the VIC-II pulls its BA (bus available) line low, waits three cycles for the processor to finish any writes, and then takes the bus for 40 consecutive cycles. Programmers call these lines **badlines**.
+
+Christian Bauer's 1996 description of the chip, compiled from tests by Marko Mäkelä, Andreas Boose, Pasi Ojala, Wolfgang Lorenz and others, puts the cost at 40 to 43 cycles. On a 63-cycle PAL line that leaves the processor about 20. Sprites cost more: each sprite shown on a line takes two cycles in the processor's half, again with a three-cycle warning. The [Commodore 64](/vault/systems/commodore-64#the-raster-beam-as-a-clock) entry sets out the whole budget. The short version is that a PAL line with no badline and no sprites leaves all 63 cycles, and a badline with all eight sprites leaves almost none.
+
+Bauer defines the condition exactly. A line is a badline when all three of these are true:
+
+1. The raster line is between `$30` and `$F7` (48–247).
+2. The bottom three bits of the raster line equal YSCROLL, the vertical scroll in bits 0–2 of `$D011`. With the default YSCROLL of 3 the first badline is `$33` (51) and they follow every eight lines.
+3. The DEN bit (`$D011` bit 4, display enable) was set during some cycle of raster line `$30`.
+
+The third condition is checked once per frame. If DEN was clear on line `$30`, the frame has no badlines and the display area shows only border colour. Clearing DEN later in the frame does not stop that frame's badlines.
+
+The second condition is not checked once. Bauer's definition applies "at any arbitrary clock cycle", so a program that changes YSCROLL partway through a line can create a badline where there would not have been one, or remove one. Scrolling the screen vertically moves the badlines with it. Most of the famous VIC-II tricks are this rule used on purpose:
+
+- **[FLD](/vault/techniques/fld)** (flexible line distance) holds a badline back by changing YSCROLL, so the next character row starts lower down. The screen can be pushed down a long way without moving a byte of screen memory.
+- **[FLI](/vault/techniques/fli)** (flexible line interpretation) forces a badline on every raster line. In a bitmap mode the colours come from screen memory, which is read only on badlines, so every line now gets fresh colours. The screen memory address does not advance, so the program also switches `$D018` to a different screen each line, cycling through eight screens. Bauer notes the price: the forced badline starts too late for the first three fetches, which read `$FF`, and that shows as a 24-pixel stripe down the left edge.
+- **[Linecrunch](/vault/techniques/linecrunch)** cuts a badline short, so a whole character row collapses to one raster line, which scrolls the screen up quickly.
+- **DMA delay** starts a badline partway through a line, which shifts the whole screen sideways by whole characters. Demo coders call it [VSP](/vault/techniques/vsp).
+
+When timing matters, the simplest escape is to turn the screen off: clearing DEN removes badlines from the next frame. The stolen cycles caught out Commodore's own engineers. *IEEE Spectrum*'s account of the machine's design records that "because the processor in the C-64 is turned off for 40 microseconds every 512 microseconds, it kept missing the interrupt signals that control the disk interface."
+
+## Sprites
+
+The VIC-II reads each sprite's data three bytes at a time, one line at a time, into a 24-bit shift register. That design explains both what sprites can do and what they cannot.
+
+A sprite can be moved anywhere with two registers, in front of or behind the background with one bit, and its shape can be changed on any line by changing its pointer. Commodore's own documentation calls them MOBs, "movable object blocks". Sprite 0 always has the highest priority among the sprites and sprite 7 the lowest.
+
+The chip will show only eight sprites on one line. Bauer explains why: after 24 pixels the shift register "has run empty", and moving a sprite sideways within the same line does not refill it. Vertically it is different. Once a sprite has finished drawing, a program can give it a new Y position lower down the screen, and the chip will draw it again there with whatever X position, colour and shape the program has set by then. That is [sprite multiplexing](/vault/techniques/sprite-multiplexing), and it is how C64 games show far more than eight moving objects. It costs processor time and precision. Writing his diary of *Morpheus* for *ZZAP!64* in 1987, Andrew Braybrook noted that with his multiplexer running on the title screen "the sprite positioning had to be pixel perfect to actually work properly, there's no room for any play in the vertical positioning at all, the sprites are just re-cycled in time." A few months earlier he had been comparing his with another programmer's: "Having seen Gary Liddon's sprite multiplexor on Saturday, I can't understand why his runs faster".
+
+The Y-expansion bit can be abused too. Bauer describes how toggling it at the right cycle makes the chip repeat a sprite line three or more times, stretching a sprite by any amount ([sprite stretching](/vault/techniques/sprite-stretching)).
+
+## Raster interrupts
+
+The VIC-II can interrupt the processor when the beam reaches a chosen line. The program writes the line number to `$D012` (with bit 8 in bit 7 of `$D011`) and enables the interrupt in `$D01A`. When the interrupt fires, the handler has to acknowledge it by writing a 1 to bit 0 of `$D019`, or it will fire again straight away.
+
+This is what split screens are made of. *ZZAP!64*'s machine-code column explained it to readers in September 1987: "all those games that have the top half of the screen scrolling and the bottom half of the screen stationary are using raster interrupts." The scroll registers are set for the playfield at the top of the frame, and a raster interrupt partway down resets them for the status panel. See [raster interrupts](/vault/techniques/raster-interrupts), and [stable raster](/vault/techniques/stable-raster) for removing the few cycles of jitter that remain.
+
+## The border
+
+The border is not a frame around the picture. The chip switches it on and off at fixed beam positions, and the positions depend on whether the display is set to 25 or 24 rows (RSEL, `$D011` bit 3) and 40 or 38 columns (CSEL, `$D016` bit 3). If a program switches from 25 to 24 rows after the beam has passed the 24-row switch-on line but before it reaches the 25-row one, the chip misses both and never turns the bottom border on. Bauer gives the window as raster lines 248 to 250. The side borders open the same way with CSEL, but the switch must land in exactly cycle 56 of the line. In the [opened border](/vault/techniques/open-borders) the only graphics that normally show are sprites.
+
+Programmers were not sure at first that this was safe. Braybrook wrote in his April 1987 diary that he was "unhappy about using sprites in the border as it could be exploiting a video-chip bug. This may not work on some machines or it could cause damage." By September 1988 Martin Walker, writing his own *ZZAP!64* diary, called it "the much used sprites in the border trick", and had used it for the information bars in *Hunter's Moon*. In January 1989 *Commodore Disk User* printed a border-sprite routine for its readers, saying that until two or three years earlier "sprites in the border were absolutely unheard of and for a long while after, only the top games programmers, such as Jeff Minter, knew the secret".
 
 ## Register map
 
-The VIC-II's registers live at `$D000-$D02E` (53248-53294 decimal). Writing to these addresses controls display hardware directly.
+The registers live at `$D000`–`$D02E` (53248–53294). The names are the ones in *Mapping the Commodore 64*.
 
-⚠ The chip decodes only six address bits, so the whole block **repeats every 64 bytes** up to `$D3FF`. `$D040` is `$D000` again, and a write to a mirror reaches the chip exactly as the real address would. Stray writes anywhere in `$D000-$D3FF` land on a register.
+The chip has only six address inputs, so the whole block repeats every 64 bytes up to `$D3FF`: `$D040` is `$D000` again, and a write to any copy reaches the chip. The 17 unused addresses in each copy, `$D02F`–`$D03F`, read as `$FF` and ignore writes.
 
-| Address | Register | Purpose |
-|---------|----------|---------|
-| $D000-$D001 | MOB0X, MOB0Y | Sprite 0 position |
-| $D002-$D003 | MOB1X, MOB1Y | Sprite 1 position |
-| $D004-$D005 | MOB2X, MOB2Y | Sprite 2 position |
-| $D006-$D007 | MOB3X, MOB3Y | Sprite 3 position |
-| $D008-$D009 | MOB4X, MOB4Y | Sprite 4 position |
-| $D00A-$D00B | MOB5X, MOB5Y | Sprite 5 position |
-| $D00C-$D00D | MOB6X, MOB6Y | Sprite 6 position |
-| $D00E-$D00F | MOB7X, MOB7Y | Sprite 7 position |
-| $D010 | MSIGX | High X bits (for X > 255) |
-| $D011 | SCROLY | Vertical scroll, screen enable, bitmap mode, raster high bit |
-| $D012 | RASTER | Current raster line counter |
-| $D013-$D014 | LPENX, LPENY | Light pen position |
-| $D015 | SPENA | Sprite enable bits |
-| $D016 | SCROLX | Horizontal scroll, multicolour mode |
-| $D017 | YXPAND | Sprite Y expansion (double height) |
-| $D018 | VMCSB | Memory pointers for screen and character set |
-| $D019 | VICIRQ | Interrupt status |
-| $D01A | IRQMASK | Interrupt enable |
-| $D01B | SPBGPR | Sprite-background priority |
-| $D01C | SPMC | Sprite multicolour enable |
-| $D01D | XXPAND | Sprite X expansion (double width) |
-| $D01E | SPSPCL | Sprite-sprite collision |
-| $D01F | SPBGCL | Sprite-background collision |
+| Address | Name | Purpose |
+|---------|------|---------|
+| $D000–$D00F | SP0X, SP0Y … SP7X, SP7Y | Sprite X and Y positions, sprites 0–7 |
+| $D010 | MSIGX | Bit 8 of each sprite's X position |
+| $D011 | SCROLY | Vertical scroll, 24/25 rows, display enable, bitmap mode, extended colour mode, raster bit 8 |
+| $D012 | RASTER | Current raster line (read); raster interrupt line (write) |
+| $D013–$D014 | LPENX, LPENY | Light pen position |
+| $D015 | SPENA | Sprite enable |
+| $D016 | SCROLX | Horizontal scroll, 38/40 columns, multicolour mode |
+| $D017 | YXPAND | Sprite double height |
+| $D018 | VMCSB | Screen memory and character set addresses |
+| $D019 | VICIRQ | Interrupt flags (write 1 to acknowledge) |
+| $D01A | IRQMSK | Interrupt enable |
+| $D01B | SPBGPR | Sprite behind background |
+| $D01C | SPMC | Sprite multicolour |
+| $D01D | XXPAND | Sprite double width |
+| $D01E | SPSPCL | Sprite–sprite collisions |
+| $D01F | SPBGCL | Sprite–background collisions |
 | $D020 | EXTCOL | Border colour |
-| $D021 | BGCOL0 | Background colour 0 |
-| $D022 | BGCOL1 | Background colour 1 |
-| $D023 | BGCOL2 | Background colour 2 |
-| $D024 | BGCOL3 | Background colour 3 |
-| $D025 | SPMC0 | Sprite multicolour 0 |
-| $D026 | SPMC1 | Sprite multicolour 1 |
-| $D027-$D02E | SP0COL-SP7COL | Individual sprite colours |
+| $D021–$D024 | BGCOL0–BGCOL3 | Background colours 0–3 |
+| $D025–$D026 | SPMC0, SPMC1 | Shared sprite multicolours |
+| $D027–$D02E | SP0COL–SP7COL | Sprite colours |
+
+Bits the chip does not use read back as 1. So `PEEK` often returns a different number from the one that was written, and code that compares a register with an expected value needs to mask those bits off first.
 
 ## Border and background colours
 
-The simplest VIC-II registers to use:
+The simplest registers to use:
 
 ```basic
 POKE 53280,0  : REM Border colour (black)
 POKE 53281,1  : REM Background colour (white)
 ```
 
-**Colour values (0-15):**
+**Colour values (0–15):**
 
 ```
 0=Black   1=White    2=Red      3=Cyan
@@ -98,175 +156,149 @@ POKE 53281,1  : REM Background colour (white)
 12=Grey  13=Lt Grn  14=Lt Blue 15=Lt Grey
 ```
 
-Games use border colour for visual effects — flash red on damage, pulse with music, change per level.
+## Screen and character memory ($D018)
 
-## Screen RAM configuration ($D018)
-
-Register `$D018` (53272) tells the VIC-II where to find screen RAM and the character set.
-
-**Default value:** `$14` (20 decimal)
-
-- Screen RAM at `$0400` (1024)
-- Character ROM at `$1000`
-
-**Bit layout:**
+Register `$D018` (53272) tells the VIC-II where to find screen memory and the character set. Both addresses are inside the 16K bank the chip is currently using.
 
 ```
-Bits 7-4: Screen RAM location (×$0400)
-Bits 3-1: Character set location (×$0800)
-Bit 0:    Unused
+Bits 7-4: Screen memory address (value × $0400)
+Bits 3-1: Character set address (value × $0800)
+Bit 0:    Unused (reads as 1)
 ```
 
-**Example — move screen to `$0C00`:**
+At power-up the upper half is 1, so screen memory is at `$0400` (1024), and the lower half selects the character ROM, which the VIC-II sees at `$1000`. The Programmer's Reference Guide gives the two values BASIC programmers need: `POKE 53272,21` for the upper-case and graphics characters, and `POKE 53272,23` for lower case.
+
+**Example: move screen memory to `$0C00`:**
 
 ```basic
 POKE 53272,(PEEK(53272) AND 15) OR 48
 ```
 
-Calculation: `$0C00 / $0400 = 3`, so bits 7-4 = 3 (`0011`), shifted left 4 bits = 48.
-
-Games use this for double-buffering (draw to hidden screen, flip display).
+`$0C00 / $0400 = 3`, and 3 in the upper four bits is 48. Switching between two screens this way is how C64 programs [double-buffer](/vault/techniques/double-buffering) a character display. The sprite pointers move with the screen, because they are its last eight bytes.
 
 ## Display control ($D011)
 
-Register `$D011` (53265) controls vertical scrolling, screen height, and display mode.
-
-**Bit layout:**
+Register `$D011` (53265):
 
 ```
-Bit 7:    Raster compare bit 8 (for $D012)
-Bit 6:    Extended colour mode
-Bit 5:    Bitmap mode
-Bit 4:    Screen enable (0=blank screen)
-Bit 3:    25/24 row select (1=25 rows)
-Bits 2-0: Vertical scroll (0-7 pixels)
+Bit 7:    Raster line bit 8 (read: current line; write: interrupt line)
+Bit 6:    Extended colour mode (ECM)
+Bit 5:    Bitmap mode (BMM)
+Bit 4:    Display enable (DEN; 0 = whole screen shows border colour)
+Bit 3:    25/24 rows (RSEL; 1 = 25 rows)
+Bits 2-0: Vertical fine scroll (YSCROLL, 0-7)
 ```
 
-**Default value:** `$1B` (27 decimal) — 25 rows, screen on, text mode, scroll=3.
+*Mapping the Commodore 64* gives its start-up value as 155 (`$9B`): 25 rows, display on, text mode, YSCROLL 3, and bit 8 of the interrupt line set. Reading bit 7 returns bit 8 of the *current* raster line instead, so `PEEK(53265)` usually gives 27 (`$1B`), and 27 is the value programs write to restore a normal screen.
 
-**Example — enable bitmap mode:**
+**Example: switch on bitmap mode:**
 
 ```basic
 POKE 53265,PEEK(53265) OR 32
 ```
 
-Bit 5 set = bitmap mode. Screen now displays 320×200 bitmap instead of 40×25 text.
-
 ## Horizontal control ($D016)
 
-Register `$D016` (53270) controls horizontal scrolling and multicolour mode.
-
-**Bit layout:**
+Register `$D016` (53270):
 
 ```
-Bit 5:    Reset bit (always 0)
-Bit 4:    Multicolour mode
-Bit 3:    40/38 column select (1=40 columns)
-Bits 2-0: Horizontal scroll (0-7 pixels)
+Bits 7-6: Unused (read as 1)
+Bit 5:    Keep at 0
+Bit 4:    Multicolour mode (MCM)
+Bit 3:    40/38 columns (CSEL; 1 = 40 columns)
+Bits 2-0: Horizontal fine scroll (XSCROLL, 0-7)
 ```
 
-**Default value:** `$08` (8 decimal) — 40 columns, single colour, scroll=0.
+It is set to 8 at power-up: 40 columns, multicolour off, no scroll. Commodore's documentation says to keep bit 5 clear. *Mapping the Commodore 64* calls it a chip reset bit, but Bauer's tests found it does nothing on the 6567 and 6569.
 
-**Example — enable multicolour text:**
+**Example: switch on multicolour text:**
 
 ```basic
 POKE 53270,PEEK(53270) OR 16
 ```
 
-Multicolour mode gives 4 colours per character cell but halves horizontal resolution (160×200 effectively).
+Only characters whose colour RAM value is 8 or more become multicolour, and they can use only colours 0–7 for their own colour. Others stay in normal high resolution, so the two kinds can share a screen.
+
+## Display modes
+
+Three bits choose the mode: ECM and BMM in `$D011`, and MCM in `$D016`.
+
+| Mode | ECM | BMM | MCM | Resolution | Colours |
+|------|-----|-----|-----|------------|---------|
+| **Standard text** | 0 | 0 | 0 | 40×25 characters | Own colour on a shared background |
+| **Multicolour text** | 0 | 0 | 1 | 4×8 pixels per character | Up to 4 per character |
+| **Standard bitmap** | 0 | 1 | 0 | 320×200 | 2 per 8×8 cell |
+| **Multicolour bitmap** | 0 | 1 | 1 | 160×200 | Up to 4 per 4×8 cell |
+| **Extended colour text** | 1 | 0 | 0 | 40×25, 64 characters | Own colour on 1 of 4 backgrounds |
+
+The other three combinations are invalid, and in them the chip draws the text or bitmap black. Bauer suggests using one to blank out unwanted lines, such as the rows that linecrunch piles up at the top of the screen.
 
 ## Raster register ($D012)
 
-Register `$D012` (53266) shows the current raster line (0-311 PAL, 0-261 NTSC).
-
-Read this register to:
-
-- Time code to specific screen positions
-- Create raster interrupts (change colours mid-screen)
-- Synchronise sprite movement
-- Split screen effects (status bars, parallax)
-
-**Example — wait for raster line 100:**
+Reading `$D012` (53266) gives the low eight bits of the current raster line: 0–311 on a PAL machine, 0–262 on a 6567R8. Bit 8 is in `$D011`. The visible display lines are 51 to 250.
 
 ```basic
 10 IF PEEK(53266)<>100 THEN 10
-20 POKE 53280,2  : REM Change border when line 100 reached
+20 POKE 53280,2  : REM Change the border once line 100 is seen
 ```
+
+This works, but only just. BASIC takes far longer than one raster line to go round even that one-line loop, so it may miss line 100 for several frames, and the colour change lands well after the beam has moved on. Changing a colour on an exact line needs machine code, and ideally a [raster interrupt](/vault/techniques/raster-interrupts).
 
 ## Sprite enable ($D015)
 
-Register `$D015` (53269) enables/disables sprites using bit flags — bit 0 = sprite 0, bit 7 = sprite 7.
-
-**Example — enable sprites 0, 1, and 2:**
+Each bit switches one sprite on: bit 0 for sprite 0, bit 7 for sprite 7.
 
 ```basic
 POKE 53269,7  : REM Binary 00000111 = sprites 0-2 on
+POKE 53269,PEEK(53269) AND 253  : REM Clear bit 1: sprite 1 off
 ```
 
-**Turn off sprite 1:**
+## Sprite positions ($D000–$D010)
 
-```basic
-POKE 53269,PEEK(53269) AND 253  : REM Clear bit 1
-```
+Each sprite has an X and a Y register, giving the position of its top-left corner. Y is eight bits. X needs nine, so the ninth bits of all eight sprites share `$D010`, bit 0 for sprite 0 and so on. The Programmer's Reference Guide gives the visible range as X 23–347 and Y 50–249; positions outside it let a sprite slide smoothly on and off the screen.
 
-## Sprite positions ($D000-$D010)
-
-Each sprite has X and Y registers. Y is 8-bit (0-255), X is 9-bit (0-511) using `$D010` for high bits.
-
-**Example — position sprite 0 at (150, 100):**
+**Example: sprite 0 at (150, 100):**
 
 ```basic
 POKE 53248,150  : REM X low byte
 POKE 53249,100  : REM Y position
-POKE 53264,PEEK(53264) AND 254  : REM Clear X high bit
+POKE 53264,PEEK(53264) AND 254  : REM Clear X bit 8
 ```
 
-**For X > 255:**
+**For X above 255:**
 
 ```basic
 POKE 53248,260 AND 255  : REM Low byte (260-256=4)
 POKE 53264,PEEK(53264) OR 1  : REM Set bit 0 in $D010
 ```
 
-Register `$D010` stores high X bits for all 8 sprites (bit 0 = sprite 0, bit 1 = sprite 1, etc.).
-
 ## Sprite data
 
-Sprite shapes are stored in 64-byte blocks (63 bytes used, last byte unused). Each sprite is 24×21 pixels, stored as 3 bytes per row × 21 rows.
+A sprite is 63 bytes: 21 rows of three bytes, each byte eight pixels. Sprites are stored in 64-byte blocks, so a one-byte pointer can select any of 256 blocks in the VIC-II's 16K bank.
 
-**Sprite pointers:** Screen RAM + `$03F8-$03FF` (1016-1023)
+**Sprite pointers:** the last eight bytes of screen memory, screen + `$03F8` to `$03FF`. With the screen at 1024, the pointer for sprite 0 is at 2040 and for sprite 7 at 2047.
 
-- Pointer for sprite 0 at 2040
-- Pointer for sprite 1 at 2041
-- ...
-- Pointer for sprite 7 at 2047
-
-**Example — set sprite 0 to block 13:**
-
-```basic
-POKE 2040,13  : REM Sprite data at 13*64 = 832
-```
-
-**Create simple sprite (vertical line):**
+**Example: a solid 24×21 block from block 13 (address 13 × 64 = 832, in the cassette buffer):**
 
 ```basic
 10 FOR I=832 TO 894
-20 POKE I,255  : REM First byte of each row = 11111111
+20 POKE I,255  : REM All 63 bytes: every pixel on
 30 NEXT I
-40 POKE 2040,13  : REM Point sprite 0 to block 13
-50 POKE 53269,1  : REM Enable sprite 0
+40 POKE 2040,13  : REM Sprite 0 uses block 13
+50 POKE 53287,1  : REM Sprite 0 colour: white
 60 POKE 53248,150  : REM X position
 70 POKE 53249,100  : REM Y position
+80 POKE 53269,1  : REM Enable sprite 0
 ```
+
+To draw a shape instead, set only the bits for the pixels you want. A vertical line down the left edge is `POKE I,128` for the first byte of each row (832, 835, 838 and so on) and zero everywhere else.
 
 ## Collision detection
 
-- **Sprite-sprite:** `$D01E` (53278)
-- **Sprite-background:** `$D01F` (53279)
+- **Sprite–sprite:** `$D01E` (53278)
+- **Sprite–background:** `$D01F` (53279)
 
-Both registers use bit flags (bit 0 = sprite 0, etc.).
-
-**Example — check if sprite 0 hit anything:**
+Each bit belongs to one sprite. A collision needs non-transparent pixels to overlap; in multicolour modes the `01` bit pair counts as background, so it never collides.
 
 ```basic
 10 C=PEEK(53278)  : REM Sprite-sprite
@@ -275,85 +307,51 @@ Both registers use bit flags (bit 0 = sprite 0, etc.).
 40 IF B AND 1 THEN PRINT "SPRITE 0 HIT BACKGROUND"
 ```
 
-**Important:** Reading these registers clears them. Check once per frame.
+**Important:** reading either register clears it. Read each one once per frame and keep the value if you need it more than once. The collision interrupts fire only on the first collision after the register was last cleared.
 
-## Display modes
+## A raster bar in machine code
 
-The VIC-II supports multiple display modes via `$D011` and `$D016`:
+Changing the border colour on every line needs machine code. This loop waits for the raster line to change and then steps the border colour:
 
-| Mode | $D011 bit 5-6 | $D016 bit 4 | Resolution | Colours |
-|------|---------------|-------------|------------|---------|
-| **Text** | 00 | 0 | 40×25 chars | 2 per char |
-| **Multicolour text** | 00 | 1 | 40×25 chars | 4 per char |
-| **Bitmap** | 01 | 0 | 320×200 pixels | 2 per 8×8 |
-| **Multicolour bitmap** | 01 | 1 | 160×200 pixels | 4 per 4×8 |
-| **Extended colour** | 10 | 0 | 40×25 chars | 4 backgrounds |
-
-Most games use bitmap modes for graphics, text mode for UI.
-
-## Badlines
-
-Every 8th raster line in the visible area, the VIC-II refills its 40-entry character-pointer latch and takes the bus to do it. These are **badlines**. A badline needs **three** conditions together, and the third is the one that gets forgotten:
-
-1. The raster is inside the display window, `$30`–`$F7` (48–247).
-2. The bottom three bits of `$D012` match the bottom three bits of `$D011` (the YSCROLL register). With the default YSCROLL of 3 the first is raster `$33` (51) and the last is `$F3` (243).
-3. **DEN** (`$D011` bit 4) was set at raster `$30`.
-
-That third condition is a latch sampled **once per frame**, on the first line of the display window. Two consequences follow. If DEN was clear at raster `$30`, the entire frame is badline-free and the screen renders as solid border colour. And clearing DEN part-way down a frame does *not* suppress that frame's remaining badlines — it takes effect from the next frame.
-
-The YSCROLL comparison, by contrast, is evaluated **per line, at cycle 14**, against whatever value `$D011` holds at that instant. That is not a detail: it is the entire mechanism FLI runs on.
-
-**Effect:** the chip takes **up to 43 cycles** — the 40 character fetches plus a 3-cycle BA lead-in, cycles 12 to 54 of the line. On a 63-cycle PAL line that leaves the 6510 **twenty**, and with all eight sprites active on the same line, about one. Code timing becomes unpredictable.
-
-**Solutions:**
-
-- Execute time-critical code outside badlines
-- Disable screen during tight loops (`POKE 53265,PEEK(53265) AND 239`)
-- Use raster interrupts to run code in overscan area
-
-Demo coders exploit badlines for FLI (Flexible Line Interpretation): by writing YSCROLL into `$D011` before cycle 14 so it matches the current raster line's low three bits, every line becomes a badline. Then changing `$D018` each line points the VIC-II at a fresh character set per row, yielding 8 colours per 8×8 cell instead of 2.
-
-## Famous quirks
-
-- **Sprite priority:** sprites can pass in front of or behind the background with per-sprite control bits.
-- **Open borders:** the top/bottom border opens via `$D011` bit 3 (switch to 24-row mode at the right cycle); the side borders open via `$D016` bit 3 (switch to 38-column mode). Both rely on cycle-exact timing relative to the raster beam.
-- **Sprite crunching:** repositioning sprites mid-frame creates the illusion of more than eight on screen — critical for shooters.
-
-## Practical example: colour cycling border
-
-```basic
-10 FOR C=0 TO 15
-20 POKE 53280,C
-30 FOR D=1 TO 50:NEXT D
-40 NEXT C
-50 GOTO 10
+```asm
+        sei             ; stop the KERNAL's own interrupt
+loop    lda $d012       ; note the current raster line
+wait    cmp $d012
+        beq wait        ; wait until the next line starts
+        inc $d020       ; next border colour
+        jmp loop
 ```
 
-Cycles border through all 16 colours with delay.
+The result is bands of colour one line deep. Their left edges are ragged, because the change happens at a slightly different point on each line and much later on badlines, when the processor has been stopped. Getting the edges straight is the problem [stable raster](/vault/techniques/stable-raster) routines solve.
 
-## Practical example: raster bars
+## Where the chip came from
 
-```basic
-10 POKE 53265,PEEK(53265) AND 239  : REM Blank screen
-20 FOR R=0 TO 255
-30 IF PEEK(53266)<>R THEN 30
-40 POKE 53280,(R AND 15)
-50 NEXT R
-60 GOTO 20
-```
+The chip project began at MOS Technology in 1981, before there was a computer to put it in. *IEEE Spectrum*'s 1985 account of the C64's design says Charpentier worked on the graphics chip for nine months with two draftsmen and one computer-aided-design operator. The team surveyed the competition first. "We looked heavily into the Mattel Intellivision," Charles Winterble recalled. When the first silicon came back, Winterble said, "it functioned except for one bad sprite."
 
-Creates animated colour bars by changing border colour every raster line.
+*Compute!*'s first look at the machine in August 1982 explained sprites to its Atari-owning readers by comparison with Atari's player-missile graphics. The comparison fits the idea, and the C64's sprites added their own colours, expansion and collision detection in hardware. The tricks came later, from programmers working out what the chip did rather than what Commodore said it did. Bauer's document, written in its own words for "C64 programmers and authors of C64 emulators", calls FLI "probably the most outstanding example of 'unconventional' VIC programming".
 
-## Historical notes
+<Sources>
 
-The VIC-II was designed by Al Charpentier at MOS Technology in 1981, evolving from the VIC chip in the VIC-20. Charpentier added hardware sprites (building on the player-missile graphics ideas from earlier Atari hardware), smooth scrolling registers, and collision detection — features that made arcade-quality games possible on a $595 home computer, undercutting competitors dramatically.
+- MOS Technology / Commodore Semiconductor Group, *6567 Video Interface Chip (VIC II)*, preliminary data sheet: feature list, NTSC/PAL/PAL-N/PAL-M versions, 520 video clocks per line, BA and bus timing, raster register.
+- Christian Bauer, *The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64* (28 August 1996). A widely used reference compiled from hardware tests by Bauer and other C64 programmers, not a Commodore document: register table and read-back values (section 3.2), palette (3.3), line and cycle counts (3.4), badlines (3.5), timing diagrams (3.6.3), sprites and multiplexing (3.8), border unit (3.9), DEN (3.10), interrupts (3.12), hyperscreen, FLD, FLI, linecrunch, DMA delay and sprite stretching (3.14).
+- *Commodore 64 Programmer's Reference Guide* (Commodore, 1982): sprite pointers (pp. 132–133); VIC-II memory map (pp. 320–322); `POKE 53272,21` and `23` (p. 376); Appendix N, "6566/6567 (VIC-II) Chip Specifications" (pp. 435–450), including the multicolour text rules (p. 437), visible sprite positions (p. 441), collision rules (pp. 443–444) and bus sharing (pp. 447–448).
+- Sheldon Leemon, *Mapping the Commodore 64* (COMPUTE! Publications, 1984), pp. 127–157: register names, the power-up values of `$D011` (155) and `$D016` (8), the `$D018` character set nybble, and the register mirrors.
+- Tekla S. Perry and Paul Wallich, "Design case history: the Commodore 64", *IEEE Spectrum*, vol. 22 no. 3, March 1985 (web, secondary, read in the version republished at spectrum.ieee.org): the 114-fetch budget, sprite dimensions, the nine-month schedule, Winterble on the Intellivision and the first silicon, the processor missing disk interrupts.
+- *Compute!*, issue 22, March 1982, p. 26: the Commodore 64 at the January 1982 Winter CES. Issue 27, August 1982, p. 60: Tom R. Halfhill, "A First Look At The Commodore 64", sprites compared with player-missile graphics.
+- *ZZAP!64*, issue 24, April 1987, p. 90: Andrew Braybrook's *Morpheus* diary, on Gary Liddon's multiplexer and on sprites in the border.
+- *ZZAP!64*, issue 29, September 1987, p. 68: machine-code column on raster interrupts and split screens.
+- *ZZAP!64*, issue 30, October 1987, p. 51: Braybrook's *Morpheus* diary, on the multiplexer and the title screen.
+- *ZZAP!64*, issue 41, September 1988, p. 101: Martin Walker's diary, on sprites in the border in *Hunter's Moon*.
+- *Commodore Disk User*, vol. 2 no. 2, January 1989, p. 18: "Border Sprite".
+- Commodore, *C64/C64C Service Manual* (March 1992, PN-314001-03): parts list for board assembly 250469, with the 8562 video chip.
 
-Early games used the VIC-II's built-in features straightforwardly — sprites for player/enemies, text mode for screens. By 1985, programmers discovered register tricks: open borders (full-screen graphics), sprite multiplexing (reusing sprites mid-frame), and FLI modes (changing graphics mode per scanline). Demo groups like [Crest](/vault/groups/crest) and Censor Design pushed furthest, creating effects Commodore's engineers never imagined — and still find new raster tricks four decades later.
+</Sources>
 
 ## See also
 
-- [Commodore 64](/vault/systems/commodore-64) — complete system overview
-- [Al Charpentier](/vault/people/al-charpentier) — chip designer
-- [Screen Memory](/vault/techniques/screen-memory) — text display memory layout
-- [Raster Tricks](/vault/techniques/raster-tricks) — advanced techniques
-- [Demo Scene](/vault/communities/demo-scene)
+- [Commodore 64](/vault/systems/commodore-64): the machine, and the full cycle budget
+- [Al Charpentier](/vault/people/al-charpentier): chip designer
+- [SID](/vault/hardware/sid-chip), [6510](/vault/hardware/6510), [CIA 6526](/vault/hardware/cia): the other chips
+- [Screen memory](/vault/techniques/screen-memory): text display memory layout
+- [Raster tricks](/vault/techniques/raster-tricks), [sprite multiplexing](/vault/techniques/sprite-multiplexing), [open borders](/vault/techniques/open-borders), [FLI](/vault/techniques/fli)
+- [Demo scene](/vault/communities/demo-scene)
