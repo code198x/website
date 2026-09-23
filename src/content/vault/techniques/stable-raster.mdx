@@ -1,176 +1,145 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Stable Raster"
-subtitle: "Cycle-exact timing"
-summary: "The double-IRQ technique that achieves cycle-exact synchronisation with the VIC-II raster beam, enabling perfect mid-screen effects on the Commodore 64."
+subtitle: "Taking the wobble out of raster interrupts"
+summary: "A raster interrupt on the Commodore 64 starts its work a few cycles late, by a different amount each time, because the processor must finish the instruction it is running. Stable raster routines, most often built from two interrupts in a row, remove that last jitter so a program can change the screen on an exact cycle."
 category: "techniques"
 platforms: ["commodore-64"]
 tags: ["c64", "vic-ii", "raster", "interrupts", "timing", "demo-scene"]
-emerged: 1986
-
-sources:
-  where_the_jitter_comes_from:
-    - title: "Codebase64, 'STABLE RASTER ROUTINE'"
-      kind: technical-doc
-      page: "base:stable_raster_routine"
-      note: "The arithmetic, exactly as the routine's own comments give it: 'A Raster Compare IRQ is triggered on cycle 0 on the current $d012 line. The MPU needs to finish it's current OP code before starting the Interrupt Handler, meaning a 0 -> 7 cycles delay depending on OP code. Then a 7 cycle delay is spendt invoking the Interrupt Handler (Push SR/PC to stack++). Then 13 cycles for storing registers (pha, txa, pha, tya, pha). CYCLECOUNT: [20 -> 27] cycles after Raster IRQ occurred'"
-  the_double_irq:
-    - title: "Codebase64, 'STABLE RASTER ROUTINE'"
-      kind: technical-doc
-      page: "base:stable_raster_routine"
-      note: "'A Raster Stabbing routine using the double IRQ principle. Insert this code after you have pushed your registers onto the stack inside your IRQ code. The routine doesen't care what the actual $d012 value is so it is flexible.' After the NOP slide: 'At this point the next Raster Compare IRQ has triggered and the jitter is max 1 cycle'"
-  what_breaks_it:
-    - title: "Codebase64, 'STABLE RASTER ROUTINE'"
-      kind: technical-doc
-      page: "base:stable_raster_routine"
-      note: "The routine states its own preconditions bluntly: 'Other Interrupts, $d012 = #$ff, Sprites, Badline and Badline-1 = fuckup.' It also notes 'If you have the KERNAL banked in, you need to modify the IRQ-Vectors'"
-  it_is_region_specific:
-    - title: "Codebase64, 'STABLE RASTER ROUTINE'; 'Shortest Stable Raster code (PAL/NTSC)'"
-      kind: technical-doc
-      page: "base:stable_raster_routine; base:shortest_stable_raster"
-      note: "The NOP slide has to be retuned per region - 'Add one extra nop for 65 cycle NTSC machines' - and the delay loop is given three ways: 'PAL-63 // NTSC-64 // NTSC-65', with ldx #$08 for the first two and ldx #$09 for the third. A separate page gives 'The polling method, half variance technique, in its shortest form. PAL/NTSC', where the NTSC change is a single byte: 'for NTSC, change this to $ea'"
-  it_is_a_prerequisite_not_a_flourish:
-    - title: "Codebase64, 'Introduction to raster IRQs'"
-      kind: technical-doc
-      page: "base:introduction_to_raster_irqs"
-      note: "'The CPU will finish its current instruction before doing so, and as instructions take a different time to complete, and interrupt condition happens within a certain 'random' timeframe. This will introduce a variable amount of delay in jumping to the interrupt handler code. This is the source of all timing problems. To make the interrupt handler code to be always in synch with the horizontal screen refresh, the so called \"stable raster\" approaches are used'"
 ---
+import Sources from '@components/Sources.astro';
 
-**Stable raster** is the Commodore 64 technique for achieving cycle-exact synchronisation with the VIC-II's raster beam. The jitter is not a bus-contention effect: it is that the CPU finishes whatever instruction it is executing before it takes the interrupt, and instructions are different lengths. That costs 0-7 cycles, and everything after it is fixed overhead — 7 cycles to enter the handler, 13 to push the registers, so the effect code starts somewhere in a 20-to-27-cycle window. The stable raster technique eliminates this jitter, enabling perfectly timed mid-screen effects.
+"Too many graphical effects, also called raster effects, have been coded in a very sloppy way," Marko Mäkelä wrote in the online magazine *C=Hacking* in 1995. "For instance, if there are any color bars on the screen in a game or demo, the colors often jitter a bit." A program that changes the border colour from a [raster interrupt](/vault/techniques/raster-interrupts) at line 100 gets its colour change on line 100, but not at the same point along the line each frame, so the edge of the colour shivers from side to side. A **stable raster** routine removes that shiver. It finds out exactly where the beam is, to the cycle, and waits just long enough to line up, so that everything after it runs at the same point on the screen in every frame.
 
-## Fast facts
+On the C64 one processor cycle is 8 pixels wide: the VIC-II's pixel clock runs at eight times the processor clock. A few cycles of jitter is therefore a ragged edge tens of pixels wide, and some effects, such as opening the side borders, fail completely unless a register write lands on one particular cycle.
 
-| Aspect | Detail |
-|--------|--------|
-| **Problem** | IRQ timing varies by 0-7 cycles |
-| **Solution** | Double-IRQ with self-modifying code |
-| **Precision** | Cycle-exact (0 jitter) |
-| **Used for** | Border removal, split screens, colour bars |
+## Where the jitter comes from
 
-## The Jitter Problem
+The VIC-II checks for the interrupt line at the start of each raster line, in cycle 0, and pulls the processor's IRQ line low. Bauer's description of the chip gives the exact point, and adds that for line 0 the check happens in cycle 1. The processor does not stop at once.
 
-When a raster interrupt fires, the CPU might be mid-instruction:
+- **The current instruction finishes first.** 6510 instructions take 2 to 7 cycles, so the delay depends on what the main program happened to be doing. MOS Technology's own programming manual works through the worst case: an interrupt "might be occurring in the middle of a seven cycle, read/modify/write instruction". Mäkelä counted the result: "the beginning position of the interrupt can jump between 7 different positions."
+- **The interrupt sequence itself** takes 7 cycles, to push the program counter and status register and fetch the vector. That part is fixed, and so is any register saving the handler does next, but it pushes the useful work further along the line.
+- **Badlines and sprites.** Bauer notes that the 6510 recognises an interrupt only while its RDY line is high. On a badline the VIC-II holds RDY low for 40 to 43 cycles while it reads character codes, and each sprite on the line takes another 2 cycles with a 3-cycle warning. An interrupt that arrives during a stall waits for it to end. The [VIC-II](/vault/hardware/vic-ii#where-the-cycles-go-badlines) entry has the figures.
 
-| Instruction Length | Jitter |
-|-------------------|--------|
-| 2 cycles | 0-2 cycle variation |
-| 3 cycles | 0-3 cycle variation |
-| 7 cycles | 0-7 cycle variation |
+A handler that saves A, X and Y on the stack in the usual way (13 cycles) therefore starts its real work some 20 to 27 cycles after the start of the line, before any stolen cycles are counted.
 
-This jitter causes visible glitches in timing-sensitive effects.
+## The double interrupt
 
-## The Double-IRQ Solution
+The method that became standard on the C64 uses a second interrupt to measure the first. Mäkelä, who took the idea from a routine by his friend Andreas Boose, described it like this:
 
-The technique uses two interrupts:
+1. The first raster interrupt arrives, with the usual jitter. Its handler sets up a second raster interrupt for the next line, points the interrupt vector at a second handler, acknowledges the first interrupt and re-enables interrupts with `CLI`.
+2. It then runs a row of `NOP` instructions. Every `NOP` takes exactly 2 cycles, so when the second interrupt arrives during the row, the processor is at most one cycle away from the end of an instruction. The jitter falls from up to seven cycles to one.
+3. The second handler reads the raster register at the moment it is about to change. Either it has just changed or it will change on the next cycle, so comparing two reads shows which. "You just need to compare if the register changed one cycle too early or not," Mäkelä wrote, "and delay a cycle when needed. This is easily accomplished with a branch to the next address."
 
-| IRQ | Purpose |
-|-----|---------|
-| **First IRQ** | Sets up second IRQ one line later |
-| **Second IRQ** | Triggers inside a long NOP slide |
+The second handler never returns to the first. It throws away the stack frame the second interrupt pushed, finishes the effect and returns straight to the main program.
 
-### Step by Step
+## A worked routine
 
-1. First IRQ fires with unknown jitter
-2. Set second IRQ for next raster line
-3. Execute NOP slide (many 2-cycle NOPs)
-4. Second IRQ fires inside NOP slide
-5. Jitter is now only 0-1 cycles
-6. Measure exact cycle position
-7. Compensate with calculated delay
-
-## Code Structure
+This version follows the one TWW of the group Creators published on the Codebase64 wiki. It assumes the KERNAL is switched out (`$35` in location 1), so the processor fetches the interrupt vector straight from `$FFFE`, and it is timed for a PAL machine with 63-cycle lines. The first line and the next interrupt's line must not be badlines, and no sprites may be shown on them.
 
 ```asm
-; First IRQ - unstable, sets up second one line later
-first_irq:
-    lda #<second_irq
-    sta $0314           ; Point CINV at second handler
-    lda #>second_irq
-    sta $0315
-    inc $d012           ; Next IRQ one line down
-    lda #$01
-    sta $d019           ; Acknowledge
-    tsx
-    cli                 ; Re-enable IRQs (so second can fire)
-    nop : nop : nop : nop : nop : nop : nop : nop
-    ; ... long NOP slide ...
-    ; The second IRQ will fire somewhere inside this slide,
-    ; at one of two cycle positions (jitter is now 0 or 1).
+irq1:   pha                 ; save A, X and Y (13 cycles)
+        txa
+        pha
+        tya
+        pha
 
-; Second IRQ - stabilised
-second_irq:
-    ; Read $d012 to compensate for the remaining 0-1 cycle jitter
-    lda $d012
-    cmp $d012           ; If line just changed, branch to align
-    beq @aligned
-@aligned:
-    ; Now cycle-exact — perform the effect
-    sta $d020           ; Example: change border colour
-    ; ... acknowledge and exit ...
+        lda #<wedge         ; the next interrupt goes to "wedge"
+        sta $fffe
+        lda #>wedge
+        sta $ffff
+        inc $d012           ; ...on the next raster line
+        lda #$01
+        sta $d019           ; acknowledge this interrupt
+        tsx                 ; remember the stack pointer
+        cli                 ; let the next interrupt in
+        nop                 ; 2 cycles each: the next interrupt
+        nop                 ; arrives somewhere in this row, so
+        nop                 ; it can be late by at most one cycle
+        nop
+        nop
+        nop
+        nop
+        nop
+
+wedge:  txs                 ; drop the second interrupt's stack frame
+        ldx #$08            ; wait until the end of the line
+-       dex
+        bne -
+        bit $00             ; 3 cycles
+        lda $d012
+        cmp $d012           ; has the line changed between the two reads?
+        beq +               ; not yet: 3 cycles; already: 2 cycles
++
+        ; From here on, every instruction runs on the same cycle of
+        ; the line in every frame.
+        lda #1
+        sta $d020           ; for example, change the border colour
+
+        lda #<irq1          ; put the first handler back
+        sta $fffe
+        lda #>irq1
+        sta $ffff
+        lda #100            ; choose the line for the next interrupt
+        sta $d012
+        lda #$01
+        sta $d019           ; acknowledge the second interrupt
+        pla                 ; restore Y, X and A
+        tay
+        pla
+        tax
+        pla
+        rti                 ; back to the main program
 ```
 
-The standard idiom is "first IRQ enables nested IRQ, NOP slide gives the second IRQ a known entry point, then a CMP+BEQ trick eliminates the last cycle of jitter." This is the backbone of every cycle-exact C64 effect.
+The branch `beq +` jumps to the very next instruction, so it changes nothing except time. A taken branch costs 3 cycles and an untaken one 2. If the two reads of `$D012` match, the routine is running one cycle early, and the taken branch spends the extra cycle; if they differ, it is already one cycle late and the branch falls through. Either way the next instruction starts on the same cycle.
 
-## Why it works
+The delay before the comparison is what makes it work, and it depends on the line length. TWW's routine gives the settings for all three kinds of VIC-II:
 
-| Mechanism | Effect |
-|-----------|--------|
-| **NOP slide** | All instructions same length (2 cycles) |
-| **Maximum jitter = 1** | Only 0 or 1 cycle variation |
-| **Cycle counting** | Determine exact position |
-| **Branch compensation** | Conditional delay to align |
+| Chip | Cycles per line | Delay loop | Padding | Extra `NOP` in the row |
+|------|-----------------|------------|---------|------------------------|
+| 6569 (PAL) | 63 | `ldx #$08` | `bit $00` | no |
+| 6567R56A (early NTSC) | 64 | `ldx #$08` | `nop` `nop` | no |
+| 6567R8 (later NTSC) | 65 | `ldx #$09` | none | yes |
 
-## Applications
+The comparison only works if it falls exactly across the moment the line number changes, so a routine tuned for one line length does not stabilise on a machine with another.
 
-| Effect | Requirement |
-|--------|-------------|
-| **Border removal** | Exact `$D011` / `$D016` bit-3 writes at cycle-precise raster positions |
-| **Raster bars** | Colour changes per scanline |
-| **Split screens** | Mode changes mid-frame (text/bitmap split, multicolour switch) |
-| **FLD (Flexible Line Distance)** | Manipulate `$D011` YSCROLL to space rendered lines vertically — produces the "stretchy screen" effect |
-| **FLI (Flexible Line Interpretation)** | Per-line `$D018` change combined with forced badlines — yields 8 colours per 8×8 cell |
-| **Tech-tech** | Per-line `$D016` XSCROLL change so text undulates in a sine wave |
+## Other methods
 
-## What breaks it
+The double interrupt was not the only way. Mäkelä's article surveys the alternatives he knew:
 
-The reference routine states its own preconditions without softening them:
+- **Polling the raster register** over several lines, spending a cycle more whenever it changed too early. He counted busy-waiting and polling among "the ugliest ways" to synchronise, though he used a polling loop once, at start-up, to line up his timers.
+- **The light pen latch.** The VIC-II records the beam position when its light pen input changes, and that input is wired to the keyboard matrix, so a program can trigger it itself. Bauer points out that this gives the beam's horizontal position, which the chip offers no other way to read, and that it "can e.g. be used to synchronize raster interrupt routines on exact cycles". Mäkelä's objection was practical: it "will fail if the user presses the fire button on Joystick port 1".
+- **An auxiliary timer.** A CIA timer running in step with the screen tells the interrupt routine how late it is, and the routine waits that many extra cycles. Mäkelä used this on the VIC-20, whose video chip has no raster interrupt, and noted that on the C64 he had "never seen the auxiliary timer scheme being used".
 
-> Other Interrupts, `$d012` = `#$ff`, Sprites, Badline and Badline-1 = fuckup.
+## What can still go wrong
 
-Sprites and badlines both steal cycles from the CPU, so a stable raster established
-outside them stops being stable inside them. The KERNAL is a further complication:
-"if you have the KERNAL banked in, you need to modify the IRQ-Vectors."
+A stable routine is stable only while nothing else steals cycles. TWW's routine lists its own enemies: other interrupts, a raster line of `$FF`, sprites, and a badline on the line or the one before it.
 
-## It is region-specific
+The RESTORE key is one of those other interrupts. It pulls the processor's NMI line, which `SEI` cannot block. Mäkelä's example programs show the usual defence: make CIA 2's timer raise an NMI and never acknowledge it, so the NMI line stays low and later presses of RESTORE cause no new interrupt. Because the CIA's timer interrupt arrives one cycle later on the older 6526 than on later chips, cycle-exact code that uses the CIA timers can also depend on which CIA the machine has; see [CIA 6526](/vault/hardware/cia).
 
-The NOP slide is tuned to the line length, so it does not survive the PAL/NTSC
-boundary. Codebase64's routine carries three variants — `PAL-63`, `NTSC-64`,
-`NTSC-65` — differing by a single loop count, and a note to "add one extra nop for
-65 cycle NTSC machines". The shortest known form, "the polling method, half variance
-technique", makes the same switch in one byte.
+## What it costs and what it buys
 
-This is the reason so much C64 demo code is PAL-only. It is not a preference; the
-timing does not carry.
+Each stabilised split costs the main program most of two raster lines, since the first handler waits out a whole line in its `NOP` row and the second waits almost another before it compares. In return, register writes land on known cycles, and several well-known VIC-II tricks depend on that. Opening the side borders needs a write to `$D016` in exactly cycle 56 of the line ([open borders](/vault/techniques/open-borders)). [FLI](/vault/techniques/fli) writes `$D011` and `$D018` on every line. Colour bars with straight edges need the same precision.
 
-## Performance Cost
+<Sources>
 
-| Factor | Impact |
-|--------|--------|
-| **CPU time** | Two IRQs per stable point |
-| **Code space** | NOP slides, handler code |
-| **Complexity** | Requires deep understanding |
+- Marko Mäkelä, "Making stable raster routines (C64 and VIC-20)", *C=Hacking* issue 10 (June 1995): the jitter, seven positions, the auxiliary timer and double-interrupt methods, Andreas Boose, polling and the light pen, the NMI lock for the RESTORE key, 8 pixels per C64 cycle.
+- Christian Bauer, *The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64* (1996): section 2.2 (IRQ recognised only while RDY is high); section 3.5 (badlines stun the processor for 40–43 cycles); section 3.11 (light pen position used to synchronise raster routines); section 3.12 (the raster compare in cycle 0, cycle 1 for line 0).
+- MOS Technology, *MCS6500 Microcomputer Family Programming Manual* (January 1976), p. 138: an interrupt arriving during a seven-cycle read-modify-write instruction, "7 cycles for the interrupt".
+- TWW/Creators, "Stable Raster Routine", Codebase64 wiki (web, secondary): the routine this entry's listing follows, its cycle counts, the PAL and NTSC delay settings and its list of what breaks it. https://codebase.c64.org/doku.php?id=base:stable_raster_routine
 
-## Modern relevance
-
-Understanding stable raster teaches:
-- Interrupt handling fundamentals
-- Cycle-exact timing
-- Hardware synchronisation
-- Why modern GPUs use VSync
+</Sources>
 
 ## See also
 
+- [Raster interrupts](/vault/techniques/raster-interrupts)
 - [VIC-II](/vault/hardware/vic-ii)
-- [Raster Tricks](/vault/techniques/raster-tricks)
-- [Demo Scene](/vault/communities/demo-scene)
+- [CIA 6526](/vault/hardware/cia)
+- [6510](/vault/hardware/6510)
+- [Cycle accuracy](/vault/techniques/cycle-accuracy)
+- [Raster tricks](/vault/techniques/raster-tricks)
+- [Open borders](/vault/techniques/open-borders)
+- [FLI](/vault/techniques/fli)
+- [Demo scene](/vault/communities/demo-scene)
