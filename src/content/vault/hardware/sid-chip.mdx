@@ -1,46 +1,124 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "SID: The Sound of the C64"
 subtitle: "Three voices, endless personality"
-summary: "The SID 6581/8580 chip gave the Commodore 64 synthesizer-class sound, inspiring composers and hardware hackers alike."
+summary: "Bob Yannes designed the MOS 6581 Sound Interface Device as a synthesiser on a chip: three voices, four waveforms, a separate envelope for each voice and a resonant filter. It gave the Commodore 64 its sound, and its quirks, from a filter that varies from chip to chip to a volume control that could play samples, became part of that sound."
 category: "hardware"
 platforms: ['commodore-64']
 tags: ['sid', 'sound', 'synthesizers']
 introduced: 1982
 sources:
-  technical:
-    - title: "syntheses/commodore-c64/sid-synthesis-model.md"
-      kind: technical-doc
-      note: "f_out = (f_clk × FREQ) / 2^24, with a 24-bit phase accumulator advanced once per Φ2; PAL 985,248 Hz and NTSC 1,022,727 Hz, giving about 3.8% pitch difference for the same register value. Also the 6581's large DC offset on the master-volume DAC, which makes $D418 usable as a 4-bit DAC, and its absence on the 8580"
-    - title: "Frequency tables recomputed from that formula"
-      kind: technical-doc
-      note: "both tables generated directly from FREQ = round(Hz × 16777216 / clock) at A4 = 440 Hz equal temperament, and checked for internal consistency — each octave doubles"
-
+  introduced:
+    - ref: magazines/compute-magazine
+      kind: magazine
+      date: "1982-03"
+      issue: 22
+      page: "26"
+      note: "David D. Thornburg's report on the January 1982 Winter CES: the Commodore 64 shown with 'a 6581 sound interface device'"
+  specification:
+    - title: "MOS Technology 6581 Sound Interface Device (SID) data sheet"
+      kind: manual
+      note: "3 tone oscillators, range 0-4 kHz; 4 waveforms per oscillator (triangle, sawtooth, variable pulse, noise); envelope attack 2 ms-8 s, decay and release 6 ms-24 s, sustain 0 to peak in 16 linear steps; oscillator sync; ring modulation; filter cutoff 30 Hz-12 kHz, 12 dB/octave, low pass, band pass, high pass and notch; 16 volume levels; 'Fout = (Fn * Fclk/16777216) Hz'; +12 V Vdd"
+    - title: "Commodore Semiconductor Group 6582 Sound Interface Device (SID) data sheet (HMOS)"
+      kind: manual
+      note: "the HMOS SID, with the same feature list and a +9 V Vdd"
+  volume_samples:
+    - title: "Interview with Bob Yannes, by Andreas Varga (e-mail, August 1996)"
+      kind: interview
+      note: "Web, secondary copy: 'The final amp was a 4-bit multiplying D/A converter which allowed the volume of the output signal to be controlled. By stopping an Oscillator, it was possible to apply a DC voltage to this D/A. Audio could then be created by having the microprocessor write the Final Volume register in real-time.'"
 ---
 
-The Sound Interface Device (SID) was designed by Bob Yannes to put synthesizer-grade audio in a home computer. With three independent voices, multiple waveforms, filters, and envelope control, it made the Commodore 64 a music powerhouse.
+import Sources from '@components/Sources.astro';
+
+Bob Yannes thought the sound chips of the early 1980s were "primitive and obviously had been designed by people who knew nothing about music." He had worked with synthesisers, and at MOS Technology in 1981 he set out to build one on a single chip: in his words, "a single-chip synthesizer voice which hopefully would find it's way into polyphonic/polytimbral synthesizers." The chip went into the Commodore 64 instead, and it became the thing people remember about the machine's sound.
+
+The data sheet describes the 6581 SID as a "3-voice electronic music synthesizer/sound effects generator". Each voice has an oscillator with four waveforms and its own envelope, so a note can be struck, swell, sustain and fade like an instrument. A filter can sweep across the sound while it plays. Programmers wrote to 25 registers to control all of it, and read four more.
+
+Yannes worked to a tight schedule. *IEEE Spectrum*'s 1985 account of the C64's design says the SID took four or five months to design, and the filter came last. "The filter was the last thing that was worked on," he told the magazine. "I ran out of time."
 
 ## Fast facts
-- **Versions:** 6581 (original, warmer filter) and 8580 (revised, cleaner filter, lower noise).  
-- **Voices:** three oscillators supporting triangle, sawtooth, pulse, and noise waveforms.  
-- **Filters:** state-variable resonant filter with four modes — low-pass, band-pass, high-pass, notch — selectable independently or in combination.  
-- **Modulation:** ring modulation and oscillator sync for complex timbres.
 
-## Programming the SID
-- **Registers:** `$D400–$D418` control frequency, pulse width, envelopes, and filter routing. `$D419–$D41C` are read-only — POTX/POTY (paddles), OSC3 (voice 3 oscillator output), and ENV3 (voice 3 envelope), often used for randomness or modulation.  
-- **Envelopes:** ADSR parameters define how sounds evolve; many composers used fast attacks and carefully timed releases.  
-- **Effects:** vibrato and arpeggios simulated chords by rapidly cycling notes; sample playback used clever volume register abuse — the 6581 has a large DC offset that means the volume register is audible directly, so toggling its low 4 bits at sample rate produces 4-bit PCM. The 8580 fixed this DC offset, so the same trick sounds far quieter on a C64C.
+- **Voices:** three, each with an oscillator, an envelope generator and an amplitude control.
+- **Pitch:** a 16-bit frequency value per voice, 0–4 kHz.
+- **Waveforms:** triangle, sawtooth, variable-width pulse and noise.
+- **Envelopes:** attack from 2 ms to 8 s; decay and release from 6 ms to 24 s; 16 sustain levels.
+- **Effects:** ring modulation and oscillator sync between voices.
+- **Filter:** one programmable filter shared by the voices, cutoff 30 Hz to 12 kHz, with low-pass, band-pass and high-pass outputs and variable resonance.
+- **Other:** master volume in 16 steps, two paddle inputs, an external audio input, and a readable voice 3 for modulation or random numbers.
+- **Versions:** the NMOS 6581 on a +12 V supply, and the later HMOS chip on +9 V, fitted to later C64s as the 8580.
 
-## SID Frequency Tables
+## How a voice works
 
-Each voice has a 24-bit phase accumulator advanced by the 16-bit frequency register once per Φ2 cycle, so the register value for a wanted pitch is:
+**Oscillator.** Each voice's pitch comes from a 16-bit number. The data sheet gives the formula: output frequency = value × clock ÷ 16,777,216. The clock is the C64's processor clock, which is different on PAL and NTSC machines (see the [frequency tables](#sid-frequency-tables) below).
+
+**Waveform.** Four bits in the voice's control register pick the waveform. The data sheet describes each one: triangle is "mellow, flute-like", sawtooth "bright, brassy", pulse ranges "from a bright, hollow square wave to a nasal, reedy pulse" as its 12-bit width changes, and noise suits "explosions, gunshots, jet engines, wind, surf" as well as "snare drums and cymbals". Selecting more than one waveform does not mix them. The data sheet warns that the result "will be a logical ANDing of the waveforms", and that combining noise with another waveform can make the noise output "lock up" until the voice is reset.
+
+**Envelope.** Setting the voice's gate bit starts the attack, which rises to full volume and decays to the sustain level. Clearing the gate starts the release. The rates run from 2 milliseconds to 24 seconds, and the sustain level has 16 steps. The data sheet points out that the envelope can be re-gated at any point, "starting from whatever amplitude had been reached", so a program can shape notes in real time.
+
+**Sync and ring modulation.** Sync ties one voice's oscillator to the next one's, producing "Hard Sync" effects. Ring modulation replaces a voice's triangle wave with a combination of two oscillators, giving metallic, bell-like tones. The voices are wired in a ring: voice 1 is modulated by voice 3, voice 2 by voice 1, and voice 3 by voice 2.
+
+**Filter.** Any voice, and the external input, can be routed through the filter. The 11-bit cutoff and 4-bit resonance set its character, and three bits pick the outputs. Low-pass and high-pass cut at 12 dB per octave, band-pass at 6 dB. The outputs add together, so low-pass plus high-pass gives a notch filter. The data sheet calls the filter "perhaps, the most important element in SID", and says "the best results are achieved by varying the Cutoff Frequency in real-time", which is what [filter sweeps](/vault/techniques/filter-sweeps) do.
+
+**Voice 3 as a control source.** A program can read voice 3's oscillator (`$D41B`) and envelope (`$D41C`) as numbers. Added to another voice's pitch or to the filter cutoff, they produce vibrato, sirens and "sample and hold" effects, and with voice 3 silenced by bit 7 of `$D418` it becomes a pure modulator. With the noise waveform selected, `$D41B` returns random numbers, which both the data sheet and the Programmer's Reference Guide suggest for games.
+
+## Registers
+
+| Address | Purpose |
+|---|---|
+| $D400–$D406 | Voice 1: frequency (2 bytes), pulse width (2 bytes), control, attack/decay, sustain/release |
+| $D407–$D40D | Voice 2: the same layout |
+| $D40E–$D414 | Voice 3: the same layout |
+| $D415–$D416 | Filter cutoff (11 bits) |
+| $D417 | Filter resonance (bits 4–7) and which voices go through the filter (bits 0–3) |
+| $D418 | Voice 3 off (bit 7), high-pass, band-pass, low-pass (bits 6–4), master volume (bits 0–3) |
+| $D419–$D41A | Paddle X and Y (read only) |
+| $D41B | Voice 3 oscillator output (read only) |
+| $D41C | Voice 3 envelope output (read only) |
+
+The control register for each voice holds, from bit 7 down: noise, pulse, sawtooth, triangle, test, ring modulation, sync and gate. The registers from `$D400` to `$D418` are write-only: *Mapping the Commodore 64* warns that "their values cannot be determined by PEEKing these locations". A program that needs to know a value it set has to keep its own copy.
+
+## What it cost programmers
+
+**The envelope does not always restart.** Martin Walker lost hours to it in 1988, as he told *ZZAP!64* readers in his development diary: the envelope "seems not to like being re-triggered if the sustain level is still maximum", so "a sound effect would go completely silent when triggered twice in quick succession". His fix was to keep the sustain level at 14 or lower. Music players deal with the same problem with a [hard restart](/vault/techniques/hard-restart), which resets the envelope a few frames before each new note.
+
+**Every chip sounds a little different.** Yannes explained the reason in 1996. He "could not create high-gain op-amps in NMOS", and "the resistance of the FETs varied considerably with processing, so different lots of SID chips had different cutoff frequency characteristics. I knew it wouldn't work very well, but it was better than nothing and I didn't have time to make it better." A filter setting that sounds right on one C64 can sound thin or muffled on another.
+
+**PAL and NTSC play different notes.** The same frequency value plays about 3.8% higher on an NTSC machine, about two-thirds of a semitone. The note table in the Programmer's Reference Guide is worked out for the NTSC clock (its A-4 is 7217), so a European programmer who copied it got every note about two-thirds of a semitone flat.
+
+**There is nothing in BASIC for it.** Commodore BASIC 2.0 has no sound commands, so owners programmed the SID with `POKE`. Even the simplest things have traps: *Compute!'s Gazette* advised readers in 1989 to silence a note by setting its frequency to zero rather than setting the volume to zero, "because it avoids an audible pop or click".
+
+## Playing samples through the volume register
+
+That click is the key to one of the SID's best-known tricks. Yannes explained where it comes from: the final volume control is "a 4-bit multiplying D/A converter", and "by stopping an Oscillator, it was possible to apply a DC voltage to this D/A. Audio could then be created by having the microprocessor write the Final Volume register in real-time. Game programs often used this method to synthesize speech or play 'sampled' sounds."
+
+In practice a program writes each 4-bit sample value to the low four bits of `$D418` at a steady rate, thousands of times a second. That gives a fourth channel of 4-bit sampled sound. It takes a large share of the processor's time, and the program has to keep the filter bits in the top half of the register intact as it writes. In June 1987 *ZZAP!64*'s Compunet column described a demo disk from a Dutch and American team with "several incredible tunes, using four channels, sampled drums and speech", and concluded that "the SID chip could well be on the brink of a new era."
+
+The trick depends on a flaw that the later chip largely removed. On the 8580 samples played this way are close to inaudible, and owners who wanted them back added a resistor to the chip's external audio input.
+
+## 6581 and 8580
+
+The 6581 is an NMOS chip on a +12 V supply. Commodore's later HMOS version, documented in its 6582 data sheet, runs on +9 V with the same features. Later C64 boards carry it as the 8580: Commodore's 1992 service manual lists the 8580 for the C64C board assembly 250469, with the 6581 as an alternative.
+
+The two are register-compatible, but they do not sound the same. Public descriptions agree that the 8580's filter has a more linear cutoff, is more consistent from chip to chip, distorts less and can reach higher resonance, while the 6581's varies between chips and often distorts. A tune whose filter settings were chosen by ear on one can sound quite different on the other.
+
+## What composers did with it
+
+The SID's reputation was made by the people who wrote music for it. Reviewing *Monty on the Run* in October 1985, *ZZAP!64* found its theme "full of 'clapping', violins, some nifty little twiddly bits and even a brilliant guitar solo", "almost worth buying for the music alone", and called [Rob Hubbard](/vault/people/rob-hubbard) "a SID chip wizard extraordinaire". The same issue's interview described how he started: after hearing Activision's *Master of the Lamps* and *Rock 'n' Bolt* he "connected his black and white monitor to his hi-fi and started to program his own music utility", because he found the commercial ones "very limited with the sounds you can create".
+
+Three voices are not many, and the standard answer was to switch notes faster than the ear can follow. An [arpeggio](/vault/techniques/arpeggio) cycles one voice through the notes of a chord every frame or two. Martin Walker, working on new music in 1988, recorded "A multiplexed chord using one channel" in his diary, and added: "It's amazing just how many new and different sounds are possible on the 64." [Pulse-width modulation](/vault/techniques/pulse-width-modulation) and filter sweeps work the same way: the music player changes the registers every frame, usually from an [interrupt](/vault/techniques/interrupt-driven-music).
+
+The music outlived the games. The [High Voltage SID Collection](/vault/tools/hvsc) preserves the tunes, and composers still write new SID music with trackers such as [SID-Wizard](/vault/tools/sid-wizard).
+
+## SID frequency tables
+
+Rearranging the data sheet's formula gives the value for a wanted pitch:
 
 ```
 FREQ = round(Hz × 16777216 / clock)
 ```
 
-The clock is the CPU clock, which differs by region — which is why the same register value plays about 3.8% sharp on an NTSC machine.
+The tables below use A4 = 440 Hz in equal temperament.
 
 ### PAL C64 (985,248 Hz clock)
 
@@ -78,13 +156,30 @@ The clock is the CPU clock, which differs by region — which is why the same re
 | B3   | 246.94 | $0FD3     | B4   | 493.88 | $1FA6     |
 |      |        |           | C5   | 523.25 | $2188     |
 
-**Converting between the tables:** a *higher* clock needs a *lower* register value for the same pitch, so NTSC = PAL × 985248 / 1022727 ≈ **0.9634**. Going the other way, PAL = NTSC × 1.0380. Check any conversion against A4, which is $1D45 on PAL and $1C32 on NTSC.
+**Converting between the tables:** a *higher* clock needs a *lower* value for the same pitch, so NTSC = PAL × 985248 / 1022727 ≈ **0.9634**. Going the other way, PAL = NTSC × 1.0380. Check any conversion against A4, which is $1D45 on PAL and $1C32 on NTSC. Each octave doubles the value.
 
-## Cultural impact
-SID tunes influenced electronic music, chipmusic, and modern synth design. The chip inspired hardware clones (FPGASID, SwinSID) and dedicated instruments like Elektron's SidStation.
+<Sources>
+
+- MOS Technology, *6581 Sound Interface Device (SID)* data sheet: features, frequency and pulse-width formulas, waveform ANDing and noise lock-up, envelope rates (Table 2), sync and ring modulation, filter modes and slopes, notch from low-pass plus high-pass, voice 3 and `$D41B`/`$D41C`, 29 registers, +12 V supply.
+- Commodore Semiconductor Group, *6582 Sound Interface Device (SID)* data sheet (HMOS): the same features on a +9 V supply.
+- *Commodore 64 Programmer's Reference Guide* (Commodore, 1982): voice 3 oscillator as a random number source (p. 201); Appendix E, music note values, A-4 = 7217 (p. 384).
+- Andreas Varga, "Interview with Bob Yannes" (e-mail, August 1996; web, secondary, read in the copy at landley.net): primitive sound chips, the single-chip synthesiser voice, the NMOS filter, the volume D/A converter and sampled sound.
+- Tekla S. Perry and Paul Wallich, "Design case history: the Commodore 64", *IEEE Spectrum*, vol. 22 no. 3, March 1985 (web, secondary, read in the version republished at spectrum.ieee.org): the four-to-five-month design, "I ran out of time".
+- *Compute!*, issue 22, March 1982, p. 26: the 6581 in the Commodore 64 at the January 1982 Winter CES. Issue 27, August 1982, p. 60: Tom R. Halfhill, "A First Look At The Commodore 64", on the machine's 8K BASIC 2.0.
+- Sheldon Leemon, *Mapping the Commodore 64* (COMPUTE! Publications, 1984), SID section: all but the last four registers are write-only.
+- *ZZAP!64*, issue 6, October 1985, p. 16: *Monty on the Run* review and Julian Rignall's piece on Rob Hubbard.
+- *ZZAP!64*, issue 26, June 1987, p. 73: Compunet column, the four-channel demo with sampled drums and speech.
+- *ZZAP!64*, issue 39, July 1988, p. 97, and issue 41, September 1988, p. 101: Martin Walker's diary, on new sounds and on the envelope re-trigger problem.
+- Larry Cotton, *Compute!'s Gazette*, October 1989, p. 59: silencing a note without a click.
+- Commodore, *C64/C64C Service Manual* (March 1992, PN-314001-03): parts list for board assembly 250469, 8580 and 6581.
+- C64-Wiki, "SID" (web, secondary): 4-bit sample playback through `$D418`, inaudible on the 8580 without a resistor on the external input.
+- Wikipedia, "MOS Technology SID" (web, secondary): the 8580's HMOS-II process and its filter compared with the 6581's.
+
+</Sources>
 
 ## See also
-- [Bob Yannes](/vault/people/bob-yannes)  
-- [Rob Hubbard](/vault/people/rob-hubbard)  
-- [Commodore 64](/vault/systems/commodore-64)  
-- [Demo Scene](/vault/communities/demo-scene)
+- [Bob Yannes](/vault/people/bob-yannes)
+- [Rob Hubbard](/vault/people/rob-hubbard), [Martin Galway](/vault/people/martin-galway), [Ben Daglish](/vault/people/ben-daglish), [Jeroen Tel](/vault/people/jeroen-tel)
+- [Commodore 64](/vault/systems/commodore-64)
+- [VIC-II](/vault/hardware/vic-ii)
+- [Chiptune scene](/vault/communities/chiptune-scene), [Demo scene](/vault/communities/demo-scene)
