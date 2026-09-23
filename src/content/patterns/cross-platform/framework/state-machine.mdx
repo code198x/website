@@ -17,155 +17,189 @@ related:
 
 A state machine keeps your game organised by separating distinct phases — title screen, gameplay, pause, game over — into independent states. Each state handles its own input, updates, and rendering. Transitions between states are explicit and controlled.
 
-This pattern works identically on any platform. The concept is the same whether you're coding in 6502, Z80, or 68000.
+We can use the same idea on different machines: name the phases and define their transitions. Input, drawing, timing and sound still need implementations for the target. A shared state diagram does not make those hardware routines interchangeable.
+
+## Decide which transition wins
+
+A transition is a change from one phase to another. Before writing the tests, we choose their order. For this example:
+
+| Current state | Condition | Next state |
+| --- | --- | --- |
+| Title | New Fire press | Playing, with a fresh session |
+| Playing | Player dead after this update's collisions | Game Over |
+| Playing | Player alive and new Pause press | Paused |
+| Paused | New Pause press | Playing, preserving the session |
+| Game Over | New Fire press | Title |
+
+**Death wins over pause.** We finish this update's movement and collisions before deciding whether to pause. Another game could check pause before advancing the simulation, but that would be a different policy to explain and test.
+
+We choose at most one transition per update. The new state's update handler runs on the next update; it does not consume the same button press again immediately.
 
 ## Pseudocode
 
+The input reader uses the [edge-detection pattern](/patterns/cross-platform/input/edge-detection): one normalised sample per update, with separate held and newly pressed bits. A held Pause button must not alternate between Playing and Paused.
+
 ```text
-; Game states (constants)
 STATE_TITLE     = 0
 STATE_PLAYING   = 1
 STATE_PAUSED    = 2
 STATE_GAMEOVER  = 3
 
-; Current state variable
 game_state: byte = STATE_TITLE
+call initialise_title
+call seed_input_history
 
-; Main loop
-game_loop:
-    switch (game_state)
+; Run at the game's chosen update opportunities
+update_game:
+    call update_input
+    next_state = game_state
+
+    switch (game_state)          ; exactly one case, no fall-through
         case STATE_TITLE:
-            call title_update
+            if fire_just_pressed:
+                next_state = STATE_PLAYING
+
         case STATE_PLAYING:
-            call playing_update
+            update player using held input
+            update enemies and gameplay timers
+            check collisions
+            if player_dead:
+                next_state = STATE_GAMEOVER
+            else if pause_just_pressed:
+                next_state = STATE_PAUSED
+
         case STATE_PAUSED:
-            call paused_update
+            if pause_just_pressed:
+                next_state = STATE_PLAYING
+
         case STATE_GAMEOVER:
-            call gameover_update
+            if fire_just_pressed:
+                next_state = STATE_TITLE
 
-    goto game_loop
+        default:
+            report invalid state and stop at a diagnostic point
 
-; State handlers
-title_update:
-    draw title screen
-    if fire pressed:
-        game_state = STATE_PLAYING
-        call init_game
-    return
+    if next_state != game_state:
+        call change_state(next_state)
 
-playing_update:
-    read input
-    update player
-    update enemies
-    check collisions
-    draw game
-    if player_dead:
-        game_state = STATE_GAMEOVER
-    if pause pressed:
-        game_state = STATE_PAUSED
-    return
-
-paused_update:
-    draw "PAUSED"
-    if pause pressed:
-        game_state = STATE_PLAYING
-    return
-
-gameover_update:
-    draw "GAME OVER"
-    draw final score
-    if fire pressed:
-        game_state = STATE_TITLE
+    prepare presentation for game_state
     return
 ```
 
-## Implementation Notes
+`fire_just_pressed` and `pause_just_pressed` are Boolean tests of this update's edge bits. Ordinary irrelevant input is ignored. An impossible internal state is a programming error to diagnose, not an excuse to fall through silently to Game Over.
 
-**6502 (NMOS — NES, C64, Apple II, BBC Micro, Atari 8-bit):**
+## Entry and exit have different jobs
 
-The original NMOS 6502 doesn't have a `JMP (abs,X)` instruction — that was added in the 65C02. So jump-table dispatch on NMOS 6502 needs an indirect through zero-page:
+Per-update work repeats. Entry and exit work happens once when we actually change state. For this small game, a direct routine is enough:
 
-```asm
-; Load state, multiply by 2, fetch the target address into a zp pointer
-lda game_state
-asl                     ; * 2 for word table
-tax
-lda state_table,x
-sta jmp_target
-lda state_table+1,x
-sta jmp_target+1
-jmp (jmp_target)        ; NMOS-compatible indirect jump
+```text
+change_state(next_state):
+    old_state = game_state
 
-; jmp_target lives in zero page (2 bytes)
-state_table:
-    !word title_update
-    !word playing_update
-    !word paused_update
-    !word gameover_update
+    ; Exit responsibilities
+    if old_state == STATE_TITLE:
+        stop title music
+    if old_state == STATE_PAUSED:
+        remove pause overlay
+    if old_state == STATE_PLAYING:
+        if next_state == STATE_PAUSED:
+            pause music progression; stop transient effects
+        else if next_state == STATE_GAMEOVER:
+            stop gameplay music and effects
+
+    ; Entry responsibilities
+    if next_state == STATE_PLAYING:
+        if old_state == STATE_TITLE:
+            initialise a fresh session
+            start gameplay music
+        else if old_state == STATE_PAUSED:
+            resume music progression
+    else if next_state == STATE_PAUSED:
+        show pause overlay
+    else if next_state == STATE_GAMEOVER:
+        preserve final score
+        show game-over result; request result cue once
+    else if next_state == STATE_TITLE:
+        stop result audio
+        initialise title presentation; start title music
+
+    game_state = next_state
+    suppress transition-button edges for the new state
+    return
 ```
 
-A simpler portable alternative is a CMP/BEQ chain — slower (linear in number of states), but works everywhere and is easier to read:
+The transition table defines the legal callers of this routine. A future request for any other transition needs an explicit rule rather than accidentally selecting an entry branch.
 
-```asm
-lda game_state
-cmp #STATE_TITLE
-beq title_update
-cmp #STATE_PLAYING
-beq playing_update
-cmp #STATE_PAUSED
-beq paused_update
-jmp gameover_update     ; Default fall-through
-```
+A fresh session initialises player and enemy state, score, lives, level data and gameplay timers. **Resume does not call that initialiser.** It keeps positions, score, lives and timers exactly as pause left them. Entering Title can preserve the previous final score for display; starting the next session resets the new session's score.
 
-**65C02 (Apple IIGS, BBC Master, Atari Lynx):**
+“Suppress transition-button edges” means retaining the current sampled held state as history and clearing the pending press edges, as described in the input pattern. It does not mean reading the hardware a second time. Keep sampling while paused and on menus so a release followed by a new press can be observed.
 
-```asm
-lda game_state
-asl
-tax
-jmp (state_table,x)     ; 65C02 indexed indirect — NMOS 6502 lacks this
-```
+The drawing and sound operations above describe responsibilities. Their implementations must respect the machine's transfer windows, audio ownership and memory lifetimes. Preparing a screen is not permission to write every display register immediately. An interrupt handler sharing state needs a safe handover; this sequential example does not make a multi-step transition atomic.
 
-**Z80:**
-```asm
-ld a,(game_state)
-add a,a                 ; * 2
-ld e,a
-ld d,0
-ld hl,state_table
-add hl,de
-ld e,(hl)
-inc hl
-ld d,(hl)
-ex de,hl
-jp (hl)                 ; Jump to address in HL
-```
+## What does pause stop?
 
-**68000 (jump tables):**
-```asm
-; States are word offsets
-move.w  game_state,d0
-add.w   d0,d0           ; * 2 for word table
-lea     state_table,a0
-move.w  (a0,d0.w),d0
-jmp     (a0,d0.w)
-```
+For this example we choose the following policy:
 
-## Trade-offs
+| Work | While paused |
+| --- | --- |
+| Player, enemies, collisions and gameplay countdowns | Do not advance |
+| Gameplay animation | Hold its current phase |
+| Input sampling and pause-menu feedback | Continue |
+| Required display service | Continue without advancing gameplay |
+| Music | Hold the musical position; silence output through the audio driver |
+| Transient gameplay effects | Stop; do not replay on resume |
 
-| Aspect | Cost |
-|--------|------|
-| CPU | Minimal — one table lookup per frame |
-| Memory | ~20-50 bytes for jump table + state variable |
-| Complexity | Low — very readable and maintainable |
+Pausing the note sequencer alone may leave hardware sounding its last note. The audio driver must implement the chosen silence/resume behaviour, or the game must choose a simpler policy such as stopping and restarting the tune. The Spectrum beeper and hardware audio channels need different implementations.
 
-**When to use:** Any game with multiple screens or phases.
+We do not disable all interrupts to pause a game. We stop the selected update work while keeping required input, display and audio servicing valid. On resume, a frame-counted game simply continues its frozen counters. A clock-based scheduler must reset its reference time or otherwise exclude the paused interval, so resume does not run a burst of missed simulation or musical events.
 
-**When to avoid:** Extremely simple single-screen games where a state machine adds unnecessary complexity.
+## Predict two competing requests
 
-## Benefits
+We are Playing with score 7. This update's collision kills the player, and its input sample also contains a new Pause press. Predict the next state and the work that should happen once.
 
-- **Clean separation** — each state is self-contained
-- **Easy debugging** — you always know which state you're in
-- **Simple transitions** — just set the state variable
-- **Extensible** — adding new states is trivial
+<details>
+<summary>Trace death and pause</summary>
+
+The death condition selects Game Over. Because Pause is in an `else if`, it cannot overwrite that choice. Exit stops gameplay audio; entry preserves score 7, prepares the result and requests its cue once. The next update uses Game Over's handler, so movement and gameplay timers do not advance.
+
+With two independent `if` statements assigning the state, Pause could replace Game Over. The program might still draw a plausible screen while leaving a dead player in a paused session. A visible result alone would not expose the mistake.
+
+</details>
+
+Now trace a restart and a separate pause/resume. Begin on Game Over: press Fire,
+keep holding it for one update, release it, then press again. Once Playing, do
+the same press/hold/release/press sequence with Pause while the player stays alive.
+Predict the state after each update and mark when a fresh session is initialised.
+
+<details>
+<summary>Compare restart and resume</summary>
+
+| Update | Starting state and observation | Expected result |
+| --- | --- | --- |
+| 1 | Game Over, new Fire press | Title; stop result audio; no fresh session yet |
+| 2 | Title, Fire still held | Stay on Title |
+| 3 | Title, Fire released | Stay on Title |
+| 4 | Title, Fire pressed again | Playing; initialise score, lives, objects and timers once |
+| 5 | Playing, alive, new Pause press | Finish this simulation update, then pause |
+| 6 | Paused, Pause still held | Stay paused; simulation values unchanged |
+| 7 | Paused, Pause released | Stay paused; simulation values unchanged |
+| 8 | Paused, Pause pressed again | Resume without resetting the session or simulating the paused interval |
+
+Check the score, an enemy position and a gameplay timer through updates 5–8. Explain which values change during update 5 and why none should advance during 6–8. Repeat the Title → Playing route: initialisation must restore the same starting conditions every time, while the application may retain an intentional high score.
+
+</details>
+
+Explain why clearing input history to zero during the transition would change
+the held-button result. Revisit the [input entry policy](/patterns/cross-platform/input/edge-detection#entering-a-screen-while-a-button-is-held) if the distinction between a held button and a new press is unclear.
+
+## Choosing a dispatch implementation
+
+Start with a short sequence of comparisons and routine calls. On the Spectrum we can use Z80 comparisons and calls; C64 and NES code can use their 6502-family equivalents; Amiga code can use 68000 comparisons and calls. Preserve the distinction between calling a handler that returns and jumping to code that continues elsewhere.
+
+A jump table may become useful with more states, but it needs a valid index, an address or offset format suitable for the CPU, and a defined return path. It does not solve transition priority, initialisation or cleanup. Measure a real implementation before claiming that a table is faster or assigning a universal byte or cycle cost.
+
+## When this helps
+
+Use named states when different phases have different rules, such as a title screen, active play and results. A tiny single-screen experiment may need only a condition and a restart routine. Add structure when it makes responsibilities clearer.
+
+Before adding a state, answer: how do we enter it, what continues, what stops, what survives leaving it, and which transition wins if two conditions occur together? Those answers make the state machine useful; setting a state byte alone does not perform the transition's work.

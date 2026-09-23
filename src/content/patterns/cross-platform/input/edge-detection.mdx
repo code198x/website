@@ -15,24 +15,34 @@ related:
 
 ## Overview
 
-Raw input tells you if a button is pressed right now. Edge detection tells you if a button was *just* pressed this frame — it wasn't pressed last frame, but is pressed now. This prevents a single button press from triggering multiple times.
+An input sample tells us which buttons the program observed as pressed. Edge detection compares two samples: a button is newly pressed when it was released in the previous sample and pressed in the current one. A held button then triggers once, provided we update the history and use each result once.
+
+Here we use a **normalised byte: 1 means pressed, 0 means released**. The machine-specific reader must map its controls into our chosen bits, invert any active-low signals where needed, and clear unused bits. These logical button masks are our program's format, not a universal hardware layout.
 
 Without edge detection: holding fire spawns bullets every frame.
 With edge detection: holding fire spawns one bullet, then nothing until released and pressed again.
 
+## Sampling contract
+
+We call `update_input` once per game update, before the code that uses its result. For a simple game that can mean once per display frame. All consumers use the same stored sample; they do not call the reader again or advance its history independently.
+
+`current_input` remains useful for movement and charging. `new_presses` is valid for this update only: applying it repeatedly across several simulation steps would repeat an action. If sampling and simulation later run at different rates, we need an explicit handover or queue policy.
+
+A press and release entirely between two samples can be missed. Detection adds no intentional extra update of waiting once a press is sampled, but the physical input still waits for sampling, game logic and visible or audible feedback. Edge detection also does not provide switch debouncing or menu key repeat.
+
 ## Algorithm
 
 ```text
-current_input: byte      ; This frame's input state
-previous_input: byte     ; Last frame's input state
-new_presses: byte        ; Buttons just pressed this frame
+current_input: byte      ; Current normalised sample
+previous_input: byte     ; Previous normalised sample
+new_presses: byte        ; Buttons newly observed pressed
 
 read_input_with_edges:
     ; Save last frame's state
     previous_input = current_input
 
     ; Read new input (platform-specific)
-    current_input = read_hardware_input()
+    current_input = read_normalised_input()
 
     ; Find newly pressed buttons:
     ; New press = pressed now AND NOT pressed before
@@ -56,34 +66,77 @@ current_input: byte = 0
 previous_input: byte = 0
 new_presses: byte = 0
 
-; Call once per frame, before game logic
+; Call once per game update, before consumers
 update_input:
     previous_input = current_input
-    current_input = read_joystick()   ; Platform-specific
+    current_input = read_normalised_input()   ; Returns our pressed-bit format
     new_presses = current_input AND (NOT previous_input)
     return
 
 ; Check if fire was JUST pressed (not held)
-if new_presses AND BTN_FIRE:
+if (new_presses AND BTN_FIRE) != 0:
     spawn_bullet()
 
 ; Check if fire is HELD (continuous fire)
-if current_input AND BTN_FIRE:
+if (current_input AND BTN_FIRE) != 0:
     charge_weapon()
 
 ; Check if up was JUST pressed (menu navigation)
-if new_presses AND BTN_UP:
+if (new_presses AND BTN_UP) != 0:
     menu_selection = menu_selection - 1
 ```
 
+All `AND` and `NOT` operations on the input byte are **bitwise**, with `NOT` limited to eight bits. Boolean conditions use an explicit comparison with zero.
+
+## Entering a screen while a button is held
+
+Initialising the history to zero treats every button held at the first sample as a new press. Sometimes that is useful. For a title-to-game transition, we usually want to avoid carrying the Start press into another action.
+
+For that policy, sample once on entry and seed both history bytes:
+
+```text
+current_input = read_normalised_input()
+previous_input = current_input
+new_presses = 0
+```
+
+At startup this needs a hardware sample. During a transition inside an update,
+reuse the sample already stored in `current_input`: copy it to `previous_input`
+and clear `new_presses` without reading the hardware again.
+
+Then resume normal updates. A button already held must be observed released and pressed again before it produces a new edge. This suppresses its *edge*, not its held state: movement code can still respond to `current_input`. If a screen must ignore all held controls, wait for a released sample before accepting them. Reset any repeat or double-tap history at the same transition.
+
+## Predict a held-button transition
+
+Using Fire = `$10` and Right = `$08`, predict the `new_presses` byte at each sample. We enter the screen with Fire held and seed the history as above.
+
+| Update | Current sample | Meaning |
+| --- | --- | --- |
+| Entry | `$10` | Fire held; seed history |
+| 1 | `$10` | Keep holding Fire |
+| 2 | `$18` | Add Right while holding Fire |
+| 3 | `$08` | Release Fire, keep Right |
+| 4 | `$18` | Press Fire again |
+
+<details>
+<summary>Trace the bits</summary>
+
+The results are `$00` at entry, then `$00`, `$08`, `$00`, `$10`. Right's press does not retrigger Fire. Releasing Fire creates no press edge; pressing it again does.
+
+If we had cleared history to zero at entry, the first normal sample of `$10` would produce a Fire edge. Both policies are possible; the screen's intended behaviour decides which one we want.
+
+</details>
+
 ## Implementation Notes
+
+These fragments assume allocated state bytes and a reader returning the normalised byte in A. They omit machine-specific I/O and startup. The reader's own register-use contract still applies.
 
 **6502:**
 ```asm
 update_input:
     lda current_input
     sta previous_input
-    jsr read_joystick      ; Result in A
+    jsr read_normalised_input ; Pressed bits in A
     sta current_input
 
     ; new_presses = current AND (NOT previous)
@@ -107,7 +160,7 @@ check_fire:
 update_input:
     ld a,(current_input)
     ld (previous_input),a
-    call read_keyboard      ; Result in A
+    call read_normalised_input ; Pressed bits in A
     ld (current_input),a
 
     ; new_presses = current AND (NOT previous)
@@ -119,21 +172,23 @@ update_input:
     ret
 ```
 
+The 6502 fragment changes A and flags. The Z80 fragment also uses B as scratch space; preserve it if the caller needs its old value.
+
 ## Trade-offs
 
 | Aspect | Cost |
 |--------|------|
-| CPU | ~15-25 extra cycles per frame |
+| CPU | History loads/stores and bitwise operations, plus the machine-specific reader; count the actual implementation |
 | Memory | 2 extra bytes (previous + new_presses) |
-| Latency | None — detection is same frame as press |
+| Latency | Depends on sample spacing and when the game presents the result |
 
 **When to use:** Menu navigation, single-shot weapons, jump triggers, pause toggle.
 
-**When to avoid:** Continuous actions like movement or autofire (use raw input instead).
+**When to avoid:** Continuous actions like movement or autofire (use the normalised held state instead).
 
 ## Variations
 
-**Released detection:** Find buttons just released this frame
+**Released detection:** Find buttons released since the previous sample
 ```text
 new_releases = previous_input AND (NOT current_input)
 ```
@@ -145,20 +200,34 @@ new_releases = previous_input AND (NOT current_input)
 fire_pressed_now: bool
 
 update_fire:
-    fire_now = current_input AND BTN_FIRE
-    fire_was = previous_input AND BTN_FIRE
+    fire_now = (current_input AND BTN_FIRE) != 0
+    fire_was = (previous_input AND BTN_FIRE) != 0
     fire_pressed_now = fire_now AND (NOT fire_was)
     return
 ```
 
-This saves a byte and a few cycles when only one or two buttons need edge detection. For menu code that watches Up/Down/Fire only, per-bit is often cleaner than maintaining the full `new_presses` byte.
+Here `fire_now` and `fire_was` are **Booleans**, so the last line uses logical AND and NOT. We first test the mask against zero; a masked value such as `$10` is not a Boolean representation we can assume on every language or CPU. This can avoid storing a separate edge byte, but it still needs the previous state. Count before claiming a speed saving.
 
-**Double-tap detection:** Track timing between presses
+**Double-tap detection:** after edge detection is understood, remember whether a first tap exists and how old it is. This optional example accepts the second tap within 14 subsequent updates, consumes the pair, and starts with no pending tap.
+
 ```text
-if new_presses AND BTN_RIGHT:
-    if frames_since_last_right < 15:
+pending_right: bool = false
+right_age: byte = 0
+WINDOW = 15
+
+; Once per update, after update_input
+if pending_right:
+    right_age = right_age + 1
+    if right_age >= WINDOW:
+        pending_right = false
+
+if (new_presses AND BTN_RIGHT) != 0:
+    if pending_right:
         trigger_dash()
-    frames_since_last_right = 0
-else:
-    frames_since_last_right = frames_since_last_right + 1
+        pending_right = false
+    else:
+        pending_right = true
+        right_age = 0
 ```
+
+The pending flag prevents a first press just after startup from counting as a double tap. Age stops advancing when the pending tap expires, so a long idle period cannot wrap the byte and create a false match. A release must be sampled between taps to produce two press edges. This window is measured in updates: changing their rate changes the time allowed. A later game may need a clock-based window or different rules for a third tap.
