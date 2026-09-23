@@ -17,6 +17,11 @@
  * `**\/getting-started.mdx` under src/content/curriculum. If those globs change,
  * this must change with them, or old links start 404ing silently.
  *
+ * A system module whose folder has an index.mdx but no unit pages is not built
+ * (see src/pages/[...slug].astro). Its old root URL and its /systems/ URL both
+ * redirect to the track page instead, so links to a planned game land somewhere
+ * useful rather than on a 404.
+ *
  * See decisions/website-information-architecture.md
  */
 import { readdirSync, statSync } from 'node:fs';
@@ -55,6 +60,14 @@ export function legacySystemRedirects() {
     const top = rel.split('/')[0];
     if (SECTIONS.has(top)) continue;
     const url = rel.replace(/\.mdx$/, '').replace(/\/index$/, '');
+    const dir = path.dirname(file);
+    const hasUnits = readdirSync(dir).some((name) => /^unit-\d+\.mdx$/.test(name));
+    if (rel.endsWith('/index.mdx') && !hasUnits) {
+      const track = url.split('/').slice(0, 2).join('/');
+      redirects[`/${url}`] = `/systems/${track}`;
+      redirects[`/systems/${url}`] = `/systems/${track}`;
+      continue;
+    }
     redirects[`/${url}`] = `/systems/${url}`;
   }
 
