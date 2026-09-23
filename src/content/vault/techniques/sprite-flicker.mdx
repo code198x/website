@@ -1,119 +1,236 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Sprite Flicker"
-subtitle: "Exceeding hardware limits"
-summary: "Sprite flicker rapidly alternated which sprites displayed each frame, allowing games to show more objects than hardware supported at the cost of visible flickering."
+subtitle: "Sharing too few sprites between too many objects, one frame at a time"
+summary: "Video chips could draw only a fixed number of sprites on each line of the picture: four on the TMS9918, eight on the NES and Master System, eight in all on the C64 and two on the Atari 2600. When a game needed more, it changed which objects got drawn from one frame to the next, so that everything appeared some of the time. The result was flicker, and reviewers complained about it for years."
 category: "techniques"
-platforms: ['nintendo-entertainment-system', 'sega-master-system', 'commodore-64']
+platforms: ['nintendo-entertainment-system', 'sega-master-system', 'commodore-64', 'atari-2600']
 tags: ['graphics', 'sprites', 'technique']
 sources:
   per_line_limit_origin:
-    - title: "TMS9918A/TMS9928A/TMS9929A Video Display Processors Data Manual, Texas Instruments"
+    - title: "Texas Instruments, TMS9918A/TMS9928A/TMS9929A Video Display Processors Data Manual"
       kind: technical-doc
       date: "1982-11"
-      page: "2-16, 2-26"
-      note: "\"There is also a restriction on the number of sprites on a line. Only four sprites can be active on any horizontal line. Additional sprites on a line will be automatically made transparent for that line.\" — \"If this rule is violated, the four highest-priority sprites on the line are displayed normally. The fifth and subsequent sprites are not displayed on that line. Furthermore, the fifth-sprite bit in the VDP status register is set to a 1, and the number of the violating fifth sprite is loaded into the status register\""
-  c64_no_flicker_rotation:
-    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
-      kind: book
-      page: "131"
-      note: "\"Up to 8 sprites at a time can be maintained by the VIC-II chip automatically. More sprites can be displayed using RASTER INTERRUPT techniques.\""
-    - title: "Codebase64 — Sprite multiplexing, by Cadaver (Lasse Öörni)"
-      kind: technical-doc
-      note: "\"2.3 Rejecting sprites that try to be the 9th sprite on a row. This is quite easy.\" — \"The test is: if (spry[next_sprite] - sortspry[sorted_sprites - 8] < 21) then reject();\" — \"the test is unnecessary for the first 8 sprites and they can always be accepted. But the idea for further sprites is to compare the Y-coordinate of the previous 'virtual' sprite mapped to that physical sprite; if the difference is less than 21 pixels then the sprite would be too close and couldn't be displayed by the hardware.\""
+      page: "2-11, 2-16, 2-26"
+      note: "\"Only four sprites can be active on any horizontal line. Additional sprites on a line will be automatically made transparent for that line.\" (2-16); \"If this rule is violated, the four highest-priority sprites on the line are displayed normally. The fifth and subsequent sprites are not displayed on that line. Furthermore, the fifth-sprite bit in the VDP status register is set to a 1, and the number of the violating fifth sprite is loaded into the status register\" (2-26)"
 ---
+import Sources from '@components/Sources.astro';
 
-Hardware had limits. Games exceeded them. When the NES could only display 8 sprites per scanline, developers used **priority rotation** to spread the unavoidable hardware drop-out across all objects each frame. The visible result is *flicker* — but flicker is the symptom; the technique is rotation.
+Sprite flicker is what happens when a game asks its video chip for more moving objects than the chip will draw on one line. The chip does not slow down or complain. It leaves the extra objects out. A game can accept that, and let a bullet or an enemy vanish whenever it strays onto a crowded line. Or it can change which objects the chip leaves out, every frame, so that each one is missing only part of the time. The second choice turns disappearing objects into flickering ones. It is the shimmer familiar from busy NES, Master System and Atari 2600 games.
 
-Strictly: the PPU drops the 9th-and-later sprites on any over-budget scanline. Without rotation, the *same* sprites would always be dropped (whichever come last in OAM). With rotation, every sprite spends roughly equal time at low priority, so the flicker is distributed rather than concentrated.
+Players noticed. *Electronic Fun with Computer Games* complained in January 1983 that in Atari's *Pac-Man* for the 2600 "the ghosts flicker annoyingly and you can't really tell with any accuracy whether they've turned blue". Ten years later *Nintendo Magazine System* was still writing "There is an annoying amount of flicker" in a review of Capcom's *Mighty Final Fight*.
 
 ## Fast facts
 
-- **Purpose:** Display more sprites than hardware limit.
-- **Method:** Alternate sprites between frames.
-- **Trade-off:** Visible flickering.
-- **Necessity:** Game design demanded more objects.
+- **Cause:** a video chip that can draw only a fixed number of sprites on each line of the picture.
+- **Limits:** four per line on the TMS9918; eight on the NES and the Master System; eight in total on the Commodore 64; two player graphics on the Atari 2600.
+- **The technique:** change which objects are drawn from frame to frame, usually by rotating their order.
+- **The cost:** with *n* objects on a line and room for *k*, each object is drawn in only *k* out of every *n* frames.
 
-## NES sprite limits
+## Why a line has a limit
 
-| Limit | Specification |
-|-------|---------------|
-| Total sprites | 64 maximum |
-| Per scanline | 8 maximum |
-| Overflow | Extra sprites invisible |
-| Solution | Flicker rotation |
+A television picture is drawn one line at a time, and a sprite chip has to find each sprite's pixels for a line before the beam gets there. It does that with a small fixed set of slots, one for each sprite it will draw on that line. When the slots are full, any other sprite on the line is not drawn. The limit is a matter of how many slots the designers could afford, and the chip applies it on every line of the screen.
 
-## How it works
+Texas Instruments' TMS9918 family, the video chips of the TI-99/4A, the ColecoVision (which used the TMS9928) and MSX computers, set the pattern. "Only four sprites can be active on any horizontal line," says the 1982 data manual; the four highest-priority sprites are drawn, and "the fifth and subsequent sprites are not displayed on that line." The chip also sets a flag in its status register and stores the number of the fifth sprite, so a program can find out which sprite broke the rule.
 
-| Frame | Displayed sprites |
-|-------|-------------------|
-| 1 | Sprites A, B, C, D |
-| 2 | Sprites E, F, G, H |
-| 3 | Sprites A, B, C, D |
-| 4 | Sprites E, F, G, H |
+## The NES
 
-Result: All sprites visible, each at 30fps instead of 60fps.
+The NES's picture processor, the [PPU](/vault/hardware/ppu), was built to the same plan with bigger numbers. Ricoh's own development specification for the chip, from 1982, gives it 64 objects per screen and eight per horizontal line. The object list sits in 256 bytes of object attribute memory (OAM), four bytes per sprite. On each line the PPU scans the list in order and draws the first eight sprites it finds on that line. The rest are not drawn.
 
-## Implementation approaches
+So on a crowded line the sprites that disappear are always the ones latest in the list. If a game stores its objects in a fixed order, the same enemy vanishes every time it lines up with eight others, and stays invisible for as long as it stays there. The chip does have a flag to report more than eight sprites on a line, but NESdev's documentation of the PPU explains that the logic behind it is faulty and gives "both false positives and false negatives". A game that expects crowded lines does not need to ask. It changes the order of the list every frame, whatever is on screen, so that a different sprite drops out each time.
 
-| Method | Effect |
-|--------|--------|
-| Priority rotation | Cycle which sprites get priority |
-| Random selection | Vary which sprites shown |
-| Importance weighting | Player sprite never flickers |
-| Scanline distribution | Spread sprites vertically |
+## The Master System
 
-## Games with notable flicker
+Sega's *Software Reference Manual for the Sega Mark III*, the Japanese console that became the Master System, describes its video chip as a custom design "whose architecture resembles an enhanced TMS9918A". It has 64 sprites and the NES's limit: "Up to eight sprites can occupy a single horizontal raster line." A status bit is set when there are nine sprites on a line, and the manual warns that "a horizontal raster line containing nine or more sprites is not displayed properly." A Master System game with nine objects on a line faces the same choice as an NES game, and the same answer works.
 
-| Game | Situation |
-|------|-----------|
-| Contra | Many enemies/bullets |
-| Mega Man | Boss fights |
-| Gradius | Bullet hell moments |
-| Zelda II | Combat scenes |
+## The Atari 2600
 
-## Alternative solutions
+The 2600's TIA chip has no sprite list at all. Atari's *Stella Programmer's Guide* describes two player graphics, each an 8-bit register that the program rewrites line by line as the beam goes down the screen, plus two one-pixel missiles and a ball. A program can reuse a player lower down the screen by loading a new shape and position in time. What it cannot do is show more than two player shapes on the same lines.
 
-| Approach | Trade-off |
-|----------|-----------|
-| Fewer objects | Reduced gameplay |
-| Larger sprites | Fewer total |
-| Different design | Avoid crowded scenes |
-| Accept limits | Some sprites disappear |
+Arcade *Pac-Man* has five characters sharing the same corridors. The designer Mark Turmell explained in November 1982 how Atari's 2600 version got round the problem: "Pac-Man is on the screen at all times, but the ghosts flicker. The computer actually draws the ghosts one at a time… If you shot a picture of the screen, at any one time there would only be one ghost." Four ghosts sharing one player graphic means each ghost is drawn in one frame out of four, about fifteen times a second on an American television.
 
-## Player perception
+## The Commodore 64
 
-| Effect | Reception |
-|--------|-----------|
-| Mild flicker | Acceptable |
-| Heavy flicker | Distracting |
-| Consistent | Becomes invisible |
-| Erratic | Very noticeable |
+The [VIC-II](/vault/hardware/vic-ii) has eight sprites in total, so a ninth object on a line never reaches the chip at all. The program has to choose which objects to leave out. C64 games with more than eight objects usually use a [sprite multiplexer](/vault/techniques/sprite-multiplexing), which reuses each sprite further down the screen once the beam has finished with it, and that works only if no more than eight objects share a horizontal band.
 
-## Platform variations
+When a busy screen breaks that rule, the multiplexer has to drop objects, and if the objects it drops change from frame to frame, they flicker. Martin Walker, writing his *Citadel* diary for *Zzap!64* in 1988, called keeping more than eight sprites out of the same horizontal strip "the main problem with any multiplexor". If every sprite could move, he wrote, the alternatives were "a lot of effort to ensure that the wrong combination can never occur" or "nasty flickers and lurchers ([*Zynaps*](/vault/games/zynaps), for one)". Lasse Öörni, who writes as Cadaver, adds a second cause: a multiplexer whose raster interrupt arrives late misses its moment and produces "flicker & slowdown".
 
-| System | Per-scanline limit | Total sprites |
-|--------|--------------------|---------------|
-| NES | 8 | 64 |
-| Master System | 8 | 64 |
-| C64 | 8 (also the total; more by multiplexing) | 8 |
-| SNES | 32 | 128 |
+## How rotation spreads the loss
 
-## The rule is older than the NES
+Suppose twelve objects share a line and the hardware can draw eight. Something has to go. Rotation makes sure the same thing does not go every time.
 
-Texas Instruments' TMS9918 — the video chip of the TI-99/4A, ColecoVision and MSX, and the ancestor of the Master System's VDP set the pattern: "only four sprites can be active on any horizontal line. Additional sprites on a line will be automatically made transparent for that line." The chip even reports the offender, setting a fifth-sprite flag in the status register and storing the number of the sprite that broke the rule. The NES and Master System raised the limit to eight; the shape of the problem, and of the rotation trick that answers it, is the same.
+Give each frame a starting point in the list of objects. This frame, objects 0 to 7 get the first eight places and objects 8 to 11 are left out. Next frame, start one object later: objects 1 to 8 are drawn and 9, 10, 11 and 0 are left out. After twelve frames every object has been drawn in eight of them. That is two frames in three, or about 40 times a second at 60 frames a second.
 
-## On the C64
+The share depends on how crowded the line is. Nine objects on a line with room for eight means each object is missing from only one frame in nine. Sixteen objects means each is drawn in every other frame, 30 times a second. Four *Pac-Man* ghosts on one player graphic means one frame in four. The more objects crowd a line, the fainter and more obvious each one becomes. A program has some control over how it looks:
 
-The VIC-II has no separate per-line limit: it has eight sprites, full stop, and the Programmer's Reference Guide says in the same breath that "more sprites can be displayed using RASTER INTERRUPT techniques". So the C64 answer to too many objects is [multiplexing](/vault/techniques/sprite-multiplexing) — re-using the eight down the screen — and the limit reappears as a rule inside the multiplexer. Cadaver's sort accepts the first eight virtual sprites unconditionally, then rejects any later one whose Y coordinate is within 21 pixels of the sprite already mapped to the same hardware slot, because the hardware could not show it. A rejected sprite does not flicker; it is simply not drawn that frame, and which sprites lose depends on the sort order.
+- **Keep some objects out of the rotation.** The player's own sprite can go first in the list every frame, so that it never flickers. On the NES, a game that uses [sprite 0](/vault/hardware/ppu) as a timing marker for a split screen has to leave OAM slot 0 out of the rotation too, or the marker would move.
+- **Change the step.** Rotating by one object a frame moves a gap steadily along a row. A bigger step scatters the gaps instead.
+- **Design around it.** Keep enemies from lining up horizontally in the first place, which is the "lot of effort" Walker had in mind.
 
-## Sprite zero and the priority trick
+### On the NES
 
-On the NES, **sprite 0** is never flickered. It's always evaluated first in OAM and is also used for the sprite-zero-hit flag (`$2002` bit 6) — the standard mid-frame timing hook for status-bar splits. Games place a small-but-always-on-screen graphic (e.g. the score's leading character) at OAM index 0 so its position is reliable.
+This routine builds a sprite list for the next frame. The game has twelve objects in a row, and each frame it starts the list one object later. Sprite 0 is left out of the rotation, so the list starts at OAM slot 1. The routine writes to a copy of OAM at `$0200`, which the NMI handler sends to the PPU each frame by writing `$02` to `$4014`.
+
+```asm
+; ca65 syntax; first and count are zero-page bytes
+build:  ldx #4                ; start at OAM slot 1: slot 0 kept for sprite 0
+        ldy first             ; object that gets the earliest slot this frame
+        lda #12
+        sta count
+@obj:   lda #100
+        sta $0200,x           ; Y: all twelve on the same lines
+        lda #1
+        sta $0201,x           ; tile 1
+        tya
+        and #3
+        sta $0202,x           ; one of four sprite palettes
+        lda xpos,y
+        sta $0203,x           ; X
+        inx
+        inx
+        inx
+        inx
+        iny                   ; next object, wrapping at twelve
+        cpy #12
+        bne :+
+        ldy #0
+:       dec count
+        bne @obj
+        inc first             ; next frame, start one object later
+        lda first
+        cmp #12
+        bne :+
+        lda #0
+        sta first
+:       rts
+
+xpos:   .byte 16, 36, 56, 76, 96, 116, 136, 156, 176, 196, 216, 236
+```
+
+The PPU draws the first eight objects in the list. Each frame, a gap of four missing objects moves one place along the row.
+
+### On the Commodore 64
+
+The C64 has only eight sprites, so the program does the choosing itself. This complete program puts twelve balls on one line and gives the eight hardware sprites to a different eight balls each frame, starting one ball later every time.
+
+```asm
+; twelve balls on one line, eight hardware sprites: rotate who drops out
+; (ACME syntax; LOAD and RUN)
+        * = $0801
+        !word basend, 10
+        !byte $9e
+        !text "2064"
+        !byte 0
+basend  !word 0
+
+        * = $0810
+start   sei
+        ldx #62
+-       lda ball,x
+        sta $0340,x         ; sprite shape in block 13
+        dex
+        bpl -
+        ldx #7
+-       lda #13
+        sta $07f8,x         ; every sprite uses block 13
+        txa
+        asl
+        tay
+        lda #120
+        sta $d001,y         ; all eight on the same line, Y = 120
+        dex
+        bpl -
+        lda #0
+        sta $d010           ; no X position above 255
+        lda #$ff
+        sta $d015           ; all eight sprites on
+
+frame   lda #250            ; wait for a line below the balls
+-       cmp $d012
+        bne -
+        ldx first           ; object shown by hardware sprite 0
+        ldy #0              ; Y = 2 * hardware sprite number
+-       lda xpos,x
+        sta $d000,y
+        tya
+        lsr
+        sta slot
+        lda colour,x
+        stx obj
+        ldx slot
+        sta $d027,x
+        ldx obj
+        inx                 ; next object, wrapping at twelve
+        cpx #12
+        bne +
+        ldx #0
++       iny
+        iny
+        cpy #16
+        bne -
+        inc first           ; rotate: start one object later next frame
+        lda first
+        cmp #12
+        bne +
+        lda #0
+        sta first
++       lda #250
+-       cmp $d012           ; wait until line 250 has passed
+        beq -
+        jmp frame
+
+first   !byte 0
+slot    !byte 0
+obj     !byte 0
+xpos    !byte 40, 58, 76, 94, 112, 130, 148, 166, 184, 202, 220, 238
+colour  !byte 1, 2, 3, 4, 5, 7, 8, 9, 10, 13, 14, 15
+ball    !byte $0f,$00,$00, $3f,$c0,$00, $7f,$e0,$00, $7f,$e0,$00
+        !byte $ff,$f0,$00, $ff,$f0,$00, $ff,$f0,$00, $ff,$f0,$00
+        !byte $7f,$e0,$00, $7f,$e0,$00, $3f,$c0,$00, $0f,$00,$00
+        !fill 27, 0
+```
+
+The program waits for raster line 250, below the balls, before it moves anything, so no ball changes position while it is being drawn. Run it and all twelve balls appear to be there at once, shimmering. Change the rotation step, or add balls, and the shimmer changes with them.
+
+## What the reviewers said
+
+Reviewers noticed flicker and said so, from 1982 well into the 1990s.
+
+- **Pac-Man (Atari 2600).** In January 1983 *Electronic Fun with Computer Games* found that "only one ghost can appear on the screen at any one time" and that the flicker made it hard to tell whether a ghost had turned blue and was safe to eat, "a risky situation at best". *Video Games* magazine called the game "Atari's 'Flickerman'" in March 1983.
+- **Nemesis (Commodore 64).** In May 1987 *Zzap!64* liked Konami's conversion of its arcade game (called [*Gradius*](/vault/games/gradius) in Japan), but warned that "the sprites flicker quite badly when the screen gets busy, which can be very off-putting."
+- **Bad Dudes (NES).** *Mean Machines* wrote in February 1991: "The graphics are the most flickery I've ever seen on a Nintendo game", and "half the time you can't see what's going on — the enemy shuriken are particularly difficult to see."
+- **Sagaia (Master System).** In September 1992 *Mean Machines* complained of "some of the worst flicker yet" and marked its graphics at 45% for "eye-strain inducing flicker". Another reviewer found it "really annoying, especially when you get hit by a bullet or baddie that's been all but invisible due to mega flicker!"
+- **Pro Sport Hockey and Hit The Ice (NES).** Even Nintendo's own magazine, *Nintendo Power*, noted in May 1993 that in *Pro Sport Hockey* "character flicker is bad when all the players are in one area of the rink", and said the same of *Hit The Ice*. Players bunched round the puck share the same lines of the screen.
+- **Mighty Final Fight (NES).** "There is an annoying amount of flicker," wrote *Nintendo Magazine System* in October 1993, though it still liked the game.
+
+<Sources>
+
+- Texas Instruments, *TMS9918A/TMS9928A/TMS9929A Video Display Processors Data Manual* (November 1982), pp. 2-11 (fifth sprite flag and number), 2-16 (four sprites per line) and 2-26 (the four highest-priority sprites are displayed).
+- Where the TMS9918 family was used: *COMPUTE!'s TI Collection, Volume One* (COMPUTE! Books, 1984), p. 201 ("The 99/4A uses Texas Instruments's TMS9918"); Coleco, *ColecoVision Technical Manual* (1982), system description ("Texas Instrument's 9928 Video Display Processor"); *MSX Technical Data Book*, section 1, hardware specifications (VDP "TI TMS-9918A compatible").
+- Ricoh, development specification for the RP2C02, October 1982, revised December 1982 (unpublished): 64 objects per screen and eight per horizontal line, held in four-byte entries and scanned in index order; the overflow flag raised by nine objects on a line.
+- NESdev Wiki, "PPU sprite evaluation" and "PPU OAM" (community reference, web, secondary): the first eight in-range sprites in OAM order are drawn; the overflow flag gives "both false positives and false negatives". https://www.nesdev.org/wiki/PPU_sprite_evaluation
+- Sega, *Software Reference Manual for the Sega Mark III* (1986), p. 5 (status bit for nine sprites on a line), p. 6 (the VDP "resembles an enhanced TMS9918A") and p. 8 (64 sprites; eight per line; lines with nine or more "not displayed properly").
+- Atari, *Stella Programmer's Guide* (Steve Wright, 1979), section 6: players, missiles and ball.
+- Commodore, *Commodore 64 Programmer's Reference Guide* (1982), p. 131: eight sprites maintained automatically, more with raster interrupts.
+- *Zzap!64* issue 43, November 1988, p. 114: Martin Walker's *Citadel* diary, on multiplexers, *Armalyte* and *Zynaps*.
+- Lasse Öörni (Cadaver), "Sprite multiplexing", Codebase64 wiki (web, secondary): late raster interrupts causing "flicker & slowdown". https://codebase.c64.org/doku.php?id=base:sprite_multiplexing
+- *Electronic Fun with Computer Games* vol. 1 no. 1, November 1982, pp. 30–32: Dan Gutman's interview with Mark Turmell, on the 2600 *Pac-Man* ghosts.
+- *Electronic Fun with Computer Games* vol. 1 no. 3, January 1983, pp. 82–83: Mark Wielage and Walter Salm, "The war between the states-of-the-art", comparing the 2600 and Atari 800 versions of *Pac-Man*.
+- *Video Games* (US) vol. 1 no. 6, March 1983, p. 71: "Atari's 'Flickerman' (Pac-Man)".
+- *Zzap!64* issue 25, May 1987, p. 90: *Nemesis* review.
+- *Mean Machines* issue 5, February 1991, pp. 76–77: *Bad Dudes* review.
+- *Mean Machines* issue 24, September 1992, pp. 62–63: *Sagaia* review.
+- *Nintendo Power* vol. 48, May 1993, pp. 105–106: *Pro Sport Hockey* and *Hit The Ice*.
+- *Nintendo Magazine System* (UK) issue 13, October 1993: *Mighty Final Fight* review.
+
+The NES routine was assembled with ca65 into a small test cartridge and run in the FCEUX emulator (version 2.6.6), which showed eight of the twelve objects in each frame, with the missing four moving one place per frame. The C64 program was assembled with ACME and run in the VICE emulator (x64sc) on a PAL machine; screenshots after one, two, three, twelve and thirteen frames showed eight balls each time, with the gap moving one place per frame and the pattern repeating every twelve frames. Neither was tested on real hardware.
+
+</Sources>
 
 ## See also
 
-- [Sprite Multiplexing](/vault/techniques/sprite-multiplexing)
-- [PPU](/vault/hardware/ppu)
-- [VIC-II](/vault/hardware/vic-ii)
+- [Sprite multiplexing](/vault/techniques/sprite-multiplexing)
+- [PPU](/vault/hardware/ppu), [VIC-II](/vault/hardware/vic-ii) and [Denise](/vault/hardware/denise)
+- [Nintendo Entertainment System](/vault/systems/nintendo-entertainment-system), [Sega Master System](/vault/systems/sega-master-system), [Atari 2600](/vault/systems/atari-2600), [Commodore 64](/vault/systems/commodore-64)
+- [Pac-Man (Atari 2600)](/vault/games/pac-man-atari-2600), [Bad Dudes](/vault/games/bad-dudes), [Zynaps](/vault/games/zynaps)
