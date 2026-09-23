@@ -47,7 +47,7 @@ const CRATE_SLUGS = {
   'emu198x-sega-master-system': 'sega-master-system',
   'emu198x-sega-sg-1000': 'sega-sg-1000',
   'emu198x-sinclair-zx80': 'sinclair-zx80',
-  'emu198x-sinclair-zx81': 'zx81',
+  'emu198x-sinclair-zx81': 'sinclair-zx81',
   'emu198x-sord-m5': 'sord-m5',
   'emu198x-spectravideo-svi-328': 'spectravideo-svi-328',
   'emu198x-spectrum': 'sinclair-zx-spectrum',
