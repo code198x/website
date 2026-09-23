@@ -25,7 +25,7 @@ One home, one lost, the third sheep up — the run you just heard.
 
 ## Paula Plays Loops
 
-Paula's model is unlike the beepers and tone chips of the 8-bit world: each of her four channels **loops a sample from Chip RAM on its own DMA**. Point the channel at some bytes, tell her how many, how fast (the **period** — bigger is lower), and how loud; switch the channel's DMA on; she plays it round and round until you stop her, costing the CPU nothing.
+Paula's model is unlike the beepers and tone chips of the 8-bit world: each of her four channels **loops a sample from Chip RAM on its own DMA**. Point the channel at some bytes, tell her how many, how fast (the **period** — bigger is lower), and how loud; switch the channel's DMA on; she plays it round and round until you stop her. The CPU does not write each sample, but setting up and updating the sound still takes CPU time, and audio DMA uses Chip RAM bus time.
 
 Our "sample" is the humblest one possible — one cycle of a square wave, eight signed bytes:
 
@@ -41,9 +41,218 @@ Loop that fast enough and it's a tone. Every pitch in the game is this same wave
 
 `playsound` is the entire voice: wave, length, pitch, volume, DMA on — and three words of state for `soundtick` to act on, once per frame. At halfway, the period slides to the second note; at zero, DMA off and volume down. That mid-flight slide is the whole character of each sound: the baa *droops* (1800 → 2100), the squelch *sags* (2800 → 3600), the bleat *rises* (1700 → 1250). Pitch movement is emotion — down is deflating, up is delight — and it costs one register write.
 
-One design decision is worth saying out loud: **new sounds steal the channel.** A baa interrupted by a squelch just *becomes* the squelch — no queue, no mixing. With one channel that's not laziness, it's correctness: the newest event is the one that matters. (Paula has four channels; giving the sheep her own and the world another is exactly where this grows next.)
+Our current policy is **new sounds replace the channel's previous sound**. A squelch can replace a baa; there is no queue or mixing. The latest call wins because `playsound` writes new hardware settings and replaces `sndtimer`, `sndhalf` and `sndper2`. This is a design choice, not a rule that the newest event is always the most important.
 
-The events were all built in earlier units — the hop in `steer`, the loss in `checksquash`, the arrival in `trypen` — so wiring the voice is four lines at each site. Sound bolted onto clean event points is cheap; sound retrofitted into tangled logic isn't. You've been earning this unit since Unit 3.
+## Who owns the sound now?
+
+We can trace a conflict without changing the game. Imagine these two calls occur
+before the next `soundtick`: first the hop's baa, then the pen's bleat. The sample
+bytes remain the same; the settings and countdowns change.
+
+| After this call | Starting period | Later period | Timer | Halfway count | Volume |
+|---|---:|---:|---:|---:|---:|
+| Baa | 1800 | 2100 | 5 | 2 | 40 |
+| Bleat | 1700 | 1250 | 18 | 9 | 50 |
+
+`lsr.w #1,d2` makes the halfway count: half of five is rounded down to two.
+At the next `soundtick`, the timer falls from 18 to 17. There is no saved baa
+waiting to resume. Reverse the two calls on paper: the five-frame baa now wins.
+That might hide the more useful message that a sheep reached the pen.
+
+For the main game, keep the current behaviour. The optional comparison below
+tries a different policy in a separate copy. When we add a
+[title sequence in unit 17](/systems/commodore-amiga/assembly/flock/unit-17/),
+we will need to coordinate successive notes too. Another hardware channel would
+need separate countdown state and an ownership rule of its own.
+
+## Follow a hop beyond the input routine
+
+Use the complete source below. Before tracing, assume `won=0`, `gameover=0`,
+`squashtimer=0`, `cooldown=0`, `sheepy=200` and `curframe=0`. The stick is held
+up; this move stays in the starting field and does not collide or reach a pen.
+Predict the sheep's position, picture index and sound timer after one whole main-loop
+pass. Does returning from `steer` mean the sound has finished?
+
+<details>
+<summary>Hint 1: follow the callers, not only the sound routine</summary>
+
+The main loop calls `steer`, `drivelanes`, `checksquash`, `soundtick`, `updsprite`
+and `showframe` in that order. Find which work happens after `playsound` returns.
+
+</details>
+
+<details>
+<summary>Hint 2: separate state from presentation</summary>
+
+`STEP` is 8. The accepted hop toggles `curframe` and sets `cooldown`; the baa
+initialises `sndtimer` to 5. Later in the same pass, `soundtick` visits that timer.
+
+</details>
+
+<details>
+<summary>Compare the trace</summary>
+
+`steer` reads and decodes the joystick, changes `sheepy` to 192, sets cooldown to
+6 and toggles `curframe` to 1. It requests the baa and returns while hardware
+playback continues. Traffic and collision checks follow; under our stated conditions
+there is no replacement cue. `soundtick` reduces the new timer from 5 to 4.
+The later sprite routines prepare position and artwork for the display hardware.
+A CPU write is not proof that the player has already seen the new picture.
+
+Now start a separate paper trace with `cooldown=1`. `steer` reduces it to zero
+and returns **before reading the joystick**. That pass accepts no new hop or baa request; the
+rest of the main loop still runs, including the countdown for any sound already playing. Holding up can lead to a hop on the next ready
+pass. A brief press entirely between eligible readings may not be observed.
+
+</details>
+
+Explain which state belongs to movement, animation and sound, and point to the
+instructions connecting them. Then consider an unfamiliar fault: the sheep reaches
+its new position and changes feet, but a sound already playing cuts off there.
+Which request history would distinguish normal channel replacement from an incorrect
+sound timer? Use the earlier [ownership trace](#who-owns-the-sound-now) before
+changing sample data. A correct position does not diagnose an audio fault.
+
+The essential exercise is the trace and one evidence-based explanation. Composing
+a new sound is optional. For a transfer challenge, explain how the same idea—use an
+accepted action for both rules and feedback—appears in
+[Touchdown's burn flag](/systems/sinclair-zx-spectrum/basic/touchdown/unit-05-make-each-burn-count/).
+The input and sound mechanisms differ; we are comparing the responsibility.
+
+## Optional experiment: let the important cue finish
+
+Use the [sound-ownership companion and build instructions](https://github.com/Code198x/code-samples/tree/main/commodore-amiga/assembly/flock/unit-11/ownership).
+It produces two native Amiga disks from this unit's source: **latest wins** and
+**priority**. Gameplay is frozen for the experiment. We watch and hear three
+pairs of requests rather than trying to arrange an accidental collision.
+
+Give the hop priority **1** and the pen priority **2**. An idle channel accepts
+either. A busy channel accepts only a strictly higher priority; an equal or lower
+request is discarded. Nothing waits to resume. Before running, predict which
+cue remains after hop→pen, pen→hop and pen→pen.
+
+The bottom-right display now reads **AA RR**: two digits for accepted requests,
+two for rejected requests in the current pair. It is no longer the score.
+The pairs occur 60 updates apart; cold-boot each disk to repeat the trial.
+These visible counts let us investigate even with sound muted.
+
+<CodeFromFile src="commodore-amiga/assembly/flock/unit-11/ownership/requestsound.asm" />
+
+`d4` supplies the request's priority. The other parameters still describe the
+same sound. On rejection we leave the period, volume and countdown untouched.
+On acceptance we record the owner and use the original `playsound`.
+When `soundtick` reaches zero, the companion clears `sndpriority` alongside
+the existing sound stop. These routines run sequentially in the main loop;
+we have not built a safe handoff from an interrupt handler.
+
+<details>
+<summary>Hint: separate accepting a request from hearing a whole cue</summary>
+
+Two requests can both be accepted in one update, yet the second replaces the
+first before we hear it clearly. Follow the calls in order, checking whether
+the timer is zero and whether the new priority is strictly greater.
+
+</details>
+
+<details>
+<summary>Compare the two policies</summary>
+
+Latest-wins shows **0200** for all three pairs. Pen, hop and pen remain,
+respectively. Priority shows **0200**, **0101**, **0101**, keeping the pen cue
+in every pair. The later hop no longer hides arrival feedback.
+
+For pen→pen, equal priority keeps the first request. Both calls occur in one
+update, so the diagnostic count establishes the rejection; this pair does not
+demonstrate an audible gap or retrigger. Rejected cues are lost, not queued.
+A queue might instead play a hop after it has stopped being relevant.
+
+The fixture calls `soundtick` **before** making requests and records their full
+timers. The ordinary game calls it afterwards. Keep that ordering in mind when
+we trace a whole hop below.
+
+</details>
+
+Explain why the second request in pen→hop changes the sound under one policy
+but changes only a diagnostic count under the other. Then choose a tie policy
+for repeated hops and explain its cost: does repeating a cue communicate useful
+action, or obscure the sound already playing? Either answer needs a game reason.
+The normal game remains our recovery copy; do not continue later units from the
+frozen experiment.
+
+### Hear a request arrive after playback has begun
+
+The companion's `--spaced` option uses the same sounds and replacement rules,
+but leaves six updates between competing requests. Predict the difference before
+playing these recordings. They are four-second excerpts from native A500 PAL
+emulation, with the same gain and a short lead-in; no sound has been synthesised
+or rearranged for the comparison.
+
+**Latest wins**
+
+<audio controls preload="none" aria-label="Spaced requests with latest-wins sound ownership" src="/audio/commodore-amiga/assembly/flock/unit-11/ownership-latest.wav"></audio>
+
+**Higher priority wins; equal priority keeps the current cue**
+
+<audio controls preload="none" aria-label="Spaced requests with priority sound ownership" src="/audio/commodore-amiga/assembly/flock/unit-11/ownership-priority.wav"></audio>
+
+The sequence is: pen with two later hops; a hop after the channel is idle;
+three spaced pen requests; a hop at the final possible pen-expiry boundary;
+then one original pen cue on its own. The last cue checks restoration of the
+original settings. It is a new request, not a stolen sound resuming.
+
+We can investigate with the recordings muted too. The companion records each
+request's timer, priority and accepted/rejected counts. Use these checkpoints:
+
+| Update | Request or observation | Predict what changes |
+|---|---|---|
+| 1, 7, 13 | Pen, hop, hop | Does the pen finish, or do the hops replace it? |
+| 31 | Hop after either policy is idle | Can a low-priority cue play again? |
+| 61, 67, 73 | Pen, pen, pen | Does the timer restart at 18 or keep falling? |
+| 91 | Hop after this update's `soundtick` | Has the latest possible pen ended? |
+| 97 | No request | Are timer and ownership both zero? |
+| 121, 139 | Original pen, then its expiry | Do the original settings and release still work? |
+
+<details>
+<summary>Hint: inspect the timer before deciding that a cue is stuck</summary>
+
+With priority, the pen's timer is 18, then 12, then 6 at the three competing
+request points. Rejection does not refresh it. Under latest-wins, each accepted
+pen resets it to 18. At update 91, the last pen requested at 73 reaches zero
+**before** the hop asks for the channel.
+
+</details>
+
+<details>
+<summary>Compare interruption, retriggering and release</summary>
+
+Latest-wins replaces the first pen with a hop. In the repeated-pen group, each
+request restarts the software timer and pitch settings, extending the cue and
+returning it to its starting pitch. This does not promise a phase-aligned restart
+of Paula's sample DMA; the companion retains the original hardware setup.
+
+Priority keeps the first pen through the hops and rejects both equal-priority
+pen repeats. In each group the accepted/rejected totals end at **0102**, rather
+than latest-wins' **0300**. The priority cue still expires: at updates 31 and 91,
+the hop is accepted under both policies. At 97, both timer and priority are zero.
+The final pen starts with its original 18-update duration and ends at 139.
+
+Listen again: which version makes arrival clearer, and which reports more of
+the later activity? A cleaner arrival message costs us those hop sounds. If that
+lost information matters, we need a different rule or another voice—not merely
+higher priorities for everything. Audio alone does not tell us which state was
+wrong; use the records and [whole-hop trace](#follow-a-hop-beyond-the-input-routine).
+
+</details>
+
+After experimenting, return to the original unit-11 game source; the companion
+has not changed it. In [unit 17's title music](/systems/commodore-amiga/assembly/flock/unit-17/#the-sequencer-soundtick-was-always-going-to-need),
+`tunetick` requests successive notes, and `startgame` stops the title audio when
+play begins. That version separates musical and gameplay use by game state.
+It does not yet mix the title tune with gameplay effects. Explain which extra
+ownership decision would be needed if both could request this channel together.
+
+
+The sound requests sit at the event sites: the hop in `steer`, loss in `checksquash` and arrival in `trypen`. Keeping each request beside the accepted event helps us trace why it played.
 
 ## Experiment: Tune the Farmyard
 
@@ -66,7 +275,7 @@ The events were all built in earlier units — the hop in `steer`, the loss in `
 ## Try This
 
 1. **A near-miss whistle.** Unit 6's Try This built a near-miss detector; give it a voice — short, high, quiet. Suddenly the lane *taunts*.
-2. **Channel 1.** Move the world's sounds (squelch) to `AUD1LC`/`AUD1PER`/`AUD1VOL` (`$0B0`–`$0B8`, DMA bit 1) and keep the sheep on channel 0. Two voices, no stealing — the start of a mixer.
+2. **Channel 1.** Move the world's sounds (squelch) to `AUD1LC`/`AUD1PER`/`AUD1VOL` (`$0B0`–`$0B8`, DMA bit 1) and keep the sheep on channel 0. Give each channel its own timer, halfway count and later period as well. Two hardware voices still need separate playback state and a rule for requests that target the same voice.
 3. **The win deserves a fanfare.** Three notes, rising, on the `won` transition — three `playsound` calls won't work (each steals the last). What's the smallest change to `soundtick` that plays a *sequence*? Sketch it; Unit 17's title music will want your answer.
 
 ## What You've Learnt
@@ -74,7 +283,7 @@ The events were all built in earlier units — the hop in `steer`, the loss in `
 - **Paula's model** — looping samples from Chip RAM on per-channel DMA: address, length, period, volume, enable. Tones are the shortest possible sample.
 - **Period arithmetic** — pitch = clock ÷ (period × sample length); bigger period, lower note.
 - **Two-note sound design** — a pitch slide at halfway gives each event its emotional shape; down deflates, up delights.
-- **Channel stealing** — one channel, newest sound wins: correct for feedback sounds, and the motivation for a second channel.
+- **Channel stealing** — one channel needs an explicit replacement policy; newest-wins and priority preserve different feedback.
 - **Sound bolts onto events** — clean event points from Units 3–9 made the voice a four-line addition at each site.
 
 ## What's Next

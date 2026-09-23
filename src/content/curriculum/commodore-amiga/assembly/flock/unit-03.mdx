@@ -1,6 +1,6 @@
 ---
 title: "Steering"
-description: "The joystick arrives. Read the stick each frame, hop the sheep in 8-pixel steps, rewrite the sprite's POS/CTL — position is data, and now the player owns it."
+description: "The joystick arrives. Read the stick when a hop is available, move the sheep in 8-pixel steps, rewrite the sprite's POS/CTL — position is data, and now the player owns it."
 pubDate: 2026-06-11
 game: 1
 unit: 3
@@ -41,13 +41,13 @@ STEP        equ 8           ; Pixels per hop
 COOLDOWN    equ 6           ; Frames between hops
 ```
 
-When she hops, `cooldown` is set; until it counts back to zero, the stick is ignored. Hold *up* and she crosses the farm in a steady hop-hop-hop rhythm instead of gliding like a cursor. (Try `COOLDOWN equ 0` and feel the difference — she stops being an animal at all.)
+When she hops, `cooldown` is set. Each later update with a non-zero count subtracts one and returns without reading the stick. Even the update that reduces it from one to zero returns; the following update can accept another hop. Hold *up* and she crosses the farm in a steady hop-hop-hop rhythm instead of gliding like a cursor. (Try `COOLDOWN equ 0` and feel the difference — she stops being an animal at all.)
 
 The last job in `steer` is the clamp: hold her inside the farm's 320×256, so the bounds are part of the same routine that moves her.
 
 ## Position Is Data
 
-What the assembler computed once at build time in Unit 2, the CPU now computes sixty times a second:
+What the assembler computed once at build time in Unit 2, the CPU now computes on each game update:
 
 <CodeFromFile src="commodore-amiga/assembly/flock/unit-03/snippets/02-updsprite.asm" />
 
@@ -60,6 +60,7 @@ This unit hides a trap that catches nearly everyone, so it's worth springing del
 The fix is to wait in two phases:
 
 ```asm
+            move.l  #$1ff00,d1          ; Mask the combined beam line bits
 .vbleave:                               ; First: wait to LEAVE line 0
             move.l  VPOSR(a5),d0
             and.l   d1,d0
@@ -70,7 +71,7 @@ The fix is to wait in two phases:
             bne.s   .vbwait
 ```
 
-Leave the line, then catch it coming round again — the body now runs exactly once per frame, whatever it costs. This capture caught the bug live: the first build of this unit hopped the sheep twice as far as the cooldown allowed, and the two-phase wait was the cure.
+Leaving line 0 before waiting for its return prevents a short loop from updating twice during the same visit to that line. Our work still needs to finish in time for the next visit. If it takes too long, we can miss a frame; the wait does not make that work faster. The two-phase wait fixes the repeated update in this example, rather than guaranteeing a frame rate for any workload.
 
 ## Experiment: The Feel of Her
 
@@ -95,14 +96,14 @@ Leave the line, then catch it coming round again — the body now runs exactly o
 
 1. **Diagonals.** The current `steer` takes the first active direction and ignores the rest. Make a hop apply both axes when the stick is diagonal. Does the farm feel better with or without it? (Frogger says without; you're allowed to disagree.)
 2. **A footprint trail.** Each hop, before moving, write one dark pixel into the bitplane at her old position — `rectfill` with a 1×1 rectangle. Watch her path accumulate across the farm. (You've built a primitive paint program; you've also previewed why moving *bitplane* graphics needs save/restore, which sprites let us skip.)
-3. **Count her speed.** At `STEP 8` / `COOLDOWN 6`, how many seconds does she take to cross all 256 rows on a 50Hz PAL machine? Check your answer against the screen with a stopwatch.
+3. **Count her speed.** At `STEP 8` / `COOLDOWN 6`, count the updates between accepted hops, including the update that reduces cooldown to zero. Predict the time for ten hops at a nominal 50 updates per second. Choose a stretch within the 0–240 position limits, and distinguish measuring from the first hop to the tenth from timing ten complete hop intervals. Compare with a recording or stopwatch; input timing and missed updates can affect the observation.
 
 ## What You've Learnt
 
 - **`JOY1DAT`** — control port 2's stick, and the sideways decode: right bit 1, left bit 9, up/down behind an XOR.
 - **Hop-and-cooldown** — input feel as two constants; a step rhythm instead of a glide. The first *game-feel* decision in the track.
 - **Runtime POS/CTL packing** — the same arithmetic the assembler did, now done per frame; the ninth bits earn their keep at the bottom of the screen.
-- **The two-phase vblank wait** — run the loop body exactly once per frame, however fast it finishes. Every later unit stands on this loop.
+- **The two-phase beam wait** — avoid running twice during one visit to line 0; still keep the work within its timing budget.
 - **Bounds as part of movement** — clamp where you move, so there's exactly one place position changes.
 
 ## What's Next
