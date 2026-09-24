@@ -81,6 +81,8 @@ export default defineConfig({
     '/vault/techniques/raster-tricks-101': '/vault/techniques/raster-tricks',
     '/vault/people/tim-stamper': '/vault/people/stamper-brothers',
     '/vault/culture/type-in-programs': '/vault/distribution/type-in-listings',
+    // Renamed: the slug named the publisher, not the game (Batman: The Movie, 1989).
+    '/vault/games/batman-ocean': '/vault/games/batman-the-movie',
     '/vault/phenomena/video-game-crash': '/vault/phenomena/1983-crash',
     // Duplicate entries merged 2026-08-25: each game had two pages differing
     // only in slug punctuation, both AI-drafted and unreviewed.
