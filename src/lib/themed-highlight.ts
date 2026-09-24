@@ -139,10 +139,16 @@ export async function codeToThemedHighlight(
   await ensureThemes();
 
   const blockId = options.blockId ?? 'block';
-  const dark = await codeToHighlightHtml(code, { ...options, theme: DARK_THEME });
+  // Shiki gives up on a line after 500 ms of wall-clock time and leaves the rest
+  // uncoloured. A loaded build machine can hit that on a short line, and the two
+  // passes then disagree, a different listing each run. No limit: every line of
+  // every listing is coloured, however busy the machine.
+  const tokenizeTimeLimit = 0;
+  const dark = await codeToHighlightHtml(code, { ...options, theme: DARK_THEME, tokenizeTimeLimit });
   const light = await codeToHighlightHtml(code, {
     ...options,
     theme: LIGHT_THEME,
+    tokenizeTimeLimit,
     // A separate id keeps the light pass's own rules out of the way; only its
     // colours are used, never its markup.
     blockId: `${blockId}--light`,
