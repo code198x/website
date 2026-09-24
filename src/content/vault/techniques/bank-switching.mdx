@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Bank Switching"
-subtitle: "Expanding memory through hardware tricks"
-summary: "Bank switching allows systems with limited address space to access more memory by swapping different memory regions into the same address range."
+subtitle: "More memory than the processor can see"
+summary: "An 8-bit processor can address 64K at most, and some far less. Bank switching puts extra ROM or RAM behind a window in the address map and lets the program choose which bank shows through, by touching a special address on an Atari 2600 cartridge, writing to an NES mapper, or setting bits in a port on the C64, Spectrum 128 and CPC6128."
 category: "techniques"
-platforms: ["nintendo-entertainment-system", "commodore-64", "sinclair-zx-spectrum", "sega-master-system"]
+platforms: ["atari-2600", "nintendo-entertainment-system", "commodore-64", "sinclair-zx-spectrum", "amstrad-cpc"]
 tags: ["memory", "hardware", "cartridge"]
 sources:
   c64_processor_port:
@@ -18,184 +18,208 @@ sources:
       kind: book
       page: "261"
       note: "\"NOTE: In any memory map containing ROM, a WRITE (a POKE) to a ROM location will store data in the RAM 'under' the ROM. Writing to a ROM location stores data in the 'hidden' RAM. For example, this allows a hi-resolution screen to be kept underneath a ROM, and be changed without having to bank the screen back into the processor address space. Of course a READ of a ROM location will return the contents of the ROM, not the 'hidden' RAM.\""
+  vcs_8k:
+    - title: "Electronic Games, vol. 1 no. 9"
+      kind: magazine
+      date: "1982-11"
+      page: "102"
+      note: "Q&A: 'the Atari VCS, as of Missile Command and Asteroids, is capable of up to 8K, using a special bank switch that flip-flops two 4K programs'"
+  spectrum_7ffd:
+    - title: "ZX Spectrum +3 manual (Amstrad, 1987), chapter 8, part 24, 'The memory'"
+      kind: manual
+      page: "189-190, 199"
+      note: "Port 7FFDh (32765): 'D0..D2 RAM select, D3 Screen select, D4 ROM select, D5 Disable paging'; D5 'once this bit has been set, no further paging operations will work'. Port 1FFDh (8189): bit 0 = 1 selects all-RAM configurations 'provided for authors of operating systems/games'. Pages 4 to 7 contended on the +3: 'an effective clock frequency of 2.66MHz as opposed to the normal 3.53MHz'. Pitfalls: 'check that your stack is not being paged out during interrupts … (it is advisable to disable interrupts during paging operations)'; keep a copy of the setting 'as the ports are write-only', in BANKM and BANK678"
+  cpc_6128:
+    - title: "La Bible du CPC 6128 (Micro Application, 1985)"
+      kind: book
+      page: "52-53"
+      note: "The memory-switching PAL sits at port &7Fxx like the gate array and responds when data bits D6 and D7 are both set, reading D0-D2: values &C0 to &C7. '&C0 Banque 0, bloc 1 (situation de départ); &C4 Banque 1, bloc 0; &C5 Banque 1, bloc 1; &C6 Banque 1, bloc 2; &C7 Banque 1, bloc 3', each swapped in at &4000-&7FFF. The authors worked this out from the protected BANK MAN program and could not establish the meaning of &C1 to &C3"
 ---
 
-**Bank switching** solves a fundamental problem: CPUs with 16-bit address buses can only address 64KB of memory, but games and programs often need more. The solution involves mapping different physical memory regions into the same address range, swapping "banks" as needed. This technique enabled NES cartridges to contain megabytes of data despite the console's limited addressing.
+import Sources from '@components/Sources.astro';
+
+A 6502 or Z80 puts out a 16-bit address, so it can see 65,536 bytes and no more. The Atari 2600's cut-down 6507 sees only 8K, and gives its cartridge 4K of that. Programs outgrew those windows almost at once. Bank switching is the way round: fit more ROM or RAM than the processor can address, put a latch outside the processor, and let the program tell the latch which bank should answer a given range of addresses. The processor never knows. It reads `$8000` as it always did, and gets a different byte because something outside it changed its mind.
+
+How the program tells the latch is where the machines differ, and some of the answers are strange. On an Atari 2600 cartridge, reading a particular address is enough. On many NES boards the program writes a bank number into its own ROM. On the Commodore 64 it clears a bit in a port built into the processor. On the Spectrum 128 it sends a byte to an I/O port that can never be read back, and on the CPC6128 to a port whose values one of the first books about the machine had to work out by experiment.
 
 ## Fast facts
 
-| Aspect | Detail |
-|--------|--------|
-| **Problem solved** | 16-bit address limit (64KB) |
-| **Method** | Swap memory regions via hardware |
-| **Common platforms** | NES, Game Boy, C64, ZX Spectrum 128K |
-| **Modern equivalent** | Virtual memory, paging |
+| Machine | Window | How a bank is chosen |
+|---|---|---|
+| [Atari 2600](/vault/systems/atari-2600) | 4K cartridge space | Touching "hotspot" addresses in the cartridge space |
+| [NES](/vault/systems/nintendo-entertainment-system) | 32K of program ROM at `$8000-$FFFF`, 8K of graphics in PPU space | Writes to a mapper chip on the cartridge |
+| [Commodore 64](/vault/systems/commodore-64) | ROM and I/O over the top of 64K of RAM | Bits 0-2 of the 6510's port at `$01`, plus the cartridge's GAME and EXROM lines |
+| [ZX Spectrum](/vault/systems/sinclair-zx-spectrum) 128, +2, +3 | 16K at `$C000-$FFFF` | Port `$7FFD`; the +2A and +3 add port `$1FFD` |
+| [Amstrad CPC6128](/vault/systems/amstrad-cpc) | 16K at `&4000-&7FFF` (in the simplest settings) | Values `&C0-&C7` sent to port `&7Fxx` |
 
-## The Address Space Problem
+## Atari 2600: switching by looking
 
-An 8-bit CPU with 16-bit addressing:
+The 2600's cartridge slot gives a game 4K. *Electronic Games* explained the way past it to a reader in November 1982: "as of *Missile Command* and *Asteroids*", the VCS "is capable of up to 8K, using a special bank switch that flip-flops two 4K programs".
 
-| Addressing | Maximum |
-|------------|---------|
-| **16-bit address bus** | 2^16 = 65,536 bytes |
-| **64KB ceiling** | Hard limit for direct access |
-| **Game requirements** | Often exceeded 64KB |
+The cartridge's own logic watches the address bus. In Atari's 8K scheme, known as F8, two addresses near the top of the cartridge space, `$1FF8` and `$1FF9`, select the two 4K halves, and in Kevin Horton's 1990s survey of cartridge types, "any access to either one of these locations switches banks". A read is as good as a write. Parker Brothers split its 8K into 1K slices, three of which the program can choose independently from `$1FE0-$1FF7`, while the last 1K stays fixed so that the game can always start.
 
-## How Bank Switching Works
+[Activision](/vault/companies/activision)'s scheme for *Decathlon* and *Robot Tank* made the switch happen by itself. Horton's description: "You set the stack pointer to FF, and then a JSR switches banks one way, while RTS switches you back to the original bank." A call into the other bank was an ordinary subroutine call.
 
-The concept:
+## NES: mappers on the cartridge
 
-| Step | Action |
-|------|--------|
-| 1 | CPU sees fixed address range (e.g., $8000-$BFFF) |
-| 2 | Hardware maps this to physical ROM/RAM |
-| 3 | Writing to special register selects which bank |
-| 4 | New bank appears at same addresses |
-| 5 | Program code switches banks as needed |
+The NES gives the cartridge `$8000-$FFFF` for program ROM, 32K, and 8K of the PPU's address space for tile graphics. Anything larger needs a **mapper**: logic on the cartridge board that decides which part of the ROM appears where. The iNES file format for emulators numbers them, and the numbers are how programmers usually name them.
 
-## Platform examples
+| Mapper | Board family | What it switches | Examples |
+|---|---|---|---|
+| 0 | NROM | Nothing: 16K or 32K of program ROM, 8K of graphics | *[Super Mario Bros.](/vault/games/super-mario-bros)* |
+| 2 | UxROM | A 16K program bank at `$8000`; `$C000-$FFFF` fixed to the last bank. 128K on UNROM, 256K on UOROM | *[Mega Man](/vault/games/mega-man)*, *[Castlevania](/vault/games/castlevania)* |
+| 3 | CNROM | 8K of graphics at a time, up to 32K; program ROM fixed at 32K | |
+| 1 | [MMC1](/vault/hardware/mmc1) | 16K or 32K program banks, 4K or 8K graphics banks, mirroring. 256K of program ROM (512K on the SUROM board) | *[The Legend of Zelda](/vault/games/legend-of-zelda)*, *[Metroid](/vault/games/metroid)* |
+| 4 | [MMC3](/vault/hardware/mmc3) | 8K program banks, 1K and 2K graphics banks, a scanline interrupt counter. Up to 512K of program ROM and 256K of graphics | *[Super Mario Bros. 3](/vault/games/super-mario-bros-3)* |
+| 5 | MMC5 | Up to 1024K each of program ROM and graphics, extended attributes, extra sound channels | *Castlevania III* |
 
-### NES Mappers
+The 6502 fetches its reset and interrupt vectors from `$FFFA-$FFFF`, so the switching mappers above keep the top of the map fixed, or start up in a mode that does. The code that must always be reachable lives there: the reset routine, the interrupt handlers and the code that switches banks.
 
-The NES used cartridge hardware called "mappers":
+### UxROM: write the bank number, carefully
 
-| Mapper | Features | Typical games |
-|--------|----------|---------------|
-| **NROM (0)** | No switching, 16KB or 32KB PRG | Donkey Kong, Mario Bros |
-| **UxROM (2)** | 256KB PRG bank-switching, fixed last bank | Mega Man, Castlevania |
-| **CNROM (3)** | 32KB PRG fixed, 32KB CHR bank-switching | Paperboy |
-| **MMC1 (1)** | Up to 512KB PRG + 128KB CHR, mirroring control, **5-bit serial register** | Zelda, Metroid |
-| **MMC3 (4)** | 512KB PRG + 256KB CHR, **scanline IRQ via PPU A12 edge**, paired even/odd writes | Super Mario Bros 3 |
-| **MMC5 (5)** | 1MB PRG + 1MB CHR, extended attributes, expansion audio | Castlevania III |
-
-Different games used different mappers depending on complexity. The NES 2.0 spec catalogues several hundred distinct mappers across licensed and unlicensed cartridges.
-
-### Commodore 64
-
-The C64 banks system ROMs and I/O in and out via the 6510's on-chip processor port at `$01`:
-
-| Region | Banks (controlled by `$01` bits 0-2) |
-|--------|--------------------------------------|
-| **$8000-$9FFF** | RAM, or cartridge LO ROM (when `/EXROM` is asserted) |
-| **$A000-$BFFF** | RAM, BASIC ROM, or cartridge HI ROM (LORAM bit) |
-| **$D000-$DFFF** | RAM, character ROM, or I/O area (CHAREN bit) |
-| **$E000-$FFFF** | RAM, KERNAL ROM, or cartridge HI ROM (HIRAM bit) |
-
-Bit 0 = LORAM, bit 1 = HIRAM, bit 2 = CHAREN. The Ultimax cartridge mode (`/EXROM=0`, `/GAME=0`) replaces large parts of the map with cartridge ROM regardless of `$01`.
-
-The Programmer's Reference Guide explains each bit in the same terms: clear LORAM and "the BASIC ROM will disappear from the memory map and be replaced by 8K bytes of RAM from $A000 to $BFFF"; CHAREN "is used only to bank the 4K byte character generator ROM in or out", which "the microprocessor only needs to access… when downloading the character set from ROM to RAM". It also states the rule that makes the C64's banking cheap to live with: "a WRITE (a POKE) to a ROM location will store data in the RAM 'under' the ROM", so "a hi-resolution screen [can] be kept underneath a ROM, and be changed without having to bank the screen back into the processor address space" — only a read returns the ROM. Programs can fill the 64K without ever switching the ROMs out.
-
-### ZX Spectrum 128K
-
-The 128K Spectrum banked RAM at $C000-$FFFF:
-
-| Feature | Detail |
-|---------|--------|
-| **Fixed Bank 5** | Always at $4000-$7FFF (the regular screen) |
-| **Fixed Bank 2** | Always at $8000-$BFFF |
-| **Switchable** | Eight 16KB banks at $C000-$FFFF (banks 0-7, selected by `$7FFD` bits 0-2) |
-| **Control** | Port `$7FFD` (write-only); bit 5 locks paging until reset |
-
-The `+2A`/`+3` add a second paging port at `$1FFD` for "all-RAM" configurations and ROM disk routing.
-
-## Technical challenges
-
-| Challenge | Consequence |
-|-----------|-------------|
-| **Code can't span banks** | Jump targets must be in same bank |
-| **Data access planning** | Know which bank contains what |
-| **Interrupt handling** | Bank state during interrupts |
-| **Performance overhead** | Bank switching takes cycles |
-
-## Programming Patterns
-
-| Pattern | Purpose |
-|---------|---------|
-| **Fixed bank** | Code that must always be accessible |
-| **Data banks** | Level data, graphics, audio |
-| **Trampoline code** | Jump between banks via fixed code |
-| **Bank tables** | Track what's where |
-
-### Trampoline pattern
-
-The trampoline lives in a *fixed* bank (e.g. MMC3's last 8 KB at `$E000-$FFFF`, which never switches). It saves the current bank, switches to the target bank, calls into it, and restores the original bank on return. Code in switchable banks calls foreign functions only via the trampoline:
+UxROM has a single register that answers anywhere in `$8000-$FFFF`. There is a catch. Nintendo's original UxROM boards do not stop the ROM driving the data bus when the processor writes to it, so on a write the ROM and the processor both put a byte on the bus. NESdev calls this a bus conflict. The safe way is to write the bank number to a ROM byte that already holds the same number, so the two agree:
 
 ```asm
-; Lives at $E000 in the fixed bank
-far_call:
-    PHA                  ; save bank arg & target addr (pushed by caller)
-    ; ... swap to target bank using mapper-specific writes ...
-    JSR (target_addr)    ; run the routine in the now-paged bank
-    ; ... swap back to caller's bank ...
-    RTS
+banktable: .byte 0, 1, 2, 3, 4, 5, 6   ; in the fixed bank
+
+bankswitch_y:          ; select 16K bank Y at $8000-$BFFF
+    sty cur_bank       ; keep a copy: the register cannot be read back
+    tya
+    sta banktable,y    ; ROM already holds Y here, so no conflict
+    rts
 ```
 
-Without a trampoline, an `RTS` from a foreign bank would land back in the wrong bank's code.
+CNROM has the same conflict. The MMC chips do not: Nintendo's MMC1 specification explains that the chip gates the ROM's select line with the read/write signal, so the ROM stays silent during a write.
 
-## NES bank switching by mapper
+### MMC1: five writes for one register
 
-The bank-select interface varies enormously between mappers. Three patterns cover most of them.
-
-### UxROM, CNROM, AxROM — direct write
-
-A single write to any address in the cartridge range latches the bank number:
+MMC1 saves pins by taking its data one bit at a time. Each write to `$8000-$FFFF` shifts bit 0 of the value into a 5-bit register, least significant bit first. On the fifth write the whole value goes into one of four internal registers, chosen by the address of that fifth write. A write with bit 7 set resets the sequence.
 
 ```asm
-    LDA #$03
-    STA $8000        ; UxROM: select PRG bank 3 at $8000-$BFFF
-                     ; (last bank stays fixed at $C000-$FFFF)
-```
-
-### MMC1 — 5-bit serial shift register
-
-MMC1 collects five sequential writes into an internal shift register. Each write latches one bit (bit 0 of the value); on the fifth write the assembled 5-bit value is committed to one of four registers, picked by the address of the *fifth* write:
-
-```asm
-    LDA #%10000000   ; bit 7 set = reset shift register
-    STA $8000        ; (use this to abort a partial write sequence)
+    lda #%10000000   ; bit 7 set = reset shift register
+    sta $8000        ; (use this to abort a partial write sequence)
 
     ; Now write the 5 bits of the bank number, LSB first
-    LDA #$1          ; bit 0
-    STA $E000
-    LDA #$1
-    STA $E000
-    LDA #$0
-    STA $E000
-    LDA #$0
-    STA $E000
-    LDA #$0
-    STA $E000        ; fifth write to $E000-$FFFF latches PRG bank %00011 = 3
+    lda #1           ; bit 0
+    sta $E000
+    lda #1           ; bit 1
+    sta $E000
+    lda #0           ; bit 2
+    sta $E000
+    lda #0           ; bit 3
+    sta $E000
+    lda #0           ; bit 4 (0 = PRG RAM enabled on MMC1B)
+    sta $E000        ; fifth write to $E000-$FFFF latches PRG bank %00011 = 3
 ```
 
-### MMC3 — paired bank-select / bank-data
+Two details matter in practice. NESdev notes that "when the serial port is written to on consecutive cycles, it ignores every write after the first", which is why read-modify-write instructions such as `INC` behave oddly here. And an interrupt handler that switches banks in the middle of the main program's five writes leaves the register half-filled, so a program has to keep its handlers from switching banks mid-sequence, or have them put the switch right afterwards.
 
-MMC3 splits the operation across even and odd addresses. Write the register *index* to an even address in `$8000-$9FFF`, then the bank value to the odd address one byte later:
+### MMC3: select, then set
+
+MMC3 splits the job across a pair of addresses. An even address in `$8000-$9FFF` chooses which of eight bank registers to set; the odd address after it takes the bank number.
 
 ```asm
-    LDA #$06         ; index 6 = PRG bank at $8000 (in default mode)
-    STA $8000        ; bank select
-    LDA #$0A
-    STA $8001        ; bank data — PRG bank $0A now at $8000
+    lda #$06         ; index 6 = PRG bank at $8000 (PRG mode 0, bit 6 clear)
+    sta $8000        ; bank select
+    lda #$0A
+    sta $8001        ; bank data: PRG bank $0A now at $8000
 ```
 
-MMC3 also holds an 8-bit IRQ counter that decrements on each rising edge of PPU A12, used for split-screen and status-bar effects.
+The select write also carries two mode bits, bit 6 for the program ROM layout and bit 7 for the graphics layout, so every select write has to include the modes the program wants. The [MMC3](/vault/hardware/mmc3) entry has the full register map and its scanline counter.
 
-## Historical Context
+### Calling code in another bank
 
-| Era | Approach |
-|-----|----------|
-| **Arcade boards** | Custom banking hardware |
-| **Console cartridges** | Mapper chips in cart |
-| **Home computers** | System-level banking |
-| **CD-ROM era** | Streaming replaced banking |
+Code in one switchable bank cannot simply `JSR` into another. The moment it switches, the instructions it is running disappear, and an `RTS` from the other bank would return into whatever bank happens to be mapped. The usual answer is a small routine in the fixed bank, often called a trampoline, that switches, calls, and switches back. The 6502 has no indirect `JSR`, but a `JSR` to a `JMP (indirect)` does the same job. For UxROM, using `bankswitch_y` from above:
 
-## Legacy
+```asm
+; Run the routine at far_ptr in bank far_bank, then restore
+; the caller's bank. The routine's result comes back in A.
+far_call:
+    lda cur_bank
+    pha              ; remember the caller's bank
+    ldy far_bank
+    jsr bankswitch_y
+    jsr jump_far     ; JSR to a JMP (indirect) acts as an indirect call
+    tax              ; keep the result
+    pla
+    tay
+    jsr bankswitch_y ; back to the caller's bank
+    txa
+    rts
+jump_far:
+    jmp (far_ptr)
+```
 
-Bank switching was the bridge between limited addressing and modern virtual memory. Developers learned to structure code and data around bank boundaries—skills that translated into understanding memory hierarchies, caching, and modern paging systems. Emulator developers must accurately emulate mapper behaviour to run games correctly.
+## Commodore 64: ROM over RAM
+
+The C64 has the opposite problem. It has a full 64K of RAM, and 20K of ROM, and I/O chips that need addresses of their own. The 6510 processor has a small I/O port at addresses `$00` and `$01`, and three of its bits decide what the processor sees in the upper part of the map:
+
+| Bit of `$01` | Name | Controls |
+|---|---|---|
+| 0 | LORAM | BASIC ROM or RAM at `$A000-$BFFF` |
+| 1 | HIRAM | KERNAL ROM or RAM at `$E000-$FFFF` |
+| 2 | CHAREN | I/O chips or character ROM at `$D000-$DFFF` |
+
+The bits combine rather than act alone. BASIC needs the KERNAL, so clearing HIRAM removes BASIC as well. With both LORAM and HIRAM clear there is RAM at `$D000-$DFFF` too, whatever CHAREN says. The usual value, `$37`, gives BASIC, the KERNAL and I/O with "38K contiguous bytes of user RAM"; `$35` gives "60K bytes of RAM and I/O devices", for which "the user must write his own I/O driver routines"; `$34` gives "access to all 64K bytes of RAM". The [6510](/vault/hardware/6510) entry has the full table. Two lines on the cartridge port, GAME and EXROM, also feed the logic, which is how a cartridge puts its ROM at `$8000` or replaces BASIC or the KERNAL.
+
+The *Programmer's Reference Guide* points out the rule that makes this cheap to live with: "a WRITE (a POKE) to a ROM location will store data in the RAM 'under' the ROM". Only reads see the ROM. So "a hi-resolution screen [can] be kept underneath a ROM, and be changed without having to bank the screen back into the processor address space." Switching the KERNAL out has a cost, though: it takes the interrupt vectors with it, so a program that does so needs interrupts disabled or vectors of its own at `$FFFA-$FFFF`.
+
+## Spectrum 128, +2 and +3: one port, write-only
+
+The 128K Spectrum keeps the 48K machine's layout for the bottom 48K and adds a switchable 16K at the top. RAM page 5 is always at `$4000-$7FFF`, where the screen lives, and page 2 at `$8000-$BFFF`. Any of the eight 16K pages can be switched in at `$C000-$FFFF`. Amstrad's +3 manual gives the bits of port `$7FFD` (32765):
+
+| Bits | Function |
+|---|---|
+| 0-2 | RAM page at `$C000-$FFFF` |
+| 3 | Screen select: page 5 or page 7 |
+| 4 | ROM select |
+| 5 | Disable paging |
+
+Bit 3 gives a second screen in page 7 that "can only be used by machine code programs", so a program can draw one screen while showing the other. Bit 5 is a one-way switch: "once this bit has been set, no further paging operations will work", and only switching off or pressing reset undoes it. The manual suggests `OUT 32765,48` for 48K games that refuse to run.
+
+The port is write-only, so the manual tells programmers to "keep a copy of the current bank register setting in unpaged RAM", which the ROM does in the system variable BANKM at 23388. It also lists the usual traps: check "that your stack is not being paged out during interrupts, and that your interrupt routine is always where you expect it to be (it is advisable to disable interrupts during paging operations)."
+
+The +2A and +3 add a second port, `$1FFD` (8189). With its bit 0 clear, its bit 2 joins bit 4 of `$7FFD` to choose one of four ROMs. With bit 0 set, the machine switches to one of four all-RAM layouts, which the manual says are "not used by +3 BASIC but are provided for authors of operating systems/games". Where a page sits also affects speed: on the +3, pages 4 to 7 share time with the video circuitry, and "executing NOPs in contended RAM will give an effective clock frequency of 2.66MHz as opposed to the normal 3.53MHz".
+
+## Amstrad CPC6128: values found by experiment
+
+The CPC6128 has two 64K banks of RAM. The switching is done by a small programmable logic chip that shares the gate array's port, `&7Fxx`, and answers when the top two bits of the byte are both set, so the values run from `&C0` to `&C7`.
+
+Amstrad supplied a program called BANK MAN to use the extra memory. When the authors of *La Bible du CPC 6128* (Micro Application, 1985) set out to explain the switching, BANK MAN was the only thing they had to go on, and it was copy-protected, so they worked the values out by experiment. The useful ones swap a 16K block of the second bank in at `&4000-&7FFF`:
+
+| Value | At `&4000-&7FFF` |
+|---|---|
+| `&C0` | Bank 0, block 1 (the normal setting) |
+| `&C4` | Bank 1, block 0 |
+| `&C5` | Bank 1, block 1 |
+| `&C6` | Bank 1, block 2 |
+| `&C7` | Bank 1, block 3 |
+
+The other values rearrange almost the whole map, and the program doing the switching can vanish from under itself. The authors wrote that they had not been able to work out what `&C1` to `&C3` did, and suspected they mattered to CP/M 3.0, which uses the second bank to give programs 61K.
+
+## What it costs
+
+Every machine above leaves the same jobs to the programmer:
+
+- **Keep a copy.** Apart from the C64's port, none of these bank registers can be read back, so the program has to remember what it last wrote.
+- **Keep the essentials still.** Interrupt handlers, the stack and the switching code itself must sit in memory that never moves, or be switched in before they are needed.
+- **Plan the layout.** Code that calls between banks goes through a routine in fixed memory, and data is arranged so that what a routine needs is in its own bank or a fixed one.
+
+<Sources>
+
+- *Electronic Games*, November 1982, p. 102: the 2600's 8K bank switch in *Missile Command* and *Asteroids*.
+- Kevin Horton, "Cart Information" (sizes.txt), last modified April 1997 (web, secondary): the F8 hotspots at `$1FF8` and `$1FF9`, Parker Brothers' 1K slices, and Activision's JSR/RTS scheme on *Decathlon* and *Robot Tank*. https://www.atariage.com/2600/programming/bankswitch_sizes.txt
+- NESdev Wiki, pages "UxROM", "CNROM", "MMC1", "MMC3" and "MMC5" (community reference, web, secondary): board capacities, bus conflicts, the MMC1 consecutive-write rule and SUROM, the MMC3 registers, MMC5 capacities and example games. https://www.nesdev.org/wiki/
+- Nintendo, *MMC Cassette Programming Specification* (1986, revised 1987): the MMC gating the ROM select line with the read/write signal.
+- Commodore, *Commodore 64 Programmer's Reference Guide* (1982), "Memory Management on the Commodore 64", pp. 260-265: the 6510 port bits, the memory maps and their descriptions, and writes to the RAM under ROM.
+- Amstrad, *ZX Spectrum +3* manual (1987), chapter 8, part 24, "The memory", pp. 189-190 and 199: ports `$7FFD` and `$1FFD`, the second screen, the paging lock and `OUT 32765,48`, the all-RAM modes, contended pages and their speed, and the programming pitfalls.
+- *La Bible du CPC 6128* (Micro Application, 1985), pp. 52-53: the switching chip at `&7Fxx`, BANK MAN, the values `&C0` and `&C4-&C7`, the unknown `&C1-&C3`, and CP/M 3.0's use of the second bank.
+
+</Sources>
 
 ## See also
 
-- [NES Architecture](/vault/systems/nintendo-entertainment-system)
-- [Memory Mapping](/vault/techniques/memory-mapping)
-- [Cartridge Technology](/vault/hardware/cartridge)
-- [Compression](/vault/techniques/compression)
+- [MMC1](/vault/hardware/mmc1) and [MMC3](/vault/hardware/mmc3)
+- [6510](/vault/hardware/6510)
+- [Memory mapping](/vault/techniques/memory-mapping)
+- [Cartridge](/vault/hardware/cartridge)
