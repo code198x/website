@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Isometric Projection"
-subtitle: "3D from 2D"
-summary: "Isometric projection created the illusion of three-dimensional space on 2D screens, enabling exploration games impossible with flat side-views."
+subtitle: "Solid-looking 3D rooms drawn with flat 2D graphics"
+summary: "An isometric view shows a 3D world from a fixed angle above one corner, so that it can be drawn from flat, unscaled pictures. Zaxxon brought it to the arcades in 1982; on the ZX Spectrum, Ant Attack, Knight Lore, Batman and Head Over Heels made it the look of the arcade adventure. They drew it with a slope of two pixels across for one down rather than a true 30°, and on machines without hardware sprites they depended on masked drawing and on working out which object was in front."
 category: "techniques"
-platforms: ['sinclair-zx-spectrum', 'commodore-64', 'amstrad-cpc', 'commodore-amiga', 'nintendo-entertainment-system']
+platforms: ['arcade', 'sinclair-zx-spectrum', 'commodore-64', 'amstrad-cpc', 'bbc-micro', 'commodore-amiga', 'atari-st']
 tags: ['graphics', '3d', 'game-design']
 sources:
   batman:
@@ -38,171 +38,113 @@ sources:
 ---
 
 import Figure from '@components/Figure.astro';
+import Sources from '@components/Sources.astro';
 
-Isometric projection displays three-dimensional scenes from a fixed angle where all three axes are equally foreshortened — no axis is preferred over another. On 8-bit computers, this created the impression of explorable 3D space while using only 2D sprite and tile techniques. *Knight Lore* (Spectrum, 1984), *Marble Madness* (arcade, 1984), and *Solstice* (NES, 1990) defined the look. The strategy genre adopted it (*Civilization*, *SimCity 2000*) and never let go — modern indies (*Hades*, *Disco Elysium*) keep it alive.
+An isometric game looks down on its world from above one corner, at a fixed angle. Nothing gets smaller as it goes further away, so a crate is the same picture wherever it stands, and a whole room can be built from a handful of flat drawings placed at the right points on the screen. That made it the cheapest convincing 3D a small computer could manage. It was also hard to get right. On a [ZX Spectrum](/vault/systems/sinclair-zx-spectrum), with no hardware sprites and colour that came in 8×8 blocks, making a character walk behind a pillar and vanish meant drawing every object in the right order and cutting a hole for it in whatever lay behind.
 
-## The mathematics
+## Fast facts
 
-### True isometric
+- **The view:** a fixed three-quarter view from above, with no perspective shrinking.
+- **The usual slope:** two pixels across for every pixel down, as in *Knight Lore*, not the 30° of a true isometric drawing.
+- **The hard parts:** drawing objects so that nearer ones cover further ones, and cutting sprites cleanly into the background.
+- **Arcade:** Sega's *[Zaxxon](/vault/games/zaxxon)* (1982) and Atari's *[Marble Madness](/vault/games/marble-madness)* (1984).
+- **Spectrum:** *[Ant Attack](/vault/games/ant-attack)* (1983), *[Knight Lore](/vault/games/knight-lore)* (1984), *[Batman](/vault/games/batman-1986)* (1986), *[Head Over Heels](/vault/games/head-over-heels)* (1987).
+- **16-bit:** *[Populous](/vault/games/populous)* (1989) turned the view on a whole landscape.
 
-True isometric uses **30°** angles for the X and Z axes (measured from horizontal) with the Y axis straight up:
+## True isometric and the 2:1 slope
 
-- **X-axis:** 30° from horizontal (right and slightly down)
-- **Z-axis:** 30° from horizontal (left and slightly down)
-- **Y-axis:** 90° (vertical)
+In a true isometric drawing, the three axes of a cube are shown at equal angles to one another, 120° apart. The two ground axes run at 30° to the horizontal and the vertical axis runs straight up, and one unit along any axis comes out the same length on paper. "Isometric" means "equal measure".
 
-Each unit step in any axis projects to the same screen distance — true *iso-metric* (equal measure).
-
-### "Pixel isometric" (2:1 ratio)
-
-Most computer games used a **2:1** ratio rather than true 30°:
-
-- For every 2 pixels horizontal, 1 pixel vertical along the X axis (and the same for Z, opposite direction).
-- Slightly off-true (the actual angle is `atan(1/2) ≈ 26.57°` rather than 30°).
-- **Simpler maths** — multiplications and divisions by 2 are shifts on 8-bit hardware.
-- Visually nearly identical to true isometric.
-
-This is what *Knight Lore*, *Solstice*, and basically every 2D isometric game uses. Calling it "isometric" is technically inaccurate (purists call it *dimetric* or *2:1 projection*), but the term has stuck.
+Games drawn on a pixel grid generally did not use 30°, and *Knight Lore* shows why. A 30° line climbs about 0.577 pixels for every pixel across, which no whole number of pixels can match: drawn on a pixel grid, it becomes an uneven mixture of one- and two-pixel steps, and two parallel edges can break up differently. Games used a slope of one pixel down for every two across instead. That line is a perfectly regular staircase of two-pixel steps, so every wall edge looks the same and every floor tile meets its neighbour exactly. The angle is about 26.6° instead of 30°, and strictly speaking the result is a dimetric projection, since the vertical axis is no longer drawn at the same scale as the other two. Everyone called it isometric anyway.
 
 <Figure
   src="/images/vault/techniques/isometric-projection/knight-lore-2to1-steps.png"
   alt="A magnified corner of a Knight Lore room: two stone walls meeting, their block edges receding as a staircase of pixels that steps two across for every one down."
-  caption="Knight Lore (Ultimate Play The Game, 1984, ZX Spectrum), magnified seven times. Captured from the original tape."
+  caption="Knight Lore (Ultimate Play the Game, 1984, ZX Spectrum), magnified seven times. Captured from the original tape. Every receding edge is a staircase of steps two pixels wide and one pixel high."
 />
 
-**The ratio is countable in the picture.** Follow any receding edge and it moves two pixels across for every one pixel down — no anti-aliasing, no interpolation, just a staircase, because that is what the projection reduces to once `tile_width / 2` is a shift.
+## From the world to the screen
 
-Measuring every edge in the room this crop was taken from: of 642 leading-edge runs, **321 are exactly two pixels long** — half of them, against 10% for the next most common length. That distribution *is* the 2:1 projection, visible as a statistical fingerprint of the arithmetic above.
+The game keeps positions in the world, not on the screen. Take a world with two ground axes, x and z, and a height, y, and floor tiles drawn as diamonds 32 pixels wide and 16 high. One step along x moves a tile's picture 16 pixels right and 8 down; one step along z moves it 16 pixels left and 8 down. So:
 
-It also shows why the 2:1 ratio won over true 30° isometric. A true isometric edge needs a slope of `tan(30°) ≈ 0.577`, which no whole number of pixels gives you; every edge would need rounding, and neighbouring edges would round differently and stop lining up. At 2:1 every edge is exact, every wall meets every floor cleanly, and the maths is a shift.
+- screen x = (x − z) × 16
+- screen y = (x + z) × 8, minus however many pixels the game uses for each unit of height.
 
-## Coordinate conversion
+A tile at x = 3, z = 1 on the floor lands at screen position (32, 32). Working backwards, 32 ÷ 16 gives x − z = 2 and 32 ÷ 8 gives x + z = 4, so x = 3 and z = 1 again. Knight Lore uses the same arrangement: according to a published disassembly of its BBC Micro version, the game's x axis runs from the bottom left of the screen to the top right, its z axis from the top left to the bottom right, and y straight up.
 
-Convert from 3D world `(tile_x, tile_y, tile_z)` to 2D screen coordinates:
+Keeping the two sets of coordinates apart matters for play as much as for drawing. Two objects can overlap on the screen while being metres apart in the world, one far behind the other, so collisions are tested with world positions.
 
-```
-screen_x = (tile_x - tile_z) * (tile_width / 2)
-screen_y = (tile_x + tile_z) * (tile_height / 2) - tile_y * tile_height
-```
+## The early games
 
-Where `tile_width` and `tile_height` are the on-screen dimensions of one tile (typically 32×16 for 2:1 isometric). Note `tile_y` is *up*, so it subtracts.
+Sega's *Zaxxon* brought the view to the arcades. *Computer & Video Games* described it in August 1982 as a fortress that "floats in space at the frontier of a third dimension in arcade games". *Electronic Fun with Computers & Games* counted its shadows as one of the ways a flat screen could give "the illusion of 3-D", and *Electronic Games* picked out its "diagonally-oriented playfields".
 
-Inverse — screen back to tile (for click detection, mouse picking):
+On the Spectrum the pioneer was *Ant Attack*, published by Quicksilva for the 48K machine at the end of 1983. Its author, Sandy White, was a sculptor from Edinburgh. He told *[Sinclair User](/vault/magazines/sinclair-user)* that he had developed his "softsolid" technique mostly on a 6502 computer, not a Z80, and that it could be moved to any machine, unlike "other 3D games, such as the Atari Zaxxon". Quicksilva's Mark Eyles admitted that when White's video tape arrived, "We received the tape and thought 'So what's new?'", until they played it on a friend's video recorder: "We were amazed." The player could switch between four views of the walled city of Antescher, and choose to play a boy or a girl. Looking back in 1988, *[CRASH](/vault/magazines/crash-magazine)*'s Will Brooker wrote that it had "wedged itself firmly into Spectrum history as the first game with truly three-dimensional views".
 
-```
-tile_x = (screen_x / (tile_width / 2) + screen_y / (tile_height / 2)) / 2
-tile_z = (screen_y / (tile_height / 2) - screen_x / (tile_width / 2)) / 2
-```
+Atari Games' *Marble Madness* (1984) used the view for a race. Electronic Arts' Amiga version, its first conversion of an arcade game, arrived in 1986, and *Ahoy!* summed up the goal: "to race a marble down treacherous paths in an attempt to beat the clock".
 
-## Rendering order
+## Drawing it on the Spectrum
 
-Objects must be drawn back-to-front (painter's algorithm) so closer objects overlay farther ones:
+The Spectrum had no sprite hardware. Everything that moved had to be drawn into the screen's bitmap by the Z80, and removed again when it moved. Three problems followed.
 
-```
-for z from far to near:
-    for x from left to right:
-        draw_tile(x, y, z)
-        draw_objects_at(x, y, z)
-```
+**Colour.** The Spectrum stores one ink colour and one paper colour for each 8×8 block of the screen, so two differently coloured objects in the same block smear into each other. Isometric games avoided the problem by giving up colour where things moved. *Knight Lore* drew each room in one colour, and Sabreman took on that colour when he entered. *Your Spectrum*, taking apart Costa Panayi's *Highway Encounter* for [Vortex](/vault/companies/vortex-software) in 1985, called this "the popular method of having only two colours for the moving parts of the screen". See [attribute-aware design](/vault/techniques/attribute-aware-design).
 
-For free-position objects (not tile-aligned), sort by depth = `tile_x + tile_z + tile_y` and draw in order.
+**Masking.** A one-colour sprite drawn over scenery shows the background through any gap in its picture. The cure was a mask: a second picture, as big as the sprite, with a bit set for every background pixel that should survive. *Your Spectrum* described the operation: "First, the background is ANDed with the mask... and then ORed with the actual sprite data before being reloaded into the screen or buffer." Take one byte, eight pixels wide, of a solid wall (11111111), a sprite byte 00011000 and a mask byte 11000011. The AND clears the four middle pixels (11000011); the OR puts the sprite in (11011011). The mask is wider than the sprite, so a one-pixel black border now separates the sprite from the wall, which is why, the magazine explained, it was usual to leave "a one pixel border round the sprite so that it stands out clearly". The cost was memory: every frame of animation needed a mask as well, doubling the graphics data.
 
-See [Y-Depth Sorting](/vault/techniques/y-depth-sorting) for the depth-sort details.
+**Speed.** Redrawing a whole room every frame was slow. The usual approach, which *Your Spectrum* called "the now customary 'stick 'em in a buffer and then copy 'em to the screen' method", was to build the picture in memory away from the screen and copy the result across. *Your Spectrum* reported that Panayi went further than Ultimate: "instead of rewriting the whole screen every frame, he keeps a separate buffer that flags the character squares that have been changed, and only updates those". The disassembly of *Knight Lore*'s BBC Micro version shows a similar economy there, with the buffer divided into eight-pixel-wide slices and only the changed ones copied.
 
-## Collision detection
+### Which object is in front?
 
-Keep world coordinates separate from screen coordinates:
+Isometric games drew their scenes back to front, "so that the closer objects hide the ones behind them", as *Your Spectrum* put it. The difficult part is deciding what "back" means. A simple rule is to sort objects by x + y + z and draw the smallest first. That works for objects of the same size on a grid, but it fails for a long object beside a short one: the long object's sum can put it in front of something it actually lies behind.
 
-- Store position in 3D `(x, y, z)` (or 2D `(x, z)` plus height).
-- Calculate screen position only for *display*.
-- Collide in 3D space, not screen space — diagonal-on-screen sprites that are perpendicular in world space shouldn't collide based on screen overlap.
+*Knight Lore* did not use a single number. In the BBC Micro version's disassembly, the game draws the fixed scenery first, without masks, then sorts the other objects by comparing them in pairs. For each pair it checks whether their boxes overlap along each axis and, where one could hide the other on screen, compares their positions to see which is nearer. Pairs that cannot hide one another put no constraint on the order. The objects are then drawn with masks, furthest first. Only objects that need redrawing take part, which keeps the work down in a room that can hold forty objects.
 
-This is the lesson that *Knight Lore* established and every isometric game inherits: **screen position is not world position**.
+## Knight Lore and its followers
 
-## The Filmation engine
+*Knight Lore*, released by [Ultimate Play the Game](/vault/companies/ultimate) in November 1984, joined the pieces together into a game: a castle of rooms in which Sabreman could walk behind, over and through things without flicker. Ultimate called the technique Filmation and used it again in *Alien 8* (1985). *CRASH* described Filmation 2, which followed, as a way for graphics of *Knight Lore*'s quality "to be scrolled smoothly over a large playing area"; Ultimate used it for *Nightshade*. The [Filmation engine](/vault/techniques/filmation-engine) entry covers Ultimate's games in more detail.
 
-Ultimate Play the Game's *Filmation* engine — *Knight Lore*, *Alien 8*, *Pentagram*, *Nightshade*, *Gunfright* — is the canonical 8-bit isometric implementation:
-
-| Feature | Implementation |
-|---------|----------------|
-| Solid objects | Z-ordered sprite masking (write-mask + write-data per object) |
-| Room-based world | Each room rendered fresh as the player enters |
-| Object interaction | Physics computed in 3D space, displayed in 2D |
-| Memory efficiency | Compact room data; objects shared across rooms |
-
-See [Filmation Engine](/vault/techniques/filmation-engine) for the deep dive.
-
-## Tile-based isometric
-
-Common in strategy games (*Civilization*, *SimCity 2000*, *Theme Hospital*, *Diablo*):
-
-| Element | Structure |
-|---------|-----------|
-| **Ground tiles** | Diamond-shaped (parallelogram-projected square) |
-| **Objects** | Placed at tile positions, may overhang neighbouring tiles |
-| **Height** | Stacked tiles or vertical offset |
-| **Multi-tile objects** | Big buildings span 2×2, 3×3 tile footprints |
-
-## Challenges
-
-### Depth sorting in complex scenes
-
-Objects can overlap in non-trivial ways:
-
-- A character moving diagonally between two pillars must be sorted *between* them.
-- Multi-tile objects must be sorted by their entire footprint, not just their anchor.
-- Different heights complicate things further (a flying creature *behind* a wall but *above* it in Y).
-
-Standard solution: depth = `tile_x + tile_z + tile_y` with tie-breakers for stable rendering.
-
-### Click / touch detection
-
-Convert screen-space input to world-space tile via the inverse formula. UI complications: clicks on tile boundaries need rounding rules.
-
-### Movement
-
-Eight-direction movement is natural — diagonals along the X/Z axes feel "natural" because they correspond to game-world directions:
-
-- **Up arrow** → moves toward back corner (decreasing screen Y, but in world space a diagonal between -X and -Z).
-- **Left arrow** → moves left-screen, which in world space is "decrease X *and* increase Z".
-- Rotational input via four-way controllers mapping to world axes is its own design problem.
-
-## Notable games
-
-| Game | Year | Platform | Innovation |
-|------|------|----------|------------|
-| *Q*bert** | 1982 | Arcade | Early commercial isometric |
-| *Zaxxon* | 1982 | Arcade | Isometric shoot-em-up; popularised the look |
-| *Ant Attack* | 1983 | ZX Spectrum | One of the first 8-bit isometric games |
-| *Knight Lore* | 1984 | ZX Spectrum | Filmation engine; defined 8-bit isometric |
-| *Marble Madness* | 1984 | Arcade | Atari's isometric ball-rolling masterpiece |
-| *Alien 8* | 1985 | ZX Spectrum | Filmation engine refinement |
-| *Batman* | 1986 | ZX Spectrum | Jon Ritman and Bernie Drummond for Ocean; CRASH found it "viewed and played in the same fashion" as *Knight Lore* |
-| *Head Over Heels* | 1987 | ZX Spectrum, Commodore 64 | Two-character isometric puzzle; ZZAP! 64 Gold Medal for the C64 version |
-| *Solstice* | 1990 | NES | Late console-era isometric |
-| *Populous* | 1989 | Various | Bullfrog's god game popularised isometric on 16-bit |
+Other programmers followed quickly. [Jon Ritman](/vault/people/jon-ritman) and the artist [Bernie Drummond](/vault/people/bernie-drummond) wrote *Batman* for Ocean in 1986. *CRASH* thought "the Batcave's architects obviously worked on the castle in Knight Lore — the resemblance is striking — and the game is viewed and played in the same fashion", and gave it 93%. Their next game, *Head Over Heels* (1987), gave the player two characters with different abilities who could split up or ride one on top of the other. *CRASH* scored it 97%, and a reader's letter the following month complained that it was "almost a complete replica of Batman". By 1988 Brooker could look back on "the golden year of 1986", when "unimaginative clones" had threatened "to swamp all the review pages with their identical, and by then extremely boring, isometric screens".
 
 ## On the Commodore 64
 
-By the end of 1987 ZZAP! 64 had a settled name for the look. Its Christmas 1987 compilation round-up files *Strike Force Cobra* as "isometric forced perspective action", *Bobby Bearing* as a "3D isometric perspective arcade adventure with fabulous feel" and *The Great Escape* as an "isometric perspective wartime romp", and the same issue previews The Edge's *Inside Outing* as "a full colour *Fairlight* clone" with "fast isometric perspective 3D action".
+By the end of 1987 *[ZZAP!64](/vault/magazines/zzap-64)* had a settled name for the look. Its Christmas 1987 compilation round-up files *Strike Force Cobra* as "isometric forced perspective action", *Bobby Bearing* as a "3D isometric perspective arcade adventure with fabulous feel" and *The Great Escape* as an "isometric perspective wartime romp", and the same issue previews The Edge's *Inside Outing* as "a full colour *[Fairlight](/vault/games/fairlight)* clone" with "fast isometric perspective 3D action".
 
-The C64 version of Ocean's *Head Over Heels* (1987) took a ZZAP! Gold Medal. The magazine's description is the game's design in miniature: two spies "travelling about on each other's shoulders", where "Head can jump great heights and turn in mid air, while Heels is a flyer on the ground but not so good a jumper", working through "300 odd rooms" in which "seemingly innocuous floors are fatal to the touch and innocent-looking creatures turn nasty at the drop of a hat".
+The C64 version of *Head Over Heels* took a *ZZAP!* Gold Medal. The magazine's description is the game's design in miniature: two spies "travelling about on each other's shoulders", where "Head can jump great heights and turn in mid air, while Heels is a flyer on the ground but not so good a jumper", working through "300 odd rooms" in which "seemingly innocuous floors are fatal to the touch and innocent-looking creatures turn nasty at the drop of a hat".
 
-## Modern use
+## 16-bit landscapes
 
-Isometric persists in many genres:
+On the Amiga and Atari ST the view moved from rooms to whole worlds. Bullfrog's *Populous* (1989) drew a close-up of a landscape of raised and lowered blocks in an isometric view, with a flat map of the whole world beside it. *Amiga Power*'s review of *Populous II* in 1991 still described the main display as an "isometric 3D scrolling centre section".
 
-- **City builders:** *SimCity 2000* / 3000 / 4, *Tropico*, *Cities: Skylines* (modern uses true 3D but isometric-feeling camera).
-- **Tactical RPGs:** *Final Fantasy Tactics*, *Tactics Ogre*, *Disgaea*, *XCOM*.
-- **Action RPGs:** *Diablo* series, *Path of Exile*, *Torchlight*.
-- **Strategy:** *Civilization II / III* used true isometric; later moved to 3D-with-isometric-camera.
-- **Indie:** *Hades*, *Bastion*, *Transistor*, *Pyre* (Supergiant).
-- **Atmospheric / narrative:** *Disco Elysium*.
+The view has outlived the machines that made it necessary. In 2019 the magazine *Wireframe* showed its readers how to build an *Ant Attack*-style map in Python, starting at the top of the display and drawing cubes along diagonal lines, and its author, Mark Vanstone, noted that the isometric map "has since been used by countless titles".
+
+<Sources>
+
+- *Computer & Video Games*, issue 10, August 1982, p. 25: *Zaxxon* ("the frontier of a third dimension").
+- *Electronic Fun with Computers & Games*, vol. 1 no. 2, December 1982: *Zaxxon*'s shadows. *Electronic Games*, 1984 Software Encyclopedia: *Zaxxon*'s "diagonally-oriented playfields".
+- *Sinclair User*, issue 21, December 1983, p. 88: Sandy White and *Ant Attack* (softsolid, the 6502, Zaxxon, Mark Eyles, the four views).
+- *CRASH*, issue 51, April 1988: Will Brooker, "Run It Again!", on isometric games (*Ant Attack*, Filmation 2, the clones of 1986).
+- *CRASH*, issue 12, January 1985: *Knight Lore* review (one colour per room, masking).
+- *Your Spectrum*, issue 19, October 1985, p. 35: Dave Nicholls on how *Highway Encounter* works (two colours, masks, back-to-front drawing, the changed-squares buffer).
+- *Knight Lore* (BBC Micro) disassembly, Level 7 (web, secondary): axes, the screen buffer and its eight-pixel slices, the pairwise sort, unmasked scenery and masked objects, up to forty objects in a room. https://level7.org.uk/miscellany/knightlore-disassembly.txt
+- *CRASH*, issue 28, May 1986, pp. 120–121: *Batman* review, 93%.
+- *CRASH*, issue 40, May 1987, pp. 47 and 98: readers' letters on *Head Over Heels* and its 97% the previous month.
+- *ZZAP!64*, issue 28, August 1987, pp. 14–15: *Head Over Heels* (C64), Gold Medal.
+- *ZZAP!64*, issue 33, Christmas Special 1987, pp. 91–93 and 194: compilation round-up and *Inside Outing* preview.
+- Electronic Arts advertisement, *Computer Gaming World*, issue 32, November 1986: "Marble Madness ©1984, 1986 Atari Games Corporation and Electronic Arts". *Ahoy!*, issue 36, December 1986: the Amiga version.
+- *The One*, issue 7, April 1989, pp. 34–36: *Populous* review.
+- *Amiga Power*, issue 8, December 1991: *Populous II* review.
+- Mark Vanstone, "Make an isometric game map", *Wireframe*, issue 15, May 2019, p. 38.
+
+</Sources>
 
 ## See also
 
 - [Knight Lore](/vault/games/knight-lore)
-- [Filmation Engine](/vault/techniques/filmation-engine)
+- [Filmation engine](/vault/techniques/filmation-engine)
+- [Ant Attack](/vault/games/ant-attack)
 - [Head Over Heels](/vault/games/head-over-heels)
-- [Y-Depth Sorting](/vault/techniques/y-depth-sorting)
+- [Zaxxon](/vault/games/zaxxon)
 - [Ultimate Play the Game](/vault/companies/ultimate)
+- [Vortex Software](/vault/companies/vortex-software)
+- [Attribute-aware design](/vault/techniques/attribute-aware-design)
+- [Y-depth sorting](/vault/techniques/y-depth-sorting)
+- [Populous](/vault/games/populous)
