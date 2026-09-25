@@ -20,9 +20,22 @@ const entry = context && catalog.find(e => e.id === context.system || e.aliases.
 const relative = context && [context.system, context.language, context.module, `unit-${String(context.unit).padStart(2, '0')}`].join('/');
 const formats = entry?.media.split(',').map(f => f.trim()) ?? [];
 const files = entry && relative ? stagedLessonFiles(path.resolve('public/code-samples', relative), formats) : [];
+const run = files.at(-1);
 const platform = context ? await getPlatformBySlug(context.system) : undefined;
 const rule = platform ? whiteSafeFill(platform.data.color) : undefined;
-const captureSize = capture ? pngSize(new Uint8Array(fs.readFileSync(path.join('public', capture)))) : undefined;
+
+// The capture PNG is only read once the strip is actually going to render —
+// an entry and a staged runnable file both exist. Reading it any earlier
+// means a bad path throws on pages that would never have shown a strip.
+let captureSize: { width: number; height: number } | undefined;
+if (entry && run && capture) {
+  try {
+    captureSize = pngSize(new Uint8Array(fs.readFileSync(path.join('public', capture))));
+  } catch {
+    throw new Error(`RunIt: capture ${capture} on ${Astro.url.pathname} is not a readable PNG`);
+  }
+}
+
 const poster = entry ? posterFor(entry.id, platform?.data.shortName ?? entry.name) : null;
 // Ruling 1: the lesson's own capture is the frame the program actually runs
 // in, so it takes precedence over the family poster's native width (which
@@ -31,10 +44,9 @@ const machineWidth = captureSize?.width ?? (poster ? pngSize(new Uint8Array(fs.r
 const layout = stripLayout(captureSize?.width ?? 0);
 const variant = entry?.defaultVariant;
 const model = entry?.variants.find(v => v.id === variant)?.name ?? entry?.name;
-const run = files.at(-1);
 ---
 {entry && run && <section class={`runit runit--${capture ? layout : 'text'}`} style={rule ? `--runit-rule: ${rule}` : undefined} aria-label="Run this lesson's program">
-  {capture && captureSize && <img class="runit-capture" src={capture} alt="What the program should show" width={captureSize.width} height={captureSize.height} />}
+  {capture && captureSize && <div class="runit-capture-well"><img class="runit-capture" src={capture} alt="What the program should show" width={captureSize.width} height={captureSize.height} /></div>}
   <div class="runit-text">
     <h3>Run it here</h3>
     <p>{watch ?? "This unit's program, built for you."}</p>
@@ -42,23 +54,36 @@ const run = files.at(-1);
     <button type="button" class="runit-button" hidden
       data-run-src={`/code-samples/${relative}/${run}`} data-run-title={path.basename(run)}
       data-run-system={entry.id} data-run-variant={variant} data-run-width={machineWidth} data-run-model={model}>▶ Run it here</button>
+    <p class="runit-status" role="status" hidden></p>
     <p class="runit-downloads">{files.map(f => <a href={`/code-samples/${relative}/${f}`} download={path.basename(f)}>Download {path.basename(f)}</a>)}</p>
   </div>
   {caption && <p class="runit-caption">{caption}</p>}
 </section>}
 
 <script>
-  for (const button of document.querySelectorAll<HTMLButtonElement>('.runit-button')) {
-    button.hidden = false;
-    button.addEventListener('click', () => document.dispatchEvent(new CustomEvent('runit:open', { detail: { button } })));
+  // Astro's ClientRouter bundles this script once; it doesn't re-run on a
+  // soft navigation. Re-run the reveal-and-bind step on every page load —
+  // initial or soft — and guard each button so it's never bound twice.
+  function init() {
+    for (const button of document.querySelectorAll<HTMLButtonElement>('.runit-button:not([data-runit-bound])')) {
+      button.dataset.runitBound = 'true';
+      button.hidden = false;
+      button.addEventListener('click', () => document.dispatchEvent(new CustomEvent('runit:open', { detail: { button } })));
+    }
   }
+  init();
+  document.addEventListener('astro:page-load', init);
 </script>
 
 <style>
   .runit { border-top: 4px solid var(--runit-rule, var(--h-ink)); margin: var(--space-6) 0; padding-top: var(--space-4); display: grid; gap: var(--space-5); font-family: var(--font-family-sans); }
   .runit--beside { grid-template-columns: auto 1fr; align-items: start; }
-  .runit-capture { display: block; image-rendering: pixelated; max-width: none; }
-  .runit--above .runit-capture { overflow-x: auto; }
+  .runit-capture-well { overflow-x: auto; max-width: 100%; }
+  /* Higher specificity than `.unit-content :global(img)` (UnitLayout), which
+     otherwise frames every screenshot with a chunky border and shrinks it to
+     a fractional scale — never appropriate for a capture rendered as
+     evidence at 1×. */
+  .runit .runit-capture { display: block; image-rendering: pixelated; width: auto; max-width: none; border: 0; box-shadow: none; margin: 0; }
   .runit h3 { margin: 0 0 var(--space-1); font: 600 var(--h-text-lead) var(--font-family-sans); color: var(--h-ink); }
   .runit-text > p { margin: 0 0 var(--space-3); }
   .runit-facts { display: flex; flex-wrap: wrap; border-block: 1px solid var(--color-border); font-family: var(--font-family-mono); font-size: var(--h-text-small); margin: 0 0 var(--space-3); }
@@ -67,6 +92,7 @@ const run = files.at(-1);
   .runit-facts dt { font-size: var(--h-text-micro); text-transform: uppercase; letter-spacing: .06em; color: var(--h-ink-muted); }
   .runit-facts dd { margin: 2px 0 0; }
   .runit-button { font: 600 var(--h-text-body) var(--font-family-sans); background: var(--h-ink); color: var(--h-ground); border: 0; border-radius: 4px; padding: .7rem 1.2rem; min-height: 44px; cursor: pointer; }
+  .runit-status { font-family: var(--font-family-sans); font-size: var(--h-text-small); color: var(--h-ink-muted); margin: var(--space-2) 0 0; }
   .runit-downloads { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: var(--space-3) 0 0; }
   .runit-downloads a { display: inline-flex; align-items: center; min-height: 44px; }
   .runit-caption { grid-column: 1 / -1; font-family: var(--font-family-read); font-style: italic; color: var(--h-ink-muted); margin: 0; }
