@@ -1,0 +1,75 @@
+---
+/**
+ * The system-page stage: our own capture as a poster, a spec row, and Play,
+ * which swaps the poster for the live player at the same width. The player
+ * script loads only on Play. Spec §4.
+ */
+import catalog from '../../public/emulators/catalog.json';
+import PixelFrame from './PixelFrame.astro';
+import { posterFor } from '../lib/player-posters';
+import { whiteSafeFill } from '../lib/contrast';
+
+interface Props { system: string; name: string; color: string; facts: Array<{ label: string; value: string | number }> }
+const { system, name, color, facts } = Astro.props;
+const entry = catalog.find(e => e.id === system || e.aliases.includes(system));
+const poster = entry ? posterFor(entry.id, name) : null;
+const variant = entry?.variantAliases?.[system] ?? entry?.defaultVariant;
+const model = entry?.variants.find(v => v.id === variant)?.name;
+const needsFirmware = entry?.variants.find(v => v.id === variant)?.firmware.some(f => !f.optional) ?? true;
+const note = needsFirmware && !entry?.demo ? 'Needs your own ROM files · nothing is uploaded' : 'Runs a built-in demo · add your ROMs for the full machine';
+const rule = whiteSafeFill(color);
+---
+{entry && <div class="stage" data-system={entry.id} data-variant={variant} style={`--stage-rule: ${rule}`}>
+  <div class="stage-screen">
+    {poster
+      ? <PixelFrame src={poster.src} alt={`${name}: ${poster.caption}`} ceiling={poster.ceiling} rule={rule} />
+      : <div class="stage-empty" role="img" aria-label={`${name}, not started`}></div>}
+  </div>
+  <dl class="stage-facts">
+    {[...facts, ...(model ? [{ label: 'Model', value: model }] : [])].map(f => <div><dt>{f.label}</dt><dd>{f.value}</dd></div>)}
+  </dl>
+  <div class="stage-bar">
+    <button type="button" class="stage-play" hidden>▶ Play the {name}</button>
+    <span class="stage-note">{note}</span>
+  </div>
+  {poster && <p class="stage-caption">{poster.caption}</p>}
+  <p class="stage-desktop"><a href="https://emu198x.github.io/downloads/">Download Emu198x for desktop</a></p>
+</div>}
+
+<script>
+  for (const stage of document.querySelectorAll<HTMLElement>('.stage')) {
+    const play = stage.querySelector<HTMLButtonElement>('.stage-play')!;
+    play.hidden = false;
+    play.addEventListener('click', async () => {
+      play.disabled = true;
+      await import(/* @vite-ignore */ '/emulators/embed.js');
+      const screen = stage.querySelector<HTMLElement>('.stage-screen')!;
+      const well = screen.querySelector<HTMLElement>('.pf-well img');
+      const width = well?.getBoundingClientRect().width;
+      const player = document.createElement('emu198x-player');
+      player.setAttribute('system', stage.dataset.system!);
+      if (stage.dataset.variant) player.setAttribute('variant', stage.dataset.variant);
+      if (width) player.style.maxWidth = `${width}px`;
+      screen.replaceChildren(player);
+      stage.querySelector('.stage-bar')!.remove();
+      stage.querySelector('.stage-caption')?.remove();
+      player.focus();
+    });
+  }
+</script>
+
+<style>
+  .stage { font-family: var(--font-family-sans); }
+  .stage-empty { aspect-ratio: 4 / 3; width: min(100%, 704px); background: var(--h-ground-base); border-top: 4px solid var(--stage-rule); }
+  .stage-facts { display: flex; flex-wrap: wrap; margin: var(--space-4) 0 0; border-block: 1px solid var(--color-border); font-family: var(--font-family-mono); font-size: var(--h-text-small); color: var(--h-ink); }
+  .stage-facts div { padding: var(--space-2) var(--space-3); border-left: 1px solid var(--color-border); }
+  .stage-facts div:first-child { border-left: 0; padding-left: 0; }
+  .stage-facts dt { font-size: var(--h-text-micro); text-transform: uppercase; letter-spacing: .06em; color: var(--h-ink-muted); }
+  .stage-facts dd { margin: 2px 0 0; }
+  .stage-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); margin-top: var(--space-4); }
+  .stage-play { font: 600 var(--h-text-body) var(--font-family-sans); background: var(--h-ink); color: var(--h-ground); border: 0; border-radius: 4px; padding: .7rem 1.3rem; min-height: 44px; cursor: pointer; }
+  .stage-note { font-size: var(--h-text-small); color: var(--h-ink-muted); }
+  .stage-caption { font-family: var(--font-family-read); font-style: italic; color: var(--h-ink-muted); margin: var(--space-2) 0 0; }
+  .stage-desktop { font-size: var(--h-text-small); margin: var(--space-2) 0 0; }
+  .stage-desktop a { display: inline-flex; align-items: center; min-height: 44px; }
+</style>
