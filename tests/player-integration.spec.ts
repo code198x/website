@@ -2,7 +2,18 @@
 // loaded via a <script> tag (src/lib/load-player.ts), not import(), so no
 // A11Y_SWEEP/built-site workaround is needed. Run: npx playwright test tests/player-integration.spec.ts
 
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
+
+/**
+ * Follows a link by ClientRouter soft navigation and waits for the new page's
+ * astro:page-load. Without the wait, a locator can still match the old page's
+ * Run button while the new page is being fetched.
+ */
+async function softNavigate(page: Page, linkName: string) {
+  await page.evaluate(() => document.addEventListener('astro:page-load', () => { document.documentElement.dataset.softLoaded = 'true'; }, { once: true }));
+  await page.getByRole('link', { name: linkName }).click();
+  await page.waitForFunction(() => document.documentElement.dataset.softLoaded === 'true');
+}
 
 test.describe('system page stage', () => {
   test('loads no player script before Play, then swaps in the player', async ({ page }) => {
@@ -270,15 +281,35 @@ test.describe('a failed embed.js load', () => {
 test.describe('soft navigation (Astro ClientRouter)', () => {
   test('a lesson keeps Run it here working after Next Unit', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
-    // unit-02 itself stages no runnable file, so it shows no strip — the
-    // point is that the strip on the page it navigates to still works after
-    // a client-side transition, not that this starting page has one.
+    // The point is that the strip on the page it navigates to still works
+    // after a client-side transition.
     await page.goto('/systems/commodore-64/assembly/starfield/unit-02/');
-    await page.getByRole('link', { name: 'Next Unit' }).click();
+    await softNavigate(page, 'Next Unit');
     const run = page.getByRole('button', { name: 'Run it here' });
     await expect(run).toBeVisible();
     await run.click();
     await expect(page.locator('run-panel')).toBeVisible();
+  });
+
+  test('re-measures the breadcrumb bar after Next Unit, so it never covers Close', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/systems/commodore-64/assembly/starfield/unit-02/');
+    await softNavigate(page, 'Next Unit');
+    const run = page.getByRole('button', { name: 'Run it here' });
+    await expect(run).toBeVisible();
+    const bar = await page.locator('.breadcrumbs').evaluate(b => (b as HTMLElement).offsetHeight);
+    const crumbs = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--crumbs-height'));
+    expect(crumbs).toBe(`${bar}px`);
+    await run.click();
+    await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'docked');
+    await page.evaluate(() => scrollTo(0, 3000));
+    const close = page.locator('.rp-close');
+    await expect(close).toBeVisible();
+    const box = await close.boundingBox();
+    if (!box) throw new Error('Close button has no layout box');
+    const hitsClose = await page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.closest('.rp-close') != null,
+      { x: box.x + box.width / 2, y: box.y + 1 });
+    expect(hitsClose).toBe(true);
   });
 
   test('a system page reaches the Spectrum stage from the systems index', async ({ page }) => {
@@ -291,7 +322,7 @@ test.describe('soft navigation (Astro ClientRouter)', () => {
   test('leaves exactly one emu198x-player after one Run click between two strip pages', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/systems/commodore-amiga/assembly/meet-the-machine/unit-01/');
-    await page.getByRole('link', { name: 'Next Unit' }).click();
+    await softNavigate(page, 'Next Unit');
     await page.getByRole('button', { name: 'Run it here' }).click();
     await expect(page.locator('emu198x-player')).toHaveCount(1);
   });
