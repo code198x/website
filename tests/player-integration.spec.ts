@@ -33,8 +33,19 @@ test.describe('system page stage', () => {
   test('keeps route choice above the fold at 1440×900', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/systems/sinclair-zx-spectrum/');
-    const top = await page.locator('#routes').evaluate(h => h.getBoundingClientRect().top);
-    expect(top).toBeLessThan(900 + 200);
+    const bottom = await page.locator('.route-links').evaluate(l => l.getBoundingClientRect().bottom);
+    expect(bottom).toBeLessThanOrEqual(900);
+  });
+
+  test('Play swaps in a player the same width as the poster', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/systems/sinclair-zx-spectrum/');
+    const before = await page.locator('.stage .pf-well img').evaluate(i => i.getBoundingClientRect().width);
+    await page.getByRole('button', { name: /Play the/ }).click();
+    const player = page.locator('.stage emu198x-player');
+    await expect(player).toBeAttached();
+    // The player's own stylesheet makes it a block; until that applies it has no width.
+    await expect.poll(() => player.evaluate((p, w) => Math.abs(p.getBoundingClientRect().width - w), before)).toBeLessThanOrEqual(1);
   });
 
   test('has no Play button without JavaScript', async ({ browser }) => {
@@ -84,6 +95,8 @@ test.describe('lesson run panel', () => {
     await page.goto(c64);
     const run = page.getByRole('button', { name: 'Run it here' });
     await run.click();
+    // Esc while the player is still loading has nothing to close yet.
+    await expect(page.locator('.rp-close')).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.locator('run-panel')).toBeHidden();
     await expect(run).toBeFocused();
@@ -95,9 +108,26 @@ test.describe('lesson run panel', () => {
     await page.goto(c64);
     const run = page.getByRole('button', { name: 'Run it here' });
     await run.click();
-    await page.locator('.rp-close').click();
-    await run.click();
     await expect(page.locator('run-panel emu198x-player')).toHaveCount(1);
+    await page.locator('run-panel emu198x-player').evaluate(el => { (el as HTMLElement).dataset.mark = '1'; });
+    await page.locator('.rp-close').click();
+    // No lesson has two strips, so make a second one: a copy of the button
+    // pointing at another staged C64 program, bound the way a page load binds it.
+    await page.evaluate(() => {
+      const original = document.querySelector<HTMLButtonElement>('.runit-button')!;
+      const copy = original.cloneNode(true) as HTMLButtonElement;
+      delete copy.dataset.runitBound;
+      copy.classList.add('second-run');
+      copy.dataset.runSrc = '/code-samples/commodore-64/assembly/meet-the-machine/unit-01/border.prg';
+      copy.dataset.runTitle = 'border.prg';
+      original.after(copy);
+      document.dispatchEvent(new Event('astro:page-load'));
+    });
+    await page.locator('.second-run').click();
+    const player = page.locator('run-panel emu198x-player');
+    await expect(player).toHaveCount(1);
+    await expect(player).toHaveAttribute('src', /border\.prg$/);
+    await expect(player).not.toHaveAttribute('data-mark', '1');
   });
 
   test('never scrolls the page sideways on a phone', async ({ page }) => {
@@ -242,6 +272,7 @@ test.describe('a failed embed.js load', () => {
     await play.click();
     await expect(page.locator('.stage-status')).toHaveText(/couldn't load/);
     await expect(play).toBeEnabled();
+    await expect(play).not.toHaveAttribute('aria-busy', 'true');
   });
 
   test('a second Run after a failed load retries and succeeds', async ({ page }) => {
