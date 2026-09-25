@@ -12,12 +12,21 @@
 // carries OCR noise and name collisions; every flag needs a person.
 //
 //   node scripts/check-vault-dates.mjs [--min-gap 2] [--category games]
+//
+// The corpus is the reference library's search index. Set REFERENCE_CORPUS to
+// its path; by default it is looked for in a sibling `reference/` checkout of
+// the 198x umbrella.
 
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-const CORPUS = '/Users/stevehill/Projects/198x/reference/_tools/search.sqlite';
+const CORPUS = process.env.REFERENCE_CORPUS
+  || resolve(process.cwd(), '../../reference/_tools/search.sqlite');
+if (!existsSync(CORPUS)) {
+  console.error(`Reference corpus not found at ${CORPUS}. Set REFERENCE_CORPUS to its path.`);
+  process.exit(1);
+}
 const VAULT = 'src/content/vault';
 
 const args = process.argv.slice(2);
