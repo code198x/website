@@ -32,4 +32,9 @@ describe('legacySystemRedirects', () => {
     const redirected = modules.filter((m) => `/systems/${m}` in redirects);
     expect(redirected).toEqual([]);
   });
+
+  it('sends a planned game with no page to its track', () => {
+    expect(redirects['/systems/sinclair-zx-spectrum/assembly/lamplight']).toBe('/systems/sinclair-zx-spectrum/assembly');
+    expect(redirects['/commodore-64/assembly/platform-panic']).toBe('/systems/commodore-64/assembly');
+  });
 });

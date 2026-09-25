@@ -17,18 +17,21 @@
  * `**\/getting-started.mdx` under src/content/curriculum. If those globs change,
  * this must change with them, or old links start 404ing silently.
  *
- * A system module whose folder has an index.mdx but no unit pages is not built
- * (see src/pages/[...slug].astro). Its old root URL and its /systems/ URL both
- * redirect to the track page instead, so links to a planned game land somewhere
- * useful rather than on a 404.
+ * A planned game — a catalogue entry in src/content/modules with no lesson
+ * pages — has no page (see src/pages/[...slug].astro). Its old root URL and its
+ * /systems/ URL both redirect to the track page instead, so links to it land
+ * somewhere useful rather than on a 404. The catalogue, not a placeholder
+ * index.mdx, is what lists planned games.
  *
  * See decisions/website-information-architecture.md
  */
-import { readdirSync, statSync } from 'node:fs';
+import { existsSync, globSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
+import { load } from 'js-yaml';
 
 const CURRICULUM = './src/content/curriculum';
 const SYSTEMS = './src/content/systems';
+const MODULES = './src/content/modules';
 
 /** Cross-platform sections keep their shallower URLs and do not move. */
 const SECTIONS = new Set(['foundations', 'craft']);
@@ -71,6 +74,19 @@ export function legacySystemRedirects() {
       continue;
     }
     redirects[`/${url}`] = `/systems/${url}`;
+  }
+
+  for (const rel of globSync('**/*.yaml', { cwd: MODULES })) {
+    const data = load(readFileSync(path.join(MODULES, rel), 'utf8'));
+    if (!data?.platform || !data.track) continue;
+    const track = `${data.platform}/${data.track}`;
+    for (const { slug } of data.modules ?? []) {
+      const dir = path.join(CURRICULUM, track, slug);
+      const hasUnits = existsSync(dir) && readdirSync(dir).some((name) => /^unit-.+\.mdx$/.test(name));
+      if (hasUnits) continue;
+      redirects[`/${track}/${slug}`] = `/systems/${track}`;
+      redirects[`/systems/${track}/${slug}`] = `/systems/${track}`;
+    }
   }
 
   return redirects;
