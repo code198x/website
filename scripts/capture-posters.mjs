@@ -38,18 +38,27 @@ global.self=global;global.postMessage=(d,t)=>parentPort.postMessage(d,t);
 global.fetch=async i=>new Response(await readFile(new URL(i)),{headers:{'Content-Type':'application/wasm'}});
 import(workerData).then(()=>parentPort.on('message',data=>self.onmessage({data})));`;
 
+// Strip local absolute paths (the ROM root under the user's home, the cwd)
+// from an error message before it is logged, so a run's output stays safe
+// to paste into a PR or report.
+const sanitize = message => message.replaceAll(romRoot, '<roms>').replaceAll(process.cwd(), '.');
+
 for (const [family, entry] of Object.entries(entries)) {
   if (entry.kind === 'game' || (only.length && !only.includes(family))) continue;
-  const c = catalog.find(x => x.id === family);
-  const profile = profiles.find(p => p.family === c.family && p.id === (entry.variant ?? c.defaultVariant));
-  const { cases, missing } = fixtures([profile], romRoot);
-  if (missing.length) { console.log(`${family}: missing firmware, skipped`); continue; }
-  const t = cases[0];
-  const worker = new Worker(bootstrap, { eval: true, workerData: pathToFileURL(path.join(dist, 'worker.js')).href });
-  let serial = 0; const pending = new Map();
-  worker.on('message', ({ id, result, error }) => { const p = pending.get(id); if (!p) return; pending.delete(id); error ? p.reject(new Error(error)) : p.resolve(result); });
-  const rpc = (command, ...args) => new Promise((resolve, reject) => { const id = ++serial; pending.set(id, { resolve, reject }); worker.postMessage({ id, command, args }); });
+  let worker;
   try {
+    const c = catalog.find(x => x.id === family);
+    if (!c) { console.log(`${family}: not in the player catalogue`); continue; }
+    const variantId = entry.variant ?? c.defaultVariant;
+    const profile = profiles.find(p => p.family === c.family && p.id === variantId);
+    if (!profile) { console.log(`${family}: no profile for variant ${variantId}`); continue; }
+    const { cases, missing } = fixtures([profile], romRoot);
+    if (missing.length) { console.log(`${family}: missing firmware, skipped`); continue; }
+    const t = cases[0];
+    worker = new Worker(bootstrap, { eval: true, workerData: pathToFileURL(path.join(dist, 'worker.js')).href });
+    let serial = 0; const pending = new Map();
+    worker.on('message', ({ id, result, error }) => { const p = pending.get(id); if (!p) return; pending.delete(id); error ? p.reject(new Error(error)) : p.resolve(result); });
+    const rpc = (command, ...args) => new Promise((resolve, reject) => { const id = ++serial; pending.set(id, { resolve, reject }); worker.postMessage({ id, command, args }); });
     const roms = Object.fromEntries(Object.entries(t.firmware).filter(([, f]) => !f.includes('synthetic-firmware')).map(([k, f]) => [k, new Uint8Array(readFileSync(f))]));
     const media = entry.kind === 'demo'
       ? { slot: profile.slots.find(s => s.kind === 'Cartridge').id, bytes: new Uint8Array(readFileSync(path.join(dist, c.demo.url))) }
@@ -60,6 +69,9 @@ for (const [family, entry] of Object.entries(entries)) {
     mkdirSync(out, { recursive: true });
     writeFileSync(path.join(out, 'poster.png'), png(frame.width, frame.height, frame.pixels));
     console.log(`${family}: ${frame.width}×${frame.height} at frame ${entry.frame}`);
-  } catch (error) { console.log(`${family}: ${error.message}`); }
-  finally { await worker.terminate(); }
+  } catch (error) {
+    console.log(`${family}: ${sanitize(error.message)}`);
+  } finally {
+    if (worker) await worker.terminate();
+  }
 }
