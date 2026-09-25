@@ -198,6 +198,39 @@ test.describe('a failed embed.js load', () => {
     await expect(note).toHaveText(/couldn't load/);
     await expect(play).toBeEnabled();
   });
+
+  test('a second Run after a failed load retries and succeeds', async ({ page }) => {
+    let requests = 0;
+    await page.route('**/emulators/embed.js*', route => {
+      requests += 1;
+      if (requests === 1) return route.abort();
+      return route.continue();
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/systems/commodore-64/assembly/starfield/unit-03/');
+    const run = page.getByRole('button', { name: 'Run it here' });
+    await run.click();
+    await expect(page.locator('.runit-status')).toBeVisible();
+    await run.click();
+    await expect(page.locator('run-panel')).toBeVisible();
+    await expect(page.locator('run-panel emu198x-player')).toHaveCount(1);
+  });
+
+  test('a second Play after a failed load retries and succeeds', async ({ page }) => {
+    let requests = 0;
+    await page.route('**/emulators/embed.js*', route => {
+      requests += 1;
+      if (requests === 1) return route.abort();
+      return route.continue();
+    });
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/systems/sinclair-zx-spectrum/');
+    const play = page.getByRole('button', { name: /Play the/ });
+    await play.click();
+    await expect(page.locator('.stage-note')).toHaveText(/couldn't load/);
+    await play.click();
+    await expect(page.locator('.stage emu198x-player')).toBeAttached();
+  });
 });
 
 test.describe('soft navigation (Astro ClientRouter)', () => {
