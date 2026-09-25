@@ -159,6 +159,34 @@ test.describe('lesson run panel', () => {
       await expect(panel).toHaveAttribute('aria-modal', 'true');
       await expect(panel).toHaveAttribute('aria-label', /^Run /);
     });
+
+    test('an overlay panel makes the page it covers inert, and closing restores it', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto(amiga);
+      await page.getByRole('button', { name: 'Run it here' }).click();
+      await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'overlay');
+      for (const selector of ['.unit-content', '.unit-sidebar', '.unit-navigation', 'footer.footer']) {
+        await expect(page.locator(selector), selector).toHaveJSProperty('inert', true);
+      }
+      await expect(page.locator('nav.nav')).toHaveJSProperty('inert', false);
+      await expect(page.locator('nav.breadcrumbs')).toHaveJSProperty('inert', false);
+      for (let i = 0; i < 8; i++) {
+        await page.keyboard.press('Tab');
+        const inProse = await page.evaluate(() => document.activeElement?.closest('.unit-content, .unit-sidebar, footer') != null);
+        expect(inProse).toBe(false);
+      }
+      await page.locator('.rp-close').click();
+      await expect(page.locator('[inert]')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Run it here' })).toBeFocused();
+    });
+
+    test('a docked panel leaves the page usable', async ({ page }) => {
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await page.goto(c64);
+      await page.getByRole('button', { name: 'Run it here' }).click();
+      await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'docked');
+      await expect(page.locator('[inert]')).toHaveCount(0);
+    });
   });
 });
 

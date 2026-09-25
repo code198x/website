@@ -26,6 +26,10 @@ const { rule } = Astro.props;
     opener: HTMLElement | null = null;
     width = 416;
     controller?: AbortController;
+    /** True from the start of a load until it settles; further opens wait. */
+    loading = false;
+    /** Page content this panel made inert while it covers the page. */
+    covered: HTMLElement[] = [];
 
     connectedCallback() {
       // Fresh listeners per connection, torn down in disconnectedCallback —
@@ -45,6 +49,7 @@ const { rule } = Astro.props;
 
     disconnectedCallback() {
       this.controller?.abort();
+      this.uncover();
     }
 
     async open(button: HTMLElement) {
@@ -115,14 +120,42 @@ const { rule } = Astro.props;
       if (mode === 'docked') {
         this.setAttribute('role', 'region');
         this.removeAttribute('aria-modal');
+        this.uncover();
       } else {
         this.setAttribute('role', 'dialog');
         this.setAttribute('aria-modal', 'true');
+        this.cover();
       }
+    }
+
+    /**
+     * Makes everything the overlay or fullscreen panel covers inert, so Tab
+     * and screen readers stay inside it. Walks up from the panel, taking each
+     * ancestor's other children. The site nav and breadcrumb bar stay usable:
+     * the panel starts below them.
+     */
+    cover() {
+      if (this.covered.length) return;
+      let node: HTMLElement = this;
+      while (node !== document.body && node.parentElement) {
+        for (const sibling of node.parentElement.children) {
+          if (sibling === node || !(sibling instanceof HTMLElement) || sibling.inert) continue;
+          if (sibling.matches('.nav, .breadcrumbs, script, style')) continue;
+          sibling.inert = true;
+          this.covered.push(sibling);
+        }
+        node = node.parentElement;
+      }
+    }
+
+    uncover() {
+      for (const element of this.covered) element.inert = false;
+      this.covered = [];
     }
 
     close() {
       (this.querySelector('emu198x-player') as (HTMLElement & { pause?: () => void }) | null)?.pause?.();
+      this.uncover();
       this.hidden = true;
       (this.closest('.unit-layout') as HTMLElement).classList.remove('is-docked');
       this.opener?.focus();
