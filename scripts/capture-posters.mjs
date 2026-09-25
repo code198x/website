@@ -14,15 +14,29 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { load } from 'js-yaml';
 
-const romRoot = process.env.POSTER_ROM_ROOT;
+if (!process.env.POSTER_ROM_ROOT || !process.env.EMU198X_REPO) { console.error('Set POSTER_ROM_ROOT and EMU198X_REPO.'); process.exit(1); }
+// Resolved first, so the sanitiser below matches the absolute path that
+// error messages actually carry, even when the variable was set relatively.
+const romRoot = path.resolve(process.env.POSTER_ROM_ROOT);
 const repo = process.env.EMU198X_REPO;
-if (!romRoot || !repo) { console.error('Set POSTER_ROM_ROOT and EMU198X_REPO.'); process.exit(1); }
+
+// Strip local absolute paths (the ROM root under the user's home, the cwd)
+// from an error message before it is logged, so a run's output stays safe
+// to paste into a PR or report.
+const sanitize = message => String(message).replaceAll(romRoot, '<roms>').replaceAll(process.cwd(), '.');
+
 const dist = path.resolve('public/emulators');
 const only = process.argv.slice(2);
 const entries = load(readFileSync('src/data/player-posters.yaml', 'utf8'));
 const catalog = JSON.parse(readFileSync(path.join(dist, 'catalog.json'), 'utf8'));
-const profiles = JSON.parse(execFileSync('cargo', ['run', '--quiet', '--release', '-p', 'emu198x-fleet-web', '--features', 'all-families', '--bin', 'fleet-catalogue'], { cwd: repo, encoding: 'utf8', maxBuffer: 8e6, env: { ...process.env, RUSTUP_TOOLCHAIN: undefined } }));
-const { fixtures } = await import(pathToFileURL(path.join(repo, 'web-player/fixtures.mjs')).href);
+let profiles, fixtures;
+try {
+  profiles = JSON.parse(execFileSync('cargo', ['run', '--quiet', '--release', '-p', 'emu198x-fleet-web', '--features', 'all-families', '--bin', 'fleet-catalogue'], { cwd: repo, encoding: 'utf8', maxBuffer: 8e6, env: { ...process.env, RUSTUP_TOOLCHAIN: undefined } }));
+  ({ fixtures } = await import(pathToFileURL(path.join(repo, 'web-player/fixtures.mjs')).href));
+} catch (error) {
+  console.error(`Setup failed: ${sanitize(error?.message ?? error)}`);
+  process.exit(1);
+}
 
 function png(w, h, rgba) {
   const crc = b => { let c = ~0; for (const x of b) { c ^= x; for (let k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xedb88320 : c >>> 1; } return ~c >>> 0; };
@@ -37,11 +51,6 @@ const bootstrap = `const {parentPort,workerData}=require('node:worker_threads');
 global.self=global;global.postMessage=(d,t)=>parentPort.postMessage(d,t);
 global.fetch=async i=>new Response(await readFile(new URL(i)),{headers:{'Content-Type':'application/wasm'}});
 import(workerData).then(()=>parentPort.on('message',data=>self.onmessage({data})));`;
-
-// Strip local absolute paths (the ROM root under the user's home, the cwd)
-// from an error message before it is logged, so a run's output stays safe
-// to paste into a PR or report.
-const sanitize = message => message.replaceAll(romRoot, '<roms>').replaceAll(process.cwd(), '.');
 
 for (const [family, entry] of Object.entries(entries)) {
   if (entry.kind === 'game' || (only.length && !only.includes(family))) continue;
