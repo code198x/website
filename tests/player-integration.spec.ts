@@ -227,9 +227,9 @@ test.describe('a failed embed.js load', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/systems/sinclair-zx-spectrum/');
     const play = page.getByRole('button', { name: /Play the/ });
+    await expect(page.locator('.stage-status')).toHaveAttribute('role', 'status');
     await play.click();
-    const note = page.locator('.stage-note');
-    await expect(note).toHaveText(/couldn't load/);
+    await expect(page.locator('.stage-status')).toHaveText(/couldn't load/);
     await expect(play).toBeEnabled();
   });
 
@@ -261,7 +261,7 @@ test.describe('a failed embed.js load', () => {
     await page.goto('/systems/sinclair-zx-spectrum/');
     const play = page.getByRole('button', { name: /Play the/ });
     await play.click();
-    await expect(page.locator('.stage-note')).toHaveText(/couldn't load/);
+    await expect(page.locator('.stage-status')).toHaveText(/couldn't load/);
     await play.click();
     await expect(page.locator('.stage emu198x-player')).toBeAttached();
   });
