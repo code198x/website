@@ -45,14 +45,15 @@ The player moves into the page hero as a **stage** that starts as our own captur
 
 - A 4px rule in the machine's contrast-adjusted colour across the top of the stage.
 - The **poster**: our capture, rendered by `PixelFrame` (section 6) at the largest integer scale that fits, with no border and no shadow. A poster whose native width is 416px or narrower has a ceiling of 2×; a wider poster defaults to a ceiling of 1×, so the Amstrad CPC, BBC Micro, Electron and Dragon render at 1×. A `ceiling` field in `player-posters.yaml` overrides the default for any family, narrow or wide. The stage's own width is the poster's native width times its ceiling, exposed as the `--stage-max` custom property so the hero column and the Play swap size to it.
-- A **spec row** under the poster: a mono definition list ruled above and below (released, CPU, model, and for curriculum machines memory, display and sound), taken from the system's data file.
+- A **spec row** under the poster: a mono definition list ruled above and below showing released, CPU and model, taken from the system's data file and the player catalogue.
 - A **Play** button in house ink (`--h-ink` on `--h-ground`), "▶ Play the ZX Spectrum", and beside it one line in `--h-ink-muted`:
-  - firmware families: "Needs your own ROM files · nothing is uploaded";
-  - demo families: "Runs a built-in demo · add your ROMs for the full machine".
+  - families whose default model needs firmware and that have no demo: "Needs your own ROM files · nothing is uploaded";
+  - families with a demo: "Runs a built-in demo · add your ROMs for the full machine";
+  - families with no demo whose default model's firmware is all optional (the Atari 800XL): "Runs without ROM files · add yours for the original firmware".
 - An italic Literata caption saying what the poster shows, for example "Meteor Storm, from the Z80 assembly track, on a 48K Spectrum."
 - The "Download Emu198x for desktop" link, under the button.
 
-**After Play**, the poster is replaced by `<emu198x-player>` at the same width, so nothing jumps. The player script is not on the page until this moment: pressing Play injects a `<script type="module" src="/emulators/embed.js">` (`src/lib/load-player.ts`), which every stage and run panel on the page shares once it resolves. If the script fails to load or times out, the note beside Play is replaced by a status message ("The player couldn't load. Check your connection and try again.") and Play can be pressed again to retry. Firmware selection then happens as it does today. The player's Firmware, Save & resume, Controls, Preferences and Report sections stay collapsed below its screen.
+**After Play**, the poster is replaced by `<emu198x-player>` at the same width, so nothing jumps. The player script is not on the page until this moment: pressing Play injects a `<script type="module" src="/emulators/embed.js">` (`src/lib/load-player.ts`), which every stage and run panel on the page shares once it resolves. If the script fails to load or times out, a status message appears beside the note ("The player couldn't load. Check your connection and try again.") and Play can be pressed again to retry. Firmware selection then happens as it does today. The player's Firmware, Save & resume, Controls, Preferences and Report sections stay collapsed below its screen.
 
 ### 4.2 Placement
 
@@ -72,7 +73,7 @@ The player moves into the page hero as a **stage** that starts as our own captur
 
 Captions say plainly what a poster is. A demo frame says it is a test cartridge we wrote ("A test cartridge we wrote, running on the Game Gear"), not a game. No family borrows another family's image. Until a family's poster exists, its stage shows an empty frame at the machine's aspect ratio in `--h-ground-base`, with the same button and note.
 
-Known poster work, 2026-09-25: a prototype run captured all 30 families through the shipped worker. The VIC-20 frame is off-centre and clips its 22nd column on NTSC, filed as emu198x/emu198x#1536; its poster waits for that fix. The Atari 800XL needs about 1,000 frames to reach READY. The Aquarius BIOS blanks its screen in cycles, so its poster must be a fixed frame in a title phase (frame 200).
+Known poster work, 2026-09-25: a prototype run captured all 30 families through the shipped worker. The VIC-20 poster was captured after emu198x/emu198x#1537 fixed an off-centre NTSC frame that clipped its 22nd column (emu198x/emu198x#1536). The Atari 800XL needs about 1,000 frames to reach READY. The Aquarius BIOS blanks its screen in cycles, so its poster must be a fixed frame in a title phase (frame 200).
 
 ## 5. Lessons
 
@@ -94,7 +95,7 @@ The inline `AssembleAndRun` sandboxes (Meet Assembly and similar) are editors, n
 **Run it here** opens the lesson's single **run panel** (`RunPanel`, one per page):
 
 - **Docked:** at widths where it fits (section 5.3), the panel takes the lesson's right column and sticks as the reader scrolls, as a labelled region (`role="region"`) of the page. The prose narrows, and the contents list steps aside until the panel closes.
-- **Overlay:** where it does not fit, the panel slides over the prose from the right, below 768px full-screen. Overlay and fullscreen both start below the sticky nav and the breadcrumb bar rather than under them, and both are dialogs (`role="dialog"`, `aria-modal="true"`), since they cover the prose.
+- **Overlay:** where it does not fit, the panel slides over the prose from the right, below 768px fullscreen. Overlay and fullscreen both start below the sticky nav and the breadcrumb bar rather than under them, and both are dialogs (`role="dialog"`, `aria-modal="true"`), since they cover the prose. While either is open, the page content it covers is inert; the nav and breadcrumb bar stay usable.
 - **Contents:** a title line (program name; machine and model), a **Close** button, the player's screen at 1×, the player's own controls, and its collapsed sections. An empty inspector area is reserved under the controls for project 2, so adding the inspector later does not reshuffle the layout.
 - **Behaviour:**
   - One panel per page. A second **Run it here** replaces the running program rather than opening another panel.
@@ -140,7 +141,7 @@ This spec takes precedence where the two overlap, and the House UI spec is amend
 All from the website repo. Report skipped or blocked checks accurately.
 
 1. `npm run build` and the unit tests pass. New unit tests cover: the integer-scale choice; the docked-or-overlay rule; no staged file, no strip; every catalogue family has a `player-posters.yaml` entry whose file exists. The build gate `node scripts/check-browser-player.mjs --built` checks every system stage and every lesson's run strip, and fails outright if it finds no strips to check, rather than passing vacuously.
-2. The Playwright suite `tests/player-integration.spec.ts` runs under the default dev server: `npx playwright test tests/player-integration.spec.ts`. Screenshots at 390, 1024, 1440 and 1920px, both themes, of: the Spectrum system page, the VIC-20 system page, a Spectrum lesson and an Amiga lesson. Look at them. Measure rendered capture widths against native widths (integer multiples only) and confirm no horizontal page scroll at 390px.
+2. The Playwright suite `tests/player-integration.spec.ts` runs under the default dev server: `npx playwright test tests/player-integration.spec.ts`. It is not part of CI; the build gate in item 1 is. Screenshots at 390, 1024, 1440 and 1920px, both themes, of: the Spectrum system page, the VIC-20 system page, the C64 Starfield unit 3 lesson and the Amiga Meet the Machine unit 2 lesson. No published Spectrum lesson has a run strip yet: only Meet the Machine unit 1 stages a program, and it keeps its permissioned `<Emulator>` (`inlinePlayer: true`). Look at them. Measure rendered capture widths against native widths (integer multiples only) and confirm no horizontal page scroll at 390px.
 3. Behaviour, in a browser:
    - Play swaps in the player at the same size.
    - No request for `embed.js` happens before Play.
@@ -164,6 +165,6 @@ The inspector gets its own spec. This spec only reserves its place in the panel.
 ## 10. Open questions
 
 - **Spectrum posters on the system page** use a game frame, while the Vault entry (House UI §5.4) uses the boot screen. Both are ours; the House UI review can confirm the split.
-- **VIC-20 poster** waits on emu198x/emu198x#1536.
+- **Deferred — memory, display and sound in the spec row.** Section 4.1 originally added memory, display and sound to the spec row for the four curriculum machines. Their system files hold no sourced values for these yet, so the row shows released, CPU and model until that data exists.
 - **Deviation — panel title has no running/paused state.** Section 5.2 originally called for a running/paused state in the panel's title line. The shared player exposes no state API to read that from, so the built panel's title line carries only the program name, machine and model. Adding it needs an Emu198x change, tracked as follow-up work rather than blocking this rollout.
 - **Deviation — the run strip links built files only.** Section 5.1 originally called for download links to both the built files and the source. Lesson sources are not staged under `public/` (only built output is), so there is nothing on the site for a source link to point at yet. Staging sources is a separate decision about what the site publishes, not settled here.
