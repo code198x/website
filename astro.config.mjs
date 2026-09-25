@@ -83,6 +83,8 @@ export default defineConfig({
     '/vault/culture/type-in-programs': '/vault/distribution/type-in-listings',
     // Renamed: the slug named the publisher, not the game (Batman: The Movie, 1989).
     '/vault/games/batman-ocean': '/vault/games/batman-the-movie',
+    // Renamed: the slug misspelt his surname (Voja Antonić, Galaksija's designer).
+    '/vault/people/voja-antonovic': '/vault/people/voja-antonic',
     '/vault/phenomena/video-game-crash': '/vault/phenomena/1983-crash',
     // Duplicate entries merged 2026-08-25: each game had two pages differing
     // only in slug punctuation, both AI-drafted and unreviewed.
