@@ -1,0 +1,84 @@
+---
+/**
+ * The lesson's single run panel (spec §5.2). Docks in the right column when
+ * the prose keeps 600px, overlays otherwise, fullscreen below 768px. Closing
+ * pauses the machine: the player has no public resume, so the reader resumes
+ * with its own Resume button. A new program replaces the element.
+ */
+interface Props { rule?: string }
+const { rule } = Astro.props;
+---
+<run-panel hidden style={rule ? `--runit-rule: ${rule}` : undefined}>
+  <div class="rp-head">
+    <div><strong class="rp-title"></strong><br><span class="rp-model"></span></div>
+    <button type="button" class="rp-close">Close <span aria-hidden="true">✕</span></button>
+  </div>
+  <div class="rp-screen"></div>
+  <div class="rp-inspector" hidden></div>
+</run-panel>
+
+<script>
+  import { panelMode } from '../lib/player-layout';
+
+  class RunPanel extends HTMLElement {
+    opener: HTMLElement | null = null;
+    width = 416;
+    connectedCallback() {
+      document.addEventListener('runit:open', e => this.open((e as CustomEvent).detail.button));
+      this.querySelector('.rp-close')!.addEventListener('click', () => this.close());
+      document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape' || this.hidden) return;
+        if (document.activeElement?.tagName === 'EMU198X-PLAYER') return; // Esc is a machine key there
+        this.close();
+      });
+      addEventListener('resize', () => { if (!this.hidden) this.place(); });
+    }
+    async open(button: HTMLElement) {
+      this.opener = button;
+      const d = button.dataset;
+      this.width = Number(d.runWidth) || 416;
+      await import(/* @vite-ignore */ '/emulators/embed.js');
+      const player = document.createElement('emu198x-player');
+      player.setAttribute('system', d.runSystem!);
+      if (d.runVariant) player.setAttribute('variant', d.runVariant);
+      player.setAttribute('src', d.runSrc!);
+      player.setAttribute('example-title', d.runTitle!);
+      this.querySelector('.rp-screen')!.replaceChildren(player);
+      this.querySelector('.rp-title')!.textContent = d.runTitle!;
+      this.querySelector('.rp-model')!.textContent = d.runModel ?? '';
+      this.hidden = false;
+      this.place();
+      (this.querySelector('.rp-close') as HTMLElement).focus();
+    }
+    place() {
+      const layout = this.closest('.unit-layout') as HTMLElement;
+      const gap = parseFloat(getComputedStyle(layout).columnGap) || 40;
+      const mode = panelMode({ viewportWidth: innerWidth, containerWidth: layout.clientWidth, panelWidth: this.width, gap });
+      this.dataset.mode = mode;
+      layout.classList.toggle('is-docked', mode === 'docked');
+      layout.style.setProperty('--panel-width', `${this.width}px`);
+    }
+    close() {
+      (this.querySelector('emu198x-player') as (HTMLElement & { pause?: () => void }) | null)?.pause?.();
+      this.hidden = true;
+      (this.closest('.unit-layout') as HTMLElement).classList.remove('is-docked');
+      this.opener?.focus();
+    }
+  }
+  if (!customElements.get('run-panel')) customElements.define('run-panel', RunPanel);
+</script>
+
+<style is:global>
+  run-panel { display: block; background: var(--h-ground); font-family: var(--font-family-sans); }
+  run-panel[hidden] { display: none; }
+  run-panel .rp-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4); border-top: 4px solid var(--runit-rule, var(--h-ink)); padding: var(--space-3) 0; }
+  run-panel .rp-model { font-family: var(--font-family-mono); font-size: var(--h-text-small); color: var(--h-ink-muted); }
+  run-panel .rp-close { font: var(--h-text-small) var(--font-family-sans); background: none; border: 1px solid var(--color-border); border-radius: 4px; padding: .4rem .7rem; min-height: 44px; color: var(--h-ink); cursor: pointer; }
+  run-panel[data-mode='docked'] { position: sticky; top: var(--space-4); align-self: start; order: 3; }
+  run-panel[data-mode='overlay'] { position: fixed; inset: 0 0 0 auto; width: min(100vw, calc(var(--panel-width) + 2 * var(--space-5))); padding: 0 var(--space-5); overflow-y: auto; box-shadow: -12px 0 32px -16px rgb(0 0 0 / .45); z-index: 50; }
+  run-panel[data-mode='fullscreen'] { position: fixed; inset: 0; padding: 0 var(--space-4); overflow-y: auto; z-index: 50; }
+  @media (prefers-reduced-motion: no-preference) {
+    run-panel[data-mode='overlay'] { animation: rp-in 160ms var(--h-ease); }
+    @keyframes rp-in { from { transform: translateX(24px); opacity: 0; } }
+  }
+</style>
