@@ -16,9 +16,11 @@ describe('player posters', () => {
     const entries = posterEntries();
     expect(entries['acorn-atom'].caption).toBeUndefined();
     const p = posterFor('acorn-atom', 'Acorn Atom');
-    if (p) expect(p.caption).toBe('The Acorn Atom switched on, running its own firmware in our emulator.');
+    expect(p).not.toBeNull();
+    expect(p!.caption).toBe('The Acorn Atom switched on, running its own firmware in our emulator.');
     const d = posterFor('sega-game-gear', 'Sega Game Gear');
-    if (d) expect(d.caption).toBe('A test cartridge we wrote, running on the Sega Game Gear.');
+    expect(d).not.toBeNull();
+    expect(d!.caption).toBe('A test cartridge we wrote, running on the Sega Game Gear.');
   });
 
   it('returns null for an unknown family rather than a broken image', () => {
