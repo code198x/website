@@ -67,13 +67,23 @@ if(process.argv.includes('--built')) {
    if(item.isDirectory()){inspect(file);continue;}
    if(item.name!=='index.html')continue;
    const html=readFileSync(file,'utf8');
-   if(!html.includes('class="lesson-player"'))continue;
+   // RunIt.astro (spec §5.1) renders the run strip's button server-side, with
+   // the staged program's path in `data-run-src`; the `<emu198x-player>`
+   // itself is only ever created client-side, on click, so it never appears
+   // in the built HTML — checking for it here (as the removed LessonPlayer's
+   // `class="lesson-player"` marker did) verified nothing.
+   const buttons=html.match(/<button[^>]*class="runit-button"[^>]*>/g) || [];
+   if(!buttons.length)continue;
    lessons++;
-   for(const [,src] of html.matchAll(/<emu198x-player[^>]*src="([^" ]+)"/g)) {
+   for(const tag of buttons) {
+    const match=tag.match(/data-run-src="([^"]+)"/);
+    if(!match)throw new Error(`runit-button missing data-run-src in ${file}`);
+    const src=match[1];
     if(!src.startsWith('/code-samples/') || !existsSync(new URL(src.slice(1),site)))throw new Error(`Missing lesson media: ${src}`);
    }
   }
  }
  inspect(new URL('systems/',site));
+ if(lessons===0)throw new Error('No lesson run strips found; the gate would verify nothing.');
  console.log(`${lessons} lesson pages checked for runnable media.`);
 }
