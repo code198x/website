@@ -3,7 +3,8 @@
  * The lesson's single run panel (spec §5.2). Docks in the right column when
  * the prose keeps 600px, overlays otherwise, fullscreen below 768px. Closing
  * pauses the machine: the player has no public resume, so the reader resumes
- * with its own Resume button. A new program replaces the element.
+ * with its own Resume button. A new program replaces the element; the same
+ * program reuses the one already loaded rather than rebooting the machine.
  */
 interface Props { rule?: string }
 const { rule } = Astro.props;
@@ -23,41 +24,99 @@ const { rule } = Astro.props;
   class RunPanel extends HTMLElement {
     opener: HTMLElement | null = null;
     width = 416;
+    controller?: AbortController;
+
     connectedCallback() {
-      document.addEventListener('runit:open', e => this.open((e as CustomEvent).detail.button));
-      this.querySelector('.rp-close')!.addEventListener('click', () => this.close());
+      // Fresh listeners per connection, torn down in disconnectedCallback —
+      // otherwise a panel detached by a soft navigation keeps reacting to
+      // document/window events fired for whichever page replaced it.
+      this.controller = new AbortController();
+      const { signal } = this.controller;
+      document.addEventListener('runit:open', e => this.open((e as CustomEvent).detail.button), { signal });
+      this.querySelector('.rp-close')!.addEventListener('click', () => this.close(), { signal });
       document.addEventListener('keydown', e => {
         if (e.key !== 'Escape' || this.hidden) return;
         if (document.activeElement?.tagName === 'EMU198X-PLAYER') return; // Esc is a machine key there
         this.close();
-      });
-      addEventListener('resize', () => { if (!this.hidden) this.place(); });
+      }, { signal });
+      addEventListener('resize', () => { if (!this.hidden) this.place(); }, { signal });
     }
+
+    disconnectedCallback() {
+      this.controller?.abort();
+    }
+
     async open(button: HTMLElement) {
       this.opener = button;
       const d = button.dataset;
       this.width = Number(d.runWidth) || 416;
-      await import(/* @vite-ignore */ '/emulators/embed.js');
+      const status = button.closest('.runit')?.querySelector<HTMLElement>('.runit-status');
+
+      const existing = this.querySelector('emu198x-player');
+      if (existing && existing.getAttribute('src') === d.runSrc) {
+        // Same program already loaded: reuse it instead of rebooting the
+        // machine. The player has no public resume, so the reader presses
+        // its own Resume once the panel is visible again.
+        this.reveal(d);
+        return;
+      }
+
+      try {
+        await import(/* @vite-ignore */ '/emulators/embed.js');
+      } catch {
+        if (status) {
+          status.hidden = false;
+          status.textContent = "The player couldn't load. Check your connection and try again.";
+        }
+        return;
+      }
+      if (status) status.hidden = true;
+
       const player = document.createElement('emu198x-player');
       player.setAttribute('system', d.runSystem!);
       if (d.runVariant) player.setAttribute('variant', d.runVariant);
       player.setAttribute('src', d.runSrc!);
       player.setAttribute('example-title', d.runTitle!);
       this.querySelector('.rp-screen')!.replaceChildren(player);
+      this.reveal(d);
+    }
+
+    reveal(d: DOMStringMap) {
       this.querySelector('.rp-title')!.textContent = d.runTitle!;
       this.querySelector('.rp-model')!.textContent = d.runModel ?? '';
       this.hidden = false;
       this.place();
       (this.querySelector('.rp-close') as HTMLElement).focus();
     }
+
     place() {
       const layout = this.closest('.unit-layout') as HTMLElement;
+      // columnGap only resolves to the real grid gap once the layout is
+      // actually a grid — before the first placement it's still the block
+      // layout, so `columnGap` reads 'normal'. Measure as if docked (it
+      // doesn't change the layout's own outer width) so the gap used in the
+      // decision matches the gap the docked grid will actually use.
+      layout.classList.add('is-docked');
       const gap = parseFloat(getComputedStyle(layout).columnGap) || 40;
-      const mode = panelMode({ viewportWidth: innerWidth, containerWidth: layout.clientWidth, panelWidth: this.width, gap });
+      const containerWidth = layout.clientWidth;
+      const mode = panelMode({ viewportWidth: innerWidth, containerWidth, panelWidth: this.width, gap });
       this.dataset.mode = mode;
       layout.classList.toggle('is-docked', mode === 'docked');
       layout.style.setProperty('--panel-width', `${this.width}px`);
+
+      // Docked, the panel sits in its own labelled region of the page.
+      // Overlaid or fullscreen it covers the prose, so it's a dialog.
+      const program = this.querySelector('.rp-title')!.textContent || '';
+      this.setAttribute('aria-label', `Run ${program}`);
+      if (mode === 'docked') {
+        this.setAttribute('role', 'region');
+        this.removeAttribute('aria-modal');
+      } else {
+        this.setAttribute('role', 'dialog');
+        this.setAttribute('aria-modal', 'true');
+      }
     }
+
     close() {
       (this.querySelector('emu198x-player') as (HTMLElement & { pause?: () => void }) | null)?.pause?.();
       this.hidden = true;
@@ -74,9 +133,46 @@ const { rule } = Astro.props;
   run-panel .rp-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4); border-top: 4px solid var(--runit-rule, var(--h-ink)); padding: var(--space-3) 0; }
   run-panel .rp-model { font-family: var(--font-family-mono); font-size: var(--h-text-small); color: var(--h-ink-muted); }
   run-panel .rp-close { font: var(--h-text-small) var(--font-family-sans); background: none; border: 1px solid var(--color-border); border-radius: 4px; padding: .4rem .7rem; min-height: 44px; color: var(--h-ink); cursor: pointer; }
-  run-panel[data-mode='docked'] { position: sticky; top: var(--space-4); align-self: start; order: 3; }
-  run-panel[data-mode='overlay'] { position: fixed; inset: 0 0 0 auto; width: min(100vw, calc(var(--panel-width) + 2 * var(--space-5))); padding: 0 var(--space-5); overflow-y: auto; box-shadow: -12px 0 32px -16px rgb(0 0 0 / .45); z-index: 50; }
-  run-panel[data-mode='fullscreen'] { position: fixed; inset: 0; padding: 0 var(--space-4); overflow-y: auto; z-index: 50; }
+
+  /* The docked panel sticks below the site nav and the breadcrumb bar
+     (TableOfContents.astro uses the same offset) and scrolls internally once
+     it's taller than the space left under them. */
+  run-panel[data-mode='docked'] {
+    position: sticky;
+    top: calc(var(--nav-height) + var(--crumbs-height, 0px) + var(--space-4));
+    max-height: calc(100vh - (var(--nav-height) + var(--crumbs-height, 0px) + var(--space-4)) - var(--space-4));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    align-self: start;
+    order: 3;
+  }
+
+  /* Overlay and fullscreen start below the sticky nav (z-index 100) and
+     breadcrumb bar (z-index 60), so the header stays usable and the panel's
+     own Close button is never covered by them. */
+  run-panel[data-mode='overlay'] {
+    position: fixed;
+    top: calc(var(--nav-height) + var(--crumbs-height, 0px));
+    right: 0;
+    bottom: 0;
+    width: min(100vw, calc(var(--panel-width) + 2 * var(--space-5)));
+    padding: 0 var(--space-5);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-shadow: -12px 0 32px -16px rgb(0 0 0 / .45);
+    z-index: 70;
+  }
+  run-panel[data-mode='fullscreen'] {
+    position: fixed;
+    top: calc(var(--nav-height) + var(--crumbs-height, 0px));
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 0 var(--space-4);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: 70;
+  }
   @media (prefers-reduced-motion: no-preference) {
     run-panel[data-mode='overlay'] { animation: rp-in 160ms var(--h-ease); }
     @keyframes rp-in { from { transform: translateX(24px); opacity: 0; } }
