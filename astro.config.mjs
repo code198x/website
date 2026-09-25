@@ -85,6 +85,8 @@ export default defineConfig({
     '/vault/games/batman-ocean': '/vault/games/batman-the-movie',
     // Renamed: the slug misspelt his surname (Voja Antonić, Galaksija's designer).
     '/vault/people/voja-antonovic': '/vault/people/voja-antonic',
+    // Duplicate merged: VICE had two entries, vice and vice-emulator.
+    '/vault/emulators/vice-emulator': '/vault/emulators/vice',
     '/vault/phenomena/video-game-crash': '/vault/phenomena/1983-crash',
     // Duplicate entries merged 2026-08-25: each game had two pages differing
     // only in slug punctuation, both AI-drafted and unreviewed.
