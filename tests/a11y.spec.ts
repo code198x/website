@@ -52,6 +52,12 @@ const PAGES: Record<string, string> = {
   // Amiga too: it carries the same ROM link, and Amiga orange is the accent the
   // a11y notes single out as hardest to keep above AA.
   'setup native amiga': '/setup/commodore-amiga/native',
+  // The browser-player stage and run strip (Task 8): Play/Run stay unclicked,
+  // so these check the static markup only, not the live player's shadow DOM.
+  'system stage spectrum': '/systems/sinclair-zx-spectrum',
+  'system stage vic-20': '/systems/commodore-vic-20',
+  'lesson strip c64': '/systems/commodore-64/assembly/starfield/unit-03/',
+  'lesson strip amiga': '/systems/commodore-amiga/assembly/meet-the-machine/unit-02/',
 };
 
 const baseline: { allow: { rule: string; fg?: string }[] } = JSON.parse(
