@@ -12,6 +12,16 @@ for(const family of build.families) {
   }
 }
 
+// The stage (PlayerStage.astro) renders `<div class="stage" data-system="…"
+// data-variant="…" …>` and creates `<emu198x-player>` client-side only, on
+// Play (spec §4.1) — it never appears in the built HTML. `hasStage` checks
+// the stage's own attributes instead, matching each independently so
+// attribute order in the markup can't break this check.
+function hasStage(html,attrs) {
+  const tags=html.match(/<div class="stage"[^>]*>/g) || [];
+  return tags.some((tag)=>Object.entries(attrs).every(([name,value])=>tag.includes(`${name}="${value}"`)));
+}
+
 if(process.argv.includes('--built')) {
   const catalog=JSON.parse(readFileSync(new URL('catalog.json',root),'utf8'));
   const codeSite=true;
@@ -21,18 +31,18 @@ if(process.argv.includes('--built')) {
     const systemPage=(s)=>{const u=new URL(`../dist/systems/${s}/index.html`,import.meta.url);if(!existsSync(u))return null;const html=readFileSync(u,'utf8');return html.includes('http-equiv="refresh"')?null:html;};
     const slug=codeSite ? entry.aliases.find((a)=>systemPage(a)) ?? entry.aliases[0] : entry.siteId || entry.id;
     const page=systemPage(slug) ?? readFileSync(new URL(`../dist/systems/${slug}/index.html`,import.meta.url),'utf8');
-    if(!page.includes(`<emu198x-player system="${entry.id}"`))throw new Error(`Inline player missing from ${slug}`);
+    if(!hasStage(page,{'data-system':entry.id}))throw new Error(`Player stage missing from ${slug}`);
     if(page.includes(`src="/emulators/index.html?`))throw new Error(`Old iframe player remains on ${slug}`);
     if(codeSite)for(const [alias,variant] of Object.entries(entry.variantAliases || {})) {
       const clone=readFileSync(new URL(`../dist/systems/${alias}/index.html`,import.meta.url),'utf8');
-      if(!clone.includes(`<emu198x-player system="${entry.id}" variant="${variant}"`))throw new Error(`Variant player missing from ${alias}`);
+      if(!hasStage(clone,{'data-system':entry.id,'data-variant':variant}))throw new Error(`Variant stage missing from ${alias}`);
     }
   }
   for(const family of build.families) {
     const name=`emu198x_${family.replaceAll('-','_')}_web_bg.wasm`;
     if(!existsSync(new URL(`../dist/emulators/modules/${family}/${name}`,import.meta.url)))throw new Error(`Built site missing ${family} WASM`);
   }
-  console.log(`${catalog.length} system embeds and all browser modules verified in built site.`);
+  console.log(`${catalog.length} system stages and all browser modules verified in built site.`);
 }
 
 for(const family of build.fleetFamilies || []) {
