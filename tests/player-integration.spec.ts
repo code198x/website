@@ -1,3 +1,7 @@
+// Runs against Playwright's default dev server (astro dev) — the player is
+// loaded via a <script> tag (src/lib/load-player.ts), not import(), so no
+// A11Y_SWEEP/built-site workaround is needed. Run: npx playwright test tests/player-integration.spec.ts
+
 import { expect, test } from '@playwright/test';
 
 test.describe('system page stage', () => {
