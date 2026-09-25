@@ -30,4 +30,16 @@ describe('player posters', () => {
   it('uses the given caption for game posters', () => {
     expect(posterFor('sinclair-zx-spectrum', 'ZX Spectrum')?.caption).toMatch(/^Meteor Storm/);
   });
+
+  it('caps a wide poster at 1× by default', () => {
+    expect(posterFor('amstrad-cpc', 'Amstrad CPC')?.ceiling).toBe(1);
+  });
+
+  it('keeps the default 2× for a poster at or under the wide threshold', () => {
+    expect(posterFor('acorn-atom', 'Acorn Atom')?.ceiling).toBe(2);
+  });
+
+  it('lets an explicit yaml ceiling win over the wide-poster default', () => {
+    expect(posterFor('commodore-amiga', 'Commodore Amiga')?.ceiling).toBe(1);
+  });
 });
