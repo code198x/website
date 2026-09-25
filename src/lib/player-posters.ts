@@ -17,16 +17,25 @@ export function posterEntries(): Record<string, Entry> {
   return cache;
 }
 
+/**
+ * A poster wider than this renders cramped at 2× — it squeezes the title
+ * column (or, stacked, needs an awkward amount of vertical space) — so it
+ * defaults to 1× instead. An explicit `ceiling` in the yaml always wins.
+ */
+const WIDE_POSTER_THRESHOLD = 416;
+
 /** The poster for a family, or null when it has no entry or no file yet. */
 export function posterFor(familyId: string, machineName: string): Poster | null {
   const entry = posterEntries()[familyId];
   if (!entry) return null;
   const src = entry.src ?? `/images/systems/${familyId}/poster.png`;
-  if (!existsSync(path.join('public', src))) return null;
+  const file = path.join('public', src);
+  if (!existsSync(file)) return null;
   const caption = entry.caption ?? (entry.kind === 'demo'
     ? `A test cartridge we wrote, running on the ${machineName}.`
     : `The ${machineName} switched on, running its own firmware in our emulator.`);
-  return { src, kind: entry.kind, caption, ceiling: entry.ceiling ?? 2 };
+  const defaultCeiling = () => pngSize(new Uint8Array(readFileSync(file))).width > WIDE_POSTER_THRESHOLD ? 1 : 2;
+  return { src, kind: entry.kind, caption, ceiling: entry.ceiling ?? defaultCeiling() };
 }
 
 /**
