@@ -48,11 +48,17 @@ test.describe('lesson run panel', () => {
     await expect(page.locator('.unit-sidebar')).toBeHidden();
   });
 
-  test('overlays a wide machine at 1440', async ({ page }) => {
+  test('overlays a wide machine at 1440, with its screen at 1×', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(amiga);
     await page.getByRole('button', { name: 'Run it here' }).click();
     await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'overlay');
+    const canvas = await page.locator('run-panel emu198x-player').evaluate(async p => {
+      for (let i = 0; i < 100 && !p.shadowRoot?.querySelector('canvas'); i++) await new Promise(r => setTimeout(r, 50));
+      return p.shadowRoot?.querySelector('canvas')?.getBoundingClientRect().width;
+    });
+    // Within float error of exactly 768: one machine pixel per CSS pixel.
+    expect(Math.abs(canvas! - 768)).toBeLessThan(0.01);
   });
 
   test('goes fullscreen on a phone', async ({ page }) => {
