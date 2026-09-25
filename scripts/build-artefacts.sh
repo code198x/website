@@ -85,7 +85,7 @@ echo "  built $built unit(s)"
 # The introductory border programs have no Makefile; build their documented
 # outputs explicitly so lesson launchers receive the same source readers see.
 asm198x --dialect acme --prg "$SAMPLES/commodore-64/assembly/meet-the-machine/unit-01/border.asm" -o "$SAMPLES/commodore-64/assembly/meet-the-machine/unit-01/border.prg"
-asm198x --dialect pasmonext --tapbas "$SAMPLES/sinclair-zx-spectrum/assembly/meet-the-machine/unit-01/border.asm" -o "$SAMPLES/sinclair-zx-spectrum/assembly/meet-the-machine/unit-01/border.tap"
+asm198x --dialect pasmo --cpu z80 --tapbas "$SAMPLES/sinclair-zx-spectrum/assembly/meet-the-machine/unit-01/border.asm" -o "$SAMPLES/sinclair-zx-spectrum/assembly/meet-the-machine/unit-01/border.tap"
 
 # Stage the outputs under the same relative path the unit has in code-samples,
 # so a page can link to a unit's program without a lookup table.
