@@ -1,90 +1,104 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "VSP"
-subtitle: "Variable Screen Positioning, or HSP, or DMA delay, or Wanker"
-summary: "A C64 trick that shifts the whole screen horizontally by deliberately delaying the VIC-II's DMA. It has at least four names, none of them agreed, and it can crash real hardware."
+subtitle: "Variable screen positioning, or DMA delay"
+summary: "A Commodore 64 trick that starts a badline late, so the VIC-II's character fetches fall out of step and the whole screen, colours included, moves sideways by one character for every cycle of delay. It was used for full-colour scrolling in games such as Mayhem in Monsterland, and on some machines it corrupts memory, a fault Linus Åkesson traced to the DRAM in 2013."
 category: "techniques"
 platforms: ['commodore-64']
 tags: ['graphics', 'raster', 'vic-ii', 'demoscene', 'scrolling', 'advanced']
 originated: 1987
-
 sources:
-  four_names_one_trick:
-    - title: "Codebase64, 'Horizontal Screen Positioning (HSP) aka Wanker aka DMA-Delay'"
-      kind: technical-doc
-      page: "base:horizontal_screen_positioning_hsp"
-      note: "⚠ The technique has no settled name, and the wiki documents the disagreement rather than resolving it. Its own page title is 'Horizontal Screen Positioning (HSP) aka Wanker aka DMA-Delay'; it notes that the world-firsts page 'mentions VSP+IK - there VSP is Variable Screen Positioning = DMA Delay = horizontal positioning'; it cites a '2008 thread on CSDB [that] called it HSP/DMA Delay'; and it points at the VIC Article's section '3.14.6. DMA delay'. Four names for one effect, depending on who is speaking and when"
-  the_demo_code_is_attributed:
-    - title: "Codebase64, 'Horizontal Screen Positioning (HSP)'"
-      kind: technical-doc
-      page: "base:horizontal_screen_positioning_hsp"
-      note: "The published implementation carries a name and a contact route: 'This demonstrates HSP (Horizontal Screen Positioning) using a stable raster. If you have any questions contact the author Martin Piper through CodeBase64'. It is PAL code - 'to make it work for NTSC you have to do some minor timing modifications for each scan-line'"
-  first_appearance:
-    - title: "Codebase64, 'Demo records and world firsts' (vic:demo namespace)"
+  originated:
+    - title: "CSDb, 'VSP&IK+' by The Mean Team"
       kind: database
-      page: "First appearance(s) of tricks/effects"
-      note: "'VSP - JCB/Meanteam: VSP&IK+', released 30 October 1987. The release is named after the trick it demonstrates"
-  combined_with_linecrunch:
-    - title: "Codebase64, 'Demo records and world firsts' (vic:demo namespace)"
+      date: "1987-10-30"
+      note: "web, secondary: one-file demo released 30 October 1987; code by JCB of The Mean Team, music by Rob Hubbard. https://csdb.dk/release/?id=6176"
+    - title: "Codebase64 wiki, 'Demo records and world firsts'"
       kind: database
-      page: "First appearance(s) of tricks/effects"
-      note: "The horizontal and vertical tricks were put together a year later: 'LineCrunch + VSP - Exilon/MDT/Horizon: Bonanza', November 1988. That combination is what later got formalised as AGSP"
-  it_needs_a_stable_raster:
-    - title: "Codebase64, 'Any Given Screen Positioning (AGSP)'"
-      kind: technical-doc
-      page: "base:agsp_any_given_screen_position"
-      note: "VSP is not usable on its own for free positioning: AGSP 'uses VSP (Variable Screen Positioning) (DMA delay) with a stable raster plus a line crunch to scroll the screen vertically to any position'. The stable raster is a prerequisite, not a refinement"
-  the_dispute_caveat:
-    - title: "Codebase64, 'Demo records and world firsts' (vic:demo namespace)"
-      kind: database
-      page: "First appearance(s) of tricks/effects"
-      note: "⚠ Provenance. This page is a community effort seeded from 'a little list posted by someone called Rost at the CSDb forum', and its own authors caution that 'it is not always straightforward to determine who did what and when' and that 'some of these issues are subject to dispute'. Recorded as the scene's best current account, not as settled fact."
+      page: "First appearance(s) of tricks/effects: VSP"
+      note: "web, secondary: 'VSP — JCB/Meanteam: VSP&IK+ — Release: 1987-10-30'. A collaborative list whose authors warn that 'some of these issues are subject to dispute'. https://codebase64.org/doku.php?id=vic:demo:demo_world_records_and_world_firsts"
 ---
+import Sources from '@components/Sources.astro';
 
----
+Scrolling a Commodore 64 screen sideways by a character normally means moving it: 1,000 bytes of character codes and 1,000 colour values, shifted one place along, before the beam comes round again. **VSP** gets the same result by moving nothing. A write to the VIC-II's control register `$D011`, placed on exactly the right cycle of one raster line, makes the chip start fetching the screen late, and from then on it reads every row of the display a few characters out of step. The picture moves sideways as a whole, colours and all, and the processor time a copy would have cost is left over for the game.
 
-**VSP** shifts the entire C64 screen sideways by deliberately delaying the VIC-II's
-DMA fetch, so the chip starts drawing each line from a different point in memory.
+The price is precision and, on some machines, safety. The write has to land on an exact cycle, and on a minority of C64s the trick corrupts memory and crashes the machine.
 
-## It does not have a name
+## Several names
 
-⚠ **This is one technique with at least four names, and the scene has never settled
-on one.** Codebase64's own page for it is titled:
+The effect has more than one name. The Codebase64 wiki files it as "Horizontal Screen Positioning (HSP)" and "DMA-Delay", and notes that its list of demo firsts calls it VSP, "Variable Screen Positioning". Christian Bauer's 1996 technical description of the VIC-II gave it the name **DMA delay**, which describes the mechanism: the chip's direct memory access for the screen starts later than usual. **VSP** and **HSP** describe the result.
 
-> Horizontal Screen Positioning (HSP) aka Wanker aka DMA-Delay
+## How it works
 
-while the world-firsts page calls the same thing **VSP — Variable Screen
-Positioning**, and the VIC-II hardware documentation files it under **3.14.6. DMA
-delay**. A 2008 CSDb thread argued for HSP/DMA Delay.
+The VIC-II fetches the 40 character codes of each text row, with their colours, on the first raster line of the row, a **badline**. It keeps its place with an internal counter, VC, which advances by one for each character fetched and so moves on by 40 for each row. A badline happens when the bottom three bits of the raster line number equal YSCROLL, the vertical scroll value in bits 0 to 2 of `$D011` (see [VIC-II](/vault/hardware/vic-ii#where-the-cycles-go-badlines)).
 
-The names are not synonyms in origin. "DMA delay" describes the mechanism, "HSP" and
-"VSP" describe the result, and "Wanker" is scene vernacular that stuck. Which one a
-source uses is a reasonable clue to where and when it was written.
+Bauer's description sets out what happens if a program creates that condition in the middle of a line instead, "within cycles 15-53 of a raster line in the display window in which the graphics data sequencer is in idle state", by writing `$D011` so that YSCROLL matches the line:
 
-This entry files it under VSP because that is the name the first release used.
+1. The VIC-II claims the bus from the next cycle and starts reading character codes, partway along the line.
+2. It carries on until its usual stopping point, cycle 54, so it makes fewer than 40 fetches. VC has advanced by less than 40.
+3. Every later row starts from that misaligned count. In Bauer's words, "the whole screen seems to be scrolled to the right by as much characters as the number of cycles the $d011 access was done after cycle 14."
 
-## Who did it first
+One cycle of delay moves the screen one character, eight pixels. Because the bitmap modes use the same counter, the trick moves bitmap pictures as well as text. The fine scroll bits of `$D016` still move the screen by 0 to 7 pixels, so a program can combine the two to position the display to the pixel. Bauer also describes a second route to the same effect, turning the display-enable bit of `$D011` on in the middle of raster line `$30` with YSCROLL set to 0.
 
-**JCB/Meanteam**, in a release called ***VSP&IK+***, on **30 October 1987**. The
-production is named after the trick.
+The start of the delayed fetch reads rubbish. For the first three cycles the processor still has the bus, so the VIC-II reads `$FF` as the character codes and takes its colours from the low four bits of whatever instruction the processor fetches next. Only then does it read the real screen.
 
-A year later **Exilon/MDT/Horizon**'s *Bonanza* (November 1988) combined it with
-[linecrunch](/vault/techniques/linecrunch), giving movement on both axes — the
-combination later formalised as **AGSP**, Any Given Screen Positioning.
+### What a program has to do
 
-## It needs a stable raster underneath
+The write must land on the chosen cycle every frame, so VSP sits on top of a [stable raster](/vault/techniques/stable-raster) routine that removes the few cycles of jitter in a raster interrupt. The routine then waits a variable number of cycles, one for each character of shift, before touching `$D011`. Martin Piper's example on the Codebase64 wiki does this by jumping into a row of `NOP` instructions at a point worked out from the scroll position, then makes the write:
 
-VSP is not a standalone effect. The AGSP implementation "uses VSP (Variable Screen
-Positioning) (DMA delay) **with a stable raster** plus a line crunch". Without
-cycle-exact timing the delay lands in the wrong place and the screen tears.
+```asm
+        lda #$1b
+        dec $d011       ; YSCROLL 1 -> 0 on raster line $30: a badline starts here
+        inc $d011       ; YSCROLL back to 1
+        sta $d011       ; restore the normal value, $1B
+```
 
-The published demonstration code is by **Martin Piper**, and is PAL-only: "to make
-it work for NTSC you have to do some minor timing modifications for each scan-line."
+On the line before, his routine has set `$D011` to `$11`, so that YSCROLL is 1. Decrementing the register makes YSCROLL 0, which matches raster line `$30` (48), and the badline begins on that cycle. The two instructions after it put the register back before the next row.
+
+The timing depends on the length of the raster line, so the same code does not work on every machine. Piper's code is for PAL machines, and he notes that for NTSC "you have to do some minor timing modifications for each scan-line". *C=Hacking*'s 1998 guide to converting PAL programs for NTSC listed VSP with FLI and colour bars as the effects that break, adding that "VSP effects will often be shifted the wrong amount".
+
+Run on a PAL C64 in the VICE emulator, Piper's program slides the ordinary BASIC start-up screen sideways by whole characters, to a new position each frame as its counter runs from 0 to 39. Text pushed off the right-hand end of a row reappears at the start of the row below, because the chip is reading the same screen memory from a different starting point, and the bottom row fills with stray characters.
+
+## First use
+
+The first recorded use is a one-file demo called *VSP&IK+*, released by The Mean Team on 30 October 1987 with code by JCB and Rob Hubbard's music from *[International Karate+](/vault/games/international-karate-plus)*. JCB later described finding the effect by accident: "It was a bugged FLD routine that started to make the screen move around and when I realised that might actually be controllable I started trying to stabalise it then found out that 1 cycle would move the screen 1 character." ([FLD](/vault/techniques/fld) is a related trick that holds badlines back to push the screen down.) The same list of firsts credits Exilon of MDT and Horizon with combining VSP and [linecrunch](/vault/techniques/linecrunch) in the demo *Bonanza* in November 1988; its compilers warn that "some of these issues are subject to dispute".
+
+Bauer saw where the combination led: "If you now combine DMA Delay with FLD and Linecrunch, you can scroll complete graphics screens without using much computing time by almost arbitrarily large distances in all directions." That combination became known as [AGSP](/vault/techniques/agsp). In 1995 Pasi Ojala used linecrunch and DMA delay to scroll a BFLI picture, a taller variant of [FLI](/vault/techniques/fli), in a viewer published in *C=Hacking*.
+
+## In games
+
+VSP reached commercial games late in the C64's life. The developer Jon, who writes as Kodiak64, lists *Creatures* and *Mayhem in Monsterland* by John and Steve Rowlands among the games that used it for "full-screen, full-colour scrolling". The period press recorded the speed without naming the method. In his development diary in *Commodore Format* in December 1992, John Rowlands described going through "the Creatures source code, extracting the routines needed for the Mayhem scroller". When the game was nearly finished, *Commodore Force* listed "super-fast, fullscreen, bi-directional scrolling — 8 times faster than the Creatures scroll" among its specifications.
+
+## The VSP crash
+
+On some C64s, VSP crashes the machine. Kodiak64 describes it as affecting "a tiny minority of machines", and on anecdotal evidence most often the later C64C. In 2013 the programmer Linus Åkesson traced the cause, starting from a crash that another scener, Zer0-X, had captured with a logic analyser.
+
+The fault is in the DRAM, not in the program. On the cycle where VSP starts the fetch, the VIC-II "sets the internal bus lines to 11111111 in preparation for an idle fetch, but suddenly changes its mind and tries to read from an address with an LSB of 00000111." If the RAM's row address strobe falls while those lines are changing, the RAM chips can latch an address that is neither one value nor the other. Åkesson found that the damage follows a rule. He called memory locations whose addresses end in 7 or F "fragile": when the crash happens, "each bit in a fragile memory cell might be changed into the corresponding bit of another fragile cell within the same page." Whether a given machine suffers depends on nanosecond timing, which varies with "temperature, VIC revision, parasitic capacitance and resistance of the traces on the motherboard, power supply ripple" and more, so "on many machines the critical situation simply doesn't occur."
+
+Knowing the rule made a safe VSP possible. Åkesson proposed keeping the bytes at fragile addresses identical within each page, or keeping code and data out of them, and demonstrated the method in a demo, *Safe VSP*, at the Datastorm party in 2013. The hardware maker Individual Computers built a fix into its C64 Reloaded motherboard: a latch that holds the address lines steady around the moment the row address strobe falls, crediting Åkesson and Tommi Lempinen for the analysis.
+
+<Sources>
+
+- Christian Bauer, *The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64* (28 August 1996), section 3.14.6, "DMA delay": the badline created in cycles 15–53, the shift of one character per cycle after cycle 14, the `$FF` and opcode reads in the first three cycles, bitmap screens, the DEN method, and the combination with FLD and linecrunch. Sections 3.2 and 3.5: `$D011`, `$D016` and the badline condition.
+- Codebase64 wiki, "Horizontal Screen Positioning (HSP)", with example code by Martin Piper (web, secondary): the PAL example routine and its NTSC note; the names HSP, DMA delay and VSP. https://codebase64.org/doku.php?id=base:horizontal_screen_positioning_hsp
+- Codebase64 wiki, "Demo records and world firsts" (web, secondary): *VSP&IK+* (30 October 1987) and *Bonanza* (November 1988), with the compilers' caution about disputes. https://codebase64.org/doku.php?id=vic:demo:demo_world_records_and_world_firsts
+- CSDb, "VSP&IK+" by The Mean Team (web, secondary): release date and credits; JCB's comment of 6 March 2011 on how he found the effect. https://csdb.dk/release/?id=6176
+- Pasi Ojala, BFLI viewer article, *C=Hacking* issue 10 (1995): linecrunch and DMA delay used to scroll a BFLI picture.
+- Russell Reed, "NTSC/PAL fixing, part I", *C=Hacking* issue 17 (15 November 1998): VSP effects "shifted the wrong amount" on the other standard.
+- John Rowlands and Steve Rowlands, *Mayhem in Monsterland* development diary, *Commodore Format* issue 27, December 1992: the Creatures source code and the Mayhem scroller.
+- *Commodore Force* issue 10, October 1993: *Mayhem in Monsterland* preview, "8 times faster than the Creatures scroll".
+- Kodiak64 (Jon), "The Future of VSP Scrolling on the C64", 20 September 2022 (web, secondary): games that used VSP; the crash on "a tiny minority of machines". https://kodiak64.co.uk/blog/future-of-VSP-scrolling
+- Linus Åkesson, "Safe VSP", 20 March 2013 (web, secondary): the cause of the crash, the fragile-address rule, the conditions that make it vary, Zer0-X's logic-analyser capture, the workarounds and the *Safe VSP* demo. https://www.linusakesson.net/scene/safevsp/index.php
+- Jens Schönfeld, "VSP-Fix", Individual Computers wiki, 2015 (web, secondary): the RAS setup and hold times, and the latch fitted to the C64 Reloaded. https://wiki.icomp.de/wiki/VSP-Fix
+
+</Sources>
 
 ## See also
 
-- [Linecrunch](/vault/techniques/linecrunch) — the vertical half of AGSP
-- [Stable raster](/vault/techniques/stable-raster) — the prerequisite
-- [FLD](/vault/techniques/fld) — the forgiving vertical trick
-
+- [AGSP](/vault/techniques/agsp): VSP with linecrunch
+- [Linecrunch](/vault/techniques/linecrunch)
+- [FLD](/vault/techniques/fld)
+- [Stable raster](/vault/techniques/stable-raster)
+- [VIC-II](/vault/hardware/vic-ii)
+- [Hardware scrolling](/vault/techniques/hardware-scroll)
