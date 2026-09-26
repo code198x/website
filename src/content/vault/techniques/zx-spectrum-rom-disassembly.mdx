@@ -1,9 +1,9 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "ZX Spectrum ROM disassembly"
-subtitle: "The 16 KB ROM that boots the machine, runs BASIC, and quietly underpins every Spectrum game"
-summary: "Reference for the ZX Spectrum's 16 KB ROM at $0000-$3FFF — the restart vectors, the interrupt routine, the character set, the system variables, and the ROM routines a game is most likely to call, each checked against Logan and O'Hara's 1983 disassembly."
+subtitle: "The 16 KB program that runs BASIC, and the routines inside it that machine code can borrow"
+summary: "A guide to the 48K ZX Spectrum's 16 KB ROM at $0000-$3FFF: the restart vectors, the interrupt routine that runs fifty times a second, the character set, the system variables, and the routines a machine-code program is most likely to call, with the names Logan and O'Hara gave them in 1983 and the traps each one sets."
 category: "techniques"
 platforms: ['sinclair-zx-spectrum']
 tags: ['rom', 'basic', 'system-calls', 'reference']
@@ -17,7 +17,7 @@ sources:
     - ref: books/complete-spectrum-rom-disassembly
       kind: book
       page: "KEY-SCAN $028E, BEEPER $03B5, PRINT-OUT $09F4, CLS $0D6B, CHAN-OPEN $1601, BORDER $2294"
-      note: "Entry and exit conditions as the book states them. KEY-SCAN: \"the E register is returned with a value in the range of +00 to +27, the value being different for each of the forty keys of the keyboard, or the value +FF, the no-key\"; \"If no keys is being pressed then the DE register pair is returned holding +FFFF\"; \"The zero flag is returned reset if more than two keys are being pressed, or neither key of a pair of keys is a shift key.\" BEEPER: \"entered with the DE register pair holding the value 'f*t', where a note of given frequency 'f' is to have a duration of 't' seconds, and the HL register pair holding a value equal to the number of T states in the 'timing loop' divided by '4'\"; for middle C for one second \"DE holds +0105 (INT(261.3 * 1)) and HL holds +066A (derived from 6,689/4 - 30.125)\". PRINT-OUT: \"entered with the A register holding the code for a control character, a printable character or a token\". CLS: \"CALL 0DAF,CL-ALL - The whole of the display is 'cleared'\". CHAN-OPEN: \"called with the A register holding a valid stream number - normally +FD to +03\", and the initial stream data at $15C6 gives stream +02 as 'S'. BORDER: \"The parameter of the BORDER command is used with an OUT command to actually alter the colour of the border. The parameter is then saved in the system variable BORDCR\" - fetched by \"CALL 1E94,FIND-INT1\", range-checked with \"CP +08\", output, then \"multiplied by eight\" and, for a light border, XORed with 7 so \"the INK colour in the editing area is to be black\""
+      note: "Entry and exit conditions as the book states them. KEY-SCAN: \"the E register is returned with a value in the range of +00 to +27, the value being different for each of the forty keys of the keyboard, or the value +FF, the no-key\"; \"If no keys is being pressed then the DE register pair is returned holding +FFFF\"; \"The zero flag is returned reset if more than two keys are being pressed, or neither key of a pair of keys is a shift key.\" BEEPER: \"entered with the DE register pair holding the value 'f*t', where a note of given frequency 'f' is to have a duration of 't' seconds, and the HL register pair holding a value equal to the number of T states in the 'timing loop' divided by '4'\"; for middle C for one second \"DE holds +0105 (INT(261.3 * 1)) and HL holds +066A (derived from 6,689/4 - 30.125)\". PRINT-OUT: \"entered with the A register holding the code for a control character, a printable character or a token\". CLS: \"CALL 0DAF,CL-ALL - The whole of the display is 'cleared'\". CHAN-OPEN: \"called with the A register holding a valid stream number - normally +FD to +03\", and the initial stream data at $15C6 gives stream +02 as 'S'. BORDER: \"The parameter of the BORDER command is used with an OUT command to actually alter the colour of the border. The parameter is then saved in the system variable BORDCR\" - fetched by \"CALL 1E94,FIND-INT1\", range-checked with \"CP +08\", output, then \"multiplied by eight\". \"If the border colour is a 'light' colour then the INK colour in the editing area is to be black - make the jump\" past the XOR +07, so only a dark border has its ink changed, to white. CL-ALL and CLS-LOWER: CLS sets the upper attributes from ATTR-P and the lower part from BORDCR, then CL-CHAN opens channel 'K' (\"LD A,+FD - Open channel 'K'\")."
   character_set:
     - ref: books/complete-spectrum-rom-disassembly
       kind: book
@@ -38,65 +38,65 @@ sources:
       page: "preface"
       note: "\"The Spectrum has a 16K monitor program. This program has been developed directly from the 4K program of the ZX 80 although there are now so many new features that the differences outweigh the similarities.\" Signed \"January 1983 - Ian Logan, Lincoln, U.K. - Frank O'Hara, London, U.K.\" On the code's priorities: \"The programmers have always however been short of 'room' and hence the program is written for 'compactness' rather than 'speed'.\""
 ---
-The 48K Spectrum's 16 KB ROM lives at **$0000-$3FFF**. It holds the BASIC interpreter, the character-set bitmap, the system-variable layout, the `IM 1` interrupt routine, and the utility routines BASIC depends on - and any machine-code program is welcome to call them at their documented addresses.
+import Sources from '@components/Sources.astro';
 
-The published reference is **[Ian Logan](/vault/people/ian-logan) and Frank O'Hara's *[The Complete Spectrum ROM Disassembly](/vault/books/complete-spectrum-rom-disassembly)*** (Melbourne House, 1983): the whole ROM as annotated Z80 assembly, every routine named, every entry condition stated. Its preface describes the ROM as "developed directly from the 4K program of the ZX 80", and warns that its authors "have always however been short of 'room' and hence the program is written for 'compactness' rather than 'speed'". That trade-off is the reason a game calls some ROM routines and rewrites others. The book's own history is on its entry; the names and addresses below are the book's.
+Every 48K Spectrum carries a 16 KB program it cannot forget, in ROM at **$0000-$3FFF**. It is the BASIC you type into, but it is also a library. Fifty times a second on a British machine it stops whatever else is running to update a clock and read the keyboard, and its routines for printing, clearing the screen and sounding the speaker sit at fixed addresses that any machine-code program can call. The catch is that the routines were written to serve BASIC. Each expects its input in particular registers or system variables, most leave side effects behind, and some can only be reached from BASIC at all.
 
-The ROM contains:
+Spectrum owners mapped it themselves. In December 1982 a reader wrote to *Sinclair User* with a warning about `RST $10`, the ROM's print routine: it "is also used to output characters to the printer and microdrives, so to be sure of screen output place at the beginning of any routine the instructions" `LD A,02h` and `CALL 1601h`. A month later [Ian Logan](/vault/people/ian-logan) and Frank O'Hara signed the preface to *[The Complete Spectrum ROM Disassembly](/vault/books/complete-spectrum-rom-disassembly)* (Melbourne House, 1983), which prints the whole ROM as commented Z80 assembly language and names every routine. The book's story is on its own entry. The names and addresses below are the book's, checked against the ROM's bytes.
 
-- The BASIC interpreter and tokeniser, most of $0000-$386D. The book notes that $386E-$3CFF are "spare" and hold $FF.
-- The 768-byte character bitmap at $3D00-$3FFF.
-- The maskable-interrupt routine at $0038, reached every 20 ms through `IM 1`.
-- The eight restart vectors at $0000, $0008, $0010, $0018, $0020, $0028, $0030 and $0038.
-- Routines for screen and printer output, keyboard scanning, the beeper, channels and streams, error handling, expression evaluation, and the floating-point calculator.
+The authors describe the ROM as "developed directly from the 4K program of the ZX 80", and say its programmers "have always however been short of 'room' and hence the program is written for 'compactness' rather than 'speed'". That trade-off decides which routines a game borrows and which it rewrites.
 
-The system variables sit immediately above the screen and printer buffer, at **$5C00-$5CB5** (23552-23733). The ROM reads and writes them constantly; machine code can do the same, and for FRAMES and the attribute variables it usually should.
+## What is where
 
----
+- **$0000-$0038:** the eight restart vectors, the targets of the one-byte `RST` instructions.
+- **$0038:** the maskable-interrupt routine, reached every 20 ms in interrupt mode 1, which the ROM selects when the machine starts.
+- **Up to $386D:** the BASIC interpreter and everything it uses: the keyboard and tape routines, screen and printer output, channels and streams, error handling, expression evaluation and the floating-point calculator.
+- **$386E-$3CFF:** unused. The book notes that these locations are "spare" and "all hold +FF".
+- **$3D00-$3FFF:** the 768-byte character set.
+
+The ROM keeps its working state in RAM, in the system variables at **$5C00-$5CB5** (23552-23733), just above the printer buffer. It reads and writes them constantly, and a machine-code program can do the same.
 
 ## The restarts
 
-`RST n` is a one-byte call to one of eight fixed addresses. The book's names:
+`RST n` is a one-byte call to one of eight fixed addresses, where `CALL` takes three bytes, and the ROM uses the restarts for the routines it calls most often: printing, reading the next character of a BASIC line, the calculator. The book's names:
 
 | Instruction | Address | Name | What it does |
 |-------------|---------|------|--------------|
-| `RST $00` | $0000 | START | Disable interrupts and restart the machine - the reset entry |
-| `RST $08` | $0008 | ERROR-1 | Report the error whose code follows the instruction in the next byte |
-| `RST $10` | $0010 | PRINT-A-1 | Print the character in A to the current channel (jumps to PRINT-A-2 at $15F2) |
-| `RST $18` | $0018 | GET-CHAR | Fetch the character at CH-ADD, skipping spaces and control codes |
-| `RST $20` | $0020 | NEXT-CHAR | Advance CH-ADD and fetch the next character - the interpreter's stepping routine |
-| `RST $28` | $0028 | FP-CALC | Enter the floating-point calculator at $335B |
-| `RST $30` | $0030 | BC-SPACES | Open BC bytes of free space in the workspace |
-| `RST $38` | $0038 | MASK-INT | The `IM 1` interrupt routine |
+| `RST $00` | $0000 | START | Disables interrupts and jumps to START/NEW, which sets the machine up from scratch |
+| `RST $08` | $0008 | ERROR-1 | Reports the error whose code is in the byte after the instruction |
+| `RST $10` | $0010 | PRINT-A-1 | Prints the character in A on the current channel (jumps to PRINT-A-2 at $15F2) |
+| `RST $18` | $0018 | GET-CHAR | Fetches the character at CH-ADD, stepping past spaces and control codes |
+| `RST $20` | $0020 | NEXT-CHAR | Advances CH-ADD, then does the same: the interpreter's way of stepping along a line |
+| `RST $28` | $0028 | FP-CALC | Enters the floating-point calculator at $335B |
+| `RST $30` | $0030 | BC-SPACES | Opens BC bytes of free space in the workspace |
+| `RST $38` | $0038 | MASK-INT | The interrupt routine |
 
-Of these a game uses `RST $10` (printing) and, by leaving `IM 1` on, `RST $38`. `RST $08` is how the ROM's own routines report errors: a BEEP with an out-of-range value ends up here, and control returns to BASIC, which is a reason game code that calls ROM routines validates its arguments first.
+A game usually meets two of these: `RST $10` for printing and, as long as it leaves interrupt mode 1 on, `RST $38`. `RST $08` is worth knowing because the ROM's own routines use it when something is wrong. `CHAN-OPEN`, for example, ends in report O, "Invalid stream", if it is given a stream that is not open, and the error handler abandons the machine-code program and goes back to BASIC.
 
 ### The interrupt: $0038
 
-The book's summary is one sentence: "The real time clock is incremented and the keyboard scanned whenever a maskable interrupt occurs." MASK-INT increments the low two bytes of FRAMES, bumps the third byte when they wrap to zero, then calls KEYBOARD at $02BF, which scans the matrix and, allowing for the repeat delay, drops a key code into LAST-K. Every 20 ms, on every 48K Spectrum, that is what happens between two instructions of your program - unless you `DI` or install your own `IM 2` handler.
-
----
+The book sums it up in one sentence: "The real time clock is incremented and the keyboard scanned whenever a maskable interrupt occurs." MASK-INT adds one to the low two bytes of FRAMES, adds one to the third byte when they wrap round to zero, and calls KEYBOARD at $02BF. KEYBOARD scans the keys and, once the repeat delay allows it, puts the new key's code in LAST-K. All of this happens between two instructions of your program every 20 ms, unless you disable interrupts with `DI` or install your own interrupt-mode-2 handler.
 
 ## Routines a game calls
 
 | Address | Name | Purpose | Entry | Exit |
 |---------|------|---------|-------|------|
-| $028E | KEY-SCAN | Scan the keyboard matrix | None | E = key value $00-$27 or $FF for no key; D = shift key; DE = $FFFF for no key; Z reset if more than two keys are down or a pair has no shift |
-| $03B5 | BEEPER | Sound a note | DE = frequency × duration in seconds; HL = T-states of the timing loop ÷ 4 | Interrupts re-enabled |
-| $09F4 | PRINT-OUT | Print to the screen or printer | A = control code, printable character or token | Screen updated |
-| $0D6B | CLS | Clear the whole display and reset the print position | None | Screen cleared with ATTR-P's colours |
+| $028E | KEY-SCAN | Scan the keyboard | Nothing | E = key value $00-$27, or $FF for none; D = a shift key; DE = $FFFF if no key; zero flag reset if three or more keys are down, or two with neither a shift |
+| $03B5 | BEEPER | Sound a note | DE = frequency × duration in seconds; HL = timing-loop length in T-states ÷ 4 | Interrupts re-enabled |
+| $09F4 | PRINT-OUT | The output routine for the screen and printer channels | A = control code, printable character or token | - |
+| $0D6B | CLS | Clear the whole display | Nothing | Upper screen in ATTR-P's colours, lower screen in BORDCR's; channel K current |
 | $15F2 | PRINT-A-2 | Send A to the current channel | A = character | - |
-| $1601 | CHAN-OPEN | Make a stream's channel current | A = stream number, $FD-$03; 2 is the screen | Later output goes to that channel |
-| $2294 | BORDER | The BORDER command | Parameter on the calculator stack (via FIND-INT1), not in a register | Border changed, BORDCR updated |
+| $1601 | CHAN-OPEN | Make a stream's channel current | A = stream number, normally $FD-$03; 2 is the upper screen | Later output goes to that channel |
+| $2294 | BORDER | The BORDER command | The colour on the calculator stack, not in a register | Border changed, BORDCR updated |
 
-### PRINT-A: `RST $10`
+### Printing: `RST $10`
 
-The character in A goes to whichever channel is current. From BASIC that is the screen; from code that has just been `RANDOMIZE USR`'d it usually still is, but a program that has used the printer or the lower screen selects the upper screen first with `LD A,2 / CALL $1601`. The initial stream table at $15C6 maps stream 2 to 'S'.
+The character in A goes to whichever channel is current, and that is not always the one you expect. A program started with `RANDOMIZE USR` often finds channel K, the lower screen, current, unless the BASIC before it has just printed something. Its text then goes to the bottom two lines, and the "0 OK" report wipes it out as soon as the program returns. The fix is the one *Sinclair User*'s reader gave in 1982: open stream 2, the upper screen, first.
 
 ```nasm
         ld      a,2
         call    $1601           ; CHAN-OPEN: stream 2 = upper screen
-        ld      hl,message
+        ld      hl,text
 loop:   ld      a,(hl)
         or      a
         ret     z
@@ -104,18 +104,17 @@ loop:   ld      a,(hl)
         inc     hl
         jr      loop
 
-message:
-        defm    "HELLO"
+text:   defm    "HELLO"
         defb    0
 ```
 
-PRINT-OUT handles the control codes too: 22 (AT) followed by row and column, 16-21 for the colour items, 13 for a new line. A game that prints its scores through the ROM gets positioning and colour for the cost of a few bytes of control codes.
+The ROM does the rest. PRINT-OUT understands the same control codes as BASIC's PRINT: 22 (AT) followed by a row and a column, 16 to 21 for INK, PAPER, FLASH, BRIGHT, INVERSE and OVER, each followed by a value, and 13 for a new line. A game that prints its score through the ROM gets positioning and colour for a few bytes of control codes. What it pays is speed: the book calls PRINT-OUT "rather slow", because it checks every option for every byte it puts on the screen.
 
 ### CLS: $0D6B
 
-"The whole of the display is 'cleared'" - CL-ALL at $0DAF wipes the bitmap and fills the attributes from ATTR-P, then CLS-LOWER resets the lower screen and the print position. Set ATTR-P ($5C8D) first and the ROM clears to your colours.
+In the book's words, "the whole of the display is 'cleared' - the 'pixels' are all reset and the attribute bytes are set to equal the value in ATTR-P - then the lower part of the display is reformed." Set ATTR-P ($5C8D) first and the ROM clears to your colours. The lower two lines take their colours from BORDCR instead. CLS finishes by opening channel K, so a program that calls it and then prints needs `LD A,2 / CALL $1601` again.
 
-The direct alternative is two `LDIR`s, one for the 6,144-byte bitmap and one for the 768 attributes:
+The direct alternative is two `LDIR`s, one for the 6,144-byte bitmap and one for the 768 attribute bytes:
 
 ```nasm
         ld      hl,$4000
@@ -126,15 +125,15 @@ The direct alternative is two `LDIR`s, one for the 6,144-byte bitmap and one for
         ld      hl,$5800
         ld      de,$5801
         ld      bc,767
-        ld      (hl),$38        ; white ink, black paper
+        ld      (hl),$38        ; black ink on white paper
         ldir                    ; attributes
 ```
 
-It costs eighteen bytes, does no bookkeeping, and takes whatever colours you give it.
+It takes 26 bytes, keeps no records, and uses whatever colours you give it. The attribute byte holds the paper colour in bits 3-5 and the ink in bits 0-2, so $38 is white paper (7) with black ink (0), the Spectrum's colours at switch-on.
 
 ### BORDER: $2294
 
-The ROM's BORDER routine is the BASIC command, not a subroutine with a register interface: it fetches its parameter from the calculator stack with FIND-INT1, checks it against 8, and errors out if too big. What it does next is the instructive part. It writes the value straight to port $FE, multiplies it by eight, and - if the colour is a light one - XORs in 7 so that the lower screen's ink will be black on that paper, then stores the result in BORDCR. The book's comment: "The parameter is then saved in the system variable BORDCR."
+The ROM's BORDER is the BASIC command itself, not a subroutine with a register interface. It fetches its parameter from the calculator stack with FIND-INT1, compares it with 8, and gives report K, "Invalid colour", if it is too big. What it does next is the instructive part. It writes the colour to port $FE, multiplies it by eight to move it into the paper bits, and stores the result in BORDCR, the attribute byte for the lower screen. On a dark border it first XORs in 7, making the lower screen's ink white; on a light one (green, cyan, yellow or white) it leaves the ink black. After `BORDER 2`, BORDCR holds 23: red paper, white ink. After `BORDER 5` it holds 40: cyan paper, black ink.
 
 A game does the first step itself:
 
@@ -143,27 +142,25 @@ A game does the first step itself:
         out     ($FE),a         ; red border
 ```
 
-and, if it ever returns to BASIC, updates BORDCR the way the ROM would, so the editor does not come back with an unreadable lower screen. See [hardware ports](/vault/techniques/zx-spectrum-hardware-ports) for the port's other bits.
+If it will return to BASIC it should update BORDCR the same way, so that the editor does not come back with unreadable text on the lower screen. The other bits of port $FE drive the speaker and the MIC socket; see [hardware ports](/vault/techniques/zx-spectrum-hardware-ports).
 
 ### BEEPER: $03B5
 
-DE holds frequency × seconds and HL the timing-loop length in T-states ÷ 4. The book works the example: middle C for one second is DE = $0105 and HL = $066A, "derived from 6,689/4 - 30.125", 6,689 being the T-states between speaker toggles at 261.63 Hz on a 3.5 MHz clock. The routine disables interrupts for the note's duration, so FRAMES stops and the keyboard is not scanned until it returns. [Beeper music](/vault/techniques/beeper-music) is what happens when a game replaces it.
+DE holds the frequency multiplied by the duration in seconds, and HL the length of the timing loop in T-states divided by 4. The book works through middle C. At 261.63 Hz on a 3.5 MHz clock the speaker has to be switched "as close as possible to every 6,689 T states", so for one second DE is $0105 and HL is $066A, "derived from 6,689/4 - 30.125". BEEPER's first instruction is `DI`, "Disable the interrupt for the duration of a 'beep'", so FRAMES stops and the keyboard goes unread until the note ends. Its last is `EI`, which switches interrupts back on whether or not they were on before. [Beeper music](/vault/techniques/beeper-music) tells what programmers did when they wanted more than one note at a time.
 
 ### KEY-SCAN: $028E
 
-KEY-SCAN returns a key *value*, not a character - E is a number from $00 to $27 unique to each of the forty keys, D the shift key if one is held, and DE = $FFFF when nothing is pressed. It refuses to decode more than two keys at once. A game that needs several simultaneous keys reads port $FE directly, as described under [hardware ports](/vault/techniques/zx-spectrum-hardware-ports); a game that wants "any key to continue" can call KEY-SCAN and test for $FFFF.
-
----
+KEY-SCAN returns a key *value*, not a character. E is a number from $00 to $27, a different one for each of the forty keys; D holds the value of a shift key if one is down; DE is $FFFF when nothing is pressed. It scans the eight half-rows of the keyboard one at a time, and gives up as soon as it finds a third key. A game that needs several keys at once, such as fire while moving diagonally, reads port $FE itself, as described under [hardware ports](/vault/techniques/zx-spectrum-hardware-ports). A game that only wants "press any key" can call KEY-SCAN and test for $FFFF.
 
 ## The character set: $3D00-$3FFF
 
-Ninety-six characters, codes $20 (space) to $7F (©), eight bytes each, top row first:
+The ROM holds 96 characters, codes $20 (space) to $7F (©), each eight bytes deep, top row first:
 
 ```
 Address = $3D00 + ((code - 32) × 8)
 ```
 
-The book's example is 'A', at $3E08: `00 3C 42 42 7E 42 42 00`.
+The book's example is the letter A, at $3E08: `00 3C 42 42 7E 42 42 00`.
 
 ```
 +0    $00   ........
@@ -176,7 +173,7 @@ The book's example is 'A', at $3E08: `00 3C 42 42 7E 42 42 00`.
 +7    $00   ........
 ```
 
-The system variable CHARS ($5C36) holds $3C00 - the table's address minus 256 - so that the ROM can index it by character code without subtracting 32; point CHARS at your own table and every ROM print call uses your font. To draw with the ROM's glyphs yourself:
+The system variable CHARS ($5C36) holds $3C00, 256 less than the start of the table, so that the ROM can find a character from its code without first subtracting 32. Point CHARS at a table of your own in RAM and every ROM print uses your font. To draw with the ROM's letters yourself:
 
 ```nasm
         ld      a,'A'
@@ -190,48 +187,58 @@ The system variable CHARS ($5C36) holds $3C00 - the table's address minus 256 - 
         add     hl,bc           ; HL -> eight bytes of 'A'
 ```
 
----
-
 ## System variables: $5C00-$5CB5
 
-The ones a game reads or writes, with the manual's descriptions:
+The ones a game is most likely to read or write, with the descriptions from the Spectrum manuals:
 
 | Address | Name | Size | Purpose |
 |---------|------|------|---------|
-| $5C00 | KSTATE | 8 | "Used in reading the keyboard" - two sets of four bytes for key repeat |
+| $5C00 | KSTATE | 8 | "Used in reading the keyboard": two sets of four bytes, so that a new key can be caught while the last one is still repeating |
 | $5C08 | LAST-K | 1 | "Stores newly pressed key" |
-| $5C09 | REPDEL | 1 | Frames a key is held before it repeats; starts at 35 |
+| $5C09 | REPDEL | 1 | How long, in 50ths of a second, a key must be held before it repeats; the ROM sets it to 35 |
 | $5C36 | CHARS | 2 | "256 less than address of character set ... Normally in ROM, but you can set up your own in RAM and make CHARS point to it" |
 | $5C3C | TV-FLAG | 1 | "Flags associated with the TV" |
 | $5C48 | BORDCR | 1 | "Border colour multiplied by 8, also contains the attributes normally used for the lower half of the screen" |
-| $5C78 | FRAMES | 3 | "frame counter incremented every 20mS", least significant byte first |
-| $5C7B | UDG | 2 | "Address of first user-defined graphic" |
-| $5C8D | ATTR-P | 1 | "Permanent current colours" - what CLS and PRINT use |
-| $5C8F | ATTR-T | 1 | "Temporary current colours" - the colour items inside one PRINT |
+| $5C78 | FRAMES | 3 | "Frame counter incremented every 20mS", least significant byte first |
+| $5C7B | UDG | 2 | "Address of first user-defined graphic" (see [user-defined graphics](/vault/techniques/udg)) |
+| $5C8D | ATTR-P | 1 | "Permanent current colours", set by INK and PAPER as commands; CLS and PRINT start from these |
+| $5C8F | ATTR-T | 1 | "Temporary current colours", set by colour items inside a PRINT |
 
 ### FRAMES
 
-FRAMES is the machine's clock. The manual introduces it from BASIC - "PEEK 23672. Every 1/50 second it increases by 1" - and warns that it "stops temporarily whenever you do BEEP, or a cassette tape operation, or use the printer", because those routines run with interrupts off. For a game it is the free frame counter: read the low byte, and wait for it to change.
+FRAMES is the machine's clock. The Spectrum's manual introduces it to BASIC programmers: "The one that increases most often is PEEK 23672. Every 1/50 second it increases by 1." It also warns that the clock "stops temporarily whenever you do BEEP, or a cassette tape operation, or use the printer", because those routines turn interrupts off.
+
+For a game, FRAMES is a free frame counter. This loop waits until the next interrupt has been and gone:
 
 ```nasm
-; Wait for the next frame without HALT
         ld      hl,$5C78
         ld      a,(hl)
 wait:   cp      (hl)
         jr      z,wait
 ```
 
-`HALT` does the same in one instruction when interrupts are on; the FRAMES loop is for code that has disabled them or runs an interrupt handler of its own that still updates the counter.
+`HALT` does the same in one instruction. Both depend on the interrupt: with interrupts off, or with an interrupt-mode-2 handler that does not call the ROM's, FRAMES never changes and the loop never ends. What the counter offers that `HALT` does not is a record. A game can save FRAMES, do a variable amount of work, and then see how many frames went by.
 
----
+<Sources>
+
+- Ian Logan and Frank O'Hara, *The Complete Spectrum ROM Disassembly* (Melbourne House, 1983): preface (the ZX80 origin, "compactness" rather than "speed"); introduction (PRINT-OUT "rather slow"); the restart routines at `0000`-`0038`; the maskable interrupt at `0038`; KEY-SCAN at `028E` and KEYBOARD at `02BF`; BEEPER at `03B5` and BE-END at `03F6`; the CLS command at `0D6B`, CLS-LOWER at `0D6E`, CL-CHAN at `0D94` and CL-ALL at `0DAF`; START/NEW at `11CB` (CHARS, REPDEL and `IM 1`); the initial channel and stream data at `15AF` and `15C6`; CHAN-OPEN at `1601` and report O; the BORDER command at `2294`; the spare locations `386E`-`3CFF` and the character set at `3D00`-`3FFF`.
+- *Sinclair User* issue 9, December 1982, letters page: a reader's letter on the Spectrum ROM, with `LD A,02h` / `CALL 1601h` "to be sure of screen output".
+- Steven Vickers, *Sinclair ZX Spectrum BASIC Programming*, edited by Robin Bradbeer (Sinclair Research, 1982; second edition 1983): chapter 18 (the frame counter and when it stops); chapter 24 (the memory map, with the system variables from 23552 and CHANS at 23734).
+- *ZX Spectrum +3 Manual* (Amstrad, 1987), chapter 8, part 25: the system variables table, which keeps the 48K addresses and descriptions.
+- The 48K Spectrum ROM itself: the bytes at every address given above, the $FF fill from `386E` to `3CFF`, and the letter A at `3E08`.
+
+</Sources>
 
 ## See also
 
 - [ZX Spectrum](/vault/systems/sinclair-zx-spectrum)
-- [Z80](/vault/hardware/z80) - the CPU these routines are written for
-- [ULA](/vault/hardware/ula) - what `OUT ($FE),A` talks to
+- [The Complete Spectrum ROM Disassembly](/vault/books/complete-spectrum-rom-disassembly), the book these names come from
+- [Ian Logan](/vault/people/ian-logan)
+- [Steven Vickers](/vault/people/steven-vickers), who wrote most of the ROM
+- [Z80](/vault/hardware/z80), the processor these routines are written for
+- [ULA](/vault/hardware/ula), the chip that `OUT ($FE),A` talks to
 - [ZX Spectrum hardware ports](/vault/techniques/zx-spectrum-hardware-ports)
-- [Beeper music](/vault/techniques/beeper-music) - replacing BEEPER
-- [User-defined graphics](/vault/techniques/udg) - the UDG system variable in use
-- [Sinclair BASIC](/vault/tools/sinclair-basic) - the interpreter this ROM hosts
-- [Machine code for beginners](/vault/culture/basic-to-machine-code) - where the Spectrum machine-coder learns to read this disassembly
+- [Beeper music](/vault/techniques/beeper-music)
+- [User-defined graphics](/vault/techniques/udg)
+- [Sinclair BASIC](/vault/tools/sinclair-basic), the interpreter this ROM holds
+- [Machine code for beginners](/vault/culture/basic-to-machine-code)
