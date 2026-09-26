@@ -1,50 +1,58 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Collision Detection"
 subtitle: "When objects meet"
-summary: "Collision detection determined when game objects touched, using techniques from simple bounding boxes to pixel-perfect checks, each trading accuracy for performance."
+summary: "Collision detection decides when game objects touch: rectangle tests, circle tests, tile lookups and pixel checks, each trading accuracy against processor time. The Commodore 64 and Atari 8-bit machines could spot overlapping pixels in hardware, but the C64's registers said only that a sprite had hit something, and many programmers did the sums themselves."
 category: "techniques"
-platforms: ['commodore-64', 'nintendo-entertainment-system', 'commodore-amiga', 'sinclair-zx-spectrum']
+platforms: ['commodore-64', 'atari-8-bit', 'nintendo-entertainment-system', 'commodore-amiga', 'sinclair-zx-spectrum']
 tags: ['programming', 'physics', 'technique']
-originated: 1975
 
 sources:
+  c64_hardware:
+    - title: "Commodore 64 Programmer's Reference Guide (Commodore Business Machines)"
+      kind: manual
+      date: "1982"
+      page: "144-145"
+      note: "'A collision occurs when a non-zero part of a sprite overlaps a non-zero portion of another sprite or characters on the screen.' $D01E: 'The bits in this register will remain set until read (PEEKed). Once read, the register is automatically cleared'; 'Collisions can take place even when the sprites are off screen.' $D01F: 'MULTICOLOR data 01 is considered transparent for collisions, even though it shows up on the screen.'"
+    - title: "Robert Camp, Creating Arcade Games on the Commodore 64 (COMPUTE! Books)"
+      kind: book
+      date: "1984"
+      page: "246-250"
+      note: "V+30 and V+31 explained for BASIC programmers; V+31 'will tell you which sprite was involved in the collision, but it will not tell you which screen character was bumped into'; a game like Pac-Man needs sprites to ignore the dots but detect the walls, done with multicolour characters built from 00 and 01 bit pairs."
   the_hardware_register_was_declined:
-    - title: "Richard Bayliss, 'Sprite/Sprite hardware collision', Codebase64"
+    - title: "'Sprite/Sprite hardware collision', Codebase64 wiki"
       kind: technical-doc
       page: "base:simple_hardware_sprite_to_sprite_collision"
-      note: "The page that documents the hardware method also argues against it: 'One of the most easiest methods to make the player sprite collide into sprite 2 or higher is by using a simple hardware collision. This is triggered by using $D01E. Unfortunately with most games these days, $D01E is very useless, therefore a software collision is used'"
-  where_the_line_falls:
-    - title: "Richard Bayliss, 'Simple software sprite to sprite collision', Codebase64"
+      note: "'One of the most easiest methods to make the player sprite collide into sprite 2 or higher is by using a simple hardware collision. This is triggered by using $D01E. Unfortunately with most games these days, $D01E is very useless, therefore a software collision is used'"
+    - title: "'Simple software sprite to sprite collision', Codebase64 wiki"
       kind: technical-doc
       page: "base:simple_software_sprite_to_sprite_collision"
-      note: "The genre test: 'You saw the $D01E routines and know that with comparison with software collision the $D01E method is not as handy unless you do something like a simple dodge type of game. Now let us say you were making proper shoot em ups, etc, then a software collision would be much better to use'"
-  the_software_replacement:
-    - title: "Richard Bayliss, 'Simple software sprite to sprite collision', Codebase64"
+      note: "'the $D01E method is not as handy unless you do something like a simple dodge type of game. Now let us say you were making proper shoot 'em ups, etc, then a software collision would be much better to use.' The routine builds a box around the player sprite from its position and four size constants, then makes four compares against the enemy's coordinates."
+  atari_hardware:
+    - title: "De Re Atari (Atari)"
       kind: technical-doc
-      page: "base:simple_software_sprite_to_sprite_collision"
-      note: "Four zero-page bytes hold the box, four constants its extents - 'XSIZE1 = $06 ;The area of the drawn sprite on the left', and so on - and the box is recomputed from the sprite position each frame with SEC/SBC and CLC/ADC before four compares against the other sprite's coordinates"
-
+      date: "1982"
+      page: "4-6"
+      note: "Hardware collision detection: missile-player, missile-playfield, player-player and player-playfield collisions, each with its own bit; read-only registers cleared together by writing to HITCLR; the bit is not set until the part of the screen showing the collision is drawn, so check collisions in the vertical blank, then clear, then move."
+    - title: "Ian Chadwick, Mapping the Atari, revised edition (COMPUTE! Books)"
+      kind: book
+      date: "1985"
+      note: "M0PF-M3PF 53248-53251, P0PF-P3PF 53252-53255, M0PL-M3PL 53256-53259, P0PL-P3PL 53260-53263 (read); HITCLR 53278 ($D01E) write: 'POKE with any number to clear all player/missile collision registers.' M0PF 'will tell you which playfield the object has \"collided\" with'."
 ---
 
-Did the bullet hit? Did the player land? Collision detection answers gaming's fundamental questions — when objects occupy the same space. Simple boxes worked for most cases; fighting games needed precision; bullet hells need a tiny single-pixel hurtbox in the middle of a busy character. Each method trades accuracy against CPU cost, and clever programmers chose wisely based on game requirements.
+import Sources from '@components/Sources.astro';
 
-This entry covers the fundamental algorithms. For the *design* of hitboxes (what they should be, where to place them) see [Hitboxes](/vault/techniques/hitboxes); for tile-grid-specific collision see [Tile-Based Collision](/vault/techniques/tile-collision).
+Every action game asks the same question dozens of times a frame: are these two things touching? The answer decides whether a bullet kills, a player lands on a platform or walks through a wall. The simplest answers treat every object as a rectangle and cost a handful of comparisons. The exact answer compares every pixel and costs far more. Most 8-bit and 16-bit games settled somewhere in between, and on the Commodore 64 and the Atari 8-bit computers the video chip itself would report when pixels overlapped.
 
-## Fast facts
+This entry covers the methods. For the design of hitboxes, what shape they should be and where they go, see [Hitboxes](/vault/techniques/hitboxes); for collision against a tile map see [Tile-based collision](/vault/techniques/tile-collision).
 
-- **Purpose:** Detect object intersection.
-- **Trade-off:** Accuracy vs performance vs determinism.
-- **Methods:** Bounding box, circle, pixel-perfect, polygon, swept.
-- **Application:** Every action game, every physics simulation, every UI hit-test.
+## Bounding boxes
 
-## Bounding box (AABB) collision
-
-The workhorse of 2D games. Two axis-aligned rectangles overlap if and only if they overlap on both axes:
+Two rectangles that line up with the screen axes overlap only if they overlap on both axes:
 
 ```c
-// AABB intersection test
+// Axis-aligned bounding box (AABB) test
 if (a.x < b.x + b.width &&
     a.x + a.width > b.x &&
     a.y < b.y + b.height &&
@@ -54,20 +62,15 @@ if (a.x < b.x + b.width &&
 }
 ```
 
-Four comparisons. Cheap on every CPU. Standard for 8-bit and 16-bit games where everything is rectangular.
+Four comparisons, and on an 8-bit processor each is a subtraction or a compare, so this is cheap enough to run for every pair of objects every frame. Its weakness is the empty corners: a round ball in a square box "hits" things it visibly missed. Games usually make the box smaller than the sprite so that near misses count as misses, which players feel as fairness.
 
-| Pro | Con |
-|-----|-----|
-| Extremely cheap | Doesn't match non-rectangular shapes well |
-| Easy to implement | "Empty corners" of the box still register as collision |
-| Hardware support on some platforms | Requires careful tuning to feel fair |
+A Codebase64 routine for the C64 shows the 6502 version. It builds a box around the player sprite from its position and four size constants, one for each side, then compares the enemy sprite's coordinates against the box's edges four times, giving up at the first comparison that fails.
 
-## Circle collision
+## Circles
 
-Two circles intersect if the distance between their centres is less than the sum of their radii:
+Two circles overlap if the distance between their centres is less than the sum of their radii. Comparing squared distances avoids a square root:
 
 ```c
-// Circle-circle intersection (using squared distance to avoid sqrt)
 float dx = a.cx - b.cx;
 float dy = a.cy - b.cy;
 float radiusSum = a.r + b.r;
@@ -76,138 +79,127 @@ if (dx*dx + dy*dy < radiusSum*radiusSum) {
 }
 ```
 
-Squaring both sides avoids the expensive `sqrt` call.
-
-| Pro | Con |
-|-----|-----|
-| Rotation-invariant — same answer at any angle | Requires multiplication; 6502 needs lookup tables |
-| Natural for spherical objects | Doesn't fit elongated shapes |
-
-Good for: balls, bullets in some shooters, approximate range checks.
+The test gives the same answer at any angle, which suits balls and round bullets. It needs multiplication, which the 6502 and Z80 do not have as instructions, so 8-bit programs used a table of squares or a shift-and-add routine.
 
 ## Pixel-perfect collision
 
-When two bounding boxes overlap, examine the actual sprite pixels in the overlap region. Both objects' pixels are checked at each shared position; if both are non-transparent, it's a collision.
+When two boxes overlap, check the pixels in the overlapping area: if any position is solid in both sprites, they have collided. Done as a broad phase (the box test) followed by a narrow phase (the pixel test), it only costs time when objects are already close, but in software it means shifting and masking sprite data to line the two images up. The C64 and Atari video chips did exactly this job in hardware, as the image was drawn.
 
-| Step | Process |
-|------|---------|
-| 1 | Bounding-box test (broad phase) — quickly reject far-apart objects |
-| 2 | If overlap, iterate the overlap region pixel-by-pixel |
-| 3 | At each pixel, test both sprites for non-transparency |
-| 4 | Any "both non-transparent" pixel = collision |
+## Hardware collision on the Commodore 64
 
-Expensive on retro hardware — typically tens of comparisons per overlapping pair. Used by *Street Fighter II*, the *Worms* series (where the world is a bitmap), classic *Mortal Kombat*. Modern games rarely use it because GPU-side rendering doesn't expose per-pixel alpha to gameplay code; physics colliders do the job differently.
+The [VIC-II](/vault/hardware/vic-ii) compares sprite pixels as it draws the screen and records any overlap in two registers, one bit per sprite:
 
-| Pro | Con |
-|-----|-----|
-| Pixel-accurate | Expensive |
-| Works for arbitrary shapes | Sprite-tied — changes with animation |
+| Register | Name | Set when |
+|---|---|---|
+| `$D01E` (53278) | Sprite–sprite collision | A non-transparent pixel of this sprite overlaps one of another sprite |
+| `$D01F` (53279) | Sprite–background collision | A non-transparent pixel of this sprite overlaps a foreground pixel of the character or bitmap screen |
 
-## Hardware-assisted collision (C64)
+The *Programmer's Reference Guide* sets out the rules. The bits stay set until the register is read, and reading clears it, so a program should read each register once and keep the value. Sprite–sprite collisions are detected "even when the sprites are off screen". In multicolour modes the `01` bit pair counts as background: it "is considered transparent for collisions, even though it shows up on the screen". The chip can also raise an interrupt on the first collision of each type, through bits 1 and 2 of `$D019` and `$D01A`.
 
-The VIC-II latches collision events into hardware registers — read once per frame to find which sprites collided:
-
-| Register | Function |
-|----------|----------|
-| `$D01E` | Sprite-sprite collision: each bit set when two sprites' opaque pixels overlap |
-| `$D01F` | Sprite-background collision: each bit set when a sprite collides with a non-zero playfield pixel |
-
-The bits are *latched* — they accumulate until you read the register, which clears them. Combined with sprite-priority registers, a fast collision engine on C64 looks like:
+Reading the registers from machine code:
 
 ```asm
-    lda $d01e          ; sprite-sprite collisions; sets bits + clears on read
-    sta sprite_coll
-    lda $d01f          ; sprite-background
-    sta bg_coll
-    
-    ; Then bit-test which sprite(s) collided
-    lda sprite_coll
-    and #%00000010     ; sprite 1
-    beq .no_sprite1_collision
-    ; ... handle ...
+        lda $d01e          ; sprite-sprite collisions (reading clears the register)
+        sta sprite_hits
+        lda $d01f          ; sprite-background collisions
+        sta bg_hits
+
+        lda sprite_hits
+        and #%00000010     ; was sprite 1 involved?
+        beq no_hit1
+        inc $d020          ; stand-in for "handle the hit"
+no_hit1
 ```
 
-### C64 programmers mostly did not use it
+With sprites 0 and 1 overlapping and sprite 2 over the text on screen, this reads `%00000011` from `$D01E` and `%00000100` from `$D01F`; a second read straight afterwards gives zero.
 
-The hardware registers look like a gift and were largely declined. Richard Bayliss,
-introducing the hardware method on Codebase64, immediately talks readers out of it:
+For BASIC programmers the registers were a gift, because checking coordinates in BASIC is slow. Commodore told readers that thanks to the hardware sprites "it is even possible to write a good quality game in BASIC!" Robert Camp's *Creating Arcade Games on the Commodore 64* (1984) taught the registers as `V+30` and `V+31` and showed how the multicolour rule could be put to work. In a game like *Pac-Man*, he wrote, you would not want the ghosts to set the collision register "when moving over the dots in the maze", but you would want them to detect the walls. Draw the dots with only the `00` and `01` bit pairs and the chip ignores them; draw the walls with `10` and `11` and it does not.
 
-> One of the most easiest methods to make the player sprite collide into sprite 2 or
-> higher is by using a simple hardware collision. This is triggered by using `$D01E`.
-> Unfortunately with most games these days, `$D01E` is very useless, therefore a
-> software collision is used.
+In BASIC the test needs brackets. `IF (PEEK(V+30) AND 2) = 2` checks sprite 1. Without them, `=` is worked out before `AND`, and the test fires when any sprite has collided; see [Commodore BASIC V2](/vault/techniques/basic-v2).
 
-His companion page draws the line by genre: the register is fine "unless you do
-something like a simple dodge type of game. Now let us say you were making proper
-shoot 'em ups, etc, then a software collision would be much better to use."
+### Why many C64 programmers did their own sums
 
-The limitation is what the register does not tell you. A set bit says *this sprite
-collided*, not with what, not where, and not how many times before you read it. A game
-that needs to know whether the bullet hit the ship or the ship hit the wall has to
-compute the answer anyway.
+A set bit says that a sprite touched *something*. It does not say what, or where. Camp noted that the background register "will not tell you which screen character was bumped into". With two sprite bits set you can guess they hit each other; with three or more you cannot tell who hit whom. And a bit is set only when the chip draws the overlapping pixels, so the answer can arrive up to a frame after the move that caused it.
 
-The NES has a single sprite-zero hit (`$2002` bit 6), which is more limited still — and
-is in practice used for raster timing rather than for gameplay collision.
+A Codebase64 article introducing the hardware method talks readers out of it in the same breath: "Unfortunately with most games these days, `$D01E` is very useless, therefore a software collision is used." Its companion article draws the line by genre: the register is fine "unless you do something like a simple dodge type of game. Now let us say you were making proper shoot 'em ups, etc, then a software collision would be much better to use." A software box test tells the program which object hit which, and the box can be smaller or larger than the sprite as the design needs.
 
-## Tile-based collision
+## Hardware collision on the Atari 8-bit computers
 
-When the world is a tile grid, collision against the world is a tile lookup. See [Tile-Based Collision](/vault/techniques/tile-collision) for the deep dive.
+Atari's CTIA and GTIA video chips went further. *De Re Atari* (1982) describes a separate bit for each kind of meeting: missile with player, missile with playfield, player with player, and player with playfield. Chadwick's *Mapping the Atari* lists the registers:
 
-| Advantage | Detail |
-|-----------|--------|
-| Grid lookup | Check tile at position — O(1) |
-| Tile properties | Solid, empty, hazard, ladder — encoded per tile |
-| Performance | Very fast; shifts and table lookups only |
-| Limitation | Grid-aligned only; not for free-rotation worlds |
+| Addresses (read) | Names | Records |
+|---|---|---|
+| 53248–53251 (`$D000`–`$D003`) | `M0PF`–`M3PF` | Missile 0–3 against playfield colours 0–3 |
+| 53252–53255 (`$D004`–`$D007`) | `P0PF`–`P3PF` | Player 0–3 against playfield colours 0–3 |
+| 53256–53259 (`$D008`–`$D00B`) | `M0PL`–`M3PL` | Missile 0–3 against players 0–3 |
+| 53260–53263 (`$D00C`–`$D00F`) | `P0PL`–`P3PL` | Player 0–3 against the other players |
 
-## Polygon collision
+Each register uses its low four bits, one per playfield colour or player, so a program learns what an object hit as well as that it hit something: a missile that touched playfield colour 2, say, rather than just "a collision". The registers accumulate until the program writes any value to `HITCLR` at 53278 (`$D01E`), which clears them all. Like the VIC-II, the chip sets a bit only as it draws the overlap, and *De Re Atari* recommends doing the work in the vertical blank: read the collisions first, then clear them, then move the players.
 
-For arbitrary shapes — separating axis theorem (SAT), GJK algorithm, or polygon clipping. Standard in 3D games and modern 2D physics engines (Box2D, Chipmunk).
+## The NES: one sprite, and not for collisions
 
-Out of scope for retro hardware (the per-pair cost is too high), but used by *Doom*'s BSP-based collision and modern engines.
+The NES picture chip has a single collision flag: sprite 0 hit, bit 6 of `$2002`, set when an opaque pixel of sprite 0 is drawn over an opaque background pixel. It does not detect sprites touching each other, and its main use is timing a split screen rather than gameplay; see [PPU](/vault/hardware/ppu). NES games did their collision checks in software, as Spectrum games had to: the Spectrum has no collision hardware at all.
 
-## Swept collision
+## The Amiga: collisions by pairs
 
-Standard collision tests the *current* positions. **Swept collision** tests the *path* an object took since the last frame — preventing **tunnelling**, where a fast object skips through a thin obstacle:
+On the [Amiga](/vault/systems/commodore-amiga) the [Denise](/vault/hardware/denise) video chip keeps a collision register too. The *Amiga Hardware Reference Manual* describes `CLXDAT` (`$DFF00E`), read-only and "automatically cleared to 0 after it is read", with fifteen bits for particular pairings: sprite pair against sprite pair, sprites against the odd or even bitplanes, and odd bitplanes against even. A companion register, `CLXCON`, chooses which bitplanes and which odd-numbered sprites take part. As on the C64, a set bit names the kind of meeting, not the objects' positions.
+
+## Tiles
+
+When the world is a grid of tiles, collision against the world becomes a lookup: turn the object's position into a tile row and column, read the tile and check its properties (solid, empty, ladder, hazard). On 8-bit machines the conversion is a few shifts when tiles are 8 or 16 pixels wide. See [Tile-based collision](/vault/techniques/tile-collision).
+
+## Fast objects and tunnelling
+
+A test that only looks at where objects are *now* can miss a fast object that moved right through a thin one between frames:
 
 ```
 Frame N:    [bullet]       [wall]
 Frame N+1:               [bullet]   (passed through!)
 ```
 
-Swept collision sweeps the bullet's bounding box from old to new position, intersecting against the wall — catches the collision that the static test misses.
+Swept collision tests the path instead: it treats the box's movement from its old position to its new one as a shape and checks that against the obstacle. The cheaper fixes are to limit an object's speed to less than the thickness of anything it can hit, or to move it in several smaller steps per frame and test after each.
 
-Common in fast-projectile games: hitscan weapons, bullet sprites, fast-moving platformer characters.
+## Testing fewer pairs
 
-## Optimisation techniques
-
-Modern games have hundreds of objects; brute-force pair testing is O(n²). The standard optimisations:
+Checking every object against every other grows with the square of the number of objects. With the handful of sprites an 8-bit game moves, testing every pair is usually affordable, and the common saving is to test only the pairs that matter: player bullets against enemies, enemy bullets against the player. Larger games split the work further:
 
 | Technique | Purpose |
-|-----------|---------|
-| **Broad phase / narrow phase** | Cheap test first (AABB), expensive test second (per-pixel) |
-| **Spatial partitioning** | Quadtree, grid bucket, sweep-and-prune — only test pairs that share a region |
-| **Bitmasks** | Fast group/layer queries — "only test enemies vs player bullets" |
-| **Spatial hashing** | Bucket objects by hashing position; lookup neighbours |
-| **Frame skipping** | Cheap-to-resolve collisions can be checked every N frames |
-| **Hierarchical grouping** | Test the parent body's box first, then per-bone if it hits |
+|---|---|
+| **Broad phase, narrow phase** | A cheap test first (boxes), an expensive one only for pairs that pass |
+| **Spatial partitioning** | Grid buckets, quadtrees or sweep-and-prune, so only objects in the same region are tested |
+| **Collision groups** | Bit masks saying which kinds of object can hit which |
 
-For 8-bit games with ~20 objects max, brute-force AABB is usually fine. The optimisations matter once you hit hundreds.
+## Common problems
 
-## Common issues
+| Problem | Cause | Usual fix |
+|---|---|---|
+| **Tunnelling** | A fast object skips through a thin obstacle in one frame | Swept tests, smaller steps, or a speed limit |
+| **Unfair hits** | Box larger than the visible sprite | A smaller hitbox |
+| **Missed hits** | Collisions checked too rarely | Test fast objects every frame |
+| **Stuck in walls** | Pushed-out objects overlap again next frame | Move and resolve one axis at a time, pushing out by the overlap |
+| **Snagging on tile edges** | The box catches the corner of the next tile when sliding | Check the axis of movement separately, or trim the box's corners |
 
-| Problem | Cause | Solution |
-|---------|-------|----------|
-| **Tunnelling** | Fast object skips through thin obstacle in one frame | Swept collision; or smaller timesteps |
-| **False positives** | Bounding box larger than visual sprite | Tighter custom hitboxes |
-| **False negatives** | Check too infrequent (frame-skipping mistake) | Test every frame for fast objects |
-| **Stacking glitches** | Pushed-out characters re-collide | Carefully resolve contacts via penetration depth |
-| **Edge sticking** | Player snags on tile edges when sliding | Bevel corners or use coyote-time logic |
+<Sources>
+
+- *Commodore 64 Programmer's Reference Guide* (Commodore Business Machines, 1982): collision detects, sprite-to-sprite and sprite-to-data collisions (pp. 144–145); interrupt status and enable registers (p. 151); "a good quality game in BASIC" (chapter 3, sprites).
+- Robert Camp, *Creating Arcade Games on the Commodore 64* (COMPUTE! Books, 1984), pp. 246–250: collision registers V+30 and V+31; multicolour characters that do not trigger a collision; the *Pac-Man* example.
+- *De Re Atari* (Atari, 1982), section 4, p. 4-6: hardware collision detection, HITCLR and timing.
+- Ian Chadwick, *Mapping the Atari*, revised edition (COMPUTE! Books, 1985): collision registers at 53248–53263 and HITCLR at 53278.
+- "Sprite/Sprite hardware collision" and "Simple software sprite to sprite collision", Codebase64 wiki (last modified 17 April 2015; CC BY-NC-SA 4.0) (web, secondary). https://codebase64.org/doku.php?id=base:simple_hardware_sprite_to_sprite_collision and https://codebase64.org/doku.php?id=base:simple_software_sprite_to_sprite_collision
+- *Amiga Hardware Reference Manual* (Commodore-Amiga, Addison-Wesley, 1989), chapter 7, pp. 207–208: CLXDAT and CLXCON; appendix A, p. 266 (CLXDAT at offset $00E, a Denise register).
+- The C64 register behaviour and the listing's results were confirmed by running it with the Commodore 64's own ROMs.
+
+</Sources>
 
 ## See also
 
-- [Tile Maps](/vault/techniques/tile-maps)
-- [Tile-Based Collision](/vault/techniques/tile-collision)
 - [Hitboxes](/vault/techniques/hitboxes)
-- [Fixed Point Math](/vault/techniques/fixed-point-math)
-- [Game Loop](/vault/techniques/game-loop)
+- [Tile-based collision](/vault/techniques/tile-collision)
+- [Tile maps](/vault/techniques/tile-maps)
+- [Sprites](/vault/techniques/sprites)
+- [VIC-II](/vault/hardware/vic-ii)
+- [PPU](/vault/hardware/ppu)
+- [Commodore Amiga](/vault/systems/commodore-amiga)
+- [Atari 8-bit computers](/vault/systems/atari-8-bit)
+- [Fixed-point maths](/vault/techniques/fixed-point-math)
+- [Game loop](/vault/techniques/game-loop)
