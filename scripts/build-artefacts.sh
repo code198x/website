@@ -21,7 +21,7 @@ ASM198X_VERSION="${ASM198X_VERSION:-v0.0.57}"
 # code-samples lints and builds the same BASIC Makefiles in CI with its own
 # pin, BUILD198X_VERSION in code198x/code-samples
 # .github/workflows/basic-listings.yml. Keep the two equal: bump them together.
-BUILD198X_VERSION="${BUILD198X_VERSION:-v0.2.8}"
+BUILD198X_VERSION="${BUILD198X_VERSION:-v0.2.9}"
 
 SAMPLES="${1:?usage: build-artefacts.sh <code-samples-path> [output-dir]}"
 OUT="${2:-public/code-samples}"
