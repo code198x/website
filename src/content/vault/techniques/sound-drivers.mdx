@@ -1,176 +1,125 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Sound Drivers"
-subtitle: "Audio engine software"
-summary: "Sound drivers were the software engines that controlled audio hardware, translating composer's music data into the bleeps, samples, and synthesised sounds that defined each platform's acoustic character."
+subtitle: "The code that makes the music data run"
+summary: "A sound driver is the small program inside a game that reads a composer's music data and feeds the sound chip, usually fifty or sixty times a second. On 8-bit machines it had to fit in a few kilobytes, and composers such as Rob Hubbard, Martin Galway, David Whittaker and Chris Hülsbeck wrote their own; later, studios and console makers supplied drivers such as Software Creations' house driver, Sega's GEMS and Nintendo's standard SNES driver."
 category: "techniques"
-platforms: ['nintendo-entertainment-system', 'commodore-64', 'commodore-amiga', 'sega-mega-drive']
+platforms: ['commodore-64', 'sinclair-zx-spectrum', 'amstrad-cpc', 'msx', 'atari-8-bit', 'nintendo-entertainment-system', 'commodore-amiga', 'atari-st', 'sega-mega-drive', 'super-nintendo']
 tags: ['audio', 'programming', 'technique']
-originated: 1980
-
-sources:
-  the_obligation_before_the_personality:
-    - title: "mixer, 'ADSR Discussion Notes', Codebase64"
-      kind: technical-doc
-      page: "base:classic_hard-restart_and_about_adsr_in_generally"
-      note: "The ADSR bug costs '32768 cycles. That is 1.7 frames in terms of 1/50 fps frames', and the standard answer is structural rather than musical: 'The HR is started 2 full frames before next note.' The choice of value is not free either - 'The A,D,R values determine what the LFSR comparison value is when the next note is started'"
-  the_drivers_were_disassembled_in_public:
-    - title: "Anthony McSweeny, 'Rob Hubbard's Music: Disassembled, Commented, and Explained', C= Hacking issue 5"
-      kind: magazine
-      page: "Issue #5"
-      note: "The C= Hacking table of contents describes it as a 'self-explanatory title', and a later issue carries 'The Second Rob Hubbard Music Routine... presented in the same way as the first', with a stated intention to continue: 'Future issues will hopefully examine various other music routines including various Martin Galway, Benn Daglish, Jeoren Tel, and Manaics of Noise routines'"
-
 ---
 
-Between composer and chip sat the driver. **Sound drivers** translate music data — patterns, instruments, sequencer commands — into the per-frame register writes that drive the audio hardware. Each driver has personality: some prioritise memory efficiency, others sound quality, others ease of composition. Famous drivers like the ones Rob Hubbard wrote for C64 became as celebrated as the music they played.
+import Sources from '@components/Sources.astro';
 
-The driver is what makes "Hubbard's *Monty on the Run*" sound like Hubbard rather than like the SID's stock waveforms. Two composers with identical chip access but different drivers will produce noticeably different music — the driver is part of the instrument.
+A sound chip does not play music. It holds a few numbers, a pitch, a volume, a waveform, and keeps making the same noise until something changes them. The something is the **sound driver**, a routine inside the game that reads the composer's music data and rewrites the chip's registers, over and over, at a steady rate. *Amstrad Action* explained it to would-be game writers in 1990: "A sound driver is a program that plays and updates sounds through the chip. It needs to be 'called' extremely frequently to work properly, a rate of around fifty times a second being the norm."
+
+Two composers with the same chip could sound nothing alike, because the driver decided what the chip was asked to do. On the Commodore 64 the composer usually wrote the driver as well, and it had to be small. *Edge*, looking back in 1994, said that writing the melody "wasn't enough; you also had to write a sound driver routine to control the SID that would fit into the memory available — normally 3-5K". *The Games Machine* gave a similar figure in 1987, "about 4K of memory for sound", and put part of [Rob Hubbard](/vault/people/rob-hubbard)'s success down to "the library of self-written routines that he has built up".
 
 ## Fast facts
 
-- **Purpose:** Control audio hardware via timed register writes.
-- **Function:** Play music tracks and trigger sound effects from compact data.
-- **Variety:** Platform-specific *and* composer-specific.
-- **Legacy:** Often defines what a platform's music sounds like.
+- **Job:** read music data and write the sound chip's registers, usually once a video frame, from an interrupt (see [Interrupt-Driven Music](/vault/techniques/interrupt-driven-music)).
+- **Size on 8-bit machines:** a few kilobytes for driver and tunes together; Hubbard's C64 routine was about 900 to 1,000 bytes of code.
+- **Who wrote them:** often the composer (Hubbard, [Martin Galway](/vault/people/martin-galway), [David Whittaker](/vault/people/david-whittaker), [Chris Hülsbeck](/vault/people/chris-huelsbeck), [Tim Follin](/vault/people/tim-follin)); sometimes a programmer colleague or a studio's house driver.
+- **Console era:** drivers supplied to developers, such as Sega of America's GEMS for the Mega Drive and the standard driver in Nintendo's SNES development kit.
+- **Afterlife:** SID and NSF files keep a game's own driver code so that its music can be played outside the game.
 
-## Driver responsibilities
+## A sequencer in machine code
 
-| Task | Function |
-|------|----------|
-| **Music playback** | Read pattern data, write notes/effects to chip registers each tick |
-| **Sound effects** | Triggered audio interrupts/overrides music tracks |
-| **Resource management** | Channel allocation between music and SFX |
-| **Timing** | Frame-rate-synchronised tick (50/60 Hz) or interrupt-driven |
-| **Compression** | Decode compact pattern formats at runtime |
-| **Effects engine** | Vibrato, slides, arpeggios, filter sweeps |
-| **Envelope generation** | Software ADSR for chips that don't provide it |
+A driver keeps the music as data, not as code, and the data is built for size. Anthony McSweeney, who published a commented disassembly of Hubbard's routine in *C= Hacking* in 1993, set out the layers. A music "module" holds one or more songs, so a game's title tune, in-game tune and game-over tune could share one routine and even the same instruments. Each song is three tracks, one for each voice of the [SID](/vault/hardware/sid-chip). A track is a list of pattern numbers, so a repeated section is stored once and called again. A pattern is a string of notes, each with its length and pitch and, where it changes, a new instrument. An instrument is eight bytes that set its pulse width, waveform, envelope, vibrato depth and effects.
 
-## Platform-specific drivers
+David Whittaker described his own driver to *Sinclair User* in 1987 in the same terms. It let him "write in a stream of bytes which represent either musical notes or effects and arrange those phrases into different patterns – it's like a machine code sequencer". The effects were where a driver earned its keep, because the chips had no chords and no vibrato of their own. Whittaker explained the chord: play C, E and G "in succession very quickly – an arpeggio really" (see [Arpeggio](/vault/techniques/arpeggio)). For an echo he took the current note and, every so often, played it an octave higher for a fiftieth of a second. McSweeney found drums, vibrato, pulse-width modulation, a one-octave arpeggio and pitch slides in Hubbard's routine, all worked out afresh on every call.
 
-### NES (APU 2A03)
+The same frame-by-frame loop carried the sound effects. A game had to decide which voice an explosion could take. A programming series in *Commodore Computing International* in 1987 left voice one free "to produce any noises that might be required by the game itself" and played the soundtrack on the other two, and the Monty on the Run routine that McSweeney disassembled had sound-effects code of its own, which he removed for clarity. Chris Hülsbeck's later Amiga and SNES music kept "a couple of channels reserved for sound effects".
 
-| Driver | Used by | Notes |
-|--------|---------|-------|
-| **Konami driver** | Konami games | Distinctive *Castlevania* / *Contra* sound; supports VRC6/VRC7 expansion audio |
-| **Capcom driver** | Capcom games | Used across *Mega Man* series; melodic and clean |
-| **Sunsoft driver** | Sunsoft games | *Batman*, *Journey to Silius* — exceptional bass; uses DPCM for sub-bass tones |
-| **Tim Follin driver** | Follin's NES work | *Solstice*, *Silver Surfer* — extremely complex per-frame manipulation |
-| **FamiTracker driver** | Modern homebrew | The de facto modern NES audio standard |
-| **GGSound** | Modern homebrew | Lighter alternative for indie NES games |
+## Who wrote the driver
 
-### C64 (SID 6581/8580)
+Hubbard wrote his once and kept it. McSweeney found that he "used this routine to make music for a very long time, only changing it _slightly_ over time", in *Confuzion*, *Thing on a Spring*, *[Monty on the Run](/vault/games/monty-on-the-run)*, *Commando*, *[Thrust](/vault/games/thrust)*, *International Karate* and many more; to play a different tune "all you would need to do ... is to change the music data at the bottom, and a few lines of the code". Galway went the other way. "I had an all assembly language, no fancy editors, hard-work approach to putting in tune data," he told *Retro Gamer*, which let him "custom-modify program code for each tune", at the cost of complex tunes taking a month.
 
-| Driver | Creator | Notable for |
-|--------|---------|-------------|
-| **Hubbard driver** | Rob Hubbard | *Monty on the Run*, *Commando*; per-game custom variations; defined "Hubbard sound" |
-| **Galway driver** | Martin Galway | *Wizball*, *Times of Lore*; richer envelope work, distinctive percussion |
-| **JCH NewPlayer** | Jens-Christian Huus | Demoscene standard; widely used in 2000s+ |
-| **Future Composer** | SoundFX (1989) | Cross-platform driver (C64 + Amiga); used in some commercial games |
-| **GoatTracker** | Cadaver et al. | Modern community standard with composition tool integrated |
-| **SID-Wizard** | Hermit | Modern composer-friendly driver |
+Other C64 composers told *Retro Gamer* how their drivers grew. Fred Gray said his first driver "didn't fully exploit the SID's capabilities", so he wrote a more complete one, and when he rewrote it again he used the SID's ring modulation for *Mutants*. [Ben Daglish](/vault/people/ben-daglish) started with a driver [Tony Crowther](/vault/people/tony-crowther) wrote for him, into which he typed notes such as "C2, 10, D2, 13", used others at [Gremlin](/vault/companies/gremlin-graphics), and later wrote his own, "which then made it easier to port code to different platforms". Whittaker said he "did share and swap players with Rob Hubbard for a couple of different formats". The composers who could not program waited for someone else: Reyn Ouwehand called himself "a bad programmer, so I had to wait for others to create players and routines for me". In the Netherlands the work was split inside one team. Charles Deenen of Maniacs of Noise recalled starting out as "a programmer doing drivers and sound effects", with [Jeroen Tel](/vault/people/jeroen-tel) writing the music.
 
-#### What every SID driver has to do
+As studios grew they kept house drivers. Stephen Ruddy, who converted *[Bubble Bobble](/vault/games/bubble-bobble)* to the C64 for Software Creations, remembered that after it he "was working on the Software Creations music driver". In 1989 [Tiertex](/vault/companies/tiertex)'s musician Mark Tait composed on a sampler and an Atari ST sequencer, then ran a program to convert the MIDI data "into the format required for Tiertex's music driver on the Spectrum". [Dave Rogers](/vault/people/dave-rogers) typed his notes into an editor he had written in Amstrad BASIC; a compiler packed them into a data block, and the driver was "the only part that I wrote in machine code, because obviously it had to be very fast".
 
-Before the personality comes an obligation. SID's envelope generator stalls for about
-1.7 frames if a driver lowers an attack, decay or release value at the wrong moment,
-so every C64 driver silences and resets a voice roughly two frames before each note —
-a [hard restart](/vault/techniques/hard-restart). The ADSR value chosen for those two
-frames is part of a driver's sound, because it decides how cleanly each note begins.
+## Machine by machine
 
-### Amiga (Paula)
+### Commodore 64 (SID)
 
-| Driver / Format | Use | Notes |
-|------------------|-----|-------|
-| **MOD format** (ProTracker) | Universal Amiga + cross-platform standard | 4-channel pattern format; replayer in under 1 KB |
-| **TFMX** (Chris Hülsbeck) | *Turrican* series | Multi-track sample-based driver with effects |
-| **Future Composer** | Some commercial games | Lightweight tracker-style |
-| **Custom per-game drivers** | Many big-name composers | Bjørn Lynne, Tim Wright, Allister Brimble had custom drivers |
-| **Hippel driver** | Jochen Hippel's Amiga work | *Ghost Battle*, *Wings of Death* — distinctive arpeggio chord work |
+The SID has three voices, each with its own envelope, so a C64 driver spends much of its time starting and stopping notes cleanly. The chip's envelope generator has a fault: change an attack, decay or release value at the wrong moment and the envelope can stall for a full cycle of its counter, "32768 cycles. That is 1.7 frames in terms of 1/50 fps frames", according to the Codebase64 wiki. Many drivers therefore release and reset a voice about two frames before its next note, provoking the stall early where it cannot be heard. This is the [hard restart](/vault/techniques/hard-restart), and the values a driver chooses for it shape how each note begins.
 
-### Mega Drive (YM2612 + SN76489)
+Drivers also reached past the SID's three voices. Galway worked out sample playback by studying the drum program Digidrums, and Hülsbeck, at Rainbow Arts, built his own sampled drums into his player; both are covered in their entries. Hülsbeck also said that when he heard Galway's fast arpeggio chords in the Ocean loading music, he "coded that stuff in" to his own player.
 
-| Driver | Composer / Studio | Notable for |
-|--------|--------------------|-------------|
-| **GEMS** (Recreational Brainware) | Many Western Genesis games | Standard middleware; criticised for "cheap" Genesis sound |
-| **SMPS** (Sound Engine for Mega Drive) | Sega first-party | *Sonic the Hedgehog* series — the canonical Genesis driver |
-| **Yuzo Koshiro custom driver** | *Streets of Rage* / *Streets of Rage 2* | Pushed YM2612 + DAC for percussion in ways stock GEMS couldn't |
-| **Konami SCC + YM driver** | Konami Mega Drive games | *Castlevania: Bloodlines* |
-| **MegaTracker / Echo** | Modern homebrew | Modern indie Mega Drive composition tools |
+### AY-3-8910 family (Spectrum 128, Amstrad CPC, MSX, Atari ST)
 
-### Other platforms
+The [AY-3-8912](/vault/hardware/ay-3-8912) in the Spectrum 128 and its relatives hold three square-wave tones and a noise source, and keep playing without the processor's help, so a driver only has to update them once a frame. The same notes and effects could be moved between machines, since, as the [AY-3-8910](/vault/hardware/ay-3-8910) entry explains, a driver for another machine needs new port routines and a new table of periods, not new logic. Rogers' drivers played the same Amstrad-made data on the 48K and 128K Spectrum and the Atari ST, *Retro Gamer* reported. On MSX machines BASIC offered its own simple driver: the `PLAY` statement took music written as a text string in a "music macro language", in the manner of the graphics statement `DRAW`.
 
-| Platform | Driver | Notes |
-|----------|--------|-------|
-| **ZX Spectrum (AY)** | Various — *Vortex Tracker*, *Sound Tracker*, custom per-game | 128K Spectrum's AY-3-8912 |
-| **MSX (PSG / FM)** | MML drivers, Konami SCC drivers | MML notation common |
-| **Atari 8-bit (POKEY)** | RMT (Raster Music Tracker) | Modern community standard |
-| **Atari ST (YM2149)** | MaxYMiser | Spectrum AY-equivalent driver style |
+### Atari 8-bit (POKEY)
 
-## Driver features
+Atari's POKEY chip has four sound channels but, like the others, needs constant attention to play a tune. In December 1982 the magazine *SoftSide* published Craig Chamberlain's *Pokey Player*, a music editor and player for the Atari 400 and 800. It moved the note processing into the vertical blank interrupt, which "happens every sixtieth of a second", so that the music could run "simultaneously with another program", and the player could be merged with the reader's own Atari BASIC games.
 
-| Feature | Benefit |
-|---------|---------|
-| **Pattern compression** | Compact music data — *MOD*-style patterns reuse rows |
-| **Pattern reuse** | A song's chorus pattern only stored once |
-| **Streaming from disk** | Long music tracks loaded in chunks |
-| **Priority system** | SFX temporarily steal channels from music; restore after |
-| **Envelope control** | Per-instrument ADSR for chips lacking hardware envelopes |
-| **Vibrato / slides / arpeggios** | Per-tick interpolation of frequency or pitch |
-| **Sample-rate variation** | Pitch-shift samples by changing playback rate (Paula default; software on others) |
+### NES (APU)
 
-## Composer workflows
+The NES's [APU](/vault/hardware/apu) offers two pulse channels, a triangle, noise and a sample channel, and most games run their driver once a frame from the vertical blank NMI; *[Metroid](/vault/games/metroid)* keeps its music running even when the game itself slows down. British teams wrote their own. Tim Follin's own discography in *Super Play* lists his music drivers, as well as his scores, for *Solstice*, *Target Renegade* and *Silver Surfer* on the NES.
 
-| Approach | Detail |
-|----------|--------|
-| **Tracker software** | Visual composition (rows × channels grid) — *FastTracker*, *ProTracker*, *FamiTracker* |
-| **MML (Music Macro Language)** | Text-based note entry — Japanese MSX / Famicom dev tradition |
-| **Custom in-house tools** | Proprietary editors specific to one studio's driver — Konami, Capcom, Sega, Sunsoft all had these |
-| **Direct programming** | Code-level register manipulation — early home games, sound effects, demoscene |
-| **MIDI import + manual tweak** | Compose in DAW, export MIDI, hand-port to driver format — modern approach |
+### Amiga and Atari ST (Paula and after)
 
-## Memory considerations
+[Paula](/vault/hardware/paula) plays sampled sound from memory by itself, so an Amiga driver chooses samples, pitches and volumes for four channels and changes them as the song goes. The best-known Amiga drivers are the replay routines of *[SoundTracker](/vault/tools/soundtracker)* and *[ProTracker](/vault/tools/protracker)*, which play the self-contained [MOD](/vault/techniques/mod-format) files those programs write.
 
-8-bit memory was tight; sound drivers had to fit in a few KB at most:
+Composers also wrote their own. Hülsbeck's TFMX, *The Games Machine* reported in February 1990, had been "developed over years" to produce the best sound "using as little memory and using up as little processing time as possible", and gave *X-Out* its music. The German publisher Demonware sold it to other programmers that year. *Amiga Computing* noted that unlike *SoundTracker* it came with no source code for its player: "all you've got to do is disassemble the player program!" Hülsbeck later told *Retro Gamer* how drivers crossed machines. A colleague fitted an Atari ST sound chip to a board for the Amiga, so he "could program the sound driver on the Amiga and port it easily back to the Atari ST". The traffic ran both ways. The ST composer Jochen Hippel had written "his own Atari ST sound system" that emulated the Amiga's sound chip; for *[Turrican II](/vault/games/turrican)*, with Hippel's help, Hülsbeck ported that code back to the Amiga to mix four simulated voices into one channel, giving his "seven-voice system". Whittaker also wrote his own Amiga driver, which played synthesised sounds alongside samples.
 
-| Constraint | Solution |
-|------------|----------|
-| **Limited RAM** | Compact pattern encoding (delta encoding, bit-packed flags) |
-| **Pattern reuse** | Loop sections of repeated music |
-| **Instrument sharing** | Multiple notes use the same instrument data |
-| **Streaming** | Disk-based platforms (Amiga, ST) load music incrementally |
-| **Self-modifying code** | Some C64 drivers patch themselves to optimise |
+### Consoles of the 1990s
 
-## Famous driver innovations
+By the time of the 16-bit consoles, console makers supplied drivers. *Nintendo Power* explained in January 1994 that every Super NES game "is equipped with a Sound Driver, which is a program that converts music instructions and data in the game's ROM into Super NES data". Nintendo's development system came with a standard driver, and some companies wrote their own. The magazine picked out two. Software Creations' driver, written by its technical director Michael Webb, could compile music and send it to the console "almost instantly", in the words of managing director Richard Kay. Interplay's A.R.D.I. system read the score straight from the cartridge, not from the sound system's limited RAM. *Edge* gave the reason: the SNES had only 64K of sound memory, and Interplay's Charles Deenen put "the note data and drivers in the normal 512K" and kept the 64K for samples.
 
-| Innovation | Driver | Result |
-|------------|--------|--------|
-| **Per-frame parameter sweeps** | Hubbard's C64 driver | Filter envelopes that produce the "Hubbard sound" |
-| **Software ADSR** | Galway's C64 driver | Richer envelope shapes than SID's hardware can produce alone |
-| **Multi-channel arpeggios** | Hippel's Amiga driver | Layered chord-arpeggios across multiple Paula channels |
-| **DAC sample percussion** | Koshiro's MD driver | Hi-hats and snares pushed through YM2612's DAC channel |
-| **Tim Follin's NES driver** | Follin's custom driver | Six-channel-feel from three pulse + triangle channels via fast switching |
-| **Sub-bass DPCM** | Sunsoft NES driver | Low frequencies played through the DPCM sample channel |
+On the Mega Drive, Sega's technical overview gave the Z80 processor the job of running the sound chips, and the [YM2612](/vault/hardware/ym2612) entry explains the driver's work there. The Sega Retro wiki records that Sega of America commissioned the San Francisco developer Recreational Brainware in 1990 to write GEMS (Genesis Editor for Music and Sound effects), because Western developers were struggling with the unfamiliar hardware, and that it was used in about 200 games. Sega's Japanese teams used a family of drivers that fans now call SMPS, a name the same wiki describes as colloquial, found in *[Sonic the Hedgehog](/vault/games/sonic-the-hedgehog)* and *[Streets of Rage](/vault/games/streets-of-rage)* among many others.
 
-## Modern preservation
+## Taken apart and kept
 
-The format / driver pairs that preserve retro music:
+Because a driver was a program, it could be copied, studied and reused. McSweeney wrote in 1993 that Hubbard's routine "has been ripped off by many famous groups and people over the years", naming The Judges and Red Software's *Red-Hubbard* demo, and the Atari ST demo in which Jochen Hippel, as "Mad Max", converted about a hundred Hubbard tunes to the ST. He published his commented source partly because Lars Hamre had shared the *ProTracker* source. The same issue promised that the next would carry "The Second Rob Hubbard Music Routine", with Galway, Daglish, Tel and Maniacs of Noise routines to follow, but no later issue of *C= Hacking* carried them.
 
-| Format | Platform | Notes |
-|--------|----------|-------|
-| **NSF** | NES | NES Sound Format — bytecode + driver bundled together |
-| **SID** | C64 | C64 Sound Format — preserves the music driver code |
-| **VGM** | Multi-platform | Logged register writes; replayed by emulator-style players |
-| **MOD / S3M / XM / IT** | Amiga, PC | Tracker formats are *self-describing* — no separate driver needed |
-| **GBS** | Game Boy | Equivalent of NSF for Game Boy |
+Today's music archives depend on the drivers. A `.sid` file in the [High Voltage SID Collection](/vault/tools/hvsc) holds the game's own player code and data, with a header naming the routines that start and play the tune. The NES Sound Format works the same way: an NSF player calls the tune's own INIT routine once and its PLAY routine at about 60 or 50 Hz. The VGM format, started on the S8-dev forum in 2001, takes the other approach: it "logs the data written to the sound chips by games", so a player needs only the chip, not the driver. Modern trackers for the old machines, such as *[SID-Wizard](/vault/tools/sid-wizard)* and *[FamiTracker](/vault/tools/famitracker)*, carry on the old arrangement and export a player routine with the music for a game to call.
 
-The SID and NSF formats are particularly clever — they preserve the original 6502 driver code along with the data, so the music plays exactly as on real hardware. Players essentially *emulate* the original system's CPU + sound chip.
+<Sources>
+
+- *Amstrad Action* issue 58, July 1990, p. 39: games-writing feature, "Sound as a Pound" ("A sound driver is a program that plays and updates sounds through the chip ... around fifty times a second").
+- *Edge* issue 15, December 1994, pp. 56–59: feature on game music (the SID driver in "normally 3-5K"; Charles Deenen as "a programmer doing drivers and sound effects"; the SNES's 64K and Deenen's drivers in the main 512K).
+- *The Games Machine* issue 1, October 1987, p. 111: programming music for games, "about 4K of memory for sound", Rob Hubbard's "library of self-written routines".
+- Anthony McSweeney, "Rob Hubbard's Music: Disassembled, Commented and Explained", *C= Hacking* issue 5, March 1993 (web, secondary): the data layers, the eight-byte instruments, the effects, the games that used the routine, its size, the sound-effects code, the "ripped" copies and the Hippel demo; the issue's "In the Next Issue" notice. Issues 6 to 21 contain no further Hubbard article. http://www.ffd2.com/fridge/chacking/
+- *Sinclair User* issue 65, August 1987, pp. 32–33: David Whittaker feature (his driver as "a machine code sequencer", arpeggio chords, the octave echo).
+- *Commodore Computing International* vol. 6 no. 1, August 1987, p. 118: games-programming series, interrupt-driven music on two voices with voice one kept for effects.
+- *Retro Gamer: The Commodore 64 Book* (2012), "The SID Crowd", pp. 24–29: Galway's assembly-language method; Fred Gray's drivers; Ben Daglish and Tony Crowther's driver; Whittaker swapping players with Hubbard; Reyn Ouwehand; Hülsbeck on arpeggios after Galway's Ocean loader.
+- *Retro Gamer* issue 37, 2007, pp. 84–88, Paul Drury, "Ste Ruddy": the Software Creations music driver.
+- *Sinclair User* issue 90, September 1989, p. 59: how Tiertex's Spectrum *Strider* was made (Mark Tait and "Tiertex's music driver").
+- David Crookes, "The Making of *Cybernoid*", *Retro Gamer* issue 102, May 2012: Dave Rogers's BASIC editor, compiler and machine-code driver, and his drivers for the Spectrum 48 and 128 and the Atari ST.
+- *Retro Gamer* issue 115, June 2013, pp. 90–94, "In the Chair: Chris Huelsbeck": porting his driver between the Amiga and the ST, Jochen Hippel's ST sound system, the seven-voice system and channels kept for effects.
+- mixer and others, "Classic hard-restart and about ADSR in generally", Codebase64 wiki (web, secondary): the 32,768-cycle stall and the restart two frames before the note. https://codebase.c64.org/doku.php?id=base:classic_hard-restart_and_about_adsr_in_generally
+- *MSX Technical Data Book* (ASCII/Microsoft), p. 96: the `PLAY` statement's music macro language.
+- Craig Chamberlain, "Pokey Player II", *SoftSide* vol. 6 no. 3, December 1982, p. 49: playing music in the vertical blank interrupt on the Atari 400 and 800.
+- *Super Play* issue 43, May 1996: Tim Follin interview and discography, as cited in the [Tim Follin](/vault/people/tim-follin) entry.
+- *The Games Machine* issue 27, February 1990, p. 51: *X-Out* review, TFMX "developed over years" by Chris Hülsbeck.
+- *Amiga Computing* vol. 3 no. 6, November 1990, pp. 120–121: TFMX from Demonware, no player source ("disassemble the player program!").
+- Chris Wilkins and Roger M. Kean, *The Story of the Amiga in Pixels* (Fusion Retro Books, 2017), pp. 208–210: David Whittaker's Amiga driver.
+- *Nintendo Power* issue 56, January 1994, Super Power Club supplement, pp. 6–7: the Super NES sound driver, Nintendo's standard driver, the Software Creations driver (Michael Webb, Richard Kay) and Interplay's A.R.D.I. system.
+- Sega Retro wiki, "GEMS", "Recreational Brainware" and "SMPS" (web, secondary): GEMS commissioned by Sega of America in 1990; its use in about 200 games; SMPS as a colloquial name and the games that use it. https://segaretro.org/GEMS https://segaretro.org/SMPS
+- High Voltage SID Collection, "SID file format description" (web, secondary): the init and play addresses in a `.sid` file. https://www.hvsc.c64.org/download/C64Music/DOCUMENTS/SID_file_format.txt
+- NESdev Wiki, "NSF" (web, secondary): the INIT and PLAY routines and play rates. https://www.nesdev.org/wiki/NSF
+- SMS Power!, "VGM File Format" (web, secondary): its origin on the S8-dev forum in August 2001 and what it logs. https://www.smspower.org/Music/VGMFileFormat
+
+</Sources>
 
 ## See also
 
-- [SID Chip](/vault/hardware/sid-chip)
-- [APU](/vault/hardware/apu)
 - [Interrupt-Driven Music](/vault/techniques/interrupt-driven-music)
-- [Rob Hubbard](/vault/people/rob-hubbard)
+- [Hard Restart](/vault/techniques/hard-restart)
+- [Arpeggio](/vault/techniques/arpeggio)
 - [MOD Format](/vault/techniques/mod-format)
+- [Tracker Music](/vault/culture/tracker-music)
 - [Audio Programming](/vault/techniques/audio-programming)
+- [SID](/vault/hardware/sid-chip)
+- [AY-3-8912](/vault/hardware/ay-3-8912)
+- [APU](/vault/hardware/apu)
+- [Paula](/vault/hardware/paula)
+- [YM2612](/vault/hardware/ym2612)
+- [Rob Hubbard](/vault/people/rob-hubbard)
+- [Martin Galway](/vault/people/martin-galway)
+- [David Whittaker](/vault/people/david-whittaker)
+- [Chris Hülsbeck](/vault/people/chris-huelsbeck)
+- [High Voltage SID Collection](/vault/tools/hvsc)
