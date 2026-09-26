@@ -1,234 +1,327 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Interrupt-Driven Music"
 subtitle: "Sound without blocking"
-summary: "Interrupt-driven music used timer interrupts to update sound chips at regular intervals, allowing music playback while the CPU handled game logic."
+summary: "A music driver called from an interrupt fifty or sixty times a second keeps a tune playing at a steady tempo while the main program runs the game. The C64's raster and CIA timer interrupts, the Spectrum 128's interrupt mode 2, the NES's vertical blank NMI and the Amiga's level 3 and CIA interrupts all served, and the composers of the period wrote their own drivers to fit into the few hundred cycles each call was allowed."
 category: "techniques"
 platforms: ['commodore-64', 'sinclair-zx-spectrum', 'commodore-amiga', 'nintendo-entertainment-system']
 tags: ['audio', 'programming', 'technique']
-originated: 1980
 
 sources:
-  the_minimal_c64_player:
-    - title: "Codebase64, 'Simple IRQ Music Player'"
+  hubbard_routine:
+    - title: "Anthony McSweeney, 'Rob Hubbard's Music: Disassembled, Commented and Explained', C= Hacking issue 5, 7 March 1993"
+      kind: source-code
+      date: "1993-03-07"
+      note: "'Rob used this routine to make music for a very long time, only changing it _slightly_ over time.' Lists Confuzion, Thing on a Spring, Monty on the Run, Commando, Crazy Comets, International Karate and many more. 'jsr music+0 to initialize ... jsr music+3 to play the music ... The music is supposed to run at 50Hz ... PAL users can run the music routine off the IRQ'; on NTSC 'the music will be running at 60Hz and will sound much to fast'. Web, secondary: https://www.1xn.org/text/C64/rob_hubbards_music.txt"
+  c64_minimal_player:
+    - title: "Codebase64 wiki, 'Simple IRQ Music Player', with notes by Frantic"
       kind: technical-doc
-      page: "sid:simple_irq_music_player"
-      note: "The whole pattern in two calls: 'jsr $1000 ;Initialize Richard's music' at setup, then inside the handler 'lda #$01 / sta $d019 ; ACK any raster IRQs / jsr $1003 ;Play the music / jmp $ea31'. Init at the load address, play three bytes later, acknowledge before doing anything else"
-  the_file_format_gotcha:
-    - title: "Frantic, notes on 'Simple IRQ Music Player', Codebase64"
+      note: "The raster IRQ is installed through $314/$315 with CIA 1's interrupts switched off ('ldy #$7f ... sty $dc0d'); the handler is 'lda #$01 / sta $d019 ; ACK any raster IRQs / jsr $1003 ;Play the music / jmp $ea31', after 'jsr $1000 ;Initialize'. Frantic: '.sid files have a header of length $7c bytes. You must remove this header ... before you can place them on $1000 ... which is something like a standard, but not every tune follow this'. Web, secondary: https://codebase.c64.org/doku.php?id=sid:simple_irq_music_player"
+  kernal_irq:
+    - title: "Commodore 64 KERNAL ROM, revisions 901227-01, -02 and -03"
+      kind: software
+      note: "Read from the ROM images. The IRQ entry at $FF48 saves A, X and Y and jumps through ($0314). The routine at $EA31 ends with JSR $EA87 (keyboard scan) at $EA7B, LDA $DC0D at $EA7E, then PLA/TAY/PLA/TAX/PLA/RTI at $EA81. The timer set-up at $FDDD loads CIA 1 Timer A with $4025 on a PAL machine and $4295 on NTSC; the routine at $FF6E writes $81 to $DC0D and ORs $11 into $DC0E, keeping bit 7."
+  sid_speed_flag:
+    - title: "High Voltage SID Collection, 'SID file format description' (Michael Schwendt, Simon White, Dag Lem, Wilfred Bos; LaLa)"
       kind: technical-doc
-      page: "sid:simple_irq_music_player"
-      note: "'.sid files have a header of length $7c bytes. You must remove this header from the sid files before you can place them on $1000 in c64 memory (for sids that should indeed be placed on $1000, which is something like a standard, but not every tune follow this).' In ACME the skip is written into the include directive, and the +2 'also removes the load address (two bytes) from the original c64 file inside the .sid file'"
-  the_music_call_is_not_free:
-    - title: "mixer, 'ADSR Discussion Notes', Codebase64"
+      note: "Header length 'either 0x0076 for version 1 and 0x007C for version 2, 3 and 4'. Speed bits: 'A 0 bit specifies vertical blank interrupt (50Hz PAL, 60Hz NTSC), and a 1 bit specifies CIA 1 timer interrupt (default 60Hz).' RSID exists for tunes that are 'multi-speed and/or contain samples and/or use additional interrupt sources'. Web, secondary: https://www.hvsc.c64.org/download/C64Music/DOCUMENTS/SID_file_format.txt"
+  early_example:
+    - title: "MICRO issue 31, December 1980, advertisement for a sound effects board for the Ohio Scientific C1P"
+      kind: advertisement
+      date: "1980-12"
+      issue: 31
+      page: "83"
+      note: "'the best board on the market for creating sound and music. Can be interrupt driven so that you can use it for gaming purposes. Has on board audio amp, 16 bit Interval timer'"
+  spectrum_beeper_interrupt:
+    - title: "Timothy Closs, 'Backboogie', Your Computer, July 1985"
+      kind: magazine
+      date: "1985-07"
+      page: "55–56"
+      note: "'the Spectrum can be made to run a machine-code program stored at a certain memory address every 1/50th second'; Backboogie 'calls the Sound Generation Rom Routine to produce a short musical sound before returning to your game ... When a series of short sounds is heard in quick succession like this they give the impression of a continuous musical note.'"
+  hard_restart:
+    - title: "mixer, 'Classic hard-restart and about ADSR in generally', Codebase64 wiki"
       kind: technical-doc
-      page: "base:classic_hard-restart_and_about_adsr_in_generally"
-      note: "Why the once-per-frame call shapes the driver: 'Sound-routines are often called once per frame. One frame is is 1/50 second interval. The HR is started 2 full frames before next note' - so the interrupt rate sets the granularity at which a driver can schedule its hard restarts"
-
+      note: "'Sound-routines are often called once per frame. One frame is is 1/50 second interval. The HR is started 2 full frames before next note'. Web, secondary: https://codebase.c64.org/doku.php?id=base:classic_hard-restart_and_about_adsr_in_generally"
 ---
 
-Early games faced a choice: play music or run the game. Interrupt-driven music solved this by using hardware interrupts to call music routines at fixed intervals. The main game loop ran uninterrupted while music played in the background, enabling the rich soundtracks that defined 8-bit gaming.
+import Sources from '@components/Sources.astro';
 
-## The problem
+A game that plays its own music has two jobs that both want the processor at once. The tune needs attention at exact, regular moments, or its tempo wobbles. The game needs as much time as it can get, and how much it uses changes from one frame to the next. The answer the 1980s settled on was to let the hardware keep time. An interrupt stops the main program fifty or sixty times a second, a short routine called the music driver updates the sound chip, and the main program carries on from where it stopped without knowing anything happened.
 
-Without interrupts:
-```asm
-main_loop:
-    jsr update_game
-    jsr play_music_note    ; Blocks game
-    jsr update_graphics
-    jmp main_loop
+The idea was already being sold in 1980. An advertisement in the December 1980 issue of *MICRO* offered a sound board for the Ohio Scientific C1P that "can be interrupt driven so that you can use it for gaming purposes". *Commodore Force* summed up the attraction for its C64 readers in 1994: "By setting an interrupt, you can get constantly updating sound effects, or a wonderful 3-voice piece of music without slowing down the rest of your program!"
+
+## What the interrupt buys
+
+Without an interrupt the music has to be fitted into the main loop, and the tune runs at whatever speed the game does. Matthew Smith's *[Jet Set Willy](/vault/games/jet-set-willy)* on the Spectrum is the famous example: its music "does not use an interrupt", he told *Sinclair User*, it is "just move-a-tiny-little-bit, BEEP-a-tiny-little-bit" (see [Beeper Music](/vault/techniques/beeper-music)).
+
+With an interrupt the shape changes:
+
+```
+at start-up:
+    initialise the tune
+    point the interrupt at the music handler
+
+every frame, in the interrupt:
+    acknowledge the interrupt
+    call the music driver once
+    return to whatever was running
+
+main loop, the rest of the time:
+    read the controls, move everything, draw
 ```
 
-Music timing depends on game speed.
+The driver is called at a fixed rate and does a small amount of work each time. It counts down the length of the current note, starts new notes when their time comes, and between notes changes pitches, volumes and waveforms a little on every call to make vibrato, slides, arpeggios and drum sounds. Martin Walker, keeping a development diary for *ZZAP!64* in 1988, described building chords on one voice "by swapping between several notes every 50th of a second".
 
-## The solution
+The rate of the interrupt sets the resolution of everything the driver does. A driver called fifty times a second cannot place an event closer than 20 milliseconds to another, and it shapes its sounds around that. C64 composers' "hard restart", which stops a note shortly before the next so that the [SID](/vault/hardware/sid-chip)'s envelope starts cleanly, is timed in frames for exactly this reason: "Sound-routines are often called once per frame," a Codebase64 article on the technique explains, and the restart begins "2 full frames before next note" (see [Hard Restart](/vault/techniques/hard-restart)).
 
-With interrupts:
-```asm
-; Interrupt handler (called by hardware)
-irq_handler:
-    jsr update_music       ; Quick update
-    rti
+The cost is that every call comes out of the game's time, including the frames when the game is busiest. On a PAL C64 a frame is 19,656 processor cycles (see [The Game Loop](/vault/techniques/game-loop)), and a driver that takes a thousand of them has used about a twentieth of the machine. Programmers could watch the cost directly by changing the border colour just before the call and back afterwards, which draws a coloured band as tall as the driver's running time; Anthony McSweeney's 1993 listing of Rob Hubbard's routine does exactly that.
 
-; Main loop runs freely
-main_loop:
-    jsr update_game
-    jsr update_graphics
-    jmp main_loop
-```
+## Commodore 64
 
-## C64 implementation
+The C64 offers two sources of a regular interrupt, both counting the same processor clock of 985,248 Hz on a PAL machine and 1,022,727 Hz on an NTSC one. The [VIC-II](/vault/hardware/vic-ii) can interrupt once a frame at a chosen raster line, which ties the music to the picture: fifty calls a second on PAL, sixty on NTSC. CIA 1's Timer A can interrupt at any rate the program chooses (see [CIA 6526](/vault/hardware/cia)).
 
-### Two common patterns
+Both arrive on the same IRQ line, and the usual way in is the KERNAL's RAM vector at `$0314`–`$0315`. The KERNAL's own entry code has already saved A, X and Y on the stack before it jumps through that vector, so the handler must leave through one of the KERNAL's exits, not with its own `RTI`:
 
-C64 game music driver IRQs come from one of two sources, both clocked off the same φ2 = 985,248 Hz on PAL (1,022,727 Hz on NTSC):
+- `JMP $EA31` runs the KERNAL's regular interrupt work, the clock, cursor and keyboard scan, and then restores the registers and returns. It also reads `$DC0D`, which acknowledges a CIA interrupt.
+- `JMP $EA81` only restores A, X and Y and returns.
 
-- **Raster IRQ from VIC-II** — set the raster compare register `$D012` and enable raster IRQs in `$D01A`. Triggers once per frame at the chosen scanline. This is the most common pattern in games because it costs nothing extra (the system already has VIC running) and lets you do per-line tricks alongside the music tick.
-- **CIA Timer A** — programmable interval, useful for non-50/60 Hz playback rates (e.g. multi-speed tunes that update twice per frame for finer modulation).
+A handler that ends with `RTI` on this route returns with three bytes still on the stack and crashes the machine. `RTI` is correct only for a handler reached through the processor's own vector at `$FFFE`, with the KERNAL ROM switched out, and that handler must save and restore its own registers. [Raster Interrupts](/vault/techniques/raster-interrupts) covers both routes in detail.
 
-The KERNAL routes IRQs through the RAM vector at `$0314/$0315`, so installing a custom handler is a write to those two bytes — but you must mask interrupts first.
+### A raster interrupt, once a frame
 
-### Raster IRQ skeleton (the typical game pattern)
+This is the pattern most C64 tunes were written for, and the one Codebase64's example player uses. It assumes a tune already loaded at `$1000` with its set-up routine at `$1000` and its play routine at `$1003`. That layout is common among C64 music editors, and Hubbard's routine used the same pattern of entry points, but it is not universal, so check the tune's own addresses. A `.sid` file from the High Voltage SID Collection has a header in front of the C64 data, `$76` bytes long in version 1 files and `$7C` in later ones, followed by the two-byte load address; strip them before loading the data at `$1000`.
 
 ```asm
-install_irq:
-    sei                   ; Mask IRQs while we rewire the vector
-    lda #<irq_handler
-    sta $0314
-    lda #>irq_handler
-    sta $0315
+; play a tune once a frame from a raster interrupt (ACME syntax)
+; start with SYS 49152; returns to BASIC with the tune playing
+music_init = $1000
+music_play = $1003
 
-    lda #$7f              ; Disable CIA #1 timer IRQs (we want VIC, not CIA)
-    sta $dc0d
-    lda $dc0d             ; Acknowledge any pending CIA IRQ
+        * = $c000
+start   sei                 ; no interrupts while we change things
+        lda #$7f
+        sta $dc0d           ; switch off CIA 1's timer interrupts
+        lda $dc0d           ; and clear any that are waiting
+        lda #<irq
+        sta $0314           ; point the KERNAL's IRQ vector at our handler
+        lda #>irq
+        sta $0315
+        lda #251
+        sta $d012           ; interrupt on line 251, below the display window
+        lda $d011
+        and #$7f
+        sta $d011           ; bit 8 of the line number clear
+        lda #$01
+        sta $d01a           ; enable the raster interrupt
+        sta $d019           ; clear any raster interrupt already flagged
+        lda #0              ; tune number 0
+        jsr music_init
+        cli
+        rts
 
-    lda #$01              ; Enable raster IRQ in VIC-II
-    sta $d01a
-    lda #100              ; Trigger at scanline 100 (anywhere in lower border works)
-    sta $d012
-    lda $d011
-    and #$7f              ; Clear bit 7 (raster MSB) — line < 256
-    sta $d011
-
-    cli                   ; Re-enable IRQs
-    rts
-
-irq_handler:
-    pha                   ; Save A/X/Y
-    txa
-    pha
-    tya
-    pha
-
-    jsr update_music
-
-    lda #$01              ; Acknowledge VIC raster IRQ
-    sta $d019
-
-    pla                   ; Restore Y/X/A
-    tay
-    pla
-    tax
-    pla
-    rti                   ; Return from interrupt — must be RTI, not RTS
+irq     lda #$01
+        sta $d019           ; acknowledge the raster interrupt
+        jsr music_play      ; one frame of music
+        jmp $ea31           ; KERNAL clock and keyboard, then restore and return
 ```
 
-### CIA Timer A skeleton
+Line 251 exists on both PAL and NTSC machines. Because CIA 1's interrupt is off, the KERNAL's own routine now runs only when the handler jumps to `$EA31`, once a frame, so the keyboard still works. The play routine may use A, X and Y freely: the KERNAL saved them before the handler began, and `$EA31` restores them.
 
-If you do want a CIA-driven IRQ, the timer must be **started** via `$DC0E` — the most common bug here is setting the latch and enabling the IRQ but never actually starting the timer.
+The same program on an NTSC C64 calls the driver sixty times a second, and a tune written for PAL plays a fifth too fast. McSweeney warned about exactly this with Hubbard's routine: "The music is supposed to run at 50Hz", and on NTSC machines it "will sound much to fast".
+
+### A CIA timer, at any rate
+
+A timer interrupt runs at a rate the program sets, independent of the video standard. That fixes the NTSC problem, and it lets a tune call its driver more than once a frame; such "multi-speed" tunes are common enough that the SID file format records, for each tune, whether it expects a vertical blank interrupt or a CIA timer.
+
+The KERNAL already runs CIA 1's Timer A, at a count of `$4025` on a PAL machine and `$4295` on NTSC, which gives about sixty interrupts a second on both. A player can simply change the count and point the vector at its handler:
 
 ```asm
-install_cia_irq:
-    sei
-    lda #<irq_handler
-    sta $0314
-    lda #>irq_handler
-    sta $0315
+; play a tune fifty times a second from CIA 1 Timer A (ACME syntax)
+; start with SYS 49152; returns to BASIC with the tune playing
+music_init = $1000
+music_play = $1003
+count      = 19705          ; 985,248 / 50 on PAL; use 20455 on NTSC
 
-    ; PAL φ2 = 985248 Hz. For 50 Hz, latch = 985248/50 = 19705 = $4CF9
-    lda #$f9
-    sta $dc04             ; Timer A latch lo
-    lda #$4c
-    sta $dc05             ; Timer A latch hi
+        * = $c000
+start   sei
+        lda #<irq
+        sta $0314
+        lda #>irq
+        sta $0315
+        lda #<count
+        sta $dc04           ; Timer A latch, low byte
+        lda #>count
+        sta $dc05           ; Timer A latch, high byte
+        lda #$81
+        sta $dc0d           ; bit 7 set = "set", bit 0 = Timer A interrupt
+        lda $dc0e
+        and #$80            ; keep bit 7, the time-of-day clock's 50/60 Hz choice
+        ora #$11            ; load the latch into the counter and start the timer
+        sta $dc0e
+        lda #0
+        jsr music_init
+        cli
+        rts
 
-    lda #$81              ; %10000001: bit 7 set = "set mask", bit 0 = Timer A IRQ
-    sta $dc0d             ; Enable Timer A interrupts
-
-    lda #%00010001        ; Force latch load + start timer in continuous mode
-    sta $dc0e             ; Control register A — without this, timer never runs
-
-    cli
-    rts
+irq     jsr music_play
+        jmp $ea31           ; reads $DC0D to acknowledge the timer, scans the keyboard
 ```
 
-### Music routine requirements
+The control register write is the one most often forgotten: without bit 0 set in `$DC0E` the timer never runs. The last three instructions before `sta $dc0e` are the ones the KERNAL itself uses when it starts the timer. Because the KERNAL routine now runs fifty times a second instead of sixty, BASIC's `TI` clock runs slow while the tune is playing.
 
-| Requirement | Reason |
-|-------------|--------|
-| Fast execution | The IRQ steals CPU from the main game; long handlers cause frame drops |
-| Save/restore registers | The handler runs asynchronously; trashing A/X/Y corrupts whatever code was interrupted |
-| End with `RTI` | Not `RTS` — the stack frame includes the saved P register |
-| Acknowledge the source | Write to `$D019` (VIC) or read `$DC0D` (CIA) so the IRQ line drops |
+### Who wrote the drivers
 
-## NES implementation
+On the C64 the composer usually wrote the driver too, and a good one was a selling point. *The Games Machine* explained in 1987 that games typically left "about 4K of memory for sound", and credited [Rob Hubbard](/vault/people/rob-hubbard)'s success partly to "the library of self-written routines that he has built up". McSweeney, who disassembled the routine from *[Monty on the Run](/vault/games/monty-on-the-run)* for *C= Hacking* in 1993, found that Hubbard "used this routine to make music for a very long time, only changing it _slightly_ over time", from *Confuzion* through *Thing on a Spring*, *Monty on the Run*, *[Commando](/vault/games/commando)*, *International Karate* and many more; the code itself was "a mere 900 or 1000 bytes".
 
-### Using NMI
+[Martin Galway](/vault/people/martin-galway) worked the other way, with no editor at all: "I had an all assembly language, no fancy editors, hard-work approach to putting in tune data," he told *Retro Gamer*, which let him change the player code for each tune. On the Spectrum 128 and elsewhere, [David Whittaker](/vault/people/david-whittaker) described the driver to *CRASH* in 1987 as "the piece of code that makes the music data run"; his routines took from half a kilobyte for a jingle to 3K including the driver.
 
-The NES uses NMI (Non-Maskable Interrupt) at the start of VBlank — the PPU asserts NMI automatically every frame if PPUCTRL (`$2000`) bit 7 is set. Music drivers run in the NMI handler:
+## ZX Spectrum
+
+The Spectrum's ULA interrupts the Z80 fifty times a second. In the normal interrupt mode 1 that runs the ROM's routine at `$0038`, which counts frames and scans the keyboard, so a program that wants its own routine on every frame switches to interrupt mode 2.
+
+On the 48K machine interrupt-driven music was possible but thin, because the beeper makes a sound only while the processor is toggling it. Timothy Closs's *Backboogie*, printed in *Your Computer* in July 1985, used the frame interrupt to play "a short musical sound before returning to your game" every fiftieth of a second, relying on the fact that "a series of short sounds ... in quick succession ... give the impression of a continuous musical note". 
+The 128K models changed that. Their [AY-3-8912](/vault/hardware/ay-3-8912) sound chip holds a note on its own, so a driver only has to update its registers once a frame. David Jones's routines for 128 programmers in *Your Sinclair* in December 1987 installed an interrupt mode 2 handler that called the music player on every interrupt.
+
+In mode 2 the Z80 forms an address from the I register (high byte) and a byte read from the data bus (low byte), and fetches the handler's address from there. On a Spectrum that byte is not defined: with no peripheral attached it usually reads `$FF`, but programmers who wanted to be safe filled 257 bytes with the same value so that any byte gives the same answer, as the [Game Loop](/vault/techniques/game-loop) entry explains.
+
+```z80
+; 128K: call the music player on every frame interrupt
+setup:  di
+        ld   hl,$FE00
+        ld   de,$FE01
+        ld   bc,256
+        ld   (hl),$FD
+        ldir                ; $FE00-$FF00 all hold $FD
+        ld   a,$C3          ; JP
+        ld   ($FDFD),a
+        ld   hl,music_irq
+        ld   ($FDFE),hl     ; every vector reads $FDFD: jp music_irq
+        ld   a,$FE
+        ld   i,a
+        im   2
+        ei
+        ret
+
+music_irq:
+        push af
+        push bc
+        push de
+        push hl
+        push ix
+        call play_frame     ; one frame of music: write the AY registers
+        pop  ix
+        pop  hl
+        pop  de
+        pop  bc
+        pop  af
+        ei
+        ret
+```
+
+The handler saves every register the player might use, since it can interrupt the game anywhere. A program that goes back to BASIC and still wants the keyboard can end the handler with `JP $0038` in place of `EI` and `RET`: the ROM's routine then counts the frame, scans the keyboard and returns for it, provided IY still holds `$5C3A` as the ROM expects.
+
+The cost of the interrupt shows most clearly on a busy Spectrum game. *Sinclair User* reported in 1989 that the scrolling in Software Creations' Spectrum *[Ghouls 'n' Ghosts](/vault/games/ghouls-n-ghosts)* left so little processor time that music could only have been updated 25 times a second. "Rather than have sub-standard music", the team played three-channel sound effects during the game and kept "high quality 50Hz music" for the menus ([Tim Follin](/vault/people/tim-follin)).
+
+## NES
+
+The NES's [PPU](/vault/hardware/ppu) raises a non-maskable interrupt at the start of every vertical blank once bit 7 of PPUCTRL (`$2000`) is set, and most NES games run their sound engine from that NMI. The [APU](/vault/hardware/apu) has an interrupt of its own, from its frame counter, but it drifts against the picture and most games leave it switched off.
+
+The NMI is also where the game updates the screen, so the sound engine shares the handler with the PPU writes. Nintendo's *[Metroid](/vault/games/metroid)* (1986) shows why the NMI suits music. If the main loop has not finished its frame when the NMI arrives, the handler skips the screen updates but still copies the sprites and runs the sound engine, so the game slows down and the music does not.
+
 ```asm
-nmi_handler:
-    pha                   ; Save registers
-    txa
-    pha
-    tya
-    pha
-
-    jsr update_music      ; Call music routine
-
-    pla                   ; Restore registers
-    tay
-    pla
-    tax
-    pla
-    rti
+; NMI handler: the processor saves only the program counter and status,
+; so the handler saves A, X and Y itself
+nmi:    pha
+        txa
+        pha
+        tya
+        pha
+        ; ... sprite DMA and screen updates for this frame ...
+        jsr sound_update    ; one frame of music and sound effects
+        pla
+        tay
+        pla
+        tax
+        pla
+        rti
 ```
 
-## Amiga implementation
+## Amiga
 
-### Using CIA or VBlank
+The Amiga's sound chip, [Paula](/vault/hardware/paula), plays samples from memory by DMA without the processor's help. A driver's job is to tell each of its four channels which sample to play, at what period and volume, and then to adjust those values as the song goes on.
 
-| Source | Frequency | Typical use |
-|--------|-----------|-------------|
-| VBlank (Level 3 IRQ) | 50/60 Hz | The standard MOD player tick |
-| CIA Timer A or B | Programmable | Multi-speed playback, non-frame-rate-locked drivers |
+Two interrupts drive it. The vertical blank interrupt, bit 5 (VERTB) on level 3, arrives once a frame; the *Amiga Hardware Reference Manual* describes it as occurring "at line 0 (start of vertical blank)". The CIA timers can interrupt at any rate. The early trackers advanced a song once per video frame. *[ProTracker](/vault/tools/protracker)* could instead drive its player from a CIA timer, which let its `F` command set a true tempo in beats per minute; a tempo of 125 reproduces the old 50 Hz rate. Either way the player runs once per tick, by default six ticks to a row of the pattern (see [MOD Format](/vault/techniques/mod-format)).
 
-Paula handles the actual sample playback continuously via DMA; the music driver only needs to load new sample/period/volume values into Paula's audio registers when each row advances. ProTracker and most MOD replayers tick at 50 Hz on PAL by default.
+A game that has taken over the machine installs its own level 3 handler and clears the request itself:
 
-## Music routine structure
-
-Typical update routine:
 ```asm
-update_music:
-    dec frame_counter
-    bne .no_update
+; level 3 handler with the operating system switched off
+        move.l  #level3,$6c.w      ; level 3 interrupt vector
+        move.w  #$7fff,$dff09a     ; INTENA: switch every interrupt off
+        move.w  #$c020,$dff09a     ; INTENA: SET + INTEN + VERTB
+main:   bra.s   main               ; the game runs here
 
-    lda #speed
-    sta frame_counter
-
-    ; Update each channel
-    jsr update_channel_1
-    jsr update_channel_2
-    jsr update_channel_3
-
-.no_update:
-    rts
+level3: move.w  #$0020,$dff09c     ; INTREQ: clear the VERTB request
+        movem.l d0-d7/a0-a6,-(sp)
+        jsr     music_play         ; one tick of music
+        movem.l (sp)+,d0-d7/a0-a6
+        rte
 ```
 
-## Timing considerations
+Bit 15 of `INTENA` and `INTREQ` decides whether the other bits written as 1 are set or cleared. `$C020` sets the master enable and VERTB; `$4020` would clear them. The request stays set until the handler clears it, and a handler that returns without doing so is called again at once.
 
-| Factor | Impact |
-|--------|--------|
-| Interrupt frequency | Musical tempo |
-| Routine length | CPU availability |
-| Nested interrupts | Complexity |
+Amiga composers also wrote their own systems. [Chris Hülsbeck](/vault/people/chris-huelsbeck)'s TFMX, which *The Games Machine* reported in 1990 he had developed "over years" to get the best sound from the least memory and processor time, gave *X-Out* its music and was sold to other programmers the same year. Whittaker wrote his own Amiga driver, which could play synthesised sounds alongside samples.
 
-## Notable music drivers
+## Later
 
-| Driver | Platform | Notes |
-|--------|----------|-------|
-| Rob Hubbard's custom drivers | C64 | Hand-rolled per game; *Monty on the Run*, *Commando* etc. each have their own engine. Disassembled and annotated by Anthony McSweeny in *C= Hacking* 5 |
-| Martin Galway's drivers | C64 | Distinct envelope engine, used in *Wizball*, *Times of Lore* |
-| GoatTracker / SID-Wizard | C64 | Modern community-standard SID drivers |
-| Future Composer | C64 / Amiga | One of the cross-platform pattern drivers |
-| FamiTracker / FamiStudio | NES | De facto modern NES driver |
-| ProTracker | Amiga | The MOD-format replayer; basis for most Amiga game music |
-| TFMX | Amiga | Chris Hülsbeck's driver for the *Turrican* series |
+The same arrangement carried on after the period. Modern trackers for the old machines, such as *[SID-Wizard](/vault/tools/sid-wizard)* on the C64 and *[FamiTracker](/vault/tools/famitracker)* for the NES, export the music with a player routine for a game or demo to call from its own code. *SID-Wizard* offers the player in several sizes, so a composer can trade features for processor time.
+
+<Sources>
+
+- *MICRO* issue 31, December 1980, p. 83: advertisement for a sound board for the Ohio Scientific C1P, "interrupt driven".
+- *Commodore Force* issue 15, February 1994, p. 39: programming pages on raster interrupts, music "without slowing down the rest of your program".
+- *Sinclair User*, December 1984: Matthew Smith on *Jet Set Willy*'s music, as quoted in the [Beeper Music](/vault/techniques/beeper-music) entry.
+- *ZZAP!64* issue 39, July 1988, p. 97: Martin Walker's development diary, chords "every 50th of a second".
+- mixer, "Classic hard-restart and about ADSR in generally", Codebase64 wiki (web, secondary). https://codebase.c64.org/doku.php?id=base:classic_hard-restart_and_about_adsr_in_generally
+- Christian Bauer, *The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64* (1996), section 3.4: lines per frame for each VIC-II type.
+- Codebase64 wiki, "Simple IRQ Music Player", with notes by Frantic (web, secondary): the raster-interrupt player, the `$1000`/`$1003` entry points, the `.sid` header. https://codebase.c64.org/doku.php?id=sid:simple_irq_music_player
+- Commodore 64 KERNAL ROM, revisions 901227-01, -02 and -03, read from the ROM images: the IRQ entry at `$FF48`, the exits at `$EA31`, `$EA7E` and `$EA81`, the Timer A counts at `$FDDD` and the timer start at `$FF6E`.
+- Sheldon Leemon, *Mapping the Commodore 64* (COMPUTE! Publications, 1984), pp. 72–73: the IRQ vector at 788 (`$314`) and the ROM's register saving.
+- High Voltage SID Collection, "SID file format description" (web, secondary): header length, the speed bits, multi-speed tunes. https://www.hvsc.c64.org/download/C64Music/DOCUMENTS/SID_file_format.txt
+- Anthony McSweeney, "Rob Hubbard's Music: Disassembled, Commented and Explained", *C= Hacking* issue 5, 7 March 1993 (web, secondary): the routine's entry points, its use across Hubbard's games, 50 Hz and NTSC. https://www.1xn.org/text/C64/rob_hubbards_music.txt
+- *The Games Machine* issue 1, October 1987, p. 111: programming music for games, profile of Rob Hubbard.
+- *Retro Gamer: The Commodore 64 Book* (2012), "The SID Crowd", pp. 24–29: Martin Galway on his assembly-language method.
+- *CRASH* issue 46, November 1987, pp. 114–115: "Playing for Beeps", David Whittaker's driver and routine sizes.
+- Ian Logan and Frank O'Hara, *The Complete Spectrum ROM Disassembly* (Melbourne House, 1983): the maskable interrupt routine at `$0038`, the frame counter every 20 ms, the keyboard scan.
+- Timothy Closs, "Backboogie", *Your Computer*, July 1985, pp. 55–56.
+- *Your Sinclair* issue 24, December 1987, p. 94: David Jones's interrupt mode 2 routines for the 128, playing a tune from the interrupt.
+- *Your Spectrum* issue 2, March 1984, letters: the mode 2 vector with no peripheral attached.
+- Zilog, *Z80 CPU User Manual* (UM008011-0816): interrupt mode 2.
+- *Sinclair User* issue 92, November 1989: how Spectrum *Ghouls 'n' Ghosts* was made.
+- NESdev Wiki, "PPU registers" and "APU Frame Counter" (web, secondary): PPUCTRL bit 7, the frame counter interrupt. https://www.nesdev.org/wiki/PPU_registers
+- *Metroid* (Nintendo, 1986), disassembly by Nick Mikstas, `Source_Files/Bank07.asm` (web, secondary): the NMI handler and the sound engine. https://github.com/nmikstas/metroid-disassembly
+- *Amiga Hardware Reference Manual* (Commodore-Amiga, Addison-Wesley, 1989), chapter 7: VERTB "at line 0 (start of vertical blank)"; `INTENA` and `INTREQ`, the SET/CLR bit and the level 3 sources.
+- Jorgo Schimanski, *Spieleprogrammierung in Assembler auf dem Amiga* (Heim-Verlag, 1991), chapter 2, pp. 8–13: the level 3 vector at `$6C`, enabling VERTB with `$C020`, clearing it with `$0020`.
+- *The Games Machine* issue 27, February 1990: TFMX and *X-Out*.
+- Chris Wilkins and Roger M. Kean, *The Story of the Amiga in Pixels* (Fusion Retro Books, 2017), pp. 208–210: David Whittaker's Amiga driver.
+- Hermit, *SID-Wizard 1.9 User Manual*: the player types. NESdev Wiki, "Audio drivers" (web, secondary): *FamiTracker*'s exported player. https://www.nesdev.org/wiki/Audio_drivers
+
+The two C64 listings were assembled with ACME and run in the VICE emulator (x64sc) as PAL and NTSC machines, with a stand-in tune that counts its calls. The NES listing was assembled with ca65, the Spectrum listing with sjasmplus and Pasmo, and the Amiga listing with vasm, and each was run in the Emu198x emulator on an NES, a Spectrum 128 and an Amiga 500.
+
+</Sources>
 
 ## See also
 
 - [Raster Interrupts](/vault/techniques/raster-interrupts)
-- [SID Chip](/vault/hardware/sid-chip)
+- [The Game Loop](/vault/techniques/game-loop)
+- [Sound Drivers](/vault/techniques/sound-drivers)
+- [Beeper Music](/vault/techniques/beeper-music)
+- [Hard Restart](/vault/techniques/hard-restart)
+- [MOD Format](/vault/techniques/mod-format)
+- [SID](/vault/hardware/sid-chip)
+- [CIA 6526](/vault/hardware/cia)
+- [AY-3-8912](/vault/hardware/ay-3-8912)
 - [APU](/vault/hardware/apu)
+- [Paula](/vault/hardware/paula)
 - [Rob Hubbard](/vault/people/rob-hubbard)
