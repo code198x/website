@@ -152,8 +152,9 @@ The C64 has no `HALT`. A program can poll the VIC-II's raster register until the
 ; wait until the raster reaches line 251, just below the display window
 wait_frame:
         lda #251
-.w      cmp $d012
-        bne .w
+wait_line:
+        cmp $d012
+        bne wait_line
 ```
 
 The low byte 251 can only mean line 251 on both PAL and NTSC machines, so the ninth bit in `$D011` need not be checked. If the rest of the loop could finish within the same raster line, the program should first wait for the line to change, or it will run twice in one frame.
@@ -177,8 +178,9 @@ main:   jsr read_joystick
         jsr move_objects
         jsr update_screen
         lda frame_count
-.wait:  cmp frame_count   ; wait until the interrupt has run again
-        beq .wait
+wait_irq:
+        cmp frame_count   ; wait until the interrupt has run again
+        beq wait_irq
         jmp main
 ```
 
@@ -217,8 +219,9 @@ nmi:    pha
 main:   jsr read_pads
         jsr update_game   ; also fills the sprite list and the PPU queue
         lda nmi_count
-.wait:  cmp nmi_count
-        beq .wait
+wait_nmi:
+        cmp nmi_count
+        beq wait_nmi
         jmp main
 ```
 
@@ -231,11 +234,20 @@ The Amiga's custom chips raise a level 3 interrupt at the start of every vertica
         move.w  #$7fff,$dff09a     ; INTENA: switch every interrupt off
         move.w  #$c020,$dff09a     ; INTENA: SET + INTEN + VERTB
 
+main:   move.w  frame_count,d0
+wait:   cmp.w   frame_count,d0     ; wait for the next vertical blank
+        beq.s   wait
+        ; ... one frame of game logic ...
+        bra.s   main
+
 vblank: move.w  #$0020,$dff09c     ; INTREQ: clear the VERTB request
         movem.l d0-d7/a0-a6,-(sp)
-        addq.w  #1,frame_count     ; the main loop waits for this to change
+        addq.w  #1,frame_count     ; tell the main loop a frame has passed
         movem.l (sp)+,d0-d7/a0-a6
         rte
+
+frame_count:
+        dc.w    0
 ```
 
 "For jerk- and flicker-free animation," Schimanski wrote, "an interrupt simply has to be generated." He also recommended a refinement. Vertical blank comes before the picture is drawn, and it is better to start animating when the beam reaches the bottom of the screen, which gives more time. The [Copper](/vault/hardware/copper) can wait for any line and then write to the interrupt request register, so one instruction at the right place in the Copper list raises bit 4, COPER, on the same level 3:
@@ -276,6 +288,8 @@ The same loop usually runs several different games: a title screen, the game its
 - Commodore-Amiga, *Amiga Hardware Reference Manual* (Addison-Wesley, 1989): the 7.09379 MHz PAL clock (chapter 1); 227 colour clocks per PAL line (chapter 2); the VERTB and COPER interrupts (chapter 7, pp. 214–215).
 - Jorgo Schimanski, *Spieleprogrammierung in Assembler auf dem Amiga* (Heim-Verlag, 1991), chapter 2, pp. 8–13: interrupt registers, the level 3 vector, the VERTB handler and the Copper interrupt.
 - id Software, *DOOM* source code, released 23 December 1997: `doomdef.h` (`TICRATE`) and `d_main.c` (`D_DoomLoop`) (web, secondary). https://github.com/id-Software/DOOM
+
+The C64 listings were assembled with ACME and run in the VICE emulator (x64sc) as PAL and NTSC machines. The Spectrum listings were assembled with sjasmplus and Pasmo, the NES listing with ca65 and the Amiga listings with vasm, and each was run in the Emu198x emulator on a Spectrum 48K, an NES and an Amiga 500.
 
 </Sources>
 
