@@ -18,7 +18,7 @@
 set -euo pipefail
 
 ASM198X_VERSION="${ASM198X_VERSION:-v0.0.57}"
-BUILD198X_VERSION="${BUILD198X_VERSION:-v0.2.6}"
+BUILD198X_VERSION="${BUILD198X_VERSION:-v0.2.8}"
 
 SAMPLES="${1:?usage: build-artefacts.sh <code-samples-path> [output-dir]}"
 OUT="${2:-public/code-samples}"
