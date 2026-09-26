@@ -1,212 +1,195 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "VSync"
 subtitle: "Synchronising with the display"
-summary: "VSync synchronised game updates with the monitor's vertical refresh, preventing screen tearing and providing consistent timing for game logic."
+summary: "A game that waits for the vertical blank, the gap between one television frame and the next, can change the picture while none of it is being drawn and moves at a steady fifty or sixty steps a second. The Atari 2600 made its programs generate the gap themselves; later machines announced it with an interrupt, and every one of them gave the program only a few thousand cycles in it."
 category: "techniques"
-platforms: ['commodore-64', 'commodore-amiga', 'nintendo-entertainment-system', 'atari-2600']
+platforms: ['atari-2600', 'atari-8-bit', 'commodore-64', 'nintendo-entertainment-system', 'commodore-amiga']
 tags: ['graphics', 'timing', 'technique']
-originated: 1977
 
 sources:
-  c64_frameskipping_exists:
-    - title: "Codebase64 — Frameskipping, interpolation and re-entrant IRQ code (Rant 9), by Cadaver (Lasse Öörni)"
+  stella_frame:
+    - title: "Atari, Stella Programmer's Guide (1979)"
+      kind: manual
+      date: "1979"
+      note: "'A typical frame will consist of 3 vertical sync (VSYNC) lines to signal the TV set to start a new frame, 37 vertical blank (VBLANK) lines, 192 TV picture lines, and 30 overscan lines.' 'the microprocessor must manually control vertical timing'. 'the remaining 70 scan lines ... will provide 5320 machine cycles (70 lines X 76 machine cycles) for houskeeping and game logic'. PAL table: 48 lines of vertical blank, 228 picture lines, 36 overscan, 312 in all. TIM64T: '53.6 usec/interval'."
+  atari_vbi:
+    - title: "John H. Palevich, 'SHOOT', COMPUTE! issue 16, September 1981"
+      kind: magazine
+      date: "1981-09"
+      issue: 16
+      page: "86–89"
+      note: "'there are three parts to a video game on the Atari - the setup, the main loop, and the end. In addition to these three parts are two other parts - the Vertical Blank Interrupt (VBI) and the Display List Interrupt (DLI). The VBI occurs every sixtieth of a second and is used by the Atari to keep the realtime clock, do attract mode, update all sorts of counters, and so forth. The video game maker uses this time to move the players, update the scores, fire the shots, decrement the time left, and do sound effects.'"
+  c64_blanking:
+    - title: "Christian Bauer, The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64 (1996), section 3.4"
       kind: technical-doc
-      note: "\"Let's first look at an approach many know from PC games/demos: frameskipping.\" — \"I remember seeing the characters move with bigger steps in some CPU-intense scenes, like the maintenance areas in LN2:Office level, so likely at least LN2 frameskipped.\" — \"I know that some games like Gauntlet 3 or Myth scroll at 50Hz, while updating the movement of sprites at a lower rate; however they don't show the inbetween-frames for sprites.\""
+      date: "1996"
+      note: "6569 (PAL): 312 lines, 284 visible, first vblank line 300, last vblank line 15. 6567R8 (NTSC): 263 lines, 235 visible, vblank lines 13 to 40. 6567R56A: 262 lines, 234 visible, vblank lines 13 to 40."
+  amiga_vertb:
+    - title: "Amiga Hardware Reference Manual (Commodore-Amiga, Addison-Wesley, 1989)"
+      kind: manual
+      date: "1989"
+      note: "'Bit 5, VERTB, causes an interrupt at line 0 (start of vertical blank)'; 'The minimum time of vertical blanking is 20 horizontal scan lines for an NTSC system and 25 horizontal scan lines for a PAL system'; 'The normal PAL DIWSTRT is ($2C81)'; INTENA bit 15 'SET/CLR ... Determines if bits written with a 1 get set or cleared'."
+  c64_frameskipping:
+    - title: "Lasse Öörni (Cadaver), 'Frameskipping, interpolation and re-entrant IRQ code' (Rant 9)"
+      kind: technical-doc
+      note: "'I remember seeing the characters move with bigger steps in some CPU-intense scenes, like the maintenance areas in LN2:Office level, so likely at least LN2 frameskipped.' 'I know that some games like Gauntlet 3 or Myth scroll at 50Hz, while updating the movement of sprites at a lower rate'. Web, secondary: https://cadaver.github.io/rants/interp.html"
 ---
 
-The CRT electron beam draws the screen line by line, then returns to the top during the *vertical blank* (VBlank). Updating screen memory while the beam is drawing causes tearing — the upper part of the picture shows the previous frame and the lower part the new one, with a moving seam where they meet. VSync waits for VBlank before updating, so the entire frame's drawing is invisible until it's complete.
+import Sources from '@components/Sources.astro';
 
-## The problem
+A television draws its picture one line at a time, top to bottom, and then spends a short while getting ready to draw the next one. That pause, the **vertical blank**, is the only time in each frame when the video hardware is not drawing anything. A game that waits for it, and does its screen changes then, never shows a half-finished picture, and it moves everything in steady steps of one frame: fifty a second in PAL countries, sixty in NTSC ones. Waiting for the vertical blank is what programmers mean by vsync.
 
-```
-Without synchronisation:
-  Beam at line 100 — actively drawing
-  Game updates screen memory
-  Beam continues drawing the lower half — sees new data
-  Result: top half shows old frame, bottom half shows new
-  → horizontal tear line at line 100
-```
+The catch is that the gap is short. The Atari 2600's programming guide allowed 70 lines out of 262 for everything that was not picture; a PAL Commodore 64 draws 284 visible lines out of 312; an NTSC NES has 20 lines of vertical blank, about 2,273 processor cycles. Much of the craft of 8-bit and 16-bit games was fitting the right work into that gap.
 
-## The solution
+## What goes wrong without it
 
-Wait for VBlank — the period when the beam is between frames and not reading screen memory:
+The video chip reads its picture from memory as it draws. If the program changes that memory, or a scroll or colour register, while the chip is partway down the screen, the lines already drawn show the old frame and the lines still to come show the new one. A moving object drawn across the boundary appears torn, or flickers as it is caught half erased; a scroll change made mid-screen shears the picture.
 
-```asm
-; C64: rough idiom — wait for raster to enter the upper region
-wait_vsync:
-    lda $d011                ; bit 7 = high bit of 9-bit raster counter
-    bpl wait_vsync           ; loop while bit 7 clear (raster < 256)
-    ; raster is now ≥ 256, mostly in vblank on PAL
-```
+Not every change has to wait. A change to a part of the screen the beam has already passed, or has not reached yet, is safe for the moment, so a program that knows where the beam is can work on one part of the screen while the chip draws another. Some hardware leaves no choice: the NES's picture memory can be written safely only during vertical blank or with the picture switched off.
 
-This is a polling pattern. Most games install a *raster IRQ* at line 0 and do their VBlank work in the handler — no busy-waiting.
+## The Atari 2600: the program makes the frame
 
-## CRT timing
+The 2600 has no frame buffer and no frame interrupt. Its program generates the television signal's vertical timing itself. Atari's *Stella Programmer's Guide* spelled out the recipe: "3 vertical sync (VSYNC) lines to signal the TV set to start a new frame, 37 vertical blank (VBLANK) lines, 192 TV picture lines, and 30 overscan lines", 262 in all. A PAL machine needs 312: the guide's table gives 48 lines of vertical blank (including the three of sync), 228 of picture and 36 of overscan.
 
-| Phase | Description | Beam state |
-|-------|-------------|------------|
-| Active display | Visible scanlines drawing left to right | Reading screen memory |
-| Horizontal blank | Beam returns to left edge between scanlines | Brief; ~10 µs |
-| Vertical blank | Beam returns to top after last visible line | Longer; non-display |
-
-The CPU may safely modify screen memory only during VBlank (or, with care, during borders or behind a status-bar split).
-
-## Platform implementations
-
-### Commodore 64
+The 70 lines outside the picture are all the game gets for its logic. At 76 processor cycles a line, the guide counted "5320 machine cycles (70 lines X 76 machine cycles) for houskeeping and game logic". During the picture, the program is busy feeding the chip each line as the beam draws it.
 
 ```asm
-; Wait for raster to cross 256 (enter upper border / vblank region)
-wait_vblank:
-    lda $d011
-    bpl wait_vblank          ; loop while raster < 256
-    ; bit 7 is now set; safe to update upper-screen related state
-```
+; one NTSC frame on the Atari 2600
+frame:
+; --- vertical sync, 3 lines ---
+        lda  #2
+        sta  VBLANK             ; D1 set: blank the picture
+        sta  VSYNC              ; D1 set: start vertical sync
+        sta  WSYNC              ; halt the CPU until the end of the line
+        sta  WSYNC
+        sta  WSYNC              ; three lines of sync
+        lda  #0
+        sta  VSYNC              ; end vertical sync
 
-For a precise vblank-start hook, install a raster IRQ at line 0:
-
-```asm
-    sei
-    lda #<irq_handler
-    sta $0314
-    lda #>irq_handler
-    sta $0315
-    lda #0
-    sta $d012                ; trigger at line 0 (vblank start)
-    lda $d011
-    and #$7f                 ; bit 7 (raster MSB) = 0 → line < 256
-    sta $d011
-    lda #$01
-    sta $d01a                ; enable raster IRQ
-    cli
-```
-
-### NES
-
-NMI fires at the start of VBlank automatically (if PPUCTRL bit 7 is set). The conventional pattern is to set a flag in the NMI handler and have the main loop wait on it:
-
-```asm
-nmi_flag:    .byte 0
-
-nmi_handler:
-    inc nmi_flag             ; mark frame as ready
-    rti
-
-wait_nmi:
-    lda nmi_flag
-    beq wait_nmi             ; wait until NMI fires
-    lda #0
-    sta nmi_flag
-    rts
-```
-
-VBlank on NES is short — about 2270 CPU cycles (≈1.4 ms). Heavy work has to be deferred to the active frame.
-
-### Amiga
-
-The OS-friendly approach is a Level 3 interrupt handler (VBlank) installed via the system. For games that take over the hardware, set up the Copper to fire a `COPPERIRQ` at the desired raster position, or hook `INT3` (vertical blank) directly:
-
-```asm
-; Set up a vertical-blank interrupt
-    move.w  #$4020,$dff09a   ; INTENA: enable INTEN | VERTB
-    move.l  #vbl_handler,$6c ; install Level 3 interrupt vector
-```
-
-### Atari 2600
-
-The 2600's TIA has no framebuffer — every scanline is generated by the CPU as it runs. A full frame is a precise sequence: 3 scanlines of vertical sync, then 37 lines of vertical blank, then 192 (NTSC) or 228 (PAL) visible lines, then 30 lines of overscan. The kernel runs in lockstep with the beam:
-
-```asm
-; --- Vertical sync (3 scanlines) ---
-    lda  #2
-    sta  VSYNC               ; bit 1 set = vsync active
-    sta  WSYNC               ; line 1 of sync (CPU halts to end of line)
-    sta  WSYNC               ; line 2 of sync
-    sta  WSYNC               ; line 3 of sync
-    lda  #0
-    sta  VSYNC               ; vsync off
-
-; --- Vertical blank (37 scanlines) ---
-    lda  #43
-    sta  TIM64T              ; timer ticks every 64 cycles → ~37 lines
-    lda  #2
-    sta  VBLANK              ; blank video output during vblank
-
-    ; ... game logic runs here, in the time before the visible frame ...
-
+; --- vertical blank, 37 lines ---
+        lda  #43
+        sta  TIM64T             ; 43 x 64 = 2,752 cycles, just over 36 lines
+        ; ... game logic here ...
 vbl_wait:
-    lda  INTIM
-    bne  vbl_wait            ; wait for timer to hit 0
-    sta  WSYNC               ; align to start of next line
-    lda  #0
-    sta  VBLANK              ; turn video back on for visible frame
+        lda  INTIM
+        bne  vbl_wait           ; wait for the timer to run out
+        sta  WSYNC              ; finish the last blank line
+        lda  #0
+        sta  VBLANK             ; picture on
 
-; --- 192 visible scanlines: kernel draws each line ---
+; --- 192 picture lines: the kernel feeds the chip line by line ---
+; --- 30 lines of overscan: more game logic, then jmp frame ---
 ```
 
-The 2600 is the extreme case — every game frame is a hand-timed CPU sequence synchronised to the beam.
+The timer lets the game logic take a variable amount of time and still keep the frame exactly 262 lines long. A PAL version changes the line counts, not the method.
 
-## VBlank duration
+## Atari 400 and 800: the vertical blank interrupt
 
-Approximate available time for VBlank work:
+Atari's home computers of 1979 announced the vertical blank with an interrupt, and the operating system ran its own housekeeping there. John Palevich, explaining his game *SHOOT* in *COMPUTE!* in September 1981, described what game writers did with it: "The VBI occurs every sixtieth of a second and is used by the Atari to keep the realtime clock, do attract mode, update all sorts of counters, and so forth. The video game maker uses this time to move the players, update the scores, fire the shots, decrement the time left, and do sound effects." A game on those machines, as he laid it out, had "the setup, the main loop, and the end", plus "two other parts": the vertical blank interrupt and the display list interrupt (see [Atari 8-bit](/vault/systems/atari-8-bit)).
 
-| System | VBlank lines (approx) | Time | Notes |
-|--------|------------------------|------|-------|
-| C64 PAL | 56 lines (raster 256-311 + line 0) | ~3.6 ms | "Vblank" loosely; visible image ends ~line 250 |
-| C64 NTSC | 13 lines (raster 251-262 + line 0) | ~0.8 ms | Much tighter than PAL |
-| Amiga PAL | 25 vsync + ~24 blanking | ~3.1 ms | OCS / ECS, lores |
-| NES NTSC | 20 vblank + 1 pre-render = 21 | ~1.33 ms | About 2273 CPU cycles |
-| NES PAL | 70 lines | ~4.45 ms | Significantly more headroom than NTSC |
-| Atari 2600 NTSC | 3 vsync + 37 vblank + 30 overscan = 70 | ~4.4 ms | All non-display time, of which ~37 lines is the conventional vblank |
+## Commodore 64
 
-PAL gives roughly 3× more vblank than NTSC on most systems — a reason PAL ports of NTSC games sometimes ran "loose" (didn't fill the extra time) while NTSC versions of PAL games sometimes dropped frames.
+The [VIC-II](/vault/hardware/vic-ii) has no vertical blank interrupt as such; it has a raster interrupt that can be set for any line, and games choose a line outside the 200-line display window, which runs from line 51 to line 250. The television's own blanking comes later. Christian Bauer's description of the chip gives the blanked lines as 300 through to line 15 of the next frame on a PAL 6569, and lines 13 to 40 on an NTSC 6567. The lower border between them is still visible, but nothing the game draws appears there, so for a game the useful gap starts as soon as the beam leaves the display window.
 
-## What to do during VBlank
+A program can poll for it:
 
-| Task | Priority | Why |
-|------|----------|-----|
-| Pointer / display register updates | Highest | Must complete before active display starts |
-| Sprite position writes (NES OAM DMA, Amiga sprite registers) | Highest | Late writes corrupt mid-frame |
-| Scroll register updates | High | Locked to frame boundary |
-| Palette / colour register updates | High | Mid-frame changes are raster-effect territory |
-| Music driver tick | Medium | Often interrupt-driven independently |
-| Game logic, AI | Lowest | Can run during active display |
-
-## Game loop structure
-
-```
-main_loop:
-    jsr  wait_vsync          ; sync to display
-    jsr  update_screen       ; safe to modify video registers/memory
-    jsr  game_logic          ; can take any time, even spilling into next frame
-    jmp  main_loop
+```asm
+; wait until the raster reaches line 251, just below the display window
+wait_frame:
+        lda #251
+wait_line:
+        cmp $d012
+        bne wait_line
 ```
 
-If `game_logic` regularly takes longer than one frame, the game runs at half rate (sync-locked at every other vblank). Most 8-bit games budget the logic to fit a frame and accept slowdown when it does not, but the alternatives were in period use: *Gauntlet III* and *Myth* scroll at 50 Hz while moving their sprites at a lower rate, *The Last Ninja 2* takes visibly larger steps in its heaviest rooms, and Cadaver's *Metal Warrior 4* interpolates sprite positions between logic passes — see [Frameskipping and Interpolation](/vault/techniques/frameskipping-and-interpolation).
+The low byte 251 can only mean line 251 on both PAL and NTSC machines, so the ninth bit in `$D011` need not be checked. If the code after the wait could finish within that same line, the next call would return at once, so a program that might be that quick waits for the line to change first (see [The Game Loop](/vault/techniques/game-loop)).
 
-## Frame rate locking
+Most games let the chip interrupt them instead. A handler installed through the KERNAL's vector at `$0314` acknowledges the interrupt by writing 1 to bit 0 of `$D019` and leaves with `JMP $EA31` or `JMP $EA81`, never with its own `RTI`, because the KERNAL has already saved the registers on the stack. [Raster Interrupts](/vault/techniques/raster-interrupts) gives complete, tested listings for both the KERNAL route and the hardware vector at `$FFFE`, and [Interrupt-Driven Music](/vault/techniques/interrupt-driven-music) a once-a-frame handler that plays a tune.
 
-VSync naturally creates:
+## NES
 
-- **50 fps** (PAL)
-- **60 fps** (NTSC)
-- Consistent timing, identical from boot to boot
-- Predictable game speed — the reason NTSC and PAL versions of the same game often play at different speeds
+The NES's [PPU](/vault/hardware/ppu) raises a non-maskable interrupt at the start of vertical blank when bit 7 of PPUCTRL (`$2000`) is set. Games do the screen updates in the NMI handler, from buffers the main loop filled, and the main loop waits for the NMI before starting the next frame's work:
 
-## Tearing vs performance
+```asm
+nmi_count = $00           ; a byte of zero-page RAM
 
-| Choice | Result |
-|--------|--------|
-| Always VSync | No tearing, may skip frames if logic is slow |
-| Never VSync | Tearing, maximum throughput |
-| Adaptive (modern) | VSync when frame finishes in time, fall through if not — irrelevant on retro hardware where every frame is hand-budgeted |
+nmi:    pha
+        ; ... sprite DMA, palette, nametable and scroll writes ...
+        inc nmi_count     ; tell the main loop a frame has passed
+        pla
+        rti
+
+; main loop: game logic, then wait for the next NMI
+main:   jsr update_game
+        lda nmi_count
+wait_nmi:
+        cmp nmi_count
+        beq wait_nmi
+        jmp main
+```
+
+The counter must live in RAM, not in the cartridge's ROM, or the handler's `INC` does nothing. A handler that uses X or Y as well saves and restores them too.
+
+The window is tight. On an NTSC NES vertical blank lasts 20 lines, about 2,273 CPU cycles, and the copy of the sprite table by DMA alone takes 513 or 514 of them; on a PAL machine it lasts 70 lines, about 7,459 cycles. The [Game Loop](/vault/techniques/game-loop) entry shows how *[Metroid](/vault/games/metroid)* divides the work.
+
+## Amiga
+
+The Amiga's custom chips raise a level 3 interrupt, VERTB, at the start of every frame; the *Hardware Reference Manual* places it "at line 0 (start of vertical blank)". The manual gives the minimum vertical blank as "20 horizontal scan lines for an NTSC system and 25 horizontal scan lines for a PAL system", but a normal screen starts later, at line 44 (`$2C` in the display window start register `DIWSTRT`), so a game has more lines than that before the picture begins. The system's own jobs in vertical blank are, in the manual's words, "updating of various pointer registers, rewriting lists of Copper tasks when necessary, and other system-control operations".
+
+A game that has taken over the machine points the level 3 vector at its own handler and clears the request itself:
+
+```asm
+        move.l  #vblank,$6c.w      ; level 3 interrupt vector
+        move.w  #$7fff,$dff09a     ; INTENA: switch every interrupt off
+        move.w  #$c020,$dff09a     ; INTENA: SET + INTEN + VERTB
+
+main:   move.w  frame_count,d0
+wait:   cmp.w   frame_count,d0     ; wait for the next vertical blank
+        beq.s   wait
+        ; ... one frame of game logic ...
+        bra.s   main
+
+vblank: move.w  #$0020,$dff09c     ; INTREQ: clear the VERTB request
+        addq.w  #1,frame_count     ; tell the main loop a frame has passed
+        rte
+
+frame_count:
+        dc.w    0
+```
+
+Bit 15 of `INTENA` decides whether the bits written as 1 are set or cleared, so `$C020` switches the interrupt on and `$4020` would switch it off. The Amiga can also start its frame work when the beam reaches the bottom of the picture instead, by having the [Copper](/vault/hardware/copper) raise a level 3 COPER interrupt at a chosen line; the [Game Loop](/vault/techniques/game-loop) entry shows both.
+
+## Frame rate and slowdown
+
+Waiting for the vertical blank locks a game to the television: every movement is so many pixels per frame, so the same game runs a fifth faster on an NTSC machine than on a PAL one unless its programmers adjusted it. It also sets a hard budget. A frame whose work does not fit before the next vertical blank misses it, and the game waits a whole extra frame, so everything slows down.
+
+Most 8-bit games accepted the slowdown. Some ran their logic less often than the screen. Lasse Öörni, who wrote C64 games as Cadaver, noted that "some games like Gauntlet 3 or Myth scroll at 50Hz, while updating the movement of sprites at a lower rate", and recalled seeing *Last Ninja 2*'s characters "move with bigger steps in some CPU-intense scenes" (see [Frameskipping and Interpolation](/vault/techniques/frameskipping-and-interpolation)). To draw into memory the display is not showing and swap the two at the vertical blank, see [Double Buffering](/vault/techniques/double-buffering).
+
+<Sources>
+
+- Atari, *Stella Programmer's Guide* (1979): the NTSC frame of 3, 37, 192 and 30 lines; 5,320 cycles outside the picture; `VSYNC`, `VBLANK` and `WSYNC`; `TIM64T`; the PAL line counts.
+- John H. Palevich, "SHOOT", *COMPUTE!* issue 16, September 1981, pp. 86–89: the Atari vertical blank and display list interrupts in a game.
+- Christian Bauer, *The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64* (1996), section 3.4: lines, visible lines and vertical blanking for each VIC-II type.
+- Commodore, *Commodore 64 Programmer's Reference Guide* (1982), pp. 150–152: the raster register and interrupt registers.
+- NESdev Wiki, "Cycle reference chart" and "PPU registers" (web, secondary): vertical blank length, PPUCTRL bit 7, OAM DMA. https://www.nesdev.org/wiki/Cycle_reference_chart
+- *Amiga Hardware Reference Manual* (Commodore-Amiga, Addison-Wesley, 1989): VERTB and the minimum vertical blank (chapter 7); the normal `DIWSTRT` of `$2C81` (chapter 3); `INTENA` and `INTREQ` and the SET/CLR bit (Appendix A).
+- Jorgo Schimanski, *Spieleprogrammierung in Assembler auf dem Amiga* (Heim-Verlag, 1991), chapter 2, pp. 8–13: the level 3 vector, enabling VERTB with `$C020` and clearing it with `$0020`.
+- Lasse Öörni (Cadaver), "Frameskipping, interpolation and re-entrant IRQ code" (web, secondary). https://cadaver.github.io/rants/interp.html
+
+The Atari 2600 and C64 listings were assembled with ACME; the 2600 frame was run in the Emu198x emulator and the C64 wait in VICE (x64sc) as PAL and NTSC machines. The NES listing was assembled with ca65 and the Amiga listing with vasm, and both were run in Emu198x.
+
+</Sources>
 
 ## See also
 
-- [Double Buffering](/vault/techniques/double-buffering)
+- [The Game Loop](/vault/techniques/game-loop)
 - [Raster Interrupts](/vault/techniques/raster-interrupts)
+- [Double Buffering](/vault/techniques/double-buffering)
+- [Frameskipping and Interpolation](/vault/techniques/frameskipping-and-interpolation)
+- [Interrupt-Driven Music](/vault/techniques/interrupt-driven-music)
 - [VIC-II](/vault/hardware/vic-ii)
 - [PPU](/vault/hardware/ppu)
-- [Game Loop](/vault/techniques/game-loop)
+- [Copper](/vault/hardware/copper)
+- [Atari 2600](/vault/systems/atari-2600)
