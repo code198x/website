@@ -47,7 +47,7 @@ const START_FIELD = {
   hardware: 'introduced', systems: 'introduced',
   culture: 'emerged', phenomena: 'emerged', events: 'emerged',
   communities: 'emerged', distribution: 'emerged', genres: 'emerged',
-  techniques: 'originated',
+  techniques: 'originated', design: 'originated', technologies: 'originated',
   people: 'born',
 };
 
