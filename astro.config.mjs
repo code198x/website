@@ -70,8 +70,8 @@ export default defineConfig({
     // Renamed 2026-09-03: the nav said "START HERE" while the page and its URL
     // said "Who this is for". The nav was the better of the two.
     '/who-this-is-for': '/start-here',
-    // Deluxe Paint was filed under both games/ and tools/. It is a tool.
-    '/vault/games/deluxe-paint': '/vault/tools/deluxe-paint',
+    // Deluxe Paint was filed under both games/ and tools/. It is software.
+    '/vault/games/deluxe-paint': '/vault/software/deluxe-paint',
     // Vault duplicate merges: one entry per subject, old slugs preserved as
     // redirects so existing links and bookmarks still land on the right page.
     '/vault/companies/delphine': '/vault/companies/delphine-software',
@@ -92,7 +92,7 @@ export default defineConfig({
     // only in slug punctuation, both AI-drafted and unreviewed.
     '/vault/games/sonic': '/vault/games/sonic-the-hedgehog',
     '/vault/games/outrun': '/vault/games/out-run',
-    '/vault/tools/sinclair-basic-tool': '/vault/tools/sinclair-basic',
+    '/vault/tools/sinclair-basic-tool': '/vault/languages/sinclair-basic',
     // Second pass 2026-08-25: hyphenated slug wins, richest body wins.
     '/vault/games/simcity': '/vault/games/sim-city',
     '/vault/games/rollercoaster-tycoon': '/vault/games/roller-coaster-tycoon',
@@ -214,6 +214,46 @@ export default defineConfig({
     '/vault/systems/xbox': '/vault/systems/microsoft-xbox',
     // Processor entries use the bare part number, like 6502, 68000 and z80.
     '/vault/hardware/motorola-6809': '/vault/hardware/6809',
+    // Recategorised 2026-09-27: languages and software split out of tools;
+    // engines moved from techniques to tools, and hardware features to hardware.
+    '/vault/techniques/basic-v2': '/vault/languages/basic-v2',
+    '/vault/techniques/agi-engine': '/vault/tools/agi-engine',
+    '/vault/techniques/sci-engine': '/vault/tools/sci-engine',
+    '/vault/techniques/scumm': '/vault/tools/scumm',
+    '/vault/techniques/z-machine': '/vault/tools/z-machine',
+    '/vault/techniques/filmation-engine': '/vault/tools/filmation-engine',
+    '/vault/techniques/freescape': '/vault/tools/freescape',
+    '/vault/techniques/havok': '/vault/tools/havok',
+    '/vault/techniques/renderware': '/vault/tools/renderware',
+    '/vault/techniques/link-cable': '/vault/hardware/link-cable',
+    '/vault/techniques/rumble-pak': '/vault/hardware/rumble-pak',
+    '/vault/techniques/super-fx-chip': '/vault/hardware/super-fx-chip',
+    '/vault/techniques/model-2': '/vault/hardware/model-2',
+    '/vault/techniques/force-feedback': '/vault/hardware/force-feedback',
+    '/vault/techniques/battery-backup': '/vault/hardware/battery-backup',
+    '/vault/tools/amos': '/vault/languages/amos',
+    '/vault/tools/beta-basic': '/vault/languages/beta-basic',
+    '/vault/tools/blitz-basic-2': '/vault/languages/blitz-basic-2',
+    '/vault/tools/gfa-basic': '/vault/languages/gfa-basic',
+    '/vault/tools/logo-language': '/vault/languages/logo-language',
+    '/vault/tools/scratch': '/vault/languages/scratch',
+    '/vault/tools/simons-basic': '/vault/languages/simons-basic',
+    '/vault/tools/sinclair-basic': '/vault/languages/sinclair-basic',
+    '/vault/tools/stos': '/vault/languages/stos',
+    '/vault/tools/deluxe-paint': '/vault/software/deluxe-paint',
+    '/vault/tools/lightwave-3d': '/vault/software/lightwave-3d',
+    '/vault/tools/imagine': '/vault/software/imagine',
+    '/vault/tools/sculpt-3d': '/vault/software/sculpt-3d',
+    '/vault/tools/aseprite': '/vault/software/aseprite',
+    '/vault/tools/protracker': '/vault/software/protracker',
+    '/vault/tools/soundtracker': '/vault/software/soundtracker',
+    '/vault/tools/famitracker': '/vault/software/famitracker',
+    '/vault/tools/deflemask': '/vault/software/deflemask',
+    '/vault/tools/sid-wizard': '/vault/software/sid-wizard',
+    '/vault/tools/steam': '/vault/distribution/steam',
+    '/vault/tools/world-of-spectrum': '/vault/communities/world-of-spectrum',
+    '/vault/tools/gamebase': '/vault/communities/gamebase',
+    '/vault/tools/hvsc': '/vault/communities/hvsc',
     // The ZX81's system ID follows the same convention.
     '/systems/zx81': '/systems/sinclair-zx81',
     '/zx81': '/systems/sinclair-zx81',

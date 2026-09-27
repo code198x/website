@@ -141,7 +141,9 @@ const vault = defineCollection({
       'magazines',     // Gaming press (CRASH, ZZAP!64, Your Sinclair)
       'books',         // Books about gaming/programming
       'phenomena',     // Cultural phenomena (video game crash, bedroom coding)
-      'tools',         // Development tools, trackers, archives (ProTracker, HVSC)
+      'tools',         // Development tools and engines (The Quill, SCUMM, Unity)
+      'languages',     // Programming languages and dialects (Sinclair BASIC, AMOS)
+      'software',      // Applications (Deluxe Paint, ProTracker, GEOS)
       'genres',        // Game genres (JRPG, roguelike, immersive sim)
       'emulators',     // Emulation software (VICE, MAME)
       'distribution',  // Software distribution methods (shareware, budget games, cover tapes)
