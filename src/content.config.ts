@@ -133,7 +133,10 @@ const vault = defineCollection({
       'groups',        // Scene collectives, informal organisations (Fairlight, Future Crew)
       'games',
       'demos',         // Demo scene productions (Second Reality, State of the Art)
-      'techniques',
+      'techniques',    // Programming and graphics techniques (raster interrupts, FLD)
+      'design',        // Game design and mechanics (permadeath, fog of war)
+      'technologies',  // Formats, media, processes and protection (MOD, FMV, Copylock)
+      'reference',     // Reference sheets (PETSCII chart, Z80 instruction set)
       'hardware',
       'systems',
       'culture',
