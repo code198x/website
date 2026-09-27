@@ -1,93 +1,140 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "FLD"
 subtitle: "Flexible Line Distance"
-summary: "A C64 trick that inserts gaps between character lines, pushing the graphics below them down the screen. Unusually for a scene effect, it appeared in commercial games before it appeared in demos."
+summary: "A Commodore 64 trick that holds back the VIC-II's badlines so that the next character row starts lower down, opening a gap of any number of raster lines and pushing everything below it down the screen without moving a byte of memory. It needs no exact timing, and the scene's own list of firsts records it in commercial games before it appeared in demos."
 category: "techniques"
 platforms: ['commodore-64']
 tags: ['graphics', 'raster', 'vic-ii', 'demoscene', 'scrolling']
-originated: 1987
-
+originated: 1986
 sources:
-  the_mechanism:
-    - title: "Codebase64, 'FLD - Flexible Line Distance'"
-      kind: technical-doc
-      page: "base:fld"
-      note: "'FLD means the ability to move blocks of graphics vertically on the screen. More precisely FLD operates on char-lines (8 pixels high) as its smallest element. With FLD you can make gaps between char-lines, thus the graphics below the FLD will be pushed down on the screen'"
-  it_is_forgiving:
-    - title: "Codebase64, 'FLD - Flexible Line Distance'"
-      kind: technical-doc
-      page: "base:fld"
-      note: "⚠ Distinguishes FLD from the timing-critical tricks it is usually grouped with: 'FLD does not require exact timing and doesn't even have to be updated each rasterline (only every ~6:th rasterline is ok). FLD can even be done with periodic interrupts instead of looped code that just wastes all the precious rastertime.' Signed /HCL"
-  games_before_demos:
-    - title: "Codebase64, 'Demo records and world firsts' (vic:demo namespace)"
+  originated:
+    - title: "Codebase64 wiki, 'Demo records and world firsts'"
       kind: database
-      page: "First appearance(s) of tricks/effects"
-      note: "⚠ FLD's first recorded appearances are commercial games, not demos - unusual for a scene effect. 'Thomas Larsen: The Vikings - game. (10 points full screen FLD)' and 'Thomas Larsen: Tiger Misson [sic] - game', both 'before 1987-03-xx', with the page recording a disagreement between sources over whether that means February. The first demo use listed is 'Mule/The Cream Crackers: Mega Jive', 'around march 1987'"
-  fld_parallax_in_a_game:
-    - title: "Codebase64, 'FLD - Flexible Line Distance'"
-      kind: technical-doc
-      page: "base:fld"
-      note: "A later game application, reverse-engineered and republished as source: 'An example of FLD Parallax used in a game, this was reverse engineered from Tusari. Published in 1992 this was the first documented game to use FLD with parallax in vertical scrolling sections. The original game used mainline code without any IRQ/NMI action'"
-  combined_with_vsp:
-    - title: "Codebase64, 'Demo records and world firsts' (vic:demo namespace)"
-      kind: database
-      page: "First appearance(s) of tricks/effects"
-      note: "The vertical and horizontal tricks were combined: 'LineCrunch + VSP - Exilon/MDT/Horizon: Bonanza', November 1988, which is the combination later formalised as AGSP"
-  the_dispute_caveat:
-    - title: "Codebase64, 'Demo records and world firsts' (vic:demo namespace)"
-      kind: database
-      page: "First appearance(s) of tricks/effects"
-      note: "⚠ Provenance and its limits. This page is a community effort seeded from 'a little list posted by someone called Rost at the CSDb forum', and its own authors caution that 'it is not always straightforward to determine who did what and when' - a discovery may be accidental, or buggy, or reproduced better later, and 'some of these issues are subject to dispute'. Dates and names below are recorded as the scene's best current account, not as settled fact."
+      page: "First appearance(s) of tricks/effects: FLD"
+      note: "web, secondary: FLD's first listed appearances are two Kele Line games by Thomas Larsen, The Vikings and Tiger Mission, both 'before 1987-03-xx', ahead of the demo Mega Jive by Mule of The Cream Crackers, 'around march 1987'. https://codebase64.org/doku.php?id=vic:demo:demo_world_records_and_world_firsts"
+    - ref: magazines/zzap-64
+      kind: magazine
+      date: "1987-02"
+      issue: 22
+      page: "70-71"
+      note: "Kele Line feature: the company was founded in August and 'just before Christmas there was a launch party in the company's offices, a few miles outside Copenhagen. The Vikings had arrived'. The Vikings is reviewed in the same issue, p. 36."
 ---
+import Sources from '@components/Sources.astro';
 
----
+**FLD**, flexible line distance, pushes the Commodore 64's picture down the screen without moving any of it. The program never touches screen memory. It changes one register on each raster line so that the [VIC-II](/vault/hardware/vic-ii) keeps putting off the start of its next character row, and every row below the gap arrives later. The gap can be any number of raster lines, so the picture moves one pixel at a time, and it can be different on every frame: the screen bounces, or opens up between its rows.
 
-**FLD** — Flexible Line Distance — moves blocks of graphics down the screen by
-inserting blank space between character lines.
+FLD is also the easy one among the C64's badline tricks. [VSP](/vault/techniques/vsp) and [FLI](/vault/techniques/fli) need a register write on an exact cycle. FLD only needs the write to land somewhere on the right line, and not even on every line. And the demo scene's own list of firsts records it in commercial games before any demo.
 
-> With FLD you can make gaps between char-lines, thus the graphics below the FLD
-> will be pushed down on the screen.
+## How it works
 
-It works on character lines, eight pixels at a time, which makes it coarser than
-its horizontal cousins — and much easier to use.
+The VIC-II builds its text and bitmap display out of character rows, and it starts each row on a **badline**: the raster line on which it stops the processor and reads that row's 40 character codes. Christian Bauer's 1996 description of the chip gives the rule. A line is a badline when the raster is between `$30` and `$F7`, the display was switched on during line `$30`, and "the lower three bits of RASTER are equal to YSCROLL", the vertical scroll value in bits 0 to 2 of `$D011`. Normally that happens every eighth line.
 
-## It is the forgiving one
+After a row's eighth line the chip drops into what Bauer calls the **idle state**, and it stays there until the next badline. So a program that keeps changing YSCROLL, always to a value that does not match the current line, can stop the next row from starting for as long as it likes. In Bauer's words, "The distance between two text lines can be arbitrarily increased if only you hold back the next Bad Line long enough." When the program lets YSCROLL settle, the next badline comes and the chip carries on with the row after the last one it showed. Nothing is skipped: the rows below simply appear lower down. Bauer's example allows only three badlines on the whole screen, at lines `$50`, `$78` and `$A0`, so the VIC-II shows three text rows with gaps between them. Delay only the first badline and "you can scroll down the complete graphics display by large distances without moving a single byte in display memory."
 
-FLD is usually filed alongside VSP and linecrunch as a hard raster trick. It is not
-in the same class of difficulty:
+Several things follow from the rule:
 
-> FLD does not require exact timing and doesn't even have to be updated each
-> rasterline (only every ~6:th rasterline is ok). FLD can even be done with periodic
-> interrupts instead of looped code that just wastes all the precious rastertime.
+- **The gap is not empty.** In the idle state the VIC-II still fetches graphics, always from the last byte of its 16K bank (`$3FFF` in the default bank), and shows that byte across the whole line. If the byte is zero the gap shows the background colour; if not, it fills with vertical stripes.
+- **The step is one raster line.** The block that moves is a whole character row, but the gap can be any height.
+- **Bitmaps move too.** Bitmap modes use the same row counters, so FLD pushes a bitmap picture down in exactly the same way. In standard bitmap mode the gap shows the idle byte in black.
+- **Rows can fall off the bottom.** No badline can start below line `$F7`, so rows pushed that far down are not shown at all.
+- **The gap is cheap.** A line that is not a badline does not stop the processor, so the lines in the gap give back the 40 to 43 cycles a badline would have taken.
 
-That tolerance is why it turns up in games. A commercial title cannot spend its
-whole raster budget holding an effect together; FLD lets you have the effect and
-keep the CPU.
+## The forgiving one
+
+The timing is loose because YSCROLL only has to stay out of step with the raster. A program that sets YSCROLL to the value of the line that has just passed has seven lines before the two match again. The Codebase64 wiki's FLD page, signed by HCL, puts it this way: "FLD does not require exact timing and doesn't even have to be updated each rasterline (only every ~6:th rasterline is ok). FLD can even be done with periodic interrupts instead of looped code that just wastes all the precious rastertime." [Linecrunch](/vault/techniques/linecrunch), which cuts rows short to move the screen up, has to hit a short window at the same point on every line.
+
+That tolerance makes FLD a good first raster trick. The routine below uses the same method as HCL's example. It waits for the top of the frame, then adds one to YSCROLL on each raster line, so YSCROLL always stays two ahead of the bottom three bits of the raster line and the next badline never comes. The number of lines grows from 0 to 63 and back, so the screen bounces.
+
+```asm
+; FLD bouncer (ACME syntax). SYS 49152 to start;
+; RUN/STOP and RESTORE to stop.
+        * = $c000
+        sei             ; no interrupts: this loop owns the machine
+frame   bit $d011       ; wait for raster line 256 or later
+        bpl frame       ; (bit 7 of $D011 is bit 8 of the raster)
+top     bit $d011       ; then for the start of the next frame
+        bmi top
+        lda #$1b        ; normal $D011: screen on, 25 rows, YSCROLL 3
+        sta $d011
+        jsr bounce      ; A = size of this frame's gap, 0-63 lines
+        tax
+        beq frame       ; no gap this frame
+        lda #$31        ; wait for raster line $31, before the
+wait    cmp $d012       ; first badline at $33
+        bne wait
+fld     lda $d012       ; wait for the next raster line
+same    cmp $d012
+        beq same
+        clc             ; move YSCROLL one line on, so it keeps
+        lda $d011       ; the same lead over the raster line and
+        adc #1          ; the next badline never comes
+        and #7
+        ora #$18        ; screen on, 25 rows, text mode
+        sta $d011
+        dex
+        bne fld
+        jmp frame
+bounce  lda count       ; count 0-127 as a triangle: 0..63..0
+        inc count
+        and #$7f
+        cmp #$40
+        bcc up
+        eor #$7f
+up      rts
+count   !byte 0
+```
+
+Run on a PAL C64 in the VICE emulator, it moves the BASIC start-up screen up and down between its normal place and 63 lines lower. `POKE 16383,85` before starting it turns the gap into stripes, which is the idle state showing through.
+
+## In print
+
+Magazine readers could type FLD in for themselves. In November 1989 *Commodore Disk User* followed Miles Barry's introduction to raster effects in the previous issue with Andy Partridge's "Rasters and Colour", whose disk included a routine for "bouncing portions of the screen up and down". He described the trick as shifting "the video matrix down, leaving gaps between the 25 screen lines", with each change to `$D011` making the chip miss a line, "thereby shifting the screen down one pixel". He also named an inventor: "'White' of Holland".
+
+Four years later the American *Compute!* printed a type-in, "Screen Bouncer" by Bob Broderick, "using a technique known as flexible line distance" to bounce the screen "down and up". Its explanation had the mechanism backwards. It said the routine kept the VIC chip "so busy that it won't have time to send any video information"; Bauer's description shows that during the gap the chip is idle and the processor has more time, not less. The program also came with a POKE to clear "the streaks the program leaves in the empty areas at the top of the screen", which match the idle-state stripes described above.
 
 ## Games first, demos second
 
-⚠ **Unusually for a C64 scene effect, FLD's earliest recorded appearances are
-commercial games.**
+The Codebase64 wiki's list of demo firsts, a collaborative record that began as a list posted to the CSDb forum, starts its FLD section with two commercial games:
 
-| Release | Kind | Date |
+| Release | Kind | Date in the list |
 |---|---|---|
-| **Thomas Larsen**, *The Vikings* — "10 points full screen FLD" | game | before March 1987 |
-| **Thomas Larsen**, *Tiger Mission* | game | before March 1987 |
-| **Mule/The Cream Crackers**, *Mega Jive* | demo | "around march 1987" |
+| *The Vikings*, Thomas Larsen ("full screen FLD") | game | before March 1987 |
+| *Tiger Mission*, Thomas Larsen | game | before March 1987 |
+| *Mega Jive*, Mule of The Cream Crackers | demo | "around march 1987" |
 
-The scene's own record disagrees with itself about whether "before March" means
-February, and says so.
+Both games came from Kele Line, a young Danish publisher. *Zzap!64* visited in February 1987 and reported that the company had been founded the previous August and that *The Vikings* had been launched at a party at its offices outside Copenhagen "just before Christmas". Its C64 credits, as quoted by the Finnish Retro Game Comparison Blog, include a "C64 hi-res scroll-routine by Thomas Larsen" alongside the main programmer Søren Grønbech. The company told the magazine that for *The Vikings* "we added the full-screen picture at the start, came up with the little play for the opening sequence", and its review gave the presentation 93% for the "Full-screen loading picture, and very pretty attract sequence", though only 55% overall. *Tiger Mission*, a vertically scrolling helicopter shoot-'em-up, got 51% in March. Neither review names the technique. CSDb lists *Mega Jive* as a 1987 one-file demo with code by Mule and music by Rob Hubbard.
 
-It kept turning up in games afterwards. Codebase64 publishes FLD parallax scrolling
-"reverse engineered from *Tusari*", noting that the 1992 game was "the first
-documented game to use FLD with parallax in vertical scrolling sections" — and did
-it "using mainline code without any IRQ/NMI action".
+The list's compilers warn that "It is not always straightforward to determine who did what and when", and that "some of these issues are subject to dispute". Their own entry records a disagreement over whether "before March" means February. *Commodore Disk User*'s credit to "White" of Holland is a different answer again, and no public source found for this entry connects the two.
+
+FLD also led to another trick. JCB of The Mean Team said that [VSP](/vault/techniques/vsp), first shown in October 1987, began as "a bugged FLD routine that started to make the screen move around". Bauer later described combining the two with linecrunch: "you can scroll complete graphics screens without using much computing time by almost arbitrarily large distances in all directions", the combination known as [AGSP](/vault/techniques/agsp).
+
+## Later games
+
+FLD kept turning up in games. Martin Piper's game *Tusari* went out on a *Zzap!64* cover tape in October 1992 as a reader's game, which the magazine called "Arguably the best reader game we've ever had". The Codebase64 wiki publishes a reverse-engineered version of its FLD parallax, describing *Tusari* as "the first documented game to use FLD with parallax in vertical scrolling sections" and noting that "The original game used mainline code without any IRQ/NMI action", in other words a plain loop rather than raster interrupts.
+
+<Sources>
+
+- Christian Bauer, *The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64* (28 August 1996): section 3.5, the badline condition and the 40–43 cycles a badline takes; sections 3.7.1 and 3.7.3.9, the idle state and its fetches from `$3FFF`; section 3.14.2, "FLD", including the three-badline example and scrolling "the complete graphics display"; section 3.14.6, the combination with DMA delay and linecrunch.
+- Codebase64 wiki, "FLD - Flexible Line Distance", by HCL (web, secondary): the loose timing, the example routine's method, and the *Tusari* FLD parallax example. https://codebase64.org/doku.php?id=base:fld
+- Codebase64 wiki, "Demo records and world firsts" (web, secondary): *The Vikings*, *Tiger Mission* and *Mega Jive*, with the compilers' cautions. https://codebase64.org/doku.php?id=vic:demo:demo_world_records_and_world_firsts
+- Andy Partridge, "Rasters and Colour", *Commodore Disk User* volume 3 issue 1, November 1989, p. 29: FLD explained and attributed to "'White' of Holland".
+- Bob Broderick, "Screen Bouncer", *Compute!* issue 156, September 1993, p. G-24.
+- *Zzap!64* issue 22, February 1987: *The Vikings* review, p. 36 (55%); Kele Line feature, pp. 70–71.
+- *Zzap!64* issue 23, March 1987, p. 105: *Tiger Mission* review (51%).
+- *Zzap!64* issue 89, October 1992: cover tape pages, *Tusari* as a reader's game.
+- Finnish Retro Game Comparison Blog, "The Vikings (Kele Line, 1986)", May 2014 (web, secondary): the C64 credits. http://frgcb.blogspot.com/2014/05/the-vikings-kele-line-1986.html
+- CSDb, "Mega Jive" by The Cream Crackers and "Tusari [disk]" by Martin Piper (web, secondary): release years and credits. https://csdb.dk/release/?id=10240 and https://csdb.dk/release/?id=178390
+- CSDb, "VSP&IK+" by The Mean Team (web, secondary): JCB's comment on finding VSP. https://csdb.dk/release/?id=6176
+
+</Sources>
 
 ## See also
 
-- [FLI](/vault/techniques/fli) — the colour trick, two years later
-- [VSP](/vault/techniques/vsp) — the horizontal equivalent
+- [VIC-II](/vault/hardware/vic-ii): badlines and the rest of the chip
+- [VSP](/vault/techniques/vsp): moving the screen sideways by delaying a badline's start
+- [Linecrunch](/vault/techniques/linecrunch): moving the screen up by cutting rows short
+- [FLI](/vault/techniques/fli): forcing a badline on every line
+- [AGSP](/vault/techniques/agsp): FLD's relatives combined
 - [Raster interrupts](/vault/techniques/raster-interrupts)
-
