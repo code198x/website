@@ -43,7 +43,7 @@ const ONLY_CAT = argVal('--category', null);
 const START_FIELD = {
   companies: 'founded', groups: 'founded', magazines: 'founded',
   games: 'released', demos: 'released', books: 'released',
-  tools: 'released', emulators: 'released',
+  tools: 'released', languages: 'released', software: 'released', emulators: 'released',
   hardware: 'introduced', systems: 'introduced',
   culture: 'emerged', phenomena: 'emerged', events: 'emerged',
   communities: 'emerged', distribution: 'emerged', genres: 'emerged',
