@@ -1,153 +1,102 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Tile Maps"
 subtitle: "Building worlds from blocks"
-summary: "Tile maps constructed game worlds from small reusable graphic blocks, enabling large levels within tight memory constraints while simplifying collision detection and level design."
+summary: "A tile map describes a level as a grid of numbers, each naming a small reusable picture. The NES stored one screen as 960 tile numbers and 64 bytes of colour; Commodore 64 programmers built maps from 4×4 blocks of characters; and games from Super Mario Bros. onwards squeezed levels further by storing larger blocks, or whole objects, instead of single tiles."
 category: "techniques"
-platforms: ['nintendo-entertainment-system', 'commodore-64', 'sega-mega-drive', 'game-boy']
+platforms: ['nintendo-entertainment-system', 'commodore-64', 'sega-mega-drive']
 tags: ['graphics', 'level-design', 'technique']
-originated: 1980
-
-sources:
-  c64_block_data:
-    - title: "Codebase64 — Multidirectional scrolling and the \"game world\" (Rant 4), by Cadaver (Lasse Öörni)"
-      kind: technical-doc
-      note: "\"The popular method of graphics encoding seen in for example SEUCK is the map-data & block-data system (sometimes the blocks are also called tiles.)\" — \"map data consists of 8-bit block numbers, so there can be 256 different blocks maximum.\" — \"each horizontal row is stored in the memory sequentially, starting from the top of map and ending to the bottom … the length of a row in blocks is very significant to know, so I store it in a 'map header' before the map data itself. To avoid any multiplication operations, I precalculate the starting address of each map row into an array … Similarly, I also precalculate the starting address of each block (maptbllo/hi and blktbllo/hi tables.)\" — \"I prefer 4×4 blocks: the block size is always a tradeoff between memory use and the complexity of graphics that can be achieved. But for easy calculations, the block size should be a power of two.\" Credits: \"C-64 Pelintekijän Opas\" by Jukka Tapanimäki, and \"my big brother who did initial experiments with blockmap-scrolling in the late '80s\". Multi-level blocks are noted as \"seen in Faery Tale Adventure\"."
-  c64_no_encoding:
-    - title: "Codebase64 — Multidirectional scrolling and the \"game world\" (Rant 4), by Cadaver (Lasse Öörni)"
-      kind: technical-doc
-      note: "\"It would probably take too much memory to store each screen of a game world as only the character codes, without any encoding. However, Chris Butler's Commando and Ghosts'n Goblins do just fine by doing things this way, so it's not entirely unusable.\""
-  c64_edge_drawing:
-    - title: "Codebase64 — Multidirectional scrolling and the \"game world\" (Rant 4), by Cadaver (Lasse Öörni)"
-      kind: technical-doc
-      note: "\"In addition to shifting the screen, new data must be drawn on the side(s) of the screen. Practically, one must keep track of the screen top-left edge's position in block-coordinates (amount of blocks measured from the map's top-left edge) and also the position within a block.\" — \"In multidirectional scrolling the difficulty is that you must take into account both the X & Y-position within the block\""
-  c64_colour_per_tile:
-    - title: "Codebase64 — Decoding 4x4 tiles, by Achim"
-      kind: technical-doc
-      note: "\"If you use tile based maps for a game, you'll have to decode a whole screen first unless you want your scroll routine to scroll the background graphics onto the screen.\" — \"Usually you've got two options: Colour per tile / Colour per char. The first option is very useful when you want to save rastertime for the main program, but is obviously less colourful.\""
 ---
+import Sources from '@components/Sources.astro';
 
-Don't draw a forest — draw one tree and repeat it. Tile maps build game worlds from small graphic blocks (typically 8×8 or 16×16 pixels) arranged in a grid. One set of tiles can compose endless levels. *Super Mario Bros.* uses around 256 unique tiles to build its entire Mushroom Kingdom. Memory-efficient, collision-friendly, and the foundation for almost every 2D level editor of the era.
+*Super Mario Bros.* had 8K for its graphics: every tile of scenery and every frame of every sprite. Shigeru Miyamoto told Satoru Iwata in 2010 that he managed the budget on the planning sheet itself, "making the greenery and clouds out of the same parts" and colouring them differently. The level data was just as tight. Toshihiko Nakago remembered that "1 block was 3 bytes, maybe 2, so if there were 20 bytes open, you could put in 10 blocks", and Miyamoto kept asking for ten more.
 
-For the *concept* of tile-based rendering and which platforms supported it, see [Tile-Based Graphics](/vault/techniques/tile-graphics); this entry focuses on the *map data structure*.
+That is the bargain a tile map makes. A level is not stored as a picture. It is a grid of small numbers, and each number names a picture that is stored once and reused wherever it is needed. Change a number and the world changes; point the same numbers at a different set of pictures and a grass level becomes an ice level. The same grid also tells the program what is solid, so drawing the world and colliding with it share one piece of data.
+
+For how tile-based display hardware works, and which machines had it, see [Tile-Based Graphics](/vault/techniques/tile-graphics). This entry is about the map: how the numbers are laid out, and how games packed them.
 
 ## Fast facts
 
-- **Purpose:** Construct levels from reusable blocks.
-- **Tile size:** Typically 8×8 or 16×16 pixels.
-- **Memory saving:** ~98% versus a 1-byte-per-pixel bitmap of the same screen.
-- **Usage:** Nearly universal in 8/16-bit era.
+- **The tile set:** the pictures, usually 8×8 pixels. The NES holds 256 in each of its two 4K pattern tables; a Commodore 64 character set is 256 characters in 2K.
+- **The map:** one number per cell. One byte on the NES and C64; one 16-bit word on the Mega Drive, which also carries palette, flip and priority bits.
+- **NES screen:** 32×30 tiles, 960 bytes, plus a 64-byte attribute table for colour.
+- **C64 screen:** 40×25 characters, 1,000 bytes of screen memory.
+- **Compression:** most games stored bigger blocks (NES metatiles of 2×2 tiles; C64 blocks of, typically, 4×4 characters), and the map holds block numbers.
 
-## Memory efficiency
+## One NES screen
 
-Comparison for a single 256×240 NES screen:
+The NES picture chip, the [PPU](/vault/hardware/ppu), has no bitmap mode at all. Its background is a **nametable**: 32 columns by 30 rows of tile numbers, 960 bytes, covering the 256×240-pixel screen. The console has 2K of video RAM, enough for two nametables, and the tile pictures themselves sit on the cartridge in two 4K pattern tables of 256 tiles each. A bitmap of one screen at the NES's two bits per pixel would need 15,360 bytes. The nametable and its colour data need 1,024.
 
-| Method | Memory | Notes |
-|--------|--------|-------|
-| 1-byte-per-pixel bitmap | 61,440 bytes | One palette index per pixel |
-| Tile map (32×30 cells, 8×8 tiles) | 960 bytes | Plus a shared 4 KB tile set in CHR |
-| **Saving** | **~98%** | Tile set is paid once; map data alone is ~1.5% |
-
-## Tile map structure
-
-| Component | Purpose |
-|-----------|---------|
-| Tile set | Pixel definitions (CHR-ROM on NES, charset RAM on C64, VRAM on Mega Drive) |
-| Map data | One byte (or word) per cell, indexing the tile set |
-| Attributes | Per-region palette/flip/priority data |
-| Collision flags | Solid, platform, hazard — usually a parallel array keyed by tile index |
-
-## C64: map data and block data
-
-The C64 has no nametable; its screen is 1,000 character codes in RAM, and a tile map is whatever the program makes of it. The common shape, which Cadaver's Codebase64 rant credits to Jukka Tapanimäki's *C-64 Pelintekijän Opas* and to SEUCK, is a two-level scheme he calls **map data** and **block data**:
-
-| Level | Contents | Notes |
-|-------|----------|-------|
-| Map data | One byte per block, rows stored end to end from the top of the map | 8-bit block numbers, so 256 blocks at most; a map header records the row length in blocks |
-| Block data | The screen codes for each block, rows end to end | Cadaver prefers 4×4; "the block size should be a power of two" for cheap arithmetic |
-| Address tables | Precalculated start address of every map row and every block | Avoids multiplication on the 6502 |
-| Colour | Either one colour per block or one per character | Per-block colour saves raster time but is "obviously less colourful" (Achim) |
-
-Drawing a new column or row at the screen edge means tracking the top-left corner's position in block coordinates plus the offset within a block, and decoding the right slice of each block as it comes into view; in eight-way scrolling both the X and Y offsets within the block matter. Cadaver notes the scheme is a choice rather than a necessity — Chris Butler's *Commando* and *Ghosts'n Goblins* store whole screens as raw character codes "and do just fine" — and mentions blocks made of smaller blocks in *Faery Tale Adventure* as the way to scroll much larger maps.
-
-## NES nametables
-
-The NES PPU stores one screen's worth of tile indices in a *nametable*:
-
-| Element | Specification |
-|---------|---------------|
-| Tile size | 8×8 pixels |
-| Nametable | 32×30 tiles = 960 bytes |
-| Pattern tables | 256 tiles each (two 4 KB tables in CHR memory) |
-| Attribute table | 64 bytes after each nametable; 4×4 tiles per byte, 2×2 tile palette resolution |
-| Hardware nametables | 4 logical, 2 in PPU VRAM; mirroring (horizontal / vertical / four-screen via mapper) decides how the four logical tables overlap |
-
-### Nametable address layout
+Each nametable starts at a fixed address, and the tile at a given row and column is found by arithmetic:
 
 ```
 $2000 + (row × 32) + col   ; row 0-29, col 0-31
 ```
 
-For example, the bottom-right tile of nametable 0 is at `$2000 + (29 × 32) + 31 = $23BF`. The 64 attribute bytes for that nametable live at `$23C0-$23FF`.
+The bottom-right tile of the first nametable is at `$2000 + (29 × 32) + 31 = $23BF`. The next 64 bytes, `$23C0-$23FF`, are its **attribute table**.
 
-### Attribute byte layout
+### Colour by the 16-pixel square
 
-Each attribute byte covers a 32×32-pixel block (4×4 tiles), divided into four 2×2-tile palette quadrants:
+The attribute table is where the NES's tile maps get their shape. Each attribute byte covers a 32×32-pixel area, four tiles by four, and gives each 16×16 quarter two bits: a choice of one of four background palettes.
 
 ```
-bits 7-6: bottom-right 2×2 tiles
-bits 5-4: bottom-left  2×2 tiles
-bits 3-2: top-right    2×2 tiles
 bits 1-0: top-left     2×2 tiles
+bits 3-2: top-right    2×2 tiles
+bits 5-4: bottom-left  2×2 tiles
+bits 7-6: bottom-right 2×2 tiles
 ```
 
-Two tiles in the same 2×2 quadrant are forced to share a palette — a constraint that shapes NES tile design.
+Every 2×2 group of tiles therefore shares one palette of three colours plus the background colour. NESdev notes that most games answer this with **metatiles** of 16×16 pixels, the size of a *Super Mario Bros.* question-mark block, or 32×32, the width of that game's pipes, so that the map lines up with the colour grid. A metatile is a small table entry: four tile numbers and a palette. The level map then holds metatile numbers, and one byte stands for four tiles and their colour.
 
-## Collision detection
+The grid shows at the edges of a scrolling screen. Because the attribute areas are 16 pixels wide and the scroll moves one pixel at a time, a game scrolling across mirrored nametables cannot always change the colour of a column cleanly. NESdev gives *[Super Mario Bros. 3](/vault/games/super-mario-bros-3)* as an example: a strip of wrong colours shows on the right of the screen.
 
-| Advantage | Explanation |
-|-----------|-------------|
-| Grid-based | Simple coordinate lookup — `tile = map[y >> 3][x >> 3]` for 8×8 tiles |
-| Tile properties | A parallel `tile_attrs[]` table maps tile index → collision class |
-| Efficient | No per-pixel checking; one shift and one indirect read per query |
-| Consistent | Predictable behaviour, easy to debug |
+### Feeding the edge
 
-## Level design workflow
+Two nametables give 512 pixels of room, so a level wider than that has to be written in as the player moves. The program writes each new column of tiles into the off-screen part of the nametable just before it scrolls into view. The PPU's control register has a setting that makes each write step down 32 bytes instead of along one, so a column goes in as a run of writes to one address. The work has to fit in vertical blanking, about 2,270 CPU cycles on an NTSC console, and NESdev notes that most games write no more than 64 bytes to the nametable in one frame. The NES pattern [Feeding New Columns](/patterns/nintendo-nes/assembly/rendering/column-feeding) shows the routine.
 
-| Step | Process |
-|------|---------|
-| 1 | Create tile graphics |
-| 2 | Build tile set |
-| 3 | Design levels in editor |
-| 4 | Export map data |
-| 5 | Runtime: draw from map |
+## The Commodore 64: map data and block data
 
-## Common tile types
+The C64 has no nametable register to point at a map. Its text screen is 1,000 character codes in RAM, and a map is whatever the program makes of it. Lasse Öörni, who writes as Cadaver and wrote the *Metal Warrior* games, describes the usual layout in a Codebase64 article, calling it "the popular method of graphics encoding seen in for example SEUCK": the **map-data and block-data** system, "sometimes the blocks are also called tiles". He credits some of what he knew to Jukka Tapanimäki's Finnish book on C64 game-making.
 
-| Type | Collision |
-|------|-----------|
-| Empty | Pass through |
-| Solid | Block all |
-| Platform | Block from above only |
-| Hazard | Damage on contact |
-| Collectible | Trigger collection |
+| Part | Contents |
+|------|----------|
+| Map data | One byte per block, "so there can be 256 different blocks maximum"; each row stored in turn from the top, with the row length in a "map header" |
+| Block data | The character codes for each block, row by row; a 4×4 block is 16 bytes |
+| Address tables | The start address of every map row and every block, worked out in advance "to avoid any multiplication operations" |
 
-## Scrolling with tiles
+Öörni prefers 4×4 blocks: "the block size is always a tradeoff between memory use and the complexity of graphics that can be achieved. But for easy calculations, the block size should be a power of two." With 4×4 blocks, one map byte stands for 16 screen characters.
 
-| Challenge | Solution |
-|-----------|----------|
-| New tiles needed at edge | Update the nametable column/row off-screen each frame |
-| Seam visibility | Update during VBlank or under the status bar split |
-| Large levels | Stream map data from ROM/disk in chunks |
+Colour needs a decision too. A programmer called Achim sets out the choice on Codebase64: one colour for each tile is "very useful when you want to save rastertime for the main program, but is obviously less colourful"; one colour for each character is "more colourful, but needs more rastertime when it comes to colour RAM shifting". The cost is real because the C64 scrolls in software past the first seven pixels. In Öörni's words, "Shifting 1000 bytes (the whole screen) around takes more than half of the rastertime of a frame", and the decoded blocks for the new edge come on top. [Multidirectional Scrolling](/vault/techniques/multidirectional-scrolling) follows that work through.
 
-The NES updates one column (30 tiles) per frame as the screen scrolls horizontally — small enough to fit in the VBlank window. The Mega Drive does the same with two BG planes; the C64 decodes the incoming column or row from block data at the screen edge as part of its software scroll.
+Blocks were a choice, not a rule. Öörni points out that Chris Butler's C64 versions of *[Commando](/vault/games/commando)* and *[Ghosts'n Goblins](/vault/games/ghosts-n-goblins)* stored the screens as plain character codes, "and do just fine by doing things this way". At the other end, he mentions "blocks constructed of even smaller blocks like seen in *Faery Tale Adventure*", which he never used himself but which "would allow scrolling *huge* maps around".
+
+## The Mega Drive: a word per cell
+
+The Mega Drive's VDP has two scrolling background planes, Scroll A and Scroll B, and Sega's *Genesis Software Manual* gives each cell of a plane's pattern name table one 16-bit word. Eleven bits pick the pattern; the rest set priority, the palette line and horizontal and vertical flip. Flip bits let one tile serve as its own mirror image, and the priority bit lets a single cell of the background draw in front of low-priority sprites.
+
+## Collision from the same grid
+
+The map that draws the world can also answer "what is here?". Divide a pixel position by the tile size and the result is a cell in the map; for 8×8 tiles that is a shift right by three bits. A small table indexed by the tile or block number then says whether it is empty, solid, a platform that holds only from above, or something that hurts. One table lookup replaces checking pixels. Öörni used the same idea with his blocks: in *Metal Warrior 3* the high byte of an object's position is its block number, so the background collision lookup reads it directly. [Tile Collision](/vault/techniques/tile-collision) covers the technique.
+
+<Sources>
+
+- Nintendo, *Iwata Asks: Super Mario Bros. 25th Anniversary*, Volume 5, "Original Super Mario Developers" (2010, web): page 3 (Nakago's "1 block was 3 bytes, maybe 2"; Miyamoto on the 64-kilobit character memory), page 4 (Miyamoto's "the greenery and clouds out of the same parts"). https://iwataasks.nintendo.com/interviews/wii/mario25th/4/2/
+- NESdev Wiki, pages "PPU", "PPU nametables", "PPU attribute tables", "PPU pattern tables", "PPU scrolling", "PPU registers" and "Mirroring" (community reference, web, secondary): the 32×30 nametable and its addresses, the attribute byte layout, metatiles of 16×16 and 32×32 matched to *Super Mario Bros.*' blocks and pipes, *Super Mario Bros. 3*'s colour strip, the 32-byte address step, the 2,270-cycle vertical blank, "most games do not write more than 64 bytes to the nametable per NMI". https://www.nesdev.org/wiki/PPU_attribute_tables
+- Sega, *Genesis Software Manual* (1989–1992), p. 42: "Scroll pattern name", one word per cell with priority, colour palette, V and H reverse bits and an 11-bit pattern generator number.
+- Lasse Öörni (Cadaver), "Multidirectional scrolling and the 'game world'" (Rant 4), Codebase64 wiki (web, secondary): section 0 (the book and brother credits), section 1 (map data and block data, SEUCK, *Commando* and *Ghosts'n Goblins*, *Faery Tale Adventure*, map header and address tables, 4×4 blocks), section 2 (the cost of shifting the screen), section 3 (*Metal Warrior 3*'s block-number coordinates). https://codebase64.net/doku.php?id=base:rant4
+- *Commodore 64 Programmer's Reference Guide* (Commodore Business Machines, 1982), p. 103: a character set of 256 characters of 8 bytes, "256*8=2K bytes of memory".
+- Achim, "Decoding 4x4 tiles", Codebase64 wiki (web, secondary): colour per tile against colour per character. https://codebase64.net/doku.php?id=base:decoding_tile_based_maps
+
+</Sources>
 
 ## See also
 
-- [Tile-Based Graphics](/vault/techniques/tile-graphics) — the rendering concept and platform support
+- [Tile-Based Graphics](/vault/techniques/tile-graphics): the display hardware and which machines had it
+- [Tile Collision](/vault/techniques/tile-collision)
 - [Character Graphics](/vault/techniques/character-graphics)
 - [Hardware Scroll](/vault/techniques/hardware-scroll)
 - [Multidirectional Scrolling](/vault/techniques/multidirectional-scrolling)
+- [Super Mario Bros.](/vault/games/super-mario-bros)
 - [PPU](/vault/hardware/ppu)
 - [VIC-II](/vault/hardware/vic-ii)
