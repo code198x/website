@@ -1,72 +1,176 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Sprite stretching"
-subtitle: "Telling the VIC-II to read the same line twice"
-summary: "Holding the C64's sprite graphics pointer still for a raster line so the same row of sprite data is drawn again, stretching a sprite to any height. The forgiving half of a pair whose other half needs cycle-exact timing."
+subtitle: "Making the VIC-II draw the same sprite row again and again"
+summary: "A Commodore 64 trick that clears and sets a sprite's Y-expansion bit in $D017 on every raster line, so the VIC-II draws the same row of sprite data again and the sprite can be stretched to any height, row by row. The writes can land anywhere in a wide part of the line, unlike its relative sprite crunching, and the scene's own list of firsts records it in a Triad demo in February 1989."
 category: "techniques"
 platforms: ['commodore-64']
 tags: ['graphics', 'sprites', 'raster', 'vic-ii', 'demoscene']
 originated: 1989
-
 sources:
-  the_mechanism:
-    - title: "Codebase64, 'Sprite Stretching'"
-      kind: technical-doc
-      page: "base:stretching_sprites"
-      note: "'Sprite stretching uses the technique of setting the bits of $d017 to 1, and then back to 0 on the next rasterline. This will fool the VIC not to increase the internal sprite-gfx-pointer and display the same line of sprite-graphics again. By repeating this trick every rasterline, you can decide how many times each line of sprite-graphics will be shown'"
-  it_is_per_line_work:
-    - title: "Codebase64, 'Sprite Stretching'"
-      kind: technical-doc
-      page: "base:stretching_sprites"
-      note: "The cost is that the register must be rewritten on every line, from a table: '$d017 is set from the table on the first rasterline. On the second rasterline it is set back to 0 and then set again to a new value from the table. Repeating on the third line and on'"
-  first_appearance:
-    - title: "Codebase64, 'Demo records and world firsts' (vic:demo namespace)"
+  originated:
+    - title: "Codebase64 wiki, 'Demo records and world firsts'"
       kind: database
-      page: "First appearance(s) of tricks/effects"
-      note: "'Sprite stretching - Bob/Triad: Cocktail', released 26 February 1989"
-  it_is_the_easy_one:
-    - title: "Codebase64, 'Sprite Crunching'"
-      kind: technical-doc
-      page: "base:sprite-crunching"
-      note: "The companion page draws the distinction and recommends against the hard route: stretching is also achievable through sprite crunching, 'but that can be done much easier with normal $d017-stretching. This is nothing you do if you don't *really* need it'"
+      page: "First appearance(s) of tricks/effects: Sprite stretching"
+      note: "web, secondary: 'Bob/Triad: Cocktail. Release: 1989-02-26'. A collaborative list begun from a list posted to the CSDb forum, whose compilers warn that 'some of these issues are subject to dispute'. https://codebase64.org/doku.php?id=vic:demo:demo_world_records_and_world_firsts"
+    - title: "CSDb, 'Cocktail' by Triad"
+      kind: database
+      date: "1989-02-26"
+      note: "web, secondary: C64 demo released 26 February 1989 at the Rawhead, Bros, Suppliers party, sixth in the demo competition; code credited to Bob, Contring, Guran, Mr. Gurk and Sergeant Pepper. https://csdb.dk/release/?id=3209"
 ---
+import Sources from '@components/Sources.astro';
 
----
+Commodore gave each C64 sprite one way to grow taller: set its bit in `$D017`, the Y-expansion register, and every row of the 24-by-21-pixel image is drawn twice. **Sprite stretching** turns that on-off switch into a free choice. By clearing and setting the bit again on each raster line, a program makes the [VIC-II](/vault/hardware/vic-ii) draw a row three, four or twenty times, a different number for each row if it likes. Pasi Ojala, explaining the trick in the online magazine [*C=Hacking*](/vault/magazines/c-hacking) in 1993, asked readers to "imagine a sprite scroller with 6-times expanded sprites", and added that with a table of stretch values "it is possible to make easy sinus effects and constantly expanding and shrinking letters."
 
-The VIC-II advances an internal pointer through a sprite's graphics as it draws down
-the screen. **Sprite stretching** stops it advancing, so the same row is drawn again:
+The trick needs a register write on every line the sprite covers, but unlike most raster tricks the writes do not have to land on one exact cycle.
 
-> Sprite stretching uses the technique of setting the bits of `$d017` to 1, and then
-> back to 0 on the next rasterline. This will fool the VIC not to increase the
-> internal sprite-gfx-pointer and display the same line of sprite-graphics again.
+## How it works
 
-Repeat per line and the sprite becomes as tall as you like — "you can decide how
-many times each line of sprite-graphics will be shown."
+Ojala's verdict on the cause was "It is not really a bug, but a feature". The chip's Y-expansion is built as simply as possible, and the simple design can be steered. Christian Bauer's 1996 description of the VIC-II gives the rules for a PAL 6569. Each sprite has a 6-bit counter, MCBASE, that points at the start of the row being drawn, and an **expansion flip-flop** that decides whether MCBASE moves on:
 
-## The cost is a write on every line
+1. While the sprite's bit in `$D017` is clear, the flip-flop is held set.
+2. In cycle 55, near the end of each raster line, the flip-flop is inverted if the bit in `$D017` is set.
+3. In cycles 15 and 16 of the next line, MCBASE advances by three bytes, one row of sprite data, but only if the flip-flop is set. When MCBASE reaches 63, the sprite ends.
 
-The register has to be rewritten twice per raster line, driven from a table: set
-from the table, cleared, set again. That is raster time spent for as long as the
-stretched sprite is on screen.
+With the bit left set, the flip-flop inverts on every line, MCBASE advances on every other line, and each row appears twice: ordinary Y-expansion. Stretching breaks the rhythm. Somewhere between cycle 16 and cycle 54, the program clears the bit, which sets the flip-flop, and then sets the bit again. At cycle 55 the flip-flop is inverted back to reset, so MCBASE does not advance and the chip reads the same row again. In Bauer's words, the VIC-II "thinks" it is still on the first line of an expanded row. Do the same on the next line and the row is drawn once more. Leave the bit clear on a line and the chip moves on to the next row.
+
+A stretcher therefore runs a loop with one entry per raster line, taken from a table: repeat this row, or move on. Ojala's routine writes the table value to `$D017` and then its inverse, so that a zero in his table means "stretch". The Codebase64 wiki describes the same pair of writes from the other side, setting the bits "to 1, and then back to 0 on the next rasterline". Either way, what counts is that the bit has been clear for a moment during the line and is set when cycle 55 arrives.
+
+### The window, and what lies outside it
+
+The clear has to come after the increment in cycle 16. Bauer describes what happens when it comes a fraction earlier, in the second half of cycle 15: MCBASE advances by only one byte instead of three, every later row is read one byte out of step, and the sprite misses its end marker and is "effectively displayed twice in sequence". Ojala noticed the same oddity and wrote, "I don't think the distorted counter effect can be used for anything". Demo coders later used it on purpose as [sprite crunching](/vault/techniques/sprite-crunching), which needs the write on that one cycle. The Codebase64 wiki's page on crunching says it can stretch sprites too, "but that can be done much easier with normal $d017-stretching."
+
+The window has another limit. On a badline, the first line of each character row, the VIC-II takes the bus from cycle 15 to cycle 54 to read the row's character codes, and stops the processor from a few cycles before that: the whole of the stretch window. A stretcher that runs over a normal text or bitmap screen therefore also moves the badlines out of the way, rewriting the vertical scroll bits of `$D011` on every line. That is [FLD](/vault/techniques/fld). Ojala's demonstration program does it in the same loop ("Move the screen (bad lines)"), and so does the Codebase64 wiki's example ("Step d011 each line to avoid badlines").
+
+## A stretcher to type in
+
+The routine below stretches sprite 0 by the same amount on every row, from 1 line per row to 6 and back again. It waits in the lower border to fill the table for the next frame, then runs one pass of its loop on each raster line from line `$40`, where the sprite starts. Each pass does three things: FLD to keep badlines away, a clear of `$D017`, and a write of the table entry.
+
+```asm
+; Sprite stretcher (ACME syntax) for a PAL C64.
+; SYS 49152 to start; RUN/STOP and RESTORE to stop.
+        * = $c000
+        sei             ; no interrupts: this loop owns the machine
+        ldx #62         ; copy the sprite to $0340
+copy    lda sprite,x
+        sta $0340,x
+        dex
+        bpl copy
+        lda #$0d        ; sprite 0 data at $0340 (13 * 64)
+        sta $07f8
+        lda #160        ; x position
+        sta $d000
+        lda #$40        ; y position: DMA starts on line $40
+        sta $d001
+        lda #1          ; white
+        sta $d027
+        sta $d015       ; sprite 0 on
+frame   bit $d011       ; wait for raster line 256 or later
+        bpl frame
+        lda #0          ; no stretching outside the loop
+        sta $d017
+        lda #$1b        ; normal $D011: screen on, 25 rows, YSCROLL 3
+        sta $d011
+        jsr build       ; fill the table for this frame
+top     bit $d011       ; wait for the start of the next frame
+        bmi top
+        lda #$3f        ; wait for raster line $3f
+wait    cmp $d012
+        bne wait
+        ldx #0
+line    lda $d012       ; wait for the next raster line
+same    cmp $d012
+        beq same
+        clc             ; FLD: keep YSCROLL ahead of the raster,
+        lda $d011       ; so no badline stops the processor
+        adc #1          ; while the loop runs
+        and #7
+        ora #$18
+        sta $d011
+        lda #0          ; clear the Y-expand bit: this sets
+        sta $d017       ; the expansion flip-flop
+        lda table,x     ; 1: set it again, so the flip-flop resets
+        sta $d017       ; at the end of the line and the VIC-II
+        inx             ; draws the same sprite row once more
+        cpx length      ; 0: leave it clear and move on a row
+        bne line
+        lda #0
+        sta $d017
+        jmp frame
+
+build   lda count       ; pick this frame's stretch, 1 to 6 lines
+        inc count       ; per sprite row, changing every 8 frames
+        lsr
+        lsr
+        lsr
+        and #15
+        tay
+        lda sizes,y
+        sta size
+        ldx #0          ; X = position in the table
+        lda #21         ; 21 sprite rows
+        sta rows
+row     ldy size        ; each row gets size-1 repeats...
+        dey
+        beq last
+rep     lda #1
+        sta table,x
+        inx
+        dey
+        bne rep
+last    lda #0          ; ...and one line that moves on
+        sta table,x
+        inx
+        dec rows
+        bne row
+        stx length
+        rts
+
+sizes   !byte 1,1,2,3,4,5,6,6,6,5,4,3,2,1,1,1
+count   !byte 0
+size    !byte 0
+rows    !byte 0
+length  !byte 0
+sprite  !for r, 0, 20 {         ; stripes: solid rows and
+          !if r & 1 {           ; hollow rows alternate
+            !byte $c0,$00,$03
+          } else {
+            !byte $ff,$ff,$ff
+          }
+        }
+table   = $c200         ; up to 126 entries
+```
+
+Run on a PAL C64 in the VICE emulator, it shows a striped white sprite that grows from its normal 21 lines to 42, 63, 84, 105 and 126 and shrinks back, with every stripe the same height at each step. The BASIC start-up text below the sprite moves down and up with it: the loop's FLD holds back the next character row for as long as the loop runs. The polling loop leaves a few cycles of jitter, which does not matter here, because both writes to `$D017` land well inside the window between cycles 16 and 54.
+
+## The cost
+
+Stretching is cheap per line and expensive per frame. The loop must run on every line the sprite covers, and a program that wants a different shape each frame also has to rebuild its table. Ojala measured his own work. Calculating the stretch data for eight individually stretched sprites took "slightly less than 80 lines, which is one fourth of the total raster time", with the fastest routine he had, taken from the *Fore!* part of *Megademo92*. Displaying a 128-line stretcher took about 130 more lines. That left "100 lines (6300 cycles) free for other activities in a PAL system. In a NTSC system you would have only 50 lines left." He had tried to make an NTSC version of his demonstration program, "but I couldn't get it to synchronize."
 
 ## Who did it first
 
-**Bob/Triad**, in *Cocktail*, on **26 February 1989**.
+The Codebase64 wiki's list of demo firsts, a collaborative record begun from a list posted to the CSDb forum, gives the first sprite stretching to Bob of [Triad](/vault/groups/triad), in the demo *Cocktail*, released on 26 February 1989. CSDb lists *Cocktail* as a demo shown at the Rawhead, Bros, Suppliers party, where it came sixth, with code credited to Bob and four others. The list's compilers warn that "some of these issues are subject to dispute", and no second source found for this entry confirms the first.
 
-## The forgiving half of a pair
+The trick reached type-in readers within two years. In its March/April 1991 issue the American magazine *RUN* printed Richard Penn's "Sprite Stretch 64" in its Magic column, calling it "one of the ultimate sprite demos of all time". It did the job from BASIC: a single line `POKE`s 255 and then 0 into register 53271, which is `$D017`, over and over until a key is pressed. BASIC is far too slow to keep in step with the raster, so the sprites stretch by different amounts from moment to moment, and the magazine warned that the program was "sensitive to timing, especially on older versions of the C-64." Ojala's *C=Hacking* article, dated May 1991 and translated for the magazine's March 1993 issue, explained the timed version with a table. Bauer's 1996 document gave the full cycle-level account, and credited Ojala among the programmers whose tests it was based on.
 
-Stretching has a much harder sibling, [sprite
-crunching](/vault/techniques/sprite-crunching), which can also stretch — but the
-crunching page tells you not to bother:
+<Sources>
 
-> Actually it is possible to stretch sprites with the same technique, but that can be
-> done much easier with normal `$d017`-stretching. This is nothing you do if you
-> don't *really* need it.
+- Christian Bauer, *The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64* (28 August 1996): section 3.8.1, MC, MCBASE, the expansion flip-flop and the sprite rules for cycles 15, 16, 55 and 58; section 3.14.7, "Sprite stretching", including the tripled first line and the one-byte misalignment when `$D017` is cleared in cycle 15; section 3.5 and 3.6.3, badlines and the cycles they take.
+- Pasi 'Albert' Ojala, "The Demo Corner: Stretching Sprites", *C=Hacking* issue 5, 7 March 1993 ("Written: 16-May-91, Translation/Revision 01-Jun-92, Dec-92"): the flip-flop explanation, the counter oddity, the demonstration program and its `$D011` writes, the timings, and the NTSC remark. Public archive: http://www.ffd2.com/fridge/chacking/
+- Codebase64 wiki, "Sprite Stretching" (web, secondary): the pair of writes per line and the example's `$D011` step. https://codebase64.org/doku.php?id=base:stretching_sprites
+- Codebase64 wiki, "Sprite Crunching" (web, secondary): stretching "much easier with normal $d017-stretching". https://codebase64.org/doku.php?id=base:sprite-crunching
+- Codebase64 wiki, "Demo records and world firsts" (web, secondary): *Cocktail*, 26 February 1989, with the compilers' caution. https://codebase64.org/doku.php?id=vic:demo:demo_world_records_and_world_firsts
+- CSDb, "Cocktail" by Triad (web, secondary): release date, party, placing and credits. https://csdb.dk/release/?id=3209
+- Richard Penn, "Sprite Stretch 64", Magic column, *RUN* volume 8 number 2, March/April 1991, p. 9.
+
+</Sources>
 
 ## See also
 
-- [Sprite crunching](/vault/techniques/sprite-crunching) — the hard one, and it shrinks
+- [Sprite crunching](/vault/techniques/sprite-crunching): the same flip-flop hit on one exact cycle, to shrink sprites
+- [FLD](/vault/techniques/fld): moving badlines out of the stretcher's way
+- [VIC-II](/vault/hardware/vic-ii)
 - [Sprite multiplexing](/vault/techniques/sprite-multiplexing)
 - [Sprites](/vault/techniques/sprites)
-
+- [*Edge of Disgrace*](/vault/demos/edge-of-disgrace): a later demo that used crunching in place of a stretcher
