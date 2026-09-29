@@ -20,15 +20,19 @@ A **record** is a group of values describing one thing. Our first meteor record 
 | 2 | Active: 0 free, 1 occupied | 1 |
 | 3 | Downward speed | 2 |
 
-The pool reserves twenty records with `objects: defs SLOTS*4`. `defs` reserves bytes in the assembled program, and `SLOTS equ 20` names the capacity. Twenty times four is eighty bytes, and that capacity stays fixed while the game runs. The pool sits between `state_start` and `state_end`, so unit 11's block reset empties it at the start of every run.
+The program reserves three records with `objects: defs SLOTS*4`. `defs` reserves bytes in the assembled program, and `SLOTS equ 3` names how many records there are. Three times four is twelve bytes, and that space stays fixed while the game runs. The records sit between `state_start` and `state_end`, so unit 11's block reset empties them at the start of every run.
 
-<MeteorExperiment checkpoint="object-pool" bytes={["ship_x","active_count","hull","phase"]} poolStride={4} controls="course" />
+<MeteorExperiment checkpoint="object-records" bytes={["ship_x","hull","phase"]} poolStride={4} slots={3} controls="course" />
 
-Launch, then open **Read the active object records**. `new_game` now starts three meteors together: X=80 at speed 2, X=116 at speed 3 and X=170 at speed 4. For each one it stores the X and speed in `spawn_x` and `spawn_speed`, then calls `spawn`. Each row is a live read of one occupied slot. It is not a prediction of where a meteor ought to be.
+Launch, then open **Read the active object records**. `new_game` now starts three meteors together: X=80 at speed 2, X=116 at speed 3 and X=170 at speed 4. Each row is a live read of one occupied record. It is not a prediction of where a meteor ought to be.
 
 ## Let IX identify the current object
 
-IX is a sixteen-bit index register. `ld ix,objects` points it at the first record. `(ix+1)` means the byte one address after IX, so `ld a,(ix+1)` reads this object's Y. The same instruction works for the next object after IX advances by four.
+IX is a sixteen-bit index register. `ld ix,objects` points it at the first record. `(ix+1)` means the byte one address after IX, so `ld a,(ix+1)` reads this object's Y. The same instruction reads the next object's Y when IX points four bytes further on.
+
+`new_game` uses that to fill the records. For each meteor it points IX at one record with `ld ix,objects`, `ld ix,objects+4` or `ld ix,objects+8`, stores the X and speed in `spawn_x` and `spawn_speed`, then calls `spawn`. `spawn` writes X, Y=24, active=1 and speed into the record at IX and draws the new meteor. It does not choose a record: the caller does that by setting IX first.
+
+<AssemblyExcerpt checkpoint="object-records" from="spawn:" to=" ; XOR removes" />
 
 The record layout is an agreement between every routine that reads or writes objects. If spawn writes speed at offset 3 but movement reads offset 2, changing the drawing routine cannot repair it.
 
@@ -38,15 +42,33 @@ The second record starts at `$9004`, so its Y is `$9005`. The third starts at `$
 
 </Question>
 
+## One routine, called once per record
+
+Unit 11's flight loop moved its one meteor with instructions that named `meteor_x` and `meteor_y`. Those instructions now live in `advance_meteor`, which reads every field through IX. `advance_meteors` points IX at each record in turn and calls it.
+
+<AssemblyExcerpt checkpoint="object-records" from="; One explicit call per record" to="; IX=record to fill" />
+
+`advance_meteor` returns at once when the record's active byte is zero. Otherwise it erases the meteor, adds the record's own speed to its Y, and frees the record once Y reaches 174. Between 154 and 171 it runs unit 10's contact test, reading the meteor's X from `(ix+0)`. A contact clears `hull` and frees the record as well, so the meteor that hit is not drawn again. A surviving meteor is drawn at its new position. `draw_meteor` takes the position in E and D, where unit 11's `meteor` routine read its two variables itself.
+
+Predict, then check: change the third `ld ix,objects+8` in `advance_meteors` to `ld ix,objects+4`. The second record now receives two calls per update, so the X=116 meteor falls six pixels per update instead of three. No call reaches the third record, so the X=170 meteor hangs at Y=24 and its active byte stays 1. The run never reaches CLEAR SPACE; press Q to leave it. Restore `objects+8`.
+
 ## Separate existence from visibility
 
 The active byte tells us whether a record belongs to an object. A zero byte is a free slot even if old X, Y and speed values remain there. We do not need to erase every field when an object leaves; the next spawn will replace them before setting it in motion.
 
-The records replace `meteor_x` and `meteor_y`. The loops that fill, move and count them are the subject of the next lesson. The ship keeps its own `ship_x` because there is only one player ship and its behaviour differs from falling objects.
+The records replace `meteor_x` and `meteor_y`. The ship keeps its own `ship_x` because there is only one player ship and its behaviour differs from falling objects.
 
 Try following two rows at once. A faster meteor can move farther per update even though both receive updates from the same clock. Separate positions and speeds make that independence possible; adding a second drawing call alone would only make a second picture of the same state.
 
-Steer clear of all three and the run ends in CLEAR SPACE once no record is active. The speed 4 meteor leaves first and the speed 2 meteor last, so `active_count` falls from 3 to 0 over about three seconds.
+## Finish when every record is free
+
+Unit 11 jumped to `won` as soon as its one meteor reached y=174. Now a meteor that leaves only frees its record, and the main loop decides after the hull check. It ORs the three active bytes, at `objects+2`, `objects+6` and `objects+10`. The result is zero only when all three are zero, and then the loop jumps to `won`.
+
+<AssemblyExcerpt checkpoint="object-records" from=" ; Offset 2 of each" to=" jp main_loop" />
+
+The order matters. A contact frees the meteor's record too, so a hit on the last meteor leaves all three active bytes at zero. Checking `hull` first sends that run to `lost` before the OR can call it clear space.
+
+Steer clear of all three and the run ends in CLEAR SPACE. Each meteor retires on the first update that takes its Y to 174 or more: the speed 4 meteor on update 38, the speed 3 meteor on update 50 and the speed 2 meteor on update 75. Their rows leave the record table in that order, and CLEAR SPACE follows three seconds after launch.
 
 <Sources>
 

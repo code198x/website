@@ -13,17 +13,23 @@ A safe route keeps the ship alive. A star gives the player a reason to leave it.
 
 The byte at record offset 2 now means **kind**: 0 is free, 1 is meteor, 2 is star. Nonzero still means occupied, so the existing pool search and occupied-object count keep their meaning. We have extended a concrete representation rather than adding a second pool.
 
-The event table regains all 120 accepted entries: one hundred meteors and twenty stars. Events now contain X, speed, next delay, drift and kind. Their stride is five; the object stride stays five because kind replaces active rather than adding another field.
+The event table regains all 120 accepted entries: one hundred meteors and twenty stars. Events now contain X, speed, next delay, drift and kind. Their stride is five, so `waves` now adds the event index to HL five times. It copies the fifth field into a new byte, `spawn_kind`, and `spawn` stores that at offset 2 where it used to store 1. The object stride stays five because kind replaces active rather than adding another field.
 
-<MeteorExperiment checkpoint="stars" bytes={["score","hull","wave"]} poolStride={5} controls="course" />
+<MeteorExperiment checkpoint="star-pickups" bytes={["score","hull","wave"]} poolStride={5} controls="course" />
 
 ## One contact test, two consequences
 
-Both kinds move down at their stored speed and use the same contact region. After the shared distance test, kind 2 branches to the star path: it increments `score` and retires the star without damaging the ship. Any other kind reaches the new label `meteor_contact`, where the existing code clears `hull` as before.
+Both kinds move down at their stored speed and use the same contact region. After the shared distance test, kind 2 branches to the star path: it adds one to `score` and retires the star without damaging the ship. Any other kind reaches the new label `meteor_contact`, where the existing code clears `hull` as before.
+
+<AssemblyExcerpt checkpoint="star-pickups" from="advance_meteors_absolute:" to="advance_meteors_remove:" />
+
+The star path puts the award in C with `ld c,1`, reads `score` into A, adds C and stores the sum. It then jumps to `advance_meteors_remove`, the label just after this excerpt, which frees the record.
 
 Stars bypass horizontal drift before the drift gate. Their event record can contain a drift byte, but their kind determines that it will not be used. Watch a star's X in the active-record table: it should stay fixed as Y increases.
 
 `draw_meteor` now selects `meteor_sprites` or `star_sprites` from kind; both choices meet at the new label `draw_object`, which sets the height and draws. Its name has survived the first implementation, but it draws either falling object. The caller must not clear kind before erasing: the old kind selects the image that must be XORed away.
+
+<AssemblyExcerpt checkpoint="star-pickups" from="draw_meteor:" to="erase_ship:" />
 
 ## Award a pickup only once
 
@@ -35,7 +41,7 @@ The same contact could be found again on later updates, awarding points repeated
 
 </Question>
 
-The `score` byte stores **tens of points**: 1 means 10 points, 2 means 20. Each star adds one unit. The score is shown at the top of the screen during flight, and `result` redraws it so the final score stays visible there too. `result` saves DE around that call, because the drawing changes DE and DE still holds the outcome text. The next lesson follows that byte into its printed decimal representation.
+The `score` byte stores **tens of points**: 1 means 10 points, 2 means 20. Each star adds one unit. `score` sits inside the run block, so every run starts it at zero. This program does not print the score yet: read it in the inspector above, which shows 1 after the first star. The next lesson follows that byte into its printed decimal representation.
 
 Try changing one star's event kind from 2 to 1 in the companion file, then reassemble. It should use meteor artwork, take the drift path and become harmful. Change all three expectations before running; a data edit can affect several branches that agree on the meaning of kind. Revert restores the companion file as well as the main source.
 

@@ -11,7 +11,9 @@ import Sources from '@components/Sources.astro';
 
 A pool needs two operations: find somewhere to put a new object, and visit the objects that already exist. Both are short walks through the same memory layout.
 
-Use the same complete program as the previous lesson. Our three meteors are deliberately few enough to follow: X=80 at speed 2, X=116 at speed 3 and X=170 at speed 4, all started together by `new_game`.
+Unit 12 named every record in the source: three `ld ix` instructions in `new_game` and three more in `advance_meteors`. A storm of a hundred meteors written that way would need a hundred of each. This lesson's program keeps the four-byte record and changes how records are chosen and visited. `SLOTS equ 20` reserves twenty records, `spawn` finds a free one itself, and `advance_meteors` visits every record in one loop.
+
+Our three meteors are deliberately few enough to follow: X=80 at speed 2, X=116 at speed 3 and X=170 at speed 4, all started together by `new_game`. It no longer sets IX; it stores `spawn_x` and `spawn_speed` and calls `spawn` for each.
 
 <MeteorExperiment checkpoint="object-pool" bytes={["active_count","pool_overflow","hull","phase"]} poolStride={4} controls="course" />
 
@@ -27,13 +29,17 @@ If every slot is occupied, the routine sets `pool_overflow` and returns. It does
 
 ## Visit occupied records only
 
-`advance_meteors` starts at the first slot and tests active before doing any work. An active object erases its image, advances by its own speed, checks retirement and contact, and draws its surviving image. Then IX advances by four and B counts down. Empty slots take the skip path but still advance the pointer and counter.
+`advance_meteors` replaces unit 12's three explicit calls with one loop. It starts with IX at the first slot and B at `SLOTS`, and tests active before doing any work. The body is unit 12's `advance_meteor`: an active object erases its image, advances by its own speed, checks retirement and contact, and draws its surviving image. Then IX advances by four and B counts down. Empty slots take the skip path but still advance the pointer and counter.
 
-Contact works as it did for one meteor: it clears `hull`. The walk carries on through the remaining records, and the main loop checks `hull` once after `advance_meteors` returns, exactly as unit 11 arranged.
+<AssemblyExcerpt checkpoint="object-pool" from="advance_meteors:" to="spawn:" />
+
+Unit 12's routine left with `ret` or a jump to `draw_meteor` when it had finished with a record. Inside the loop, leaving would abandon the remaining records, so every path now reaches `advance_meteors_skip` instead. That label draws a surviving meteor; a freed record reads zero there and is not drawn. Either way the loop reaches `advance_meteors_next_slot`.
+
+Contact works as it did in unit 12: it clears `hull` and frees the record. The walk carries on through the remaining records, and the main loop checks `hull` once after `advance_meteors` returns, exactly as unit 11 arranged.
 
 Drawing changes B, so the caller uses `push bc` and `pop bc` around `draw_meteor`, and around `impact_sound` too. Without that preservation, the drawing row counter would replace the pool's remaining-slot counter. A routine's clobber list matters most when it is called inside another loop.
 
-After the hull check, `count_objects` walks the pool once more and counts the active records into `active_count`. Zero means every meteor has left, and the main loop jumps to `won`.
+After the hull check, a new routine, `count_objects`, walks the pool once more and counts the active records into `active_count`. Zero means every meteor has left, and the main loop jumps to `won`. This replaces unit 12's OR of three named active bytes, which could not name twenty. `new_game` also calls `count_objects` after its spawns, so `active_count` reads 3 when the flight begins.
 
 <Question prompt="Why does count_objects visit all twenty slots instead of assuming the occupied ones come first?">
 
