@@ -1,5 +1,5 @@
 ---
-title: "Turn a score into readable digits"
+title: "Collect something worth the risk"
 game: 1
 unit: 16
 ---
@@ -9,40 +9,38 @@ import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-The score byte and the characters printed on screen are different representations. We will trace how one number becomes a row of digit codes.
+A safe route keeps the ship alive. A star gives the player a reason to leave it. We will let an object's kind choose its picture and contact consequence.
 
-Use the same stars program. A stored score of 7 means seventy points, but the character code for `'7'` is not the number 7. To display it, the program converts the value into digit characters and leaves a fixed trailing `'0'` in the buffer.
+The byte at record offset 2 now means **kind**: 0 is free, 1 is meteor, 2 is star. Nonzero still means occupied, so the existing pool search and occupied-object count keep their meaning. We have extended a concrete representation rather than adding a second pool.
 
-<MeteorExperiment checkpoint="stars" bytes={["score"]} controls="course" />
+The event table regains all 120 accepted entries: one hundred meteors and twenty stars. Events now contain X, speed, next delay, drift and kind. Their stride is five; the object stride stays five because kind replaces active rather than adding another field.
 
-## Subtract places, not individual points
+<MeteorExperiment checkpoint="stars" bytes={["score","hull","wave"]} poolStride={5} controls="course" />
 
-`decimal3` receives A=0..255 and HL=the first of three writable output bytes. It subtracts 100 until the remaining value is below 100, counting hundreds in B. Then it subtracts 10 to count tens. Whatever remains is the units digit.
+## One contact test, two consequences
 
-B begins at the character `'0'`, not numeric zero. Incrementing it changes the character to `'1'`, `'2'` and so on. For the units digit, `add a,'0'` makes the same conversion directly.
+Both kinds move down at their stored speed and use the same contact region. After the shared distance test, kind 2 branches to the star path: it increments `score` and retires the star without damaging the ship. Any other kind reaches the new label `meteor_contact`, where the existing code clears `hull` as before.
 
-<AssemblyExcerpt checkpoint="stars" from="decimal3:" to="score_line:" />
+Stars bypass horizontal drift before the drift gate. Their event record can contain a drift byte, but their kind determines that it will not be used. Watch a star's X in the active-record table: it should stay fixed as Y increases.
 
-For A=137, the routine subtracts 100 once, leaving 37, then subtracts 10 three times, leaving 7. It writes the characters `1`, `3`, `7`. The separate trailing zero in `score_digits_text` makes the printed score `1370`.
+`draw_meteor` now selects `meteor_sprites` or `star_sprites` from kind; both choices meet at the new label `draw_object`, which sets the height and draws. Its name has survived the first implementation, but it draws either falling object. The caller must not clear kind before erasing: the old kind selects the image that must be XORed away.
 
-## Keep the buffer's agreement visible
+## Award a pickup only once
 
-`score_digits_text` reserves `"0000",0`. The first three bytes are writable digit positions; the fourth is the fixed zero for points; the final zero byte terminates the string. The character `'0'` and the terminator byte 0 are not the same value.
+After adding a point unit, the star takes the same removal path used when an object leaves the play area. That clears kind to zero. On the next visit, the slot is free and its old coordinates cannot award more points.
 
-`score_line` loads A from score and HL from the digit buffer, calls decimal3, then sends the complete `score_text` string to `text`. `text` expects B=row, C=column and DE=the string address, so those arguments are set after decimal3 has finished changing registers.
+<Question prompt="What if we incremented score but left the star active until it passed the ship?">
 
-<Question prompt="Why not increment the last printed character whenever a star is collected?">
-
-That would mix the display encoding with the score rule and make carries between decimal digits another problem. Keeping a numeric score lets collision code add units and record code compare values. Printing can recreate the characters whenever needed.
+The same contact could be found again on later updates, awarding points repeatedly. Collection is a state transition, not just a sound or a displayed number. Retiring the object makes the one-pickup rule explicit.
 
 </Question>
 
-The HUD remembers the last score it drew and skips an unchanged score. Skipping display work must not skip the score update itself: contact changes state first, and the HUD observes that state later.
+The `score` byte stores **tens of points**: 1 means 10 points, 2 means 20. Each star adds one unit. The score is shown at the top of the screen during flight, and `result` redraws it so the final score stays visible there too. `result` saves DE around that call, because the drawing changes DE and DE still holds the outcome text. The next lesson follows that byte into its printed decimal representation.
 
-For a controlled display test, find `new_game` and insert `ld a,7` followed by `ld (score),a` immediately before its `call hud`. Assemble: the inspector should read 7 and the screen should show 0070. This deliberately changes the starting score in source; it is not a claim that you collected seven stars. Remove those two instructions or Revert before continuing.
+Try changing one star's event kind from 2 to 1 in the companion file, then reassemble. It should use meteor artwork, take the drift path and become harmful. Change all three expectations before running; a data edit can affect several branches that agree on the meaning of kind. Revert restores the companion file as well as the main source.
 
 <Sources>
 
-Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), instruction descriptions for the operations shown in this lesson. The running experiment supplies the program-specific observations.
+The maintained Meteor Storm source linked through this page supplies the game rules and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
 
 </Sources>

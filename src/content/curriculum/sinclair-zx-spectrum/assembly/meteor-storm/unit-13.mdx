@@ -1,5 +1,5 @@
 ---
-title: "Make a storm with an end"
+title: "Walk the pool and reuse a slot"
 game: 1
 unit: 13
 ---
@@ -9,40 +9,59 @@ import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-A longer storm can be data rather than a longer sequence of special-case instructions. We will replace the three-event exercise with a prepared course of one hundred meteors.
+A pool needs two operations: find somewhere to put a new object, and visit the objects that already exist. Both are short walks through the same memory layout.
 
-The event table lives after the sprite data in `assets.inc`, at `meteor_events`. At this stage each event has three bytes: **X, speed, delay until the next event**. The event index is called `wave` in the source; it counts individual spawns, not a whole row of meteors.
+Use the same complete program as the previous lesson. Our three meteors are deliberately few enough to follow: X=80 at speed 2, X=116 at speed 3 and X=170 at speed 4, all started together by `new_game`.
 
-<MeteorExperiment checkpoint="fixed-course" bytes={["wave","active_count","phase","pool_overflow"]} words={["ticks"]} poolStride={4} controls="course" />
+<MeteorExperiment checkpoint="object-pool" bytes={["active_count","pool_overflow","hull","phase"]} poolStride={4} controls="course" />
 
-The X positions and speeds vary, but the table is fixed. Retry gives the same course. A host-side generator prepared the scattered values; the Spectrum is not choosing new random numbers during each run. Repeatability lets a player learn a route and lets us reproduce a failure.
+## Find a free record
 
-## Count down, then read a record
+`spawn` sets IX to the first record and B to the twenty-slot capacity. At `spawn_find` it reads offset 2. Zero means free, so the search branches to `spawn_found`. Otherwise `ld de,4` and `add ix,de` advance one record; DJNZ decrements the remaining count.
 
-`wave_timer` begins at twenty. Each course step decrements it. When it reaches zero, `waves` calculates the event address as `meteor_events + wave*3`, reads the three fields, and loads the next delay into the timer. Then it increments wave and calls spawn.
+At a free slot, the routine writes X, Y=24, active=1 and speed, then draws the new meteor. Setting an active flag without initialising position and speed would let old values become a new object.
 
-<AssemblyExcerpt checkpoint="fixed-course" from="waves:" to="spawn:" />
+<AssemblyExcerpt checkpoint="object-pool" from="spawn:" to=" ; XOR removes" />
 
-The multiplication here is three additions of the index to HL. It is short because the event record is only three bytes. When we later add drift and kind, the event stride must change with the data layout.
+If every slot is occupied, the routine sets `pool_overflow` and returns. It does not write beyond the reserved pool. Three meteors cannot fill twenty slots; the flag makes a broken capacity assumption observable.
 
-A delay belongs to the event just read: it says how long to wait **after this spawn** before reading the next. The initial twenty-step wait comes from `new_game`, before any event has been read.
+## Visit occupied records only
 
-## Do not finish while the last meteor is falling
+`advance_meteors` starts at the first slot and tests active before doing any work. An active object erases its image, advances by its own speed, checks retirement and contact, and draws its surviving image. Then IX advances by four and B counts down. Empty slots take the skip path but still advance the pointer and counter.
 
-Reaching `WAVES` means there are no more events to read. It does not mean the screen is clear. Completion also requires `active_count` to be zero.
+Contact works as it did for one meteor: it clears `hull`. The walk carries on through the remaining records, and the main loop checks `hull` once after `advance_meteors` returns, exactly as unit 11 arranged.
 
-Watch the final spawn on a successful route: wave reaches 100 while active_count remains positive. The game keeps updating those objects until they leave. Contact is checked before the completion decision, so a fatal hit does not become a win just because the table is exhausted.
+Drawing changes B, so the caller uses `push bc` and `pop bc` around `draw_meteor`, and around `impact_sound` too. Without that preservation, the drawing row counter would replace the pool's remaining-slot counter. A routine's clobber list matters most when it is called inside another loop.
 
-<Question prompt="The final event's speed is 3 and it spawns at y=24. Can the game finish on that spawn's step?">
+After the hull check, `count_objects` walks the pool once more and counts the active records into `active_count`. Zero means every meteor has left, and the main loop jumps to `won`.
 
-No. The new meteor is active and still near the top. At that speed it needs fifty movement updates to reach retirement at y=174. Event exhaustion and object exhaustion describe different things.
+<Question prompt="Why does count_objects visit all twenty slots instead of assuming the occupied ones come first?">
+
+Objects leave at different times. Slot 1 can become free while slot 2 is still active, and the next spawn may reuse slot 1. The occupied records need not form one unbroken prefix. Testing each active byte handles those holes.
 
 </Question>
 
-For a shorter experiment, set `WAVES equ 3` without deleting the longer table. The program reads only the first three entries. Steer through them and check that it still waits for the last object. Restore 100 to play the full meteor-only course. Do not increase WAVES beyond the number of complete records: the routine trusts that bound.
+## Make the capacity problem visible
+
+Change `SLOTS equ 20` to `SLOTS equ 1`. Assemble and launch. The first spawn in `new_game` takes the only record; the second and third find no free record, so `pool_overflow` is already 1 when the flight begins and only the X=80 meteor falls. This is a deliberate capacity experiment, not a new difficulty mode. Restore twenty slots before continuing.
+
+<Question prompt="The full pool refuses a spawn safely. Does that preserve the same game?">
+
+No. We stayed inside the reserved memory, but two meteors never appeared. A
+missing meteor removes a hazard, so the challenge changes. Memory safety and
+preserved game rules are different checks.
+
+For this experiment, restore the capacity and confirm that the overflow flag
+stays clear. A future game could deliberately drop a decorative effect when
+busy, but it would need to identify that effect as optional. We should not
+silently apply the same policy to collision checks, scoring or required hazards.
+
+</Question>
+
+A pool makes storage predictable, but it does not prove the chosen capacity is enough. Any longer storm has to be checked against that bound. We have made one explicit allocation rule, first free slot, not built a general-purpose object framework.
 
 <Sources>
 
-The maintained Meteor Storm source linked through this page supplies the game rules and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), instruction descriptions for the operations shown in this lesson. The running experiment supplies the program-specific observations.
 
 </Sources>

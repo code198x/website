@@ -1,5 +1,5 @@
 ---
-title: "Give each object a record"
+title: "Give the game clear phases"
 game: 1
 unit: 11
 ---
@@ -9,61 +9,72 @@ import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-Three independent meteors need three sets of state. Rather than inventing a new variable name for each one, we will place equal-sized records next to each other.
+Our first dodge ends with a word in the corner and R to try again. A game needs clearer moments than that: a title that waits for the player, a flight, and a result that says what happened. We will give the one-meteor game those phases before it grows into a storm.
 
-A **record** is a group of values describing one thing. Our first meteor record has four bytes:
+The same key can mean different things at different moments. Space launches from the title; R retries and Q returns to the title from a result. We will make those moments explicit.
 
-| Offset from its start | Meaning | Example |
-|---|---|---|
-| 0 | X | 80 |
-| 1 | Y | 24 |
-| 2 | Active: 0 free, 1 occupied | 1 |
-| 3 | Downward speed | 2 |
+`phase` now uses 0 for the title, 1 for flight, 2 for a destroyed ship and 3 for clear space. Phase is useful for inspection, but it does not dispatch the game by itself: jumps and calls still decide which code runs.
 
-The pool reserves twenty records with `objects: defs SLOTS*4`. `defs` reserves bytes in the assembled program. Twenty times four is eighty bytes, and that capacity stays fixed while the game runs.
+<MeteorExperiment checkpoint="phases" bytes={["phase","hull","ship_visible","meteor_y"]} controls="course" />
 
-<MeteorExperiment checkpoint="object-pool" bytes={["ship_x","active_count","wave","phase"]} poolStride={4} controls="course" />
+Run it and read the title. Press Space to launch. Leave the ship still and the meteor hits it on the 44th update, when `meteor_y` reaches 156, about 1.8 seconds after launch. R at the result flies again; Q returns to the title. During flight Q also returns to the title, and R does nothing.
 
-Open **Read the active object records**. Three events create meteors at different X positions and speeds. Each row is a live read of one occupied slot. It is not a prediction of where a meteor ought to be. Q restarts; R retries after a result.
+## Follow one whole attempt
 
-## Let IX identify the current object
+`start` now ends with `jp title`. The title sets phase 0, clears the screen and draws four lines with `text`, which takes B=character row and C=column. `ld bc,$030A` therefore means row 3, column 10. There are 32 columns, and METEOR STORM has twelve characters including its space, so `(32-12)/2` puts it at column 10. We counted each title line by hand in the same way.
 
-IX is a sixteen-bit index register. `ld ix,objects` points it at the first record. `(ix+1)` means the byte one address after IX, so `ld a,(ix+1)` reads this object's Y. The same instruction works for the next object after IX advances by four.
+The title then waits for Space. Space is bit 0 of port `$7FFE`. As with O and P, a pressed key clears its bit. `bit 0,a` tests that one bit and sets the zero flag when it is clear, so `jr nz` keeps waiting while Space is up. After release, the title calls `new_game` and falls into `main_loop`.
 
-The record layout is an agreement between every routine that reads or writes objects. If spawn writes speed at offset 3 but movement reads offset 2, changing the drawing routine cannot repair it.
+During flight, each update first erases the ship, then reads the Q W E R T row at `$FBFE`. Q is bit 0 there, and pressing it jumps to `title`. A meteor that reaches y=174 jumps to `won`, which selects phase 3. A contact reaches `lost`, which selects phase 2. Both outcomes enter the shared `result` screen.
 
-<Question prompt="If objects starts at $9000, where are the second record's Y and the third record's speed?">
+At a result, R waits for key release, calls `new_game` and jumps to the main loop. Q goes to the title instead.
 
-The second record starts at `$9004`, so its Y is `$9005`. The third starts at `$9008`, so its speed is `$900B`. Add the record stride first, then the field offset. These example addresses explain the layout; use the assembled symbols for the running program's actual addresses.
+## One flag says the ship is alive
+
+Unit 10 froze the game by setting phase 2 at the moment of contact. Now the contact test clears a separate byte, `hull`: 1 means the ship is alive and 0 means it has been destroyed. The test does not jump away in the middle of drawing. It finishes the update, redraws the meteor, and then the loop checks `hull` once. Zero leaves for `lost`.
+
+Keeping "alive" as its own state means the collision code only records what happened. The decision about which screen comes next lives in one place at the end of the update. The storm we build next will check many meteors before that single check.
+
+## Reset a run as one block
+
+Every byte a run changes sits between the labels `state_start` and `state_end`. `new_game` clears the screen, then zeroes that whole range with the LDIR fill from unit 1: write zero to the first byte, then copy each byte onto the next. Afterwards it sets only the values that must not be zero.
+
+<AssemblyExcerpt checkpoint="phases" from="new_game:" to="steer:" />
+
+A retry therefore cannot inherit a position or a destroyed hull from the last run. A new run variable placed between the labels is reset without another instruction. The frame byte, `frames`, sits outside the range: the interrupt keeps counting through every phase.
+
+Predict, then check: delete the `ld a,1` and `ld (hull),a` pair that follows `ld (ship_x),a`. The block leaves `hull` at zero, so the first update reads zero and the result says SHIP DESTROYED at once. Restore the two lines.
+
+## Erase the ship only when it is there
+
+Unit 5 moved the ship by calling one XOR routine, `ship`, before and after steering: the first call removed the old image and the second drew the new one. An XOR only erases when the image is on the screen. Now `clear` can wipe the display between phases without telling the ship code, so the program splits `ship` into `erase_ship` and `draw_ship` and keeps a flag, `ship_visible`.
+
+<AssemblyExcerpt checkpoint="phases" from="erase_ship:" to="meteor:" />
+
+`draw_ship` draws and sets the flag to 1. `erase_ship` returns at once when the flag is 0; otherwise it clears the flag and XORs the image away. The block reset in `new_game` sets the flag to 0 after `clear`, and then `draw_ship` puts the ship back.
+
+Try deleting `call draw_ship` from `new_game`. Predict first: the first update's `erase_ship` finds the flag at 0 and does nothing, then `draw_ship` draws the ship. It appears one update late but correctly. Without the flag, that first erase would have drawn a ship and the following draw would have removed it. The same swap would repeat on every update, so the screen would never match `ship_x`. Restore the call.
+
+## Release is part of a button press
+
+A held key must not trigger the next phase. Space held at the title should launch one flight, not count as pressed again later, and an R held from the last retry should not skip past the next result before the player reads it. `release_keys` waits until Space, Q and R are all up. The title calls it before and after waiting for Space, and the result calls it before and after reading R. It changes AF and BC, and nothing else.
+
+<AssemblyExcerpt checkpoint="phases" from="release_keys:" to="name_text:" />
+
+`and 9` keeps bits 0 and 3 of the Q W E R T row: Q and R. Only when both are released is the result 9. HALT inside that wait keeps it responsive to the frame clock. The private interrupt must therefore remain enabled on title and result screens too. Waiting for a released key with interrupts disabled would strand the program at HALT.
+
+<Question prompt="Why can meteor_y freeze on the result screen while the program still responds to R?">
+
+The meteor is moved by the flight loop, which is no longer running. The interrupt handler and the result's input loop still run. Freezing one piece of game state does not require stopping the CPU.
 
 </Question>
 
-## Separate existence from visibility
+Test launch while holding Space longer than usual: the title should remain until release. Lose, retry, then return to the title with Q. Steer clear once to reach CLEAR SPACE. This sequence tests transitions that a single flight would miss.
 
-The active byte tells us whether a record belongs to an object. A zero byte is a free slot even if old X, Y and speed values remain there. We do not need to erase every field when an object leaves; the next spawn will replace them before setting it in motion.
-
-This replaces `meteor_x`, `meteor_y` and the single `active` variable. The complete checkpoint also contains the loops that operate on these records, which we trace next, and several routines that later lessons explain; [the map at the end of this lesson](#what-else-the-program-now-contains) names them. The ship keeps its own `ship_x` because there is only one player ship and its behaviour differs from falling objects.
-
-Try following two rows at once. A faster meteor can move farther per update even though both receive updates from the same clock. Separate positions and speeds make that independence possible; adding a second drawing call alone would only make a second picture of the same state.
-
-## What else the program now contains
-
-This checkpoint grows from about 330 lines to about 530. Besides the pool, it now runs a whole attempt: a course of events, a result screen and a retry. Those parts work already, but we study them later. This map says what each one does and where it is explained, so nothing in the listing or the inspector is a mystery in the meantime.
-
-| Routine or data | Its job | Explained in |
-|---|---|---|
-| `spawn`, `advance_meteors`, `count_objects` | Fill the first free record; erase, move, check and redraw each occupied record; count occupied records into `active_count`. Each walks the pool with IX as the current record and B as the slots left. | [Unit 12](../unit-12/) |
-| `pool_overflow` | Set to 1 when `spawn` finds no free slot, so a broken capacity assumption shows up instead of writing past the pool. | [Unit 12](../unit-12/) |
-| `waves`, `wave_timer`, `meteor_events` | Count down course steps; at zero, read the next three-byte event (X, speed, delay) and call `spawn`. `wave` counts the events read so far. | [Unit 13](../unit-13/) |
-| Completion check | After the hull check, the run is won only when every event has been read (`wave` equals `WAVES`) and `active_count` is zero. | [Unit 13](../unit-13/) |
-| `hull` | The ship's one life. `new_game` sets it to 1, contact clears it, and the main loop leaves for `lost` when it reads zero after moving the meteors. | [Unit 22](../unit-22/) |
-| `erase_ship`, `draw_ship`, `ship_visible` | `draw_ship` draws the ship and sets `ship_visible`; `erase_ship` removes it only while that flag says an image is on screen, so an XOR erase never draws a ship onto an empty screen. | Builds on [unit 5](../unit-05/) |
-| `title`, `new_game` | `title` waits for keys to be released, then calls `new_game`. That routine clears the screen, zeroes every byte from `state_start` to `state_end`, then sets `phase` to 1 and restores the ship position, `hull`, the first event delay and the frame baseline. | [Unit 21](../unit-21/) |
-| `last_frame`, `frame_delta`, `ticks` | Each accepted update stores how many frames passed since the last one; `ticks` counts course steps. Nothing reads `frame_delta` yet: it is a measurement. | [Unit 17](../unit-17/) |
-| `lost`, `won`, `result`, `release_keys` | `lost` sets `phase` to 2 and `won` sets 3; both show one result screen where R starts a new run and Q returns to `title`. `release_keys` waits until Space, Q and R are all up, so a held key cannot trigger the next phase. It changes AF and BC. | [Unit 22](../unit-22/) |
+If a retry inherits a position or a destroyed hull, inspect the reset range and the values set after it. If a control triggers too soon, inspect press and release handling. Keeping these failures distinct makes the phase structure easier to investigate.
 
 <Sources>
 
-The maintained Meteor Storm source linked through this page supplies the game rules and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
+Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 23](https://worldofspectrum.org/ZXBasicManual/zxmanchap23.html), the keyboard input ports. Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), IN, BIT, AND, CP, LDIR and conditional branch entries.
 
 </Sources>

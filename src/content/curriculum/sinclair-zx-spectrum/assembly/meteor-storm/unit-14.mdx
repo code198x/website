@@ -1,5 +1,5 @@
 ---
-title: "Give meteors a gentle drift"
+title: "Make a storm with an end"
 game: 1
 unit: 14
 ---
@@ -9,40 +9,42 @@ import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-A meteor moving sideways every update would cross the screen too quickly. We will give it a small signed drift, applied less often than its downward movement.
+A longer storm can be data rather than a longer sequence of special-case instructions. We will replace the three meteors that `new_game` starts with a prepared course of one hundred meteors, released one at a time.
 
-Each object gains offset 4: drift. Its five-byte record is now X, Y, active, downward speed, drift. Event records also gain a drift byte, becoming four bytes long. Update every stride together: the pool walk, the reserved pool size and the event-address calculation.
+The event table lives after the sprite data in `assets.inc`, at `meteor_events`. At this stage each event has three bytes: **X, speed, delay until the next event**. `WAVES equ 100` names the number of events. The event index is the new byte `wave`; it counts individual spawns, not a whole row of meteors.
 
-<MeteorExperiment checkpoint="drift" bytes={["ship_x","wave"]} words={["ticks"]} poolStride={5} controls="course" />
+<MeteorExperiment checkpoint="fixed-course" bytes={["wave","active_count","phase","pool_overflow"]} poolStride={4} controls="course" />
 
-The accepted drift values are -1, 0 and +1 pixel. The inspector displays the signed interpretation. In the byte table, -1 is stored as 255: adding it to X has the same low-byte result as subtracting one.
+The X positions and speeds vary, but the table is fixed. Retry gives the same course. A host-side generator prepared the scattered values; the Spectrum is not choosing new random numbers during each run. Repeatability lets a player learn a route and lets us reproduce a failure.
 
-## Use the course counter as a cadence
+## Count down, then read a record
 
-The code reads the low byte of `ticks` and applies `and 3`. Only a zero result permits horizontal motion. That is once every four course steps. Downward motion still happens on every step, at each object's own speed.
+A second new byte, `wave_timer`, counts course steps until the next event. In `new_game`, `ld a,20` and `ld (wave_timer),a` take the place of the three spawns. The main loop calls the new `waves` routine once per update, after the hull check. It returns at once when `wave` has reached `WAVES`. Otherwise it decrements the timer, and when that reaches zero it calculates the event address as `meteor_events + wave*3`, reads the three fields, and loads the next delay into the timer. Then it increments wave and jumps to `spawn`, whose RET returns straight to the main loop.
 
-This separates two rates: a meteor falling four pixels per step travels sixteen pixels down while drifting just one pixel sideways. With no boost and 25 steps per second, nonzero horizontal drift averages 6.25 pixels per second.
+<AssemblyExcerpt checkpoint="fixed-course" from="waves:" to="spawn:" />
 
-<AssemblyExcerpt checkpoint="drift" from=" ld a,(ticks)" to="drift_done:" />
+The multiplication here is three additions of the index to HL. It is short because the event record is only three bytes. When we later add drift and kind, the event stride must change with the data layout.
 
-The addition uses an ordinary byte operation. At x=80 with stored drift 255, the low byte of 80+255 is 79. We interpret that stored pattern as -1 because of the agreement established by the data, not because memory remembers a signed type.
+A delay belongs to the event just read: it says how long to wait **after this spawn** before reading the next. The initial twenty-step wait comes from `new_game`, before any event has been read.
 
-## Reflect before leaving the playfield
+## Do not finish while the last meteor is falling
 
-After adding drift, the code clamps X to 8 or 224 if needed and reverses the stored direction. At the left edge it writes +1; at the right edge it writes 255. This gives the next horizontal update a direction back into the playfield.
+Reaching `WAVES` means there are no more events to read. It does not mean the screen is clear. The completion check in the main loop now asks both questions: has `wave` reached `WAVES`, and is `active_count` zero? Either answer "no" branches to the new label `race_continue` and the next update.
 
-<Question prompt="A meteor at x=8 has drift -1. What are X and drift after its next horizontal update?">
+<AssemblyExcerpt checkpoint="fixed-course" from=" call waves" to="new_game:" />
 
-The proposed X is 7, below the allowed bound. The routine stores X=8 and drift=+1. It does not store 7 for one frame and repair it later. The next drift opportunity moves to 9.
+Watch the final spawn on a successful route: wave reaches 100 while active_count remains positive. The game keeps updating those objects until they leave. Contact is checked before the completion decision, so a fatal hit does not become a win just because the table is exhausted.
+
+<Question prompt="The final event's speed is 2 and it spawns at y=24. Can the game finish on that spawn's step?">
+
+No. The new meteor is active and still near the top. At that speed it needs seventy-five movement updates to reach retirement at y=174. Event exhaustion and object exhaustion describe different things.
 
 </Question>
 
-Change `and 3` in the drift gate to `and 7`. Sideways movement now happens every eight course steps while downward movement stays unchanged. Try it before making drift stronger: frequency and distance per change are separate design controls.
-
-Restore the accepted four-step cadence. The slight uncertainty should make dodging more interesting without making trajectories unreadable. Stars, when added next, will deliberately ignore drift and fall straight down.
+For a shorter experiment, set `WAVES equ 3` without deleting the longer table. The program reads only the first three entries. The third, X=42 at speed 4, is read on update 36, but CLEAR SPACE waits until update 74, when that meteor passes y=174. Steer through them and check that it waits for the last object. Restore 100 to play the full meteor-only course. Do not increase WAVES beyond the number of complete records: the routine trusts that bound.
 
 <Sources>
 
-Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), instruction descriptions for the operations shown in this lesson. The running experiment supplies the program-specific observations.
+The maintained Meteor Storm source linked through this page supplies the game rules and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
 
 </Sources>
