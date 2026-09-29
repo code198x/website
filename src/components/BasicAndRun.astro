@@ -20,6 +20,7 @@ const source = fs.readFileSync(path.join(process.env.CODE_SAMPLES_PATH || path.r
     <button type="button" data-action="restore">Restore source</button>
     <button type="button" data-action="download">Download tape</button>
     <button type="button" data-action="stop" disabled>Stop</button>
+    <label class="basic-sound"><input type="checkbox" class="basic-sound-input" /> Sound</label>
     <span class="basic-status" role="status">Edit the source, then run it.</span>
   </div>
   <p class="basic-help">Type complete BASIC keywords in the editor. Run starts a fresh Spectrum and runs your program directly. Click the screen to send it keys; Tab returns to the page. Ctrl+Enter or Command+Enter runs from the editor.</p>
@@ -33,6 +34,7 @@ const source = fs.readFileSync(path.join(process.env.CODE_SAMPLES_PATH || path.r
   <details class="basic-transcript"><summary>Screen text</summary><pre aria-live="off">The Spectrum has not started yet.</pre></details>
 </section>
 <script>
+  import { SoundControl } from '../lib/lesson-audio';
   const cleanups = new Set<() => void>();
   function initialise() {
     for (const root of document.querySelectorAll<HTMLElement>('.basic-playground')) {
@@ -50,18 +52,28 @@ const source = fs.readFileSync(path.join(process.env.CODE_SAMPLES_PATH || path.r
       void import('../lib/assembly-editor').then(({highlightAssemblyEditor})=>highlightAssemblyEditor(source, 'sinclair-basic')).catch(() => {});
       let worker: Worker | null = null, exporter: Worker | null = null;
       let frame = 0, last = 0, pending = false, running = false, visible = true;
+      // The worker drains each tick's samples and transfers them with the frame;
+      // this side hands them on to the panel's AudioWorklet.
+      const sound = new SoundControl(root.querySelector<HTMLInputElement>('.basic-sound-input')!, {
+        running: () => worker !== null,
+        attach: sink => worker?.postMessage({type: 'audio', rate: sink?.sampleRate ?? null}),
+        unavailable: message => say(message),
+      });
       const keys = new Map<string,string[]>();
       function release() { keys.clear(); worker?.postMessage({type: 'release'}); }
       function stop() {
         release(); worker?.terminate(); worker = null; running = false; pending = false;
         cancelAnimationFrame(frame); stopButton.disabled = true;
+        if (sound.sink) sound.sink.active = false;
       }
       const say = (text: string) => { if (status.textContent !== text) status.textContent = text; };
       const clearError = () => {error.hidden = true; error.textContent = '';};
       function showError(message: string) {error.textContent = message; error.hidden = false; say('Check the source and try again.');}
       function animate(now: number) {
         if (!worker) return;
-        if (running && visible && !document.hidden && !pending) {
+        const live = running && visible && !document.hidden;
+        if (sound.sink) sound.sink.active = live;
+        if (live && !pending) {
           pending = true; worker.postMessage({type: 'tick', elapsed: Math.min(100, now-last)});
         }
         last = now; frame = requestAnimationFrame(animate);
@@ -73,6 +85,8 @@ const source = fs.readFileSync(path.join(process.env.CODE_SAMPLES_PATH || path.r
       }
       function build(runProgram: boolean) {
         clearError();
+        // Before the worker exists, while the click still counts as the reader's.
+        const sink = runProgram ? sound.prepare() : null;
         if (runProgram) {stop(); transcript.textContent = 'Loading a fresh Spectrum…';} else {exporter?.terminate(); exporter = null;}
         const current = new Worker(new URL('../lib/spectrum-basic-worker.ts', import.meta.url), {type: 'module'});
         if (runProgram) {worker = current; stopButton.disabled = false;} else exporter = current;
@@ -87,12 +101,14 @@ const source = fs.readFileSync(path.join(process.env.CODE_SAMPLES_PATH || path.r
             const [width,height] = data.size;
             if(canvas.width !== width || canvas.height !== height){canvas.width=width;canvas.height=height;}
             context.putImageData(new ImageData(new Uint8ClampedArray(data.pixels.buffer),width,height),0,0);
+            if(data.audio)sound.sink?.push(data.audio);
             if(data.text)transcript.textContent = data.text.join('\n');
             if(!data.loading)say('Program loaded. Click the screen to use its keyboard.');
             pending = false;
           } else if (data.type === 'error') {showError(data.message); if(runProgram)stop();else {current.terminate();exporter=null;}}
         };
         current.postMessage({type:'build', source:source.value, name:root.dataset.name, run:runProgram});
+        if (sink) current.postMessage({type:'audio', rate:sink.sampleRate});
       }
       run.onclick = () => build(true);
       root.querySelector<HTMLButtonElement>('[data-action="download"]')!.onclick = () => build(false);
@@ -123,7 +139,7 @@ const source = fs.readFileSync(path.join(process.env.CODE_SAMPLES_PATH || path.r
       for(const button of root.querySelectorAll<HTMLButtonElement>('[data-key]'))button.onclick=()=>worker?.postMessage({type:'tap',codes:codes(button.dataset.key!)});
       const observer = new IntersectionObserver(entries => {visible=entries.some(entry=>entry.isIntersecting);if(!visible)release();});
       observer.observe(root);
-      cleanups.add(()=>{stop();exporter?.terminate();observer.disconnect();window.removeEventListener('blur',release);document.removeEventListener('visibilitychange',onVisibility);});
+      cleanups.add(()=>{stop();sound.dispose();exporter?.terminate();observer.disconnect();window.removeEventListener('blur',release);document.removeEventListener('visibilitychange',onVisibility);});
     }
   }
   initialise();
@@ -140,7 +156,10 @@ const source = fs.readFileSync(path.join(process.env.CODE_SAMPLES_PATH || path.r
 .basic-controls,.basic-keypad {display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;grid-column:1/-1;}
 .basic-playground button {font:inherit;font-size:.85rem;min-width:44px;min-height:44px;padding:.35rem .75rem;cursor:pointer;color:var(--color-text);background:var(--color-surface);border:1px solid var(--color-border);border-radius:3px;}
 .basic-playground button:disabled {opacity:.5;cursor:default;}
-.basic-playground :is(button,canvas,textarea):focus-visible {outline:2px solid var(--color-primary);outline-offset:2px;}
+/* The site player's Sound control: a plain checkbox with a touch-sized row. */
+.basic-sound {display:flex;align-items:center;gap:.5rem;min-height:44px;padding-inline:.4rem;font-size:.85rem;cursor:pointer;}
+.basic-sound input {width:1rem;height:1rem;margin:0;accent-color:var(--color-primary);cursor:pointer;}
+.basic-playground :is(button,canvas,textarea,input):focus-visible {outline:2px solid var(--color-primary);outline-offset:2px;}
 .basic-status {flex:1 1 20rem;font-size:.85rem;line-height:1.5;}
 .basic-playground .basic-help {grid-column:1/-1;margin:0;font-size:.9rem;line-height:1.6;max-width:75ch;}
 .basic-error,.basic-transcript {grid-column:1/-1;min-width:0;}

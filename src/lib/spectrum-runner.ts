@@ -10,6 +10,7 @@
  */
 import init, { Spectrum } from '@emu198x/zx-spectrum';
 import { classify, type ProgramExtent, type Verdict } from './verdict';
+import type { AudioSink } from './lesson-audio';
 
 export type { ProgramExtent, Verdict } from './verdict';
 
@@ -42,6 +43,8 @@ export class SpectrumRunner {
   #visible = true;
   #disposed = false;
   #onError: (message: string) => void;
+  /** Where the machine's sound goes, or null for a silent machine. */
+  #audio: AudioSink | null = null;
 
   #extent: ProgramExtent | null = null;
   #onVerdict: ((verdict: Verdict) => void) | null = null;
@@ -167,6 +170,28 @@ export class SpectrumRunner {
 
   observeFrame(callback: () => void) { this.#onFrame = callback; }
 
+  /**
+   * Sends the machine's sound to `sink`, or silences it with null.
+   *
+   * The emulator resamples to the sink's rate, the way the site player asks
+   * for its AudioContext's rate. Sound is output only: the machine runs the
+   * same frames with it on or off.
+   */
+  setAudio(sink: AudioSink | null) {
+    if (this.#disposed || sink === this.#audio) return;
+    if (this.#audio) this.#audio.active = false;
+    this.#audio = sink;
+    if (sink) {
+      this.#spectrum.configureAudio(sink.sampleRate, 2, sink.sampleRate / 2);
+      this.#spectrum.setAudioEnabled(true);
+      // Anything buffered before now belongs to another moment.
+      this.#spectrum.audioDrain();
+    } else {
+      this.#spectrum.setAudioEnabled(false);
+    }
+    this.#sync();
+  }
+
   /** Whether the reader has asked for the machine to run. */
   set wanted(value: boolean) {
     this.#wanted = value;
@@ -186,6 +211,7 @@ export class SpectrumRunner {
   stop() {
     if (this.#frame !== 0) cancelAnimationFrame(this.#frame);
     this.#frame = 0;
+    if (this.#audio) this.#audio.active = false;
   }
 
   /**
@@ -198,8 +224,9 @@ export class SpectrumRunner {
   dispose() {
     this.releaseKeys();
     this.#keyListeners.abort();
-    this.#disposed = true;
     this.stop();
+    this.#disposed = true;
+    this.#audio = null;
     this.#spectrum.free();
   }
 
@@ -271,6 +298,7 @@ export class SpectrumRunner {
         this.#last = performance.now();
         this.#frame = requestAnimationFrame(this.#tick);
       }
+      if (this.#audio) this.#audio.active = true;
     } else {
       this.stop();
     }
@@ -292,6 +320,7 @@ export class SpectrumRunner {
     }
     try {
       this.#spectrum.tick(now - this.#last);
+      if (this.#audio) this.#audio.push(this.#spectrum.audioDrain());
       this.#onFrame?.();
       if (this.#extent && ++this.#sinceCheck >= WATCH_INTERVAL_FRAMES) {
         this.#sinceCheck = 0;
