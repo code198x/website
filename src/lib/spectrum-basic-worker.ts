@@ -9,6 +9,9 @@ type Machine = {
   keyUp(code: string): boolean;
   frameRgba(): Uint8Array;
   frameSize(): Uint32Array;
+  configureAudio(rate: number, channels: number, capacity: number): void;
+  setAudioEnabled(enabled: boolean): void;
+  audioDrain(): Float32Array;
   free(): void;
 };
 const api = bindings as unknown as {
@@ -23,6 +26,17 @@ let activeTap: string[] = [];
 let tapTicks = 0;
 let ticks = 0;
 let loading = true;
+/** The page's AudioContext rate while Sound is on, otherwise null. */
+let audioRate: number | null = null;
+/** Sound is output only: turning it on or off never changes the frames run. */
+function applyAudio() {
+  if (!machine) return;
+  if (audioRate) {
+    machine.configureAudio(audioRate, 2, audioRate / 2);
+    machine.setAudioEnabled(true);
+    machine.audioDrain();
+  } else machine.setAudioEnabled(false);
+}
 function release() {
   for (const code of held) machine?.keyUp(code);
   for (const code of activeTap) machine?.keyUp(code);
@@ -41,6 +55,10 @@ self.onmessage = async ({data}) => {
       machine = api.Spectrum.createHeadlessBundled();
       self.postMessage({type: 'status', message: 'Starting Spectrum…'});
       machine.runBasic(data.source);
+      // runBasic types RUN and runs the first moments of the program before
+      // any frame reaches the page. Sound starts with the first frame shown,
+      // like the picture, rather than replaying that stretch late.
+      applyAudio();
       loading = false;
       self.postMessage({type: 'ready'});
     } else if (data.type === 'tick' && machine) {
@@ -55,7 +73,10 @@ self.onmessage = async ({data}) => {
       machine.tick(data.elapsed);
       const pixels = machine.frameRgba();
       const text = ++ticks % 6 === 0 ? JSON.parse(machine.query('screen.text.lines')) : undefined;
-      self.postMessage({type: 'frame', pixels, size: Array.from(machine.frameSize()), loading, text}, [pixels.buffer]);
+      // Transferred, not copied, like the pixels: one frame of sound each tick.
+      const audio = audioRate ? machine.audioDrain() : undefined;
+      const transfer: Transferable[] = audio ? [pixels.buffer, audio.buffer] : [pixels.buffer];
+      self.postMessage({type: 'frame', pixels, audio, size: Array.from(machine.frameSize()), loading, text}, transfer);
     } else if (data.type === 'keys' && machine && !loading) {
       for (const code of data.codes) {
         if (data.down) { held.add(code); machine.keyDown(code); }
@@ -63,6 +84,9 @@ self.onmessage = async ({data}) => {
       }
     } else if (data.type === 'tap' && machine && !loading) {
       taps.push(data.codes);
+    } else if (data.type === 'audio') {
+      audioRate = typeof data.rate === 'number' && data.rate > 0 ? data.rate : null;
+      applyAudio();
     } else if (data.type === 'release') release();
   } catch (error) {
     self.postMessage({type: 'error', message: String(error)});

@@ -21,3 +21,11 @@ followed by waiting for actual rendered or inspected state, not a fixed delay.
 `evidence/meet-assembly-release/` records the npm 0.4.0 release checks and hashes.
 The code-samples repository retains the independent assembler and fresh-tape
 verification. Browser observations do not establish original-hardware behaviour.
+
+`lesson-sound` checks the runners' Sound toggle. It ticks Sound in Meteor
+Storm unit 24's panel and in a BASIC panel, copies every sample the page posts
+to its AudioWorklet, and measures the pitch from crossings of the square wave's
+midpoint: the impact tone should read about 523 Hz for 105 cycles, and
+`BEEP 1,12` about 523 Hz for a second. It also checks the choice carries to the
+next lesson, that Stop suspends the AudioContext and that unticking closes it.
+It measures delivered samples, not what reaches a listener's ears.

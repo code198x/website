@@ -97,6 +97,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
     {downloads && <><button type="button" class="sandbox-download-source">Download source</button>
     {companions.map(file => <button type="button" data-download-companion={file.name}>Download {file.name}</button>)}
     <button type="button" class="sandbox-download-tape">Download tape</button></>}
+    <label class="sandbox-sound"><input type="checkbox" class="sandbox-sound-input" /> Sound</label>
     <p class="sandbox-status" role="status">Edit the source, then assemble.</p>
   </div>
 
@@ -121,6 +122,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
 <script>
   import { expandAssemblyIncludes } from '../lib/assembly-includes';
   import { SpectrumRunner, type Verdict } from '../lib/spectrum-runner';
+  import { SoundControl } from '../lib/lesson-audio';
 
   /**
    * What each verdict means, in the reader's terms rather than the machine's.
@@ -200,6 +202,14 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
       });
 
       let runner: SpectrumRunner | null = null;
+
+      // One audio output per panel, kept across reassemblies and created
+      // inside a click, as browsers require, only once Sound is ticked.
+      const sound = new SoundControl(root.querySelector<HTMLInputElement>('.sandbox-sound-input')!, {
+        running: () => runner !== null,
+        attach: (sink) => runner?.setAudio(sink),
+        unavailable: (message) => say(message, 'error'),
+      });
       let debugSymbols: Record<string,number> = {}, debugSource = '';
       let debugPaused = false;
       let emitInspection: (() => void) | null = null;
@@ -271,11 +281,14 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
         disposed = true;
         observer.disconnect();
         runner?.dispose();
+        sound.dispose();
       });
 
       async function assembleAndRun() {
         runButton.disabled = true;
         clearMessages();
+        // Before any await, while the click still counts as the reader's.
+        sound.prepare();
         try {
           say('Assembling…');
           const asm = await loadAssembler();
@@ -308,6 +321,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
           say('Loading…');
           runner = await SpectrumRunner.create(canvas, (message) => say(message, 'error'));
           if (disposed) { runner.dispose(); return; }
+          runner.setAudio(sound.sink);
           if (root.dataset.traceRoutine === 'true') {
             if (!Number.isInteger(result.symbols?.hold)) throw Error('Keep a hold label so the recording has a stopping point.');
             runner.enableRoutineTrace(result.symbols.hold);
@@ -516,6 +530,30 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
     background: var(--color-surface, #242019);
     border: 1px solid var(--color-border, #444);
     border-radius: 3px;
+  }
+
+  /* The site player's Sound control: a plain checkbox with a touch-sized row. */
+  .sandbox-sound {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding-inline: 0.4rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+
+  .sandbox-sound input {
+    width: 1rem;
+    height: 1rem;
+    margin: 0;
+    accent-color: var(--color-primary, #e0744a);
+    cursor: pointer;
+  }
+
+  .sandbox-sound input:focus-visible {
+    outline: 2px solid var(--color-primary, #e0744a);
+    outline-offset: 2px;
   }
 
   .sandbox-controls button:hover:not(:disabled) {
