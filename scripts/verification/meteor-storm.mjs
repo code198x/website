@@ -51,7 +51,7 @@ try{
    assert((await page.locator('.meteor-debug-state').textContent()).toLowerCase().includes('cp'),'Collision stop');assert(!(await page.locator('.meteor-debug-state').textContent()).includes('undefined'),'Debugger registers');
    await page.locator('[data-step]').click();assert(await page.locator('[data-resume]').isEnabled(),'Step');await page.locator('[data-resume]').click();
   }
-  if(n===22){
+  if(n===11){
    await key(' ');await page.waitForFunction(()=>window.meteorReadings.named.phase===1);
    await page.waitForFunction(()=>window.meteorReadings.named.phase===2,{},{timeout:10000});await page.waitForTimeout(600);
    await fs.writeFile(out+'/loss.png',Buffer.from(await page.locator('.sandbox-screen').evaluate(canvas=>canvas.toDataURL().split(',')[1]),'base64'));

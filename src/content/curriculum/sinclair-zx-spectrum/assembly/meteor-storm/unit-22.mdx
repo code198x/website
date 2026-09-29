@@ -1,5 +1,5 @@
 ---
-title: "Give the game clear phases"
+title: "Keep the best time and score"
 game: 1
 unit: 22
 ---
@@ -9,40 +9,42 @@ import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-The same key can mean different things at different moments. Space launches from the title, then acts as held boost during flight. We will make those moments explicit.
+A fast run and a high-scoring run need not be the same run. We will remember separate session records and make a successful finish worth more when it is faster.
 
-The complete game uses phase 0 for the title, 1 for flight, 2 for a loss and 3 for a successful finish. Phase is useful for inspection, but it does not magically dispatch the game: jumps and calls still decide which code runs.
+`best_time` is a word outside the per-run state range. It begins at 65535, hexadecimal `$FFFF`, meaning **no successful time yet**. `best_score` is a byte that begins at zero. Retry clears the run's state, not these records.
 
-<MeteorExperiment checkpoint="finished" bytes={["phase","hull","score","wave"]} words={["elapsed","best_time"]} controls="finished" />
+<MeteorExperiment checkpoint="records" bytes={["score","finish_points","best_score","phase"]} words={["elapsed","best_time"]} controls="boost" />
 
-## Follow one whole attempt
+The inspector shows the stored sentinel as 65535 until a successful finish. The result screen now calls `bonus_line` and `records` to print the finish bonus, best time and best score, and `records` writes dashes into the best-time digits while the sentinel is stored. Those are two views of the same “not set” condition, not a 1310-second record to beat.
 
-The title clears the screen, draws its instructions and waits for Space. It then waits for key release before calling `new_game`. That routine sets phase 1, clears per-run state and draws the opening flight.
+## Award the finish bonus once
 
-During play, Q jumps back to the title. A meteor hit reaches `lost`, which saves any score record and selects phase 2. Completion reaches `won`, calculates the bonus and records, and selects phase 3. Both outcomes enter the shared result display.
+On success, convert elapsed to whole seconds and compute `max(0,100-seconds)`. Add that many score units. Each unit is ten points, so a 41.84-second run receives 590 finish points. A 20.92-second run receives 800.
 
-At a result, R waits for key release, calls new_game and jumps to the main loop. Q goes to the title instead. Records remain in their longer-lived memory throughout these transitions.
+The subtraction clamps a negative result to zero. The bonus is calculated on the win path, once, before displaying the result. A failed run gets no finish bonus.
 
-## Release is part of a button press
+## Compare words without an old carry
 
-Without release handling, the same held Space that selected launch could immediately count as boost. A held R could also retrigger the next screen before the player sees what happened. `release_keys` waits for Space, Q and R to be up; it does not change ship position or course state.
+To consider a time record, load elapsed into HL and best_time into DE. Clear carry with `or a`, then use `sbc hl,de`. If the elapsed time is smaller, subtraction borrows and carry is set. Reload elapsed and store it as the new record. Otherwise keep the previous record.
 
-<AssemblyExcerpt checkpoint="finished" from="release_keys:" to="name_text:" />
+A score record uses the opposite preference: larger is better. `save_score` compares the byte values and stores the run's score unless it is lower. It is called for both outcomes, so a failed run can still establish a high score.
 
-HALT inside that wait keeps it responsive to the frame clock. The private interrupt must therefore remain enabled on title and result screens too. Waiting for a released key with interrupts disabled would strand the program at HALT.
+<Question prompt="A failed run lasts only three seconds. Should it replace a successful twenty-second time?">
 
-<Question prompt="Why can elapsed freeze on the result screen while the program still responds to R?">
-
-Elapsed is updated by the flight loop, which is no longer running. The interrupt handler and result input loop still run. Freezing one piece of game state does not require stopping the CPU.
+No. It did not complete the course. Only the won path considers best_time. The comparison is not enough by itself; the point at which it is called expresses what the record means.
 
 </Question>
 
-Test launch while holding Space longer than usual: the title should remain until release. During flight, hold Space again to boost and release it to slow down. Lose, retry, then return to the title. This sequence tests transitions that a single successful flight would miss.
+## Reset the right lifetime
 
-If a retry inherits a score, position or partly used course, inspect the reset range and initial values. If a control triggers too soon, inspect press/release handling. Keeping these failures distinct makes the phase structure easier to investigate.
+Unit 11 gathered every run variable between `state_start` and `state_end`. `new_game` fills that range with zero, then restores the run's initial ship position, hull and spawn countdown. The record bytes are deliberately placed outside the range. Moving them inside would make R forget them; moving elapsed outside it would make the next run inherit old time.
+
+Test a loss and retry: run state should reset. After a successful finish, retry again and check that the records survive. Return to the title with Q and launch again: the title does not touch them either. Reassembling deliberately creates a new machine and loses them. These are RAM records for one session, not data saved to tape or disk.
+
+The accepted course keeps score within a byte: even twenty boosted stars plus the largest possible bonus is at most 140 units. Adding more rewards later would require checking that bound again.
 
 <Sources>
 
-Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 23](https://worldofspectrum.org/ZXBasicManual/zxmanchap23.html), the keyboard input ports. Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), IN, AND, CP and conditional branch entries.
+The maintained Meteor Storm source linked through this page supplies the game rules and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
 
 </Sources>

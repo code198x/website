@@ -1,5 +1,5 @@
 ---
-title: "Walk the pool and reuse a slot"
+title: "Give each object a record"
 game: 1
 unit: 12
 ---
@@ -9,56 +9,47 @@ import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-A pool needs two operations: find somewhere to put a new object, and visit the objects that already exist. Both are short walks through the same memory layout.
+Three independent meteors need three sets of state. Rather than inventing a new variable name for each one, we will place equal-sized records next to each other.
 
-Use the same complete program as the previous lesson. Our three events are deliberately small enough to follow: X=80 at speed 2, X=116 at speed 3, then X=170 at speed 4, with twenty course steps between spawns.
+A **record** is a group of values describing one thing. Our first meteor record has four bytes:
 
-<MeteorExperiment checkpoint="object-pool" bytes={["active_count","pool_overflow","wave","hull"]} poolStride={4} controls="course" />
+| Offset from its start | Meaning | Example |
+|---|---|---|
+| 0 | X | 80 |
+| 1 | Y | 24 |
+| 2 | Active: 0 free, 1 occupied | 1 |
+| 3 | Downward speed | 2 |
 
-## Find a free record
+The pool reserves twenty records with `objects: defs SLOTS*4`. `defs` reserves bytes in the assembled program, and `SLOTS equ 20` names the capacity. Twenty times four is eighty bytes, and that capacity stays fixed while the game runs. The pool sits between `state_start` and `state_end`, so unit 11's block reset empties it at the start of every run.
 
-`spawn` sets IX to the first record and B to the twenty-slot capacity. At `spawn_find` it reads offset 2. Zero means free, so the search branches to `spawn_found`. Otherwise `ld de,4` and `add ix,de` advance one record; DJNZ decrements the remaining count.
+<MeteorExperiment checkpoint="object-pool" bytes={["ship_x","active_count","hull","phase"]} poolStride={4} controls="course" />
 
-At a free slot, the routine writes X, Y=24, active=1 and speed, then draws the new meteor. Setting an active flag without initialising position and speed would let old values become a new object.
+Launch, then open **Read the active object records**. `new_game` now starts three meteors together: X=80 at speed 2, X=116 at speed 3 and X=170 at speed 4. For each one it stores the X and speed in `spawn_x` and `spawn_speed`, then calls `spawn`. Each row is a live read of one occupied slot. It is not a prediction of where a meteor ought to be.
 
-<AssemblyExcerpt checkpoint="object-pool" from="spawn:" to=" ; XOR removes" />
+## Let IX identify the current object
 
-If every slot is occupied, the routine sets `pool_overflow` and returns. It does not write beyond the reserved pool. This schedule should never fill twenty slots; the flag makes a broken capacity assumption observable.
+IX is a sixteen-bit index register. `ld ix,objects` points it at the first record. `(ix+1)` means the byte one address after IX, so `ld a,(ix+1)` reads this object's Y. The same instruction works for the next object after IX advances by four.
 
-## Visit occupied records only
+The record layout is an agreement between every routine that reads or writes objects. If spawn writes speed at offset 3 but movement reads offset 2, changing the drawing routine cannot repair it.
 
-`advance_meteors` starts at the first slot and tests active before doing any work. An active object erases its image, advances by its own speed, checks retirement/contact and draws its surviving image. Then IX advances by four and B counts down. Empty slots take the skip path but still advance the pointer and counter.
+<Question prompt="If objects starts at $9000, where are the second record's Y and the third record's speed?">
 
-Drawing changes B, so the caller uses `push bc` and `pop bc` around `draw_meteor`. Without that preservation, the drawing row counter would replace the pool's remaining-slot counter. A routine's clobber list matters most when it is called inside another loop.
-
-<Question prompt="Why does count_objects visit all twenty slots instead of assuming the occupied ones come first?">
-
-Objects leave at different times. Slot 1 can become free while slot 2 is still active, and the next spawn may reuse slot 1. The occupied records need not form one unbroken prefix. Testing each active byte handles those holes.
-
-</Question>
-
-## Make the capacity problem visible
-
-Change `SLOTS equ 20` to `SLOTS equ 1`. Assemble, steer away from the first meteor and watch `pool_overflow` when the next event tries to spawn. This is a deliberate capacity experiment, not a new difficulty mode: failed spawns still consume events in this small implementation. Restore twenty slots before continuing.
-
-<Question prompt="The full pool refuses a spawn safely. Does that preserve the same game?">
-
-No. We stayed inside the reserved memory, but the failed spawn still consumed a
-course event. A missing meteor removes a hazard, so the challenge can change.
-Memory safety and preserved game rules are different checks.
-
-For this experiment, restore the capacity and confirm that the overflow flag
-stays clear for the intended course. A future game could deliberately drop a
-decorative effect when busy, but it would need to identify that effect as optional.
-We should not silently apply the same policy to collision checks, scoring or
-required hazards.
+The second record starts at `$9004`, so its Y is `$9005`. The third starts at `$9008`, so its speed is `$900B`. Add the record stride first, then the field offset. These example addresses explain the layout; use the assembled symbols for the running program's actual addresses.
 
 </Question>
 
-A pool makes storage predictable, but it does not prove the chosen capacity is enough. The eventual course is checked against that bound. We have made one explicit allocation rule—first free slot—not built a general-purpose object framework.
+## Separate existence from visibility
+
+The active byte tells us whether a record belongs to an object. A zero byte is a free slot even if old X, Y and speed values remain there. We do not need to erase every field when an object leaves; the next spawn will replace them before setting it in motion.
+
+The records replace `meteor_x` and `meteor_y`. The loops that fill, move and count them are the subject of the next lesson. The ship keeps its own `ship_x` because there is only one player ship and its behaviour differs from falling objects.
+
+Try following two rows at once. A faster meteor can move farther per update even though both receive updates from the same clock. Separate positions and speeds make that independence possible; adding a second drawing call alone would only make a second picture of the same state.
+
+Steer clear of all three and the run ends in CLEAR SPACE once no record is active. The speed 4 meteor leaves first and the speed 2 meteor last, so `active_count` falls from 3 to 0 over about three seconds.
 
 <Sources>
 
-Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), instruction descriptions for the operations shown in this lesson. The running experiment supplies the program-specific observations.
+The maintained Meteor Storm source linked through this page supplies the game rules and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
 
 </Sources>

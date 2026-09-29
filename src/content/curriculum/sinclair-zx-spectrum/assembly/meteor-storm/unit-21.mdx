@@ -1,5 +1,5 @@
 ---
-title: "Keep the best time and score"
+title: "Draw once, check twice"
 game: 1
 unit: 21
 ---
@@ -9,39 +9,41 @@ import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-A fast run and a high-scoring run need not be the same run. We will remember separate session records and make a successful finish worth more when it is faster.
+The boosted game does twice as much simulation work, but the player does not need a complete redraw of every falling object between those two steps. We will save that drawing work while preserving both contact decisions.
 
-`best_time` is a word outside the per-run state range. It begins at 65535, hexadecimal `$FFFF`, meaning **no successful time yet**. `best_score` is a byte that begins at zero. Retry clears the run's state, not these records.
+This checkpoint extends each object to seven bytes. Offsets 0..4 retain X, Y, kind, speed and drift. Offsets 5 and 6 remember the X/Y of the image currently on screen. Those can differ from the latest simulation position.
 
-<MeteorExperiment checkpoint="records" bytes={["score","finish_points","best_score","phase"]} words={["elapsed","best_time"]} controls="boost" />
+<MeteorExperiment checkpoint="render-budget" bytes={["boost_time","steps_left","frame_delta","active_count"]} words={["ticks","elapsed"]} poolStride={7} controls="boost" />
 
-The inspector shows the stored sentinel as 65535 until a successful finish. The result screen represents it with dashes. Those are two views of the same “not set” condition, not a 1310-second record to beat.
+## Give state and image separate positions
 
-## Award the finish bonus once
+On the first boosted step, copy current X/Y into image X/Y and leave the old image in place. Advance the simulation and check contact. If the object survives, do not draw its intermediate position.
 
-On success, convert elapsed to whole seconds and compute `max(0,100-seconds)`. Add that many score units. Each unit is ten points, so a 41.84-second run receives 590 finish points. A 20.92-second run receives 800.
+On the second step, erase using the saved image position, advance and check again, then draw the final position. We save one erase and one draw per surviving object per boosted update. At normal speed, a single step still erases and redraws normally.
 
-The subtraction clamps a negative result to zero. The bonus is calculated on the win path, once, before displaying the result. A failed run gets no finish bonus.
+<AssemblyExcerpt checkpoint="render-budget" from="remember_image:" to="image_ready:" />
 
-## Compare words without an old carry
+Open the active-record table and compare X/Y with Image X/Y. The inspector samples between operations, so it may catch a difference. That is useful state, not automatically an erasure fault.
 
-To consider a time record, load elapsed into HL and best_time into DE. Clear carry with `or a`, then use `sbc hl,de`. If the elapsed time is smaller, subtraction borrows and carry is set. Reload elapsed and store it as the new record. Otherwise keep the previous record.
+## Removal cannot wait for a step that may never happen
 
-A score record uses the opposite preference: larger is better. `save_score` compares the byte values and stores the run's score unless it is lower. It is called for both outcomes, so a failed run can still establish a high score.
+A star collected on the first step becomes inactive. The second step will skip it. Therefore its old image must be removed **during that first step**, before clearing kind. Otherwise an inactive star would remain visible forever.
 
-<Question prompt="A failed run lasts only three seconds. Should it replace a successful twenty-second time?">
+A newly spawned object also needs its previous-image coordinates initialised: it has already been drawn at its spawn position before the next update begins. Spawn writes both coordinate pairs together.
 
-No. It did not complete the course. Only the won path considers best_time. The comparison is not enough by itself; the point at which it is called expresses what the record means.
+<Question prompt="Why not erase using the object's latest X/Y after both steps?">
+
+Those coordinates describe where the object has moved, not where its old pixels remain. XOR at the new position would change the wrong pixels and leave the old image behind. Save the image position before changing the simulation state.
 
 </Question>
 
-## Reset the right lifetime
+## Compare a measured budget
 
-Find `state_start` and `state_end`. `new_game` fills that range with zero, then restores the run's initial ship position, life and spawn countdown. The record bytes are outside the range. Moving them inside would make R forget them; failing to clear elapsed inside it would make the next run inherit old time.
+Play the same course with Space held and compare frame_delta with the previous checkpoint. The native route test records occasional 4s before this change and only 1 or 2 afterwards; a starting difference of 1 is possible because a run can begin between the clock's alternate-frame opportunities.
 
-Test a loss and retry: run state should reset. After a successful finish, retry again and check that the records survive. Returning to a title will also keep them once we add that phase. Reassembling deliberately creates a new machine and loses them. These are RAM records for one session, not data saved to tape or disk.
+A browser inspector samples values and may miss a rare 4. Not seeing one in a short run is weaker evidence than recording every update. The native checks cover a full keyboard-driven passage and retain the measured differences. Both versions still check every course step.
 
-The accepted course keeps score within a byte: even twenty boosted stars plus the largest possible bonus is at most 140 units. Adding more rewards later would require checking that bound again.
+The optimisation depends on the XOR contract: no unrelated drawing may overwrite the saved old image between its draw and erase. This is appropriate for our plain playfield and separate HUD. Adding scrolling scenery would require revisiting that assumption.
 
 <Sources>
 

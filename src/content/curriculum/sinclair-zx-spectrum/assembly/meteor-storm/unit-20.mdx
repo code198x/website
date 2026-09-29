@@ -1,5 +1,5 @@
 ---
-title: "Draw once, check twice"
+title: "Hold Space to boost"
 game: 1
 unit: 20
 ---
@@ -9,41 +9,37 @@ import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-The boosted game does twice as much simulation work, but the player does not need a complete redraw of every falling object between those two steps. We will save that drawing work while preserving both contact decisions.
+Boost will trade reaction time for a faster finish and more valuable pickups. Holding Space doubles course progress; releasing it restores normal speed, with no fuel meter or cooldown.
 
-This checkpoint extends each object to seven bytes. Offsets 0..4 retain X, Y, kind, speed and drift. Offsets 5 and 6 remember the X/Y of the image currently on screen. Those can differ from the latest simulation position.
+The `boost` routine reads Space and stores 0 or 1 in `boost_time`. Despite that name, the byte is a held-key flag, not a duration. Main code adds one to select one or two simulation steps for this update.
 
-<MeteorExperiment checkpoint="render-budget" bytes={["boost_time","steps_left","frame_delta","active_count"]} words={["ticks","elapsed"]} poolStride={7} controls="boost" />
+<MeteorExperiment checkpoint="boost" bytes={["boost_time","steps_left","frame_delta","score"]} words={["elapsed","ticks"]} poolStride={5} controls="boost" />
 
-## Give state and image separate positions
+The clock still measures PAL frames. Each simulation step steers, moves objects, checks contact, considers a spawn and checks completion. During boost those operations happen twice before the next outer update. The ship also responds on each step so its steering keeps pace with the accelerated course.
 
-On the first boosted step, copy current X/Y into image X/Y and leave the old image in place. Advance the simulation and check contact. If the object survives, do not draw its intermediate position.
+## Preserve the intermediate position
 
-On the second step, erase using the saved image position, advance and check again, then draw the final position. We save one erase and one draw per surviving object per boosted update. At normal speed, a single step still erases and redraws normally.
+Doubling every meteor's movement in one addition would jump over an intermediate state. Instead, the program repeats one simulation step. After measuring the frames and calling `boost`, the main loop stores `boost_time+1` in `steps_left` and reaches a new label, `race_step`, at the start of the ship and object work. Each pass checks for a fatal meteor contact before allowing another step or a successful finish.
 
-<AssemblyExcerpt checkpoint="render-budget" from="remember_image:" to="image_ready:" />
+At `race_continue`, steps_left is decremented. A nonzero value returns to race_step; zero proceeds to the HUD and then the next frame wait. A win or loss takes its result path immediately.
 
-Open the active-record table and compare X/Y with Image X/Y. The inspector samples between operations, so it may catch a difference. That is useful state, not automatically an erasure fault.
+<AssemblyExcerpt checkpoint="boost" from="race_continue:" to="new_game:" />
 
-## Removal cannot wait for a step that may never happen
+This is not perfect continuous collision for arbitrarily large speeds. It preserves our existing contact checks at both of the two accepted course steps, whose speeds and collision regions have been tested together.
 
-A star collected on the first step becomes inactive. The second step will skip it. Therefore its old image must be removed **during that first step**, before clearing kind. Otherwise an inactive star would remain visible forever.
+## Make rewards use the same decision
 
-A newly spawned object also needs its previous-image coordinates initialised: it has already been drawn at its spawn position before the next update begins. Spawn writes both coordinate pairs together.
+A star contact adds `boost_time+1` score units: one unit normally, two while boosting. Because units represent tens of points, the pickup is worth 10 or 20. The contact still clears the object's kind so the star cannot score again on the second step.
 
-<Question prompt="Why not erase using the object's latest X/Y after both steps?">
+<Question prompt="A meteor hits on the first boosted step, and that step would also exhaust the final event. Do we win, lose, or run the second step?">
 
-Those coordinates describe where the object has moved, not where its old pixels remain. XOR at the new position would change the wrong pixels and leave the old image behind. Save the image position before changing the simulation state.
+We lose. The hull check follows object advancement and precedes spawn/completion handling. The lost path leaves the simulation loop. Neither the second step nor a completion bonus should rescue a fatal contact.
 
 </Question>
 
-## Compare a measured budget
+Hold and release Space while watching boost_time and ticks. Elapsed should keep following real frames. The `controls` line at the bottom now mentions SPACE BOOST, and the HUD shows 1X or 2X. Holding Space to launch does not start the run boosted, because unit 11's title waits for Space to be released before calling `new_game`. Q returns to the title; R retries a result. Starting again through the editor creates a fresh machine.
 
-Play the same course with Space held and compare frame_delta with the previous checkpoint. The native route test records occasional 4s before this change and only 1 or 2 afterwards; a starting difference of 1 is possible because a run can begin between the clock's alternate-frame opportunities.
-
-A browser inspector samples values and may miss a rare 4. Not seeing one in a short run is weaker evidence than recording every update. The native checks cover a full keyboard-driven passage and retain the measured differences. Both versions still check every course step.
-
-The optimisation depends on the XOR contract: no unrelated drawing may overwrite the saved old image between its draw and erase. This is appropriate for our plain playfield and separate HUD. Adding scrolling scenery would require revisiting that assumption.
+The straightforward renderer currently erases and redraws every object on **both** boosted steps. Play into a dense patch and inspect frame_delta. Native execution sometimes records four frames between updates instead of two. That observation is our reason to optimise drawing next; it is not a reason to stop checking the intermediate collisions.
 
 <Sources>
 
