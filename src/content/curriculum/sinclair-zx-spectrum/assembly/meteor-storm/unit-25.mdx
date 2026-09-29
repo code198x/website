@@ -1,0 +1,104 @@
+---
+title: "Give every event a sound"
+game: 1
+unit: 25
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+The impact now sounds like something, but it is the only event that does. Collecting a star, pressing boost and reaching clear space all happen in silence. We will give each of them a sound without writing four more copies of unit 24's loop.
+
+The idea is to treat a sound as **data**. A short list of numbers describes each sound, and one routine plays whichever list it is given. Changing a sound then means changing numbers, not code.
+
+<MeteorExperiment checkpoint="sound-table" bytes={["boost_time","boost_last","frame_delta","score","phase"]} words={["elapsed"]} controls="finished" />
+
+Space launches; O/P steer; hold Space for 2X. To hear each sound, collect a star, press Space during flight, finish the course, or leave the ship still until a meteor hits it. R retries a result; Q returns to the title.
+
+This page's machine is silent. As in unit 24, press **Download tape**, then load the tape into the player on the [Sinclair ZX Spectrum page](/systems/sinclair-zx-spectrum/) with **Sound** ticked; [unit 24](../unit-24/#listen-to-the-tape) has the steps.
+
+## A sound is a list of notes
+
+Each note is two bytes: a half-period count, the n that unit 24 loaded into B, and a cycle count. A sound is any number of notes followed by a single 0. A half-period of 0 would make `djnz` count 256 times, a note none of our sounds needs, so 0 is free to mean "end of sound".
+
+<AssemblyExcerpt checkpoint="sound-table" from="; Period 26*half+51" to="lost:" />
+
+`star_sound` plays 8 cycles with n=40, then 10 cycles with n=30: a short rising chirp. `impact_sound` falls through three notes and ends on n=255, unit 24's pitch.
+
+## One routine plays any list
+
+`play_sound` takes HL pointing at a sound. It loads the border bits into D once, as unit 24 did. Then, for each note, it reads the half-period into C and the cycle count into E, advances HL past both bytes and calls `tone`. A zero half-period returns.
+
+<AssemblyExcerpt checkpoint="sound-table" from="; HL = sound" to="; Period 26*half+51" />
+
+`tone` is unit 24's cycle loop with one change. It cannot use `ld b,IMPACT_HALF` any more, because the half-period now arrives in C. `ld b,c` copies it instead, and takes 4 T-states where `ld b,n` took 7. It appears once in each half, so a period is now 26n+51 T-states: 6 fewer than before. The register comments above each routine record what it needs and what it changes, so a caller knows which values to save.
+
+The cycle count lives in E, a single byte, so a note can have 1 to 255 cycles. `arrival_sound` needs 250 for its last note; a longer note would have to be split into two.
+
+## Check the table's arithmetic
+
+Work each note out the same way as unit 24: period 26n+51, frequency 3,500,000 ÷ period, length cycles × period.
+
+| Sound | Notes (n, cycles) | Pitches | Length |
+|---|---|---|---|
+| star | 40,8 then 30,10 | 3208 Hz, 4212 Hz | 17,038 T-states, 4.9 ms |
+| boost | 100,4 then 70,6 | 1320 Hz, 1871 Hz | 21,830 T-states, 6.2 ms |
+| arrival | 127,63; 100,79; 84,94; 62,250 | 1044, 1320, 1566, 2105 Hz | 1,046,508 T-states, 299 ms |
+| impact | 150,30; 200,30; 255,60 | 886, 667, 524 Hz | 676,920 T-states, 193 ms |
+
+Take the star's first note: 26×40+51 = 1091 T-states, and 3,500,000 ÷ 1091 is 3208 Hz. Eight cycles are 8,728 T-states; the second note adds 10 × 831 = 8,310, for 17,038 in all. Reading the table adds under 100 T-states per note.
+
+The arrival notes climb C, E, G and the C above: a C major arpeggio, as a fanfare. The impact falls from about A through E to C. Emu198x audio captures measured every pitch within 2% of the table. The highest pitches read slightly low, because a capture at 44.1 kHz has only about ten samples in each of their cycles.
+
+## Four events, one call
+
+Each event loads HL with its sound and calls `play_sound`:
+
+- **Star.** In the pool loop, after the score is added. B is counting the pool's slots, and `play_sound` changes BC, so the call is wrapped in `push bc` and `pop bc`.
+- **Impact.** In the pool loop too, where `impact_sound` was called before, with the same `push bc` and `pop bc`.
+- **Arrival.** In `won`, after the finish bonus and records are settled and `phase` is set to 3. The run's time and score are fixed before the sound starts, so 299 ms of fanfare cannot change them.
+- **Boost.** In `boost`, which needs more thought.
+
+## Sound on the press, not the hold
+
+`boost` runs at every update and stores 1 in `boost_time` while Space is held. Calling `play_sound` whenever it saw 1 would chirp 25 times a second for as long as you hold boost. The chirp should mark the moment boost starts: the update where Space is held now but was not held at the previous update. That change is called an **edge**.
+
+<AssemblyExcerpt checkpoint="sound-table" from="boost:" to="steer:" />
+
+`boost_last` remembers the previous update's value. The routine keeps the new value in C, loads the old one into B, stores the new one for next time and compares them. If they are equal, nothing changed and it returns. If they differ and the new value is 0, Space has just been released, and it returns too. Only a change from 0 to 1 reaches the sound.
+
+The last instruction is `jp play_sound`, not `call`. `play_sound` ends with `ret`, which returns straight to whoever called `boost`. A `call` followed by `ret` would do the same work with an extra return.
+
+`boost_last` sits inside the run's state, so a new run starts with it clear. The title waits for Space to be released before a run begins, so the Space that launches never counts as a boost press.
+
+<Question prompt="Hold Space for three seconds, let go for one, then hold it for two more. How many boost sounds do you hear?">
+
+Two. The first update with Space held plays the chirp; the 74 held updates after it compare equal with `boost_last` and return. Letting go is an edge, but a falling one, so `or a` finds zero and returns. Pressing again is a rising edge and plays the second chirp.
+
+</Question>
+
+## What a sound costs
+
+`play_sound` does not return until its last cycle ends, so the game waits while a sound plays. Unit 24's impact could afford that because play had ended. A star and a boost press happen in the middle of an update.
+
+An update has two frames: 2 × 69,888 = 139,776 T-states. A star takes 17,038 of them, about 12%. A boost press takes 21,830, about 16%. The routes the course was checked with still keep their two-frame cadence, with the same times, scores and records as before. That tells us these sounds fit in the time those routes had to spare. It is not a guarantee: a dense stretch of the storm, with boost doubling the work, has less to spare.
+
+<Question prompt="Predict: change the star sound to `star_sound: defb 40,80, 0`. How long does a star take now, and what could that do to `frame_delta`?">
+
+One note of 80 cycles at 1091 T-states is 87,280 T-states, about 62% of an update and five times the old chirp. An update that collects a star has that much less time for moving and drawing. If its work runs past two frames, it misses its slot on the frame clock and the next update waits for the one after, so `frame_delta` shows 4.
+
+We flew the whole course with Space held, collecting stars, in both versions. With the original chirp every update after the first took 2 frames. With the long one, ten updates took 4. The clock stayed honest, because `elapsed` adds every frame that passed, and that is the catch: the finish time grew by 15 frames, 0.3 seconds, for the same steering. A slow sound costs the player time.
+
+</Question>
+
+Try it with Space held while collecting stars and watch `frame_delta`. The inspector samples values, so it may miss a single 4; a few stars make one more likely to show. Then restore the original line.
+
+Arrival and impact block for longer, 299 ms and 193 ms, but play has already ended when they start. A later unit measures the cost of in-play sound properly and spreads a sound across frames so the storm keeps moving while it plays.
+
+<Sources>
+
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), T-state counts for LD, OR, OUT, DJNZ, JR and JP, and CALL/RET behaviour. Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 23](https://worldofspectrum.org/ZXBasicManual/zxmanchap23.html), port 254 output bits. Chris Smith, *The ZX Spectrum ULA: How to Design a Microcomputer* (ZX Design and Media), p. 225, the 69,888 T-state frame. The maintained Meteor Storm source linked through this page supplies the routines and sound tables; the pitch measurements come from Emu198x audio captures of this program.
+
+</Sources>

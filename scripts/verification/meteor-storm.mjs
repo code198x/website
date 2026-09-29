@@ -6,6 +6,8 @@ const base=process.argv[2]||'http://127.0.0.1:1986',out=process.argv[3]||'/tmp/m
 await fs.mkdir(out,{recursive:true});
 const root=path.resolve(import.meta.dirname,'../..'),samples=process.env.CODE_SAMPLES_PATH||path.resolve(root,'../code-samples');
 const route='/systems/sinclair-zx-spectrum/assembly/meteor-storm';
+// The closing lesson: the last unit, which downloads the finished game's files.
+const LAST=26;
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const context=await browser.newContext({viewport:{width:1280,height:1000}});
 const page=await context.newPage(),errors=[],checks=[];
@@ -18,7 +20,7 @@ async function open(n){
 async function run(){await page.waitForFunction(()=>document.querySelector('.sandbox')?.dataset.sandboxReady==='true'&&document.querySelector('.meteor-experiment')?.dataset.ready==='true');await page.locator('.sandbox-run').click();await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running')||document.querySelector('.sandbox-status').dataset.state==='error',{},{timeout:20000});assert((await page.locator('.sandbox-status').textContent()).startsWith('Running'),await page.locator('.sandbox-status').textContent()+' '+await page.locator('.sandbox-diagnostics').textContent());}
 async function key(name,ms=100){await page.locator('.sandbox-screen').focus();await page.keyboard.down(name);await page.waitForTimeout(ms);await page.keyboard.up(name);}
 try{
- for(let n=Number(process.env.METEOR_FIRST??1);n<=24;n++){
+ for(let n=Number(process.env.METEOR_FIRST??1);n<=LAST;n++){
   await open(n);
   const prose=await fs.readFile(path.join(root,`src/content/curriculum/sinclair-zx-spectrum/assembly/meteor-storm/unit-${String(n).padStart(2,'0')}.mdx`),'utf8');
   const checkpoint=prose.match(/<MeteorExperiment checkpoint="([^"]+)"/)[1];
@@ -28,7 +30,7 @@ try{
   if(await page.locator('.sandbox-companion').count())assert(await page.locator('.sandbox-companion').inputValue()===await fs.readFile(directory+'/assets.inc','utf8'),`Companion ${n}`);
   await run();await page.waitForFunction(()=>Boolean(window.meteorReadings));
   assert(await page.locator('h1').count()===1,`Heading ${n}`);
-  if(n<24)assert((await page.locator('a.nav-next').getAttribute('href')).includes(`unit-${String(n+1).padStart(2,'0')}`),`Next ${n}`);
+  if(n<LAST)assert((await page.locator('a.nav-next').getAttribute('href')).includes(`unit-${String(n+1).padStart(2,'0')}`),`Next ${n}`);
   else assert(await page.locator('a.nav-next').count()===0,'Final next');
   if(n===1){
    assert(JSON.stringify((await page.evaluate(()=>window.meteorReadings.values)).slice(0,4))==='[129,0,64,128]','Shift');
@@ -59,6 +61,28 @@ try{
    await key('q');await page.waitForFunction(()=>window.meteorReadings.named.phase===0);
   }
   if(n===24){
+   // The tone plays inside the pool loop at contact; the result must still follow.
+   await key(' ');await page.waitForFunction(()=>window.meteorReadings.named.phase===1);
+   await page.waitForFunction(()=>window.meteorReadings.named.phase===2,{},{timeout:10000});
+   assert((await page.evaluate(()=>window.meteorReadings.named.hull))===0,'Impact hull');
+   // Every speaker write ORs in `border`, so a red border survives the impact.
+   // Set the value directly: fill() types this 900-line source slowly enough to time out.
+   await page.locator('.sandbox-source').evaluate((editor,value)=>{editor.value=value;editor.dispatchEvent(new Event('input',{bubbles:true}));},expected.replace('border: defb 0','border: defb 2'));await run();
+   await page.waitForFunction(()=>window.meteorReadings.named.border===2);
+   await key(' ');await page.waitForFunction(()=>window.meteorReadings.named.phase===1);
+   await page.waitForFunction(()=>window.meteorReadings.named.phase===2,{},{timeout:10000});await page.waitForTimeout(400);
+   const rgb=await page.locator('.sandbox-screen').evaluate(canvas=>Array.from(canvas.getContext('2d').getImageData(8,8,1,1).data));
+   assert(rgb[0]>150&&rgb[1]<60&&rgb[2]<60,`Border after impact ${rgb}`);
+   await page.locator('.sandbox-revert').click();
+  }
+  if(n===25){
+   // Boost sounds on the press edge: boost_last follows the held key.
+   await key(' ');await page.waitForFunction(()=>window.meteorReadings.named.phase===1);
+   await page.locator('.sandbox-screen').focus();await page.keyboard.down(' ');
+   await page.waitForFunction(()=>window.meteorReadings.named.boost_last===1&&window.meteorReadings.named.boost_time===1);
+   await page.keyboard.up(' ');await page.waitForFunction(()=>window.meteorReadings.named.boost_last===0||window.meteorReadings.named.phase!==1);
+  }
+  if(n===LAST){
    for(const [selector,name] of [['.sandbox-download-tape','meteor-storm.tap'],['.sandbox-download-source','meteor-storm.asm'],['[data-download-companion]','assets.inc']]){
     const pending=page.waitForEvent('download');await page.locator(selector).click();await(await pending).saveAs(out+'/'+name);
    }
@@ -66,17 +90,17 @@ try{
   }
   checks.push(`Lesson ${n}: maintained files, running browser program, actual RAM and navigation`);console.log('PASS',n);
  }
- for(const theme of ['light','dark'])for(const n of [1,5,10,12,22,24]){
+ for(const theme of ['light','dark'])for(const n of [1,5,10,12,22,24,25,26]){
   await open(n);await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);await page.emulateMedia({colorScheme:theme,reducedMotion:'reduce'});
   const violations=(await new AxeBuilder({page}).include('main').analyze()).violations;await fs.writeFile(`${out}/axe-${n}-${theme}.json`,JSON.stringify(violations,null,2));assert(!violations.length,`Axe ${n} ${theme}: ${violations.map(v=>v.id)}`);
  }
  for(const width of [390,1280,1920]){
   await page.setViewportSize({width,height:1000});
-  for(const n of [1,5,10,12,22,24]){await open(n);assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),`Overflow ${n} ${width}: ${JSON.stringify(await page.evaluate(()=>Array.from(document.querySelectorAll('main *')).filter(el=>el.getBoundingClientRect().right>innerWidth).map(el=>({tag:el.tagName,class:el.className,width:el.getBoundingClientRect().width}))))}`);}
+  for(const n of [1,5,10,12,22,24,25,26]){await open(n);assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),`Overflow ${n} ${width}: ${JSON.stringify(await page.evaluate(()=>Array.from(document.querySelectorAll('main *')).filter(el=>el.getBoundingClientRect().right>innerWidth).map(el=>({tag:el.tagName,class:el.className,width:el.getBoundingClientRect().width}))))}`);}
   await open(5);await page.screenshot({path:`${out}/lesson-05-${width}.png`,fullPage:true});
  }
  await open(10);await run();await page.locator('[data-break]').click();await page.waitForFunction(()=>document.querySelector('.meteor-debug-state').textContent.includes('Paused'));await page.locator('.meteor-experiment').screenshot({path:out+'/collision-debugger.png'});
- checks.push('Source and companion edits/revert, missing includes, shift prediction, steering, collision stepping, loss/retry/title and file downloads pass');
+ checks.push('Source and companion edits/revert, missing includes, shift prediction, steering, collision stepping, loss/retry/title, border kept through the impact tone, boost press edge and file downloads pass');
  checks.push('Representative lesson types pass axe in both themes and fit mobile, desktop and wide viewports');
  assert(!errors.length,errors.join('\n'));await fs.writeFile(out+'/results.json',JSON.stringify({base,checks,errors},null,2)+'\n');
 }catch(error){await page.screenshot({path:out+'/failure.png',fullPage:true});console.error('Browser errors:',errors);console.error('Status:',await page.locator('.sandbox-status').textContent());console.error('Debug:',await page.locator('.meteor-debug-state').allTextContents());throw error;}finally{await browser.close()}
