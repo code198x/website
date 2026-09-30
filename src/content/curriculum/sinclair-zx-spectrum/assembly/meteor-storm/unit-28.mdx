@@ -1,67 +1,202 @@
 ---
-title: "Keep and share the game"
+title: "Colour the storm by place"
 game: 1
 unit: 28
 ---
 
 import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Figure from '@components/Figure.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-The browser experiment proves that our code can run when placed directly into a prepared machine. A distributable tape needs a different check: loading through the Spectrum's ROM from a fresh start, then playing with the sound on.
+Meteor Storm has had colour since its first title screen. The time and speed readings at the top are bright cyan, and everything else is bright white on black. Two bytes in `clear` make that happen, and in this lesson we read them bit by bit.
 
-Use unit 27's program: four sounds, with the star, boost and impact playing while the loop waits for the frame, and a ship that breaks apart when it is hit. This lesson adds no new game code. First play it, then save the files you intend to share.
+Then we give the storm itself some colour. The plan most of us would try first, a colour for each meteor and one for the ship, does not work on a Spectrum, and we will see exactly how it fails. What works is to colour the screen by place: the storm runs from cyan at the top through green and yellow to red just above the ship, and every meteor takes on the colour of wherever it is. A meteor that enters cyan turns green, yellow and red as it falls.
 
-<MeteorExperiment checkpoint="debris" bytes={["phase","score"]} words={["elapsed","best_time"]} controls="finished" />
+<MeteorExperiment checkpoint="colour-bands" bytes={["phase","ship_x"]} words={["elapsed"]} controls="finished" />
 
-## Keep source and data together
+Space launches; O/P steer; hold Space for 2X. One hit ends the run: the border flashes, the ship breaks apart for a second, then the result appears. At the result R retries and Q returns to the title.
 
-Download **source** and **assets.inc**. The source contains the program, its sound tables and the starting records for the pieces; the companion contains the pre-shifted artwork, including the eight pieces cut from the ship, and the prepared course. Keep both in one directory. Saving only the assembly file leaves its include dependency missing.
+To watch the bands work, launch and leave the ship still. The first meteor falls through cyan, green, yellow and red and hits the white ship about 2.2 seconds after launch. As it crosses into the ship's rows its lower half turns white.
 
-You can also download a tape assembled from the current contents of both editors. Edits that have not been run yet are still included in that download, so test the version you intend to distribute. Revert restores both editors.
+## What you should see
 
-For an independent local build:
+<Figure src="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-28/colour-bands-flight.png" alt="Meteor Storm in flight. The HUD is cyan with a white score line. Below it one meteor is cyan on top and green underneath, two are green on top and yellow underneath, one is yellow on top and red underneath, and one lower down is entirely red. A star is green above yellow. The ship at the bottom is white." caption="Eight seconds into a run. Each meteor has the colour of the rows it is in, and four of them, with the star, are crossing from one band into the next." />
 
-```sh
-asm198x --dialect pasmo --cpu z80 --tapbas meteor-storm.asm -o meteor-storm.tap
-```
+The HUD looks as it always has: cyan time and speed, a white score. Below it the storm is banded. Meteors and stars are cyan near the top, then green, then yellow, then red just above the ship. The ship, the controls line and anything that lands beside the ship are white. Nothing changes colour as it moves sideways; colour changes only on the way down.
 
-Or use upstream Pasmo:
+The title and result screens are banded too. We come back to them once we have seen why.
 
-```sh
-pasmo --tapbas meteor-storm.asm meteor-storm.tap
-```
+## The colours the game already has
 
-The tape contains a small BASIC loader and the machine-code block. You do not need to author a BASIC game to use that loading convention. The code begins at 32768 and establishes its own stack, interrupt route and border colour when entered.
+Here is `clear` from [unit 27](../unit-27/)'s program:
 
-## Load what you will share
+<AssemblyExcerpt checkpoint="debris" from="clear:" to=" ; B=row, DE=string." />
 
-The experiment above plays sound when you tick **Sound**, but it starts the code directly rather than loading a tape. The site's Spectrum player does what this check needs: it loads a tape through the ROM on a fresh 48K machine, with sound. Open the [Sinclair ZX Spectrum page](/systems/sinclair-zx-spectrum/), press the play button under its screen and tick **Sound**, which starts unticked. Press **Choose program or disk**, pick `meteor-storm.tap`, then press **Start**. The ROM loads the tape on its own; you will hear the loading tones. Click the screen before using the keys.
+The first six lines fill the bitmap with zeros, as they have since [unit 1](../unit-01/): the `ldir` fill writes a byte, then copies each byte onto the next. The next five do the same for a second area of memory, starting at $5800, with the value $47. The last loop writes $45 over the first 64 bytes of that area.
 
-On the desktop, start a fresh 48K Spectrum emulator, mount `meteor-storm.tap`, enter `LOAD ""` and start tape playback. In Emu198x the equivalent command is:
+That area is the **attribute map**. The bitmap at $4000 says which pixels are lit; the attributes say what colour they are. The screen is 24 rows of 32 character cells, each 8 by 8 pixels, and each cell has one attribute byte: 768 bytes in all, from $5800 to $5AFF. Unlike the bitmap, whose rows [unit 3](../unit-03/) had to untangle, the attribute map is stored in plain order. Row 0's 32 bytes come first, then row 1's, and so on, so the cell in row r and column c is at $5800 + 32r + c. The first 64 bytes are rows 0 and 1, the two HUD rows.
 
-```sh
-emu198x-spectrum --machine spectrum_48k --tape meteor-storm.tap --autoload-tape --scale 3
-```
+Each attribute byte is split into four fields:
 
-Confirm that the title appears, Space launches after release, O/P steer and held Space boosts. Listen for each event: a chirp for a star, a lower one when you press Space in flight (and none while you keep holding it) and a rising fanfare in clear space. Let a meteor hit the ship and watch the crash: the border flashes red, the storm freezes, and the ship breaks into eight pieces that fly up and land during a rattling, falling tone. About a second later the result appears with a black border and no pieces left. If the border stays red, or the result cuts in at once, you are not running this lesson's program. Retry after the crash; then return to the title. Complete a run when you can and check that the time and score records survive another retry within that session.
+| Bits | Field | Meaning |
+|---|---|---|
+| 7 | FLASH | 1 swaps INK and PAPER over and over |
+| 6 | BRIGHT | 1 shows both colours at a brighter level |
+| 5 to 3 | PAPER | Colour 0 to 7 for unlit pixels |
+| 2 to 0 | INK | Colour 0 to 7 for lit pixels |
 
-A snapshot saves a machine's state and can be useful while investigating a fault. It is not the same evidence as a fresh ROM load of the tape. A snapshot can preserve an already configured stack, interrupt mode or record that a fresh launch has not established yet.
+The colour numbers are the ones printed on the Spectrum's number keys: 0 black, 1 blue, 2 red, 3 magenta, 4 green, 5 cyan, 6 yellow and 7 white. So a byte's value is 128×FLASH + 64×BRIGHT + 8×PAPER + INK. Now decode the two bytes:
 
-<Question prompt="You set a best time, download the tape, reset, and load it again. Should that record still be there?">
+| Byte | Binary | FLASH | BRIGHT | PAPER | INK |
+|---|---|---|---|---|---|
+| $47 | 0100 0111 | 0, steady | 1, bright | 000, black | 111, white |
+| $45 | 0100 0101 | 0, steady | 1, bright | 000, black | 101, cyan |
 
-No. Tape download assembles the source and initial data, not a recording of the running machine's RAM. Session records begin unset on a fresh program launch. Saving records across sessions would require a separate persistence feature.
+$47 is bright white INK on black PAPER, written to all 768 cells. $45 is bright cyan INK on black PAPER, written over rows 0 and 1. The score, on row 2, keeps the white. That is the whole of the game's colour until now.
+
+Why cyan for the readings? They are the only part of the screen that is not the storm. A different colour sets them apart, so a glance up finds the time without searching among the meteors for it.
+
+<Question prompt="Which byte would make the HUD bright yellow INK on blue PAPER?">
+
+BRIGHT is 64, PAPER blue is 1 × 8 = 8 and INK yellow is 6: 64 + 8 + 6 = 78, which is $4E, or 0100 1110 in binary. The whole of rows 0 and 1 would turn blue, because PAPER colours every unlit pixel in a cell, not only the space around the text.
 
 </Question>
 
-## Choose a next experiment
+## Colour belongs to cells, not objects
 
-Keep a working copy before changing the game. Try one design change with a prediction: a different drift cadence, an altered event spacing, revised star artwork or a new sound table. State which behaviour should change and which should remain intact, then retest collision, retry and completion. For a sound, work out its length in T-states first. A star or boost sound plays in the time an update leaves over; one longer than that is split across several waits and flutters.
+That last answer shows the rule that shapes everything else here. An attribute colours a whole 8 by 8 cell. Every lit pixel in the cell is the cell's INK, and every unlit one is its PAPER. There is no way to give two pixels in the same cell different INKs.
 
-We have built a game whose positions and rules live in state, whose picture is drawn from that state, and whose progress is measured separately from time. Its sounds are data too, and the ones heard in flight play in time the game would otherwise spend waiting. Even its crash is state: eight small records, moved by one rule and drawn from the ship's own artwork. Those distinctions will still matter when another game needs a different renderer, more objects or a different machine.
+Our sprites do not line up with cells. Since [unit 2](../unit-02/) the ship and meteors have been drawn at any pixel position, so a meteor 24 pixels wide and 12 tall usually covers parts of four columns of cells and two or three rows. To colour one meteor red we would have to write red into every cell it touches. As it moved, its colour would jump from cell to cell in 8-pixel steps, the old cells would stay red after it left, and any other object sharing one of its cells would turn red with it. Spectrum players call this **colour clash**.
+
+You can try it. In `draw_ship`, after `ld (ship_visible),a`, add these nine lines:
+
+```asm
+ ld a,(ship_x)
+ rrca
+ rrca
+ rrca
+ and 31          ; ship_x/8: the column of the ship's left cell
+ add a,$80       ; row 20 starts at $5800+20*32 = $5A80
+ ld l,a
+ ld h,$5A
+ ld (hl),$46     ; bright yellow INK on black PAPER
+```
+
+This is the X half of unit 3's `pixel_address`. Three `rrca` instructions move X's bits three places to the right, with the three lowest wrapping round to the top, and `and 31` clears those three. What is left is X divided by 8, the column of the cell the ship's left edge is in. The ship's top half sits in character row 20, whose first cell is at $5A80, so adding the column to $80 in L and putting $5A in H gives that cell's attribute address. `ld (hl),$46` writes yellow there on every update.
+
+<Question prompt="Launch, then steer left and right. Which parts of the ship will be yellow?">
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-28/colour-bands-clash-prediction.png" alt="Meteor Storm in flight with the extra lines. The ship's upper half is yellow and its lower half is white. Meteors above are green and red, a star is cyan." caption="The prediction after steering left and back. The ship's top half is yellow, because each cell in row 20 it has touched was written yellow; its bottom half, in row 21, was never written." />
+
+Only part of the ship. Each update writes one cell: row 20, the column of the ship's left edge. The ship is 24 pixels wide and two cells tall, so it covers three or four cells in row 20 and the same in row 21. At launch only one of those cells has been written.
+
+Steer, and the yellow spreads, because a cell keeps its attribute until something writes it again. Every row 20 cell the ship's left edge has passed over stays yellow after the ship has gone. You cannot see those cells while they are empty, since yellow INK with nothing drawn shows only the black PAPER, but a meteor that reaches row 20 in one of them turns yellow there. The colour belongs to the place, and it stains whatever passes through. Row 21 never turns yellow, so the ship stays split along the row line.
+
+Remove the nine lines before going on.
+
+</Question>
+
+To colour the ship properly we would have to write all six or eight of its cells on every move, put back whatever colour each cell had before, and still dye any meteor that came close. Many Spectrum games sidestepped the problem by turning it round.
+
+## Colour by place
+
+Instead of giving objects colours, give places colours. Each character row of the screen gets one colour, and whatever passes through a row takes it on. Every object in a row then shares that row's INK, on black PAPER everywhere, so two objects can never disagree about a cell. There is nothing to clash.
+
+This lesson's `clear` does that. The bitmap half is unchanged; the attribute half now reads a table:
+
+<AssemblyExcerpt checkpoint="colour-bands" from=" ; Colour by place:" to=" ; B=row, DE=string." />
+
+It is two loops, one inside the other. HL walks the attribute map from $5800, DE walks the table `row_colours`, and C counts the 24 rows. For each row, `ld a,(de)` fetches that row's byte and `ld b,32` sets up a count of cells. `clear_cell` writes A to the cell at HL, moves HL on and repeats with `djnz` until the row is done. Then `inc de` moves to the next row's byte, and `dec c` with `jr nz` runs the next row until all 24 are written.
+
+Nothing computes a row's address. The attribute map is in plain row order, so after 32 cells HL is already at the start of the next row, and after 768 it has reached $5B00 and stops. The old `clear_top` loop and its label are gone.
+
+The table sits with the program's other data:
+
+<AssemblyExcerpt checkpoint="colour-bands" from="; One attribute byte per character row" to="; Debris records:" />
+
+Each `defb` line is one band:
+
+| Rows | Byte | Colour | What is there |
+|---|---|---|---|
+| 0 and 1 | $45 | cyan | Time and speed, as before |
+| 2 | $47 | white | The score, as before |
+| 3 to 6 | $45 | cyan | Where meteors and stars enter |
+| 7 to 10 | $44 | green | |
+| 11 to 14 | $46 | yellow | |
+| 15 to 19 | $42 | red | Just above the ship |
+| 20 to 23 | $47 | white | The ship on rows 20 and 21, landed pieces on row 22, the controls on row 23 |
+
+Every byte is $40 plus an INK number: BRIGHT on, black PAPER, FLASH off, just like the two old bytes. The storm runs from cool at the top to hot just above the ship, so the colour tells you how close a meteor is. The ship's rows stay white, the brightest colour, so the ship stands out from everything falling towards it. Blue, INK 1, is left out: on black PAPER it is too dark to see a meteor clearly.
+
+<Question prompt="Two meteors fly side by side in row 12. Can one be yellow and the other green? And can one meteor be two colours at once?">
+
+The two meteors are both yellow. Every cell in row 12 has the same byte, $46, and the program never writes another, so anything drawn in row 12 is yellow.
+
+One meteor can be two colours, though, if it covers two rows with different bytes. A meteor from Y 80 to Y 91 has its top eight pixel rows in character row 10, which is green, and its bottom four in row 11, which is yellow. The split runs exactly along the line between the rows.
+
+</Question>
+
+## Band edges are not clash
+
+Look again at the flight picture. Several meteors are two colours, split straight across: cyan over green, green over yellow, yellow over red. A meteor is 12 pixels tall and each band is 32 or 40, so on its way down a meteor spends a few updates across each band edge, showing the colour above on its upper part and the colour below on its lower part.
+
+That is not clash. The split is at a fixed place on the screen, the same for every object that crosses it, and it moves smoothly through the meteor as the meteor falls. No object changes another's colour, and nothing jumps as an object moves sideways, because every cell in a row has the same colour. The edge is part of the picture, like a line painted across the playfield.
+
+## Written once, never in flight
+
+Nothing else in the program writes attributes. `draw_sprite` and `text` change only the bitmap, $4000 to $57FF, so the colours `clear` writes stay until the next `clear`. The meteors, stars, ship and pieces are drawn, moved and erased exactly as before. Flight, collision, scoring and timing are unchanged, and the keyboard routes we have checked the game with finish with the same frames, times and scores as unit 27's program.
+
+The colours cost something once per screen. Counting T-states with Zilog's figures, as in [unit 24](../unit-24/):
+
+| Part | T-states |
+|---|---|
+| Set-up: `ld hl`, `ld de`, `ld c` | 27 |
+| One cell: `ld (hl),a` 7, `inc hl` 6, `djnz` 13 | 26, or 21 for the last in a row |
+| One row: `ld a,(de)`, `ld b,32`, 32 cells, `inc de`, `dec c`, `jr nz` | 863 |
+| All 24 rows, set-up included | about 20,700 |
+
+The old code wrote the map in about 18,000: the `ldir` fill of 767 bytes takes about 16,100, and `clear_top` about 1,900 more. So the table costs about 2,700 T-states more than the two fills. The attribute map is in the 16K the ULA shares with the processor, so some of those writes wait a few T-states while the picture is drawn, and the real figure is a little higher. A frame is 69,888 T-states, so the whole colour pass takes under a third of one.
+
+That is why the work belongs in `clear` and not in the update. Nothing moves the colours during flight, so writing them again every update would repeat 20,700 T-states of work, about 15% of the update's 139,776, to write exactly the same bytes.
+
+It also stays out of the run's time. `new_game` calls `clear` first and only at its end records the current `frames` byte in `last_frame`, the baseline [unit 18](../unit-18/) measures elapsed time from. The colours are written before the run's clock starts, so the extra 2,700 T-states never reach the time on the HUD.
+
+`row_colours` sits among the program's texts, outside the run's block of memory from [unit 11](../unit-11/), so `new_game`'s zero fill cannot touch it and a retry uses the same colours.
+
+## The title and the result take the bands
+
+`clear` is not only called by `new_game`. The title calls it before it draws its lines, and so does `result`. Each screen therefore gets the same bands, and each line of text takes the colour of the row it is printed on.
+
+On the title, METEOR STORM and the one-line goal are cyan, the O and P keys green, the boost hint yellow, the star and boost values and the finish-bonus line red, and SPACE TO LAUNCH white. On a result, SHIP DESTROYED or CLEAR SPACE is cyan, the FLIGHT ENDED line green, the finish bonus and R RETRY yellow, and the best time and score red. None of those colours was chosen for the text: they come from where each line already was.
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-28/colour-bands-debris.png" alt="The destroyed phase in colour. The HUD is cyan and white. Ship pieces in the air are yellow and red, depending on their height. The meteor that hit the ship is red on top and white below. Another meteor lower right is white, and the other meteors are green and yellow." caption="Twenty-four frames after contact. The pieces take the colours of the bands they are in, and the meteor that hit the ship is red above the row line and white below it." />
+
+The destroyed phase from unit 27 needed no change either. Its pieces are drawn with `draw_sprite` like everything else, so as they fly up through the red and yellow bands they turn red and yellow, and they are white again when they land on row 22. The red border flash is unchanged: the border is written through port $FE, not the attribute map.
+
+## Experiments
+
+Keep a working copy before each change, then press **Revert** when you have finished.
+
+<Question prompt="Subtract $40 from every byte in `row_colours`, so $45 becomes $05 and so on. What changes, and what stays the same?">
+
+Subtracting $40 clears bit 6, BRIGHT, and leaves INK, PAPER and FLASH alone. Every band keeps its colour but is shown at the Spectrum's normal level instead of its bright one: the same gradient, dimmer. White becomes a light grey, so the ship and the score stand out less. Black PAPER looks the same either way.
+
+</Question>
+
+<Question prompt="Put the table back, then make row 20's byte $42 instead of $47. Where will you see red that was not red before?">
+
+The first `defb $47` in the last line of the table is row 20. Making it $42 puts row 20 in the red band. The ship's top half, in row 20, turns red with the rows above it; its bottom half, in row 21, stays white, split along the row line. The title's SPACE TO LAUNCH is also printed on row 20, so it turns red too. Everything a table byte colours depends on what is drawn in that row on every screen, not only in flight.
+
+</Question>
+
+Then design a palette of your own. Change the bytes, keeping each one $40 plus an INK number, and judge the result against three questions. Can you still read a meteor in every band? Can you tell the HUD from the storm? Does the ship stand out from what is about to hit it? Try a row of $40 before you decide: black INK on black PAPER hides every meteor in that row, yet the game still ends when one hits you, because the collision test from [unit 10](../unit-10/) reads positions, never colours.
+
+The game is complete again, now in colour. [The next lesson](../unit-29/) packages it as a tape and checks it on a fresh machine.
 
 <Sources>
 
-The maintained Meteor Storm source linked through this page supplies the game rules, sound tables and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
+Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 16](https://worldofspectrum.org/ZXBasicManual/zxmanchap16.html), colours: 24 lines of 32 character positions, one INK and one PAPER for each position, the colour numbers 0 to 7, and an attribute value as 128 for FLASH plus 64 for BRIGHT plus 8×PAPER plus INK. [Chapter 24](https://worldofspectrum.org/ZXBasicManual/zxmanchap24.html), the memory: the attributes stored line by line at 22528 ($5800), after the display file at 16384. Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), T-state counts for LD, INC, DEC, DJNZ, JR and LDIR, and RRCA. Chris Smith, *The ZX Spectrum ULA: How to Design a Microcomputer* (ZX Design and Media), p. 225, the 69,888 T-state frame. The maintained Meteor Storm source linked through this page supplies `clear` and `row_colours`. The screenshots are native Emu198x captures of this program and of the clash prediction.
 
 </Sources>

@@ -7,7 +7,7 @@ await fs.mkdir(out,{recursive:true});
 const root=path.resolve(import.meta.dirname,'../..'),samples=process.env.CODE_SAMPLES_PATH||path.resolve(root,'../code-samples');
 const route='/systems/sinclair-zx-spectrum/assembly/meteor-storm';
 // The closing lesson: the last unit, which downloads the finished game's files.
-const LAST=28;
+const LAST=29;
 // METEOR_FIRST starts at a later lesson. Anything but a lesson number would skip every lesson and still pass.
 const FIRST=Number(process.env.METEOR_FIRST??1);
 if(!Number.isInteger(FIRST)||FIRST<1||FIRST>LAST)throw Error(`METEOR_FIRST must be a lesson number from 1 to ${LAST}, not ${process.env.METEOR_FIRST}`);
@@ -128,6 +128,27 @@ try{
    assert(lit===0,`Pieces left on the result: ${lit} lit pixels`);
    await fs.writeFile(out+'/debris-result.png',Buffer.from(await page.locator('.sandbox-screen').evaluate(canvas=>canvas.toDataURL().split(',')[1]),'base64'));
   }
+  if(n===28){
+   // Colour by place: in flight every cell of each character row holds that row's row_colours byte.
+   // Capture the runner as the program restarts, then read RAM without writing to it.
+   const bundle=(await fs.readdir(path.join(root,'dist/_astro'))).find(name=>/^spectrum-runner\..*\.js$/.test(name));
+   await page.evaluate(async bundle=>{
+    const exports=await import('/_astro/'+bundle);
+    const Runner=Object.values(exports).find(value=>typeof value==='function'&&value.prototype.observeFrame&&value.prototype.readMemory);
+    const observe=Runner.prototype.observeFrame;Runner.prototype.observeFrame=function(callback){window.meteorRunner=this;return observe.call(this,callback);};
+   },bundle);
+   await page.evaluate(()=>{window.meteorRunner=null;window.meteorReadings=null;});await run();
+   await page.waitForFunction(()=>Boolean(window.meteorRunner&&window.meteorReadings));
+   await key(' ');await page.waitForFunction(()=>window.meteorReadings.named.phase===1);
+   for(const wait of [200,1200]){
+    await page.waitForTimeout(wait);
+    const map=await page.evaluate(()=>{const r=window.meteorRunner,sy=window.meteorReadings.symbols;return {phase:r.readMemory(sy.phase,1)[0],bands:Array.from(r.readMemory(sy.row_colours,24)),attributes:Array.from(r.readMemory(0x5800,768))};});
+    assert(map.phase===1,`Still in flight ${map.phase}`);
+    assert(map.bands.join()==='69,69,71,69,69,69,69,68,68,68,68,70,70,70,70,66,66,66,66,66,71,71,71,71',`row_colours ${map.bands}`);
+    const wrong=map.attributes.findIndex((value,cell)=>value!==map.bands[cell>>5]);
+    assert(wrong<0,`Attribute $${(0x5800+wrong).toString(16)} is ${map.attributes[wrong]}, row_colours says ${map.bands[wrong>>5]}`);
+   }
+  }
   if(n===LAST){
    for(const [selector,name] of [['.sandbox-download-tape','meteor-storm.tap'],['.sandbox-download-source','meteor-storm.asm'],['[data-download-companion]','assets.inc']]){
     const pending=page.waitForEvent('download');await page.locator(selector).click();await(await pending).saveAs(out+'/'+name);
@@ -138,18 +159,18 @@ try{
   checks.push(`Lesson ${n}: maintained files, running browser program, actual RAM and navigation`);console.log('PASS',n,timing);
  }
  console.log('Axe, layout and debugger screenshot',await within('Axe, layout and debugger screenshot',300000,async()=>{
- for(const theme of ['light','dark'])for(const n of [1,5,10,12,22,24,25,26,27,28]){
+ for(const theme of ['light','dark'])for(const n of [1,5,10,12,22,24,25,26,27,28,29]){
   await open(n);await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);await page.emulateMedia({colorScheme:theme,reducedMotion:'reduce'});
   const violations=(await new AxeBuilder({page}).include('main').analyze()).violations;await fs.writeFile(`${out}/axe-${n}-${theme}.json`,JSON.stringify(violations,null,2));assert(!violations.length,`Axe ${n} ${theme}: ${violations.map(v=>v.id)}`);
  }
  for(const width of [390,1280,1920]){
   await page.setViewportSize({width,height:1000});
-  for(const n of [1,5,10,12,22,24,25,26,27,28]){await open(n);assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),`Overflow ${n} ${width}: ${JSON.stringify(await page.evaluate(()=>Array.from(document.querySelectorAll('main *')).filter(el=>el.getBoundingClientRect().right>innerWidth).map(el=>({tag:el.tagName,class:el.className,width:el.getBoundingClientRect().width}))))}`);}
+  for(const n of [1,5,10,12,22,24,25,26,27,28,29]){await open(n);assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),`Overflow ${n} ${width}: ${JSON.stringify(await page.evaluate(()=>Array.from(document.querySelectorAll('main *')).filter(el=>el.getBoundingClientRect().right>innerWidth).map(el=>({tag:el.tagName,class:el.className,width:el.getBoundingClientRect().width}))))}`);}
   await open(5);await page.screenshot({path:`${out}/lesson-05-${width}.png`,fullPage:true});
  }
  await open(10);await run();await page.locator('[data-break]').click();await page.waitForFunction(()=>document.querySelector('.meteor-debug-state').textContent.includes('Paused'));await page.locator('.meteor-experiment').screenshot({path:out+'/collision-debugger.png'});
  }));
- checks.push('Source and companion edits/revert, missing includes, shift prediction, steering, collision stepping, loss/retry/title, border kept through the impact tone, boost press edge, a long boost played across frame waits without a late update, the destroyed phase (red flash at contact, then a black-bordered result with no pieces) and file downloads pass');
+ checks.push('Source and companion edits/revert, missing includes, shift prediction, steering, collision stepping, loss/retry/title, border kept through the impact tone, boost press edge, a long boost played across frame waits without a late update, the destroyed phase (red flash at contact, then a black-bordered result with no pieces), an attribute map matching row_colours in flight and file downloads pass');
  checks.push('Representative lesson types pass axe in both themes and fit mobile, desktop and wide viewports');
  assert(!errors.length,errors.join('\n'));await fs.writeFile(out+'/results.json',JSON.stringify({base,checks,errors},null,2)+'\n');
 }catch(error){
