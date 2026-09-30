@@ -90,6 +90,27 @@ try{
  assert(await page.getByRole('checkbox',{name:'Sound'}).isChecked(),'Choice carried to unit 25');
  results.carried=true;
 
+ // Meteor Storm unit 26: boost plays during the frame waits. One 30-cycle note of
+ // n=100 (26n+49 T-states a cycle) fits inside a single wait, so it is heard whole.
+ await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-26/');
+ await page.waitForFunction(()=>document.querySelector('.sandbox')?.dataset.sandboxReady==='true'&&document.querySelector('.meteor-experiment')?.dataset.ready==='true');
+ assert(await page.getByRole('checkbox',{name:'Sound'}).isChecked(),'Choice carried to unit 26');
+ await page.locator('.sandbox-source').evaluate(editor=>{editor.value=editor.value.replace('boost_sound: defb 100,4, 70,6, 0','boost_sound: defb 100,30, 0');editor.dispatchEvent(new Event('input',{bubbles:true}));});
+ await page.locator('.sandbox-run').click();
+ await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running'),{},{timeout:20000});
+ await page.waitForFunction(()=>window.meteorReadings?.named.phase===0,{},{timeout:10000});
+ await page.locator('.sandbox-screen').focus();await page.keyboard.down(' ');await page.waitForTimeout(100);await page.keyboard.up(' ');
+ await page.waitForFunction(()=>window.meteorReadings.named.phase===1,{},{timeout:10000});
+ await page.waitForTimeout(300);
+ const pressed=await page.evaluate(()=>performance.now());
+ await page.keyboard.down(' ');await page.waitForTimeout(100);await page.keyboard.up(' ');
+ await page.waitForTimeout(700);
+ const frameWait=await captured(pressed);
+ const boost=measure(frameWait.left,frameWait.rate);
+ results.frameWaitBoost={rate:frameWait.rate,state:frameWait.state,...boost,expectedHz:1321.2};
+ assert(boost.level>0.5,`Unit 26 boost is silent: ${JSON.stringify(boost)}`);
+ assert(Math.abs(boost.hz-1321.2)<15,`Unit 26 boost pitch ${boost.hz} Hz`);
+
  // BASIC: Bright Spark's highest signal, BEEP ...,12, held for a second to measure.
  // The PAUSE outlasts the start-up that runBasic runs before the first frame.
  await page.goto(base+'/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer/');

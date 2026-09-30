@@ -1,67 +1,163 @@
 ---
-title: "Keep and share the game"
+title: "Pay for sound in the frame"
 game: 1
 unit: 26
 ---
 
 import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-The browser experiment proves that our code can run when placed directly into a prepared machine. A distributable tape needs a different check: loading through the Spectrum's ROM from a fresh start, then playing with the sound on.
+Unit 25 ended with a warning: while a star or boost sound plays, the update waits for it. A short chirp fits in the time the update has spare, but a longer one makes the game late. We will measure that cost, then remove it by playing those sounds in time the loop already spends doing nothing: waiting for the next frame.
 
-Use unit 25's program, with its four sounds. This lesson adds no new game code. First play it, then save the files you intend to share.
+<MeteorExperiment checkpoint="sound-frames" bytes={["frame_delta","sound_left","score","phase"]} words={["sound_note","elapsed"]} controls="finished" />
 
-<MeteorExperiment checkpoint="sound-table" bytes={["phase","score"]} words={["elapsed","best_time"]} controls="finished" />
+Space launches; O/P steer; hold Space for 2X. One hit ends the run. R retries a result; Q returns to the title. To hear each sound, collect a star, press Space during flight, finish the course, or leave the ship still until a meteor hits it.
 
-## Keep source and data together
+Tick **Sound** beside the buttons under the editor to hear them on this page. If you ticked it in an earlier lesson, it is already on.
 
-Download **source** and **assets.inc**. The source contains the program and its sound tables; the companion contains the pre-shifted artwork and prepared course. Keep both in one directory. Saving only the assembly file leaves its include dependency missing.
+## Measure what a sound costs
 
-You can also download a tape assembled from the current contents of both editors. Edits that have not been run yet are still included in that download, so test the version you intend to distribute. Revert restores both editors.
+[Unit 18](../unit-18/) gave every update a measured `frame_delta`: the number of frames since the previous update. The loop runs one update every two frames, so an update is late when `frame_delta` reads more than 2. That is the evidence we need, because it counts what happened rather than what we expected.
 
-For an independent local build:
+We lengthened `star_sound` in unit 25's program, then flew the same keyboard route through the course in Emu198x from a fresh launch, once at normal speed (1X) and once with Space held (2X), recording `frame_delta` at every update:
 
-```sh
-asm198x --dialect pasmo --cpu z80 --tapbas meteor-storm.asm -o meteor-storm.tap
-```
+| `star_sound` | Star length | Late updates, 1X | Late updates, 2X |
+|---|---|---|---|
+| `40,8, 30,10` (as checked in) | 4.9 ms | 0 of 1042 | 0 of 521 |
+| `40,80` | 24.9 ms | 6, each reading 4 | 7 |
+| `40,255, 30,255` | 140 ms | 8, reading 8 and 10 | 8 |
 
-Or use upstream Pasmo:
+The checked-in chirp costs nothing we can measure. The 25 ms star is another matter: an update that collects one runs past its two frames, misses its slot and waits for the next, so `frame_delta` reads 4. The clock stays honest, and that is the cost. The 1X run took 2104 frames instead of 2092 and collected one fewer star. At 2X it took 1064 frames instead of 1050. The player paid for the sound in time.
 
-```sh
-pasmo --tapbas meteor-storm.asm meteor-storm.tap
-```
+## The wait is spare time
 
-The tape contains a small BASIC loader and the machine-code block. You do not need to author a BASIC game to use that loading convention. The code begins at 32768 and establishes its own stack, interrupt route and border colour when entered.
+Every update already ends by waiting. After the work of moving, checking and drawing, the main loop returns to `halt`, and the processor stops until the next frame interrupt. An update has two frames, 2 × 69,888 = 139,776 T-states, and whatever the work does not use is spent halted. In the stretch of the course where we timed it, the update's own work took 10.6 to 12.6 ms of each 40 ms, leaving 27 to 29 ms: about 95,000 to 103,000 T-states doing nothing.
 
-## Load what you will share
+So play the sound there. Instead of halting, the loop plays the sound a little at a time and stops the moment the frame arrives. Whatever is left of the note is kept for the next wait. The sound tables from unit 25 do not change at all.
 
-The experiment above plays sound when you tick **Sound**, but it starts the code directly rather than loading a tape. The site's Spectrum player does what this check needs: it loads a tape through the ROM on a fresh 48K machine, with sound. Open the [Sinclair ZX Spectrum page](/systems/sinclair-zx-spectrum/), press the play button under its screen and tick **Sound**, which starts unticked. Press **Choose program or disk**, pick `meteor-storm.tap`, then press **Start**. The ROM loads the tape on its own; you will hear the loading tones. Click the screen before using the keys.
+Here is the new main loop. `halt` has become `call wait_frame`:
 
-On the desktop, start a fresh 48K Spectrum emulator, mount `meteor-storm.tap`, enter `LOAD ""` and start tape playback. In Emu198x the equivalent command is:
+<AssemblyExcerpt checkpoint="sound-frames" from="main_loop:" to=" ; Fixed 25 Hz updates" />
 
-```sh
-emu198x-spectrum --machine spectrum_48k --tape meteor-storm.tap --autoload-tape --scale 3
-```
+`wait_frame` returns once a frame interrupt has happened, as `halt` did. On an odd frame the loop calls it again, so a sound keeps playing through both frames between updates.
 
-Confirm that the title appears, Space launches after release, O/P steer and held Space boosts. Listen for each event: a chirp for a star, a shorter one when you press Space in flight (and none while you keep holding it), a rising fanfare in clear space and a falling tone on impact. Lose and retry; then return to the title. Complete a run when you can and check that the time and score records survive another retry within that session.
+## Start a sound without playing it
 
-A snapshot saves a machine's state and can be useful while investigating a fault. It is not the same evidence as a fresh ROM load of the tape. A snapshot can preserve an already configured stack, interrupt mode or record that a fresh launch has not established yet.
+The star and boost no longer call `play_sound`. They call `start_sound`, which only records the sound for the waits to play:
 
-<Question prompt="You set a best time, download the tape, reset, and load it again. Should that record still be there?">
+<AssemblyExcerpt checkpoint="sound-frames" from="; HL = sound. Start it" to="; Wait for the next frame" />
 
-No. Tape download assembles the source and initial data, not a recording of the running machine's RAM. Session records begin unset on a fresh program launch. Saving records across sessions would require a separate persistence feature.
+It needs two run variables. `sound_note` is a word holding the address of the current note in the table. `sound_left` is a byte holding how many cycles of that note are still owed. `start_sound` points `sound_note` at the first note and copies that note's cycle count, the second byte, into `sound_left`. Starting a sound, call included, takes under 70 T-states instead of thousands. If a sound is already playing, the new one replaces it.
+
+At the star pickup, the call looks like this:
+
+<AssemblyExcerpt checkpoint="sound-frames" from=" ld hl,star_sound" to="meteor_contact:" />
+
+In unit 25 the call was wrapped in `push bc` and `pop bc`, because B counts the pool's slots and `play_sound` changed BC. `start_sound` changes only A and HL, so the wrapping has gone. `boost` ends with `jp start_sound` where it had `jp play_sound`.
+
+Both variables sit inside the run's state, between `state_start` and `state_end`, like `boost_last`. `new_game` clears them, so every run starts silent. A star sound still owed when the ship is hit is dropped.
+
+## Play one period, then look at the clock
+
+`wait_frame` does the real work. Here is its first half:
+
+<AssemblyExcerpt checkpoint="sound-frames" from="; Wait for the next frame interrupt." to="wait_next_note:" />
+
+It starts by checking `sound_left`. If nothing is owed, it does exactly what the main loop used to do: `halt` and return.
+
+With a sound due, it cannot halt: a halted processor writes nothing to the speaker. Instead it watches `frames`, the byte our interrupt handler has increased at every frame since [unit 6](../unit-06/). It copies `frames` into L on entry. When `frames` no longer matches L, an interrupt has happened and the wait is over.
+
+The set-up gathers what the loop needs into registers. E holds the cycles still owed, D the border bits as in `tone`, L the frame count at entry and IX the address of the current note. IX is the index register the object pool uses, so `ld c,(ix+0)` reads the note's half-period count into C.
+
+From `wait_period` onwards it is `tone`'s cycle with one addition. After each full period, it counts the cycle off in E and then reads `frames`. If the frame has not changed, it plays another period. If it has, the interrupt has arrived: it stores E in `sound_left`, so the next wait knows how many cycles it still owes, and returns. The update runs, and the sound is silent until the next wait takes it up again.
+
+When E reaches zero, the note is finished and `jr z,wait_next_note` moves on:
+
+<AssemblyExcerpt checkpoint="sound-frames" from="wait_next_note:" to="; Period 26*half+51" />
+
+It steps IX past the two bytes of the finished note and saves the address in `sound_note`, then loads the new note's cycle count into E and its half-period into A. A non-zero half-period is another note, so it jumps back to `wait_note`. A zero is the end of the sound: `ld (sound_left),a` stores that zero, so the next wait halts. The rest of this wait is spent at `wait_rest`, reading `frames` until it changes.
+
+<Question prompt="Why does `wait_rest` keep reading `frames` instead of ending with `halt`?">
+
+Because the interrupt may already have happened. The last frame check came one period before the end of the sound. If the interrupt arrived during that final period, `halt` would wait for the one after it, a whole extra frame, and the update would be late: exactly what this lesson sets out to prevent. Comparing `frames` with L notices an interrupt that has already happened, and returns straight away.
 
 </Question>
 
-## Choose a next experiment
+## Keep the pitch
 
-Keep a working copy before changing the game. Try one design change with a prediction: a different drift cadence, an altered event spacing, revised star artwork or a new sound table. State which behaviour should change and which should remain intact, then retest collision, retry and completion. For a sound, work out its length in T-states first: a sound that plays during flight takes its time from an update.
+Checking the frame takes time, and every extra T-state in a period lowers the pitch. `tone` ended each period with `dec e` and `jr nz`, 4 + 12 = 16 T-states. `wait_frame` ends each one with `dec e` (4), `jr z,wait_next_note` not taken (7), `ld a,(frames)` (13), `cp l` (4) and `jr z` taken (12): 40 T-states, 24 more.
 
-We have built a game whose positions and rules live in state, whose picture is drawn from that state, and whose progress is measured separately from time. Its sounds are data too, played by one routine. Those distinctions will still matter when another game needs a different renderer, more objects or a different machine.
+To pay for them, `dec c` takes one from the half-period count before the loop starts. Each half then runs `djnz` one pass fewer, and a pass is 13 T-states, so a period loses 26. The check adds 24 and the shorter delays remove 26: a period is now 26n+49 T-states, where `tone`'s was 26n+51.
+
+| Note | n | Period in `wait_frame` | Pitch | In `tone` |
+|---|---|---|---|---|
+| Star, first | 40 | 1089 T-states | 3214 Hz | 3208 Hz |
+| Star, second | 30 | 829 T-states | 4222 Hz | 4212 Hz |
+| Boost, first | 100 | 2649 T-states | 1321 Hz | 1320 Hz |
+| Boost, second | 70 | 1869 T-states | 1873 Hz | 1871 Hz |
+
+Every pitch moves by less than a quarter of one percent, far too little to hear. The two halves are no longer the same shape as before: the high half is 13n+1 T-states and the low half 13n+48, 47 apart where `tone`'s were 23. As in unit 24, that changes the tone's colour a little, not its pitch.
+
+Because `dec c` subtracts one, a half-period of 1 would become 0, and `djnz` would count 256 times. Sounds played by `wait_frame` need half-periods from 2 to 255. Every note in the table already meets that.
+
+<Question prompt="Predict: remove the `dec c` line. What happens to the star's first note?">
+
+Each half gets its extra `djnz` pass back, so a period becomes 26×40+75 = 1115 T-states, and 3,500,000 ÷ 1115 is 3139 Hz. That is about 2% lower than 3214 Hz, which a careful ear can hear as slightly flat. The sound would still work; `dec c` exists only to keep the pitch where unit 25 put it.
+
+</Question>
+
+## How late can an update start?
+
+`wait_frame` only notices the interrupt when it reads `frames`, once per period. If the interrupt arrives just after a check, one whole period passes before the next check. At a note change, `wait_next_note` goes straight into the next note without checking, so the delay can reach two periods.
+
+The longest period in play is boost's first note, 2649 T-states. Two of them are 5298 T-states, about 1.5 ms. So an update can start up to 1.5 ms after its frame begins. It still starts within that frame, so `frame_delta` still reads 2; it only has 1.5 ms less of its 40 ms. `halt` would have woken within a few T-states.
+
+## Measure again
+
+We flew the same route with the same three star sounds, this time in unit 26's program:
+
+| `star_sound` | Unit 25, 1X / 2X late updates | Unit 26, 1X / 2X late updates |
+|---|---|---|
+| `40,8, 30,10` (as checked in) | 0 / 0 | 0 / 0 |
+| `40,80` | 6 / 7 | 0 / 0 |
+| `40,255, 30,255` | 8 / 8 | 0 / 0 |
+
+Every update in every run took two frames. The runs took 2092 frames at 1X and 1050 at 2X, with the same scores each time, however long the star was.
+
+## What you hear
+
+The checked-in star and boost fit inside one wait with time to spare, so they sound as they did in unit 25. In Emu198x captures the star measured 3172 Hz then 4220 Hz over 4.8 ms, and boost 1307 Hz then 1874 Hz over 6.0 ms, within 1% of unit 25's. The highest pitches read slightly low because a capture at 44.1 kHz has only about ten samples in each of their cycles. Each sound now starts a few milliseconds after the event, once the update that noticed it has finished.
+
+The 25 ms star also fits in a single wait, so it plays in one piece: 3197 Hz for 24.9 ms, exactly as long as in unit 25, but without making any update late.
+
+A sound longer than the spare time is different. The 140 ms star plays for as long as each wait lasts, then falls silent while the next update runs. In the capture it kept its pitches, 3196 and 4199 Hz, but spread over 196 ms, with a silence of 11 to 13 ms every 40 ms. Twenty-five gaps a second is a **flutter**: a regular stutter you can hear. That is the price of never delaying the game, and it is why in-play sounds are best kept shorter than the spare time.
+
+Each frame interrupt also stretches one half-period slightly. The interrupt handler takes about 100 T-states, and on the frame between updates `wait_frame` returns and is called again, about 220 more. That is under 0.1 ms, too short to hear as a gap.
+
+<Question prompt="The 140 ms star is 489,090 T-states of sound. If each wait has about 100,000 T-states to spare, across how many waits does it spread, and roughly how long does it last?">
+
+About five waits: 489,090 ÷ 100,000 is just under 5. Between those five pieces are four updates, each silent for about 12 ms, so the sound lasts about 140 + 4 × 12 = 188 ms. The capture measured 196 ms: the spare time varies from update to update, and the star also starts partway through a wait, after the update that collected it.
+
+</Question>
+
+## Hear the difference
+
+Predict first: change the star in this lesson's program to `star_sound: defb 40,80, 0`. In unit 25, that made `frame_delta` read 4 when a star was collected. What will it read here?
+
+It should stay at 2, while the star rings for 25 ms. Assemble and run, collect a few stars, and watch `frame_delta`. The inspector samples values, so a single 4 could slip past it; seeing only 2 over several stars is good evidence, not proof. The measured runs above recorded every update.
+
+Now make the star much longer in both programs and listen. With **Sound** ticked, change the line to `star_sound: defb 40,255, 30,255, 0` here, then make the same change in [unit 25's program](../unit-25/) and run each. In unit 25 the star rings unbroken for 140 ms while the storm stops dead and then jumps. Here the storm keeps moving and the star flutters. Neither is a good game sound; the point is to hear where each program spends the time. Restore the original line afterwards.
+
+## Arrival and impact still block
+
+`arrival_sound` and `impact_sound` are still played by `play_sound`, which blocks until the last cycle. By the time they sound, play has ended: the ship has been hit or has reached clear space, and there is no update left to delay. They are also far longer than any wait, 299 ms and 193 ms, so played in the frame they would flutter for no benefit. The result screen waits with plain `halt`, too, so a sound started there would never be played.
+
+The finished game now plays all four sounds without costing the storm a single frame. [The next lesson](../unit-27/) packages it as a tape and checks it on a fresh machine.
 
 <Sources>
 
-The maintained Meteor Storm source linked through this page supplies the game rules, sound tables and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), T-state counts for LD, CP, DEC, INC, DJNZ, JR and HALT, and HALT's behaviour until the next interrupt. Chris Smith, *The ZX Spectrum ULA: How to Design a Microcomputer* (ZX Design and Media), p. 225, the 69,888 T-state frame. The maintained Meteor Storm source linked through this page supplies the routines and sound tables. The late-update counts, run lengths and pitch measurements come from Emu198x runs and audio captures of this program and the previous one.
 
 </Sources>
