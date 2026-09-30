@@ -3,12 +3,13 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
 
 WEBSITE = Path(__file__).resolve().parents[2]
-SAMPLES = WEBSITE.parent / 'code-samples'
+SAMPLES = Path(os.environ.get('CODE_SAMPLES_PATH') or WEBSITE.parent / 'code-samples')
 helper = SAMPLES / 'sinclair-zx-spectrum/basic/meet-basic/opening/verification/verify.py'
 spec = importlib.util.spec_from_file_location('spectrum_transport', helper)
 transport = importlib.util.module_from_spec(spec)
@@ -37,7 +38,7 @@ def main():
         blocks.append(block)
         cursor += size + 2
     assert cursor == len(data) and len(blocks) == 4 and blocks[-1][0] == 255
-    source = SAMPLES / 'sinclair-zx-spectrum/assembly/meteor-storm/checkpoints/finished/meteor-storm.asm'
+    source = SAMPLES / 'sinclair-zx-spectrum/assembly/meteor-storm/checkpoints/debris/meteor-storm.asm'
     subprocess.run(['asm198x', '--dialect', 'pasmo', '--cpu', 'z80', '--sym=' + str(out / 'program.sym'),
                     str(source), '-o', str(out / 'program.bin')], check=True)
     native = (out / 'program.bin').read_bytes()
