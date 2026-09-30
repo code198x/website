@@ -145,6 +145,7 @@ try{
     const map=await page.evaluate(()=>{const r=window.meteorRunner,sy=window.meteorReadings.symbols;return {phase:r.readMemory(sy.phase,1)[0],bands:Array.from(r.readMemory(sy.row_colours,24)),attributes:Array.from(r.readMemory(0x5800,768))};});
     assert(map.phase===1,`Still in flight ${map.phase}`);
     assert(map.bands.join()==='69,69,71,69,69,69,69,68,68,68,68,70,70,70,70,66,66,66,66,66,71,71,71,71',`row_colours ${map.bands}`);
+    assert(map.attributes.length===768,`Attribute map read ${map.attributes.length} bytes`);
     const wrong=map.attributes.findIndex((value,cell)=>value!==map.bands[cell>>5]);
     assert(wrong<0,`Attribute $${(0x5800+wrong).toString(16)} is ${map.attributes[wrong]}, row_colours says ${map.bands[wrong>>5]}`);
    }

@@ -63,8 +63,12 @@ def main():
         checks.append('Tape-loaded game launches after key release')
         # Colour by place: every cell of each character row holds that row's row_colours byte.
         bands = machine.call('memory_read', addr=symbols['row_colours'], len=24)['bytes']
-        attributes = machine.call('memory_read', addr=0x5800, len=768)['bytes']
-        assert attributes == [byte for byte in bands for _ in range(32)], 'Attribute map differs from row_colours'
+        # memory_read returns at most 256 bytes, so read the 768-byte map a third at a time.
+        attributes = [byte for third in range(3)
+                      for byte in machine.call('memory_read', addr=0x5800 + 256 * third, len=256)['bytes']]
+        expected = [byte for byte in bands for _ in range(32)]
+        wrong = next((cell for cell, (seen, wanted) in enumerate(zip(attributes, expected)) if seen != wanted), None)
+        assert len(attributes) == 768 and wrong is None, f'Attribute map differs from row_colours at cell {wrong}'
         checks.append('In flight the attribute map holds row_colours, one byte per character row')
         machine.frames(300)
         assert value('phase') == 2 and value('hull') == 0
