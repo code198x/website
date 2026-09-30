@@ -115,6 +115,8 @@ try{
    await key(' ');await page.waitForFunction(()=>window.meteorReadings.named.phase===1);
    const pixel=(x,y)=>page.locator('.sandbox-screen').evaluate((canvas,[x,y])=>Array.from(canvas.getContext('2d').getImageData(x,y,1,1).data),[x,y]);
    await page.waitForFunction(()=>{const d=document.querySelector('.sandbox-screen').getContext('2d').getImageData(8,8,1,1).data;return d[0]>150&&d[1]<60&&d[2]<60;},{},{timeout:10000,polling:'raf'});
+   // RAM readings are sampled, so they can trail the canvas by a moment.
+   await page.waitForFunction(()=>window.meteorReadings.named.phase===2&&window.meteorReadings.named.hull===0,{},{timeout:2000}).catch(()=>{});
    const hit=await page.evaluate(()=>window.meteorReadings.named);
    assert(hit.phase===2&&hit.hull===0,`Destroyed phase ${JSON.stringify(hit)}`);
    await page.waitForFunction(()=>window.meteorReadings.named.debris_time===0,{},{timeout:10000});await page.waitForTimeout(400);
