@@ -101,7 +101,9 @@ import { inlineMarkdown } from '../lib/inline-markdown';
     transition: transform 0.15s ease;
   }
 
-  img.can-enlarge:hover {
+  /* A capture is evidence: scaling it by anything but a whole number makes
+     some source pixels wider than others. Only photographs grow on hover. */
+  img.can-enlarge.smooth:hover {
     transform: scale(1.02);
   }
 
@@ -134,6 +136,36 @@ import { inlineMarkdown } from '../lib/inline-markdown';
 </style>
 
 <script>
+  // Pixel captures render at the largest whole multiple of their native size
+  // that fits, so every source pixel stays the same size. Narrower than native
+  // (a phone) cannot be whole, so the image falls back to fitting the column.
+  function wholeScale(available: number, natural: number): number {
+    return Math.floor(available / natural);
+  }
+
+  function fitPixelFigure(img: HTMLImageElement) {
+    if (img.dataset.rendering === 'smooth' || !img.naturalWidth) return;
+    const box = img.parentElement;
+    if (!box) return;
+    const k = wholeScale(box.clientWidth, img.naturalWidth);
+    img.style.width = k >= 1 ? `${img.naturalWidth * k}px` : '';
+  }
+
+  function fitAllPixelFigures() {
+    document.querySelectorAll<HTMLImageElement>('.figure img').forEach((img) => {
+      if (img.complete) fitPixelFigure(img);
+      else img.addEventListener('load', () => fitPixelFigure(img), { once: true });
+    });
+  }
+
+  fitAllPixelFigures();
+  document.addEventListener('astro:page-load', fitAllPixelFigures);
+  let resizeTimer: number | undefined;
+  window.addEventListener('resize', () => {
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(fitAllPixelFigures, 100);
+  });
+
   // Simple lightbox functionality using safe DOM methods
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
@@ -173,12 +205,23 @@ import { inlineMarkdown } from '../lib/inline-markdown';
       // Fixed viewport-sized box + object-fit so small captures scale UP
       // to fill it (a 352px Spectrum screen at natural size in an overlay
       // is smaller than the inline figure it "enlarges").
-      img.style.cssText = `
-        width: 90vw;
-        height: 90vh;
-        object-fit: contain;
-        image-rendering: ${rendering};
-      `;
+      if (rendering === 'pixelated' && target instanceof HTMLImageElement && target.naturalWidth) {
+        // Largest whole multiple that fits the overlay, as inline.
+        const nw = target.naturalWidth, nh = target.naturalHeight;
+        const k = Math.max(1, Math.floor(Math.min((window.innerWidth * 0.9) / nw, (window.innerHeight * 0.9) / nh)));
+        img.style.cssText = `
+          width: ${nw * k}px;
+          height: ${nh * k}px;
+          image-rendering: pixelated;
+        `;
+      } else {
+        img.style.cssText = `
+          width: 90vw;
+          height: 90vh;
+          object-fit: contain;
+          image-rendering: ${rendering};
+        `;
+      }
 
       const closeBtn = document.createElement('button');
       closeBtn.className = 'lightbox-close';
