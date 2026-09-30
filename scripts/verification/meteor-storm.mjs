@@ -14,6 +14,17 @@ const page=await context.newPage(),errors=[],checks=[];
 page.on('pageerror',error=>errors.push(String(error)));
 await page.addInitScript(()=>{window.meteorReadings=null;document.addEventListener('sandbox:memory',event=>window.meteorReadings=event.detail);});
 const assert=(value,message)=>{if(!value)throw Error(message)};
+// Playwright's waits here time out after 30 s, but evaluate() waits for as long
+// as the page's main thread is busy. A stage that outruns its limit fails and
+// names itself instead of hanging. Each stage prints its wall-clock start and
+// duration: a gap far longer than the run's own work means the computer slept
+// (compare `pmset -g log` on macOS), not that the lesson stuck.
+async function within(name,limit,work){
+ const started=new Date();let timer;
+ const stuck=new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(`${name} did not finish within ${limit/1000} s (started ${started.toISOString()}, now ${new Date().toISOString()})`)),limit)});
+ try{await Promise.race([work(),stuck])}finally{clearTimeout(timer)}
+ return `${started.toISOString()} ${((Date.now()-started)/1000).toFixed(1)} s`;
+}
 async function open(n){
  await page.goto(base+route+`/unit-${String(n).padStart(2,'0')}/`);
 }
@@ -21,6 +32,7 @@ async function run(){await page.waitForFunction(()=>document.querySelector('.san
 async function key(name,ms=100){await page.locator('.sandbox-screen').focus();await page.keyboard.down(name);await page.waitForTimeout(ms);await page.keyboard.up(name);}
 try{
  for(let n=Number(process.env.METEOR_FIRST??1);n<=LAST;n++){
+  const timing=await within(`Lesson ${n}`,120000,async()=>{
   await open(n);
   const prose=await fs.readFile(path.join(root,`src/content/curriculum/sinclair-zx-spectrum/assembly/meteor-storm/unit-${String(n).padStart(2,'0')}.mdx`),'utf8');
   const checkpoint=prose.match(/<MeteorExperiment checkpoint="([^"]+)"/)[1];
@@ -88,8 +100,10 @@ try{
    }
    assert((await fs.stat(out+'/meteor-storm.tap')).size>4000,'Game tape');assert(await fs.readFile(out+'/meteor-storm.asm','utf8')===expected,'Downloaded source');
   }
-  checks.push(`Lesson ${n}: maintained files, running browser program, actual RAM and navigation`);console.log('PASS',n);
+  });
+  checks.push(`Lesson ${n}: maintained files, running browser program, actual RAM and navigation`);console.log('PASS',n,timing);
  }
+ console.log('Axe, layout and debugger screenshot',await within('Axe, layout and debugger screenshot',300000,async()=>{
  for(const theme of ['light','dark'])for(const n of [1,5,10,12,22,24,25,26]){
   await open(n);await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);await page.emulateMedia({colorScheme:theme,reducedMotion:'reduce'});
   const violations=(await new AxeBuilder({page}).include('main').analyze()).violations;await fs.writeFile(`${out}/axe-${n}-${theme}.json`,JSON.stringify(violations,null,2));assert(!violations.length,`Axe ${n} ${theme}: ${violations.map(v=>v.id)}`);
@@ -100,7 +114,12 @@ try{
   await open(5);await page.screenshot({path:`${out}/lesson-05-${width}.png`,fullPage:true});
  }
  await open(10);await run();await page.locator('[data-break]').click();await page.waitForFunction(()=>document.querySelector('.meteor-debug-state').textContent.includes('Paused'));await page.locator('.meteor-experiment').screenshot({path:out+'/collision-debugger.png'});
+ }));
  checks.push('Source and companion edits/revert, missing includes, shift prediction, steering, collision stepping, loss/retry/title, border kept through the impact tone, boost press edge and file downloads pass');
  checks.push('Representative lesson types pass axe in both themes and fit mobile, desktop and wide viewports');
  assert(!errors.length,errors.join('\n'));await fs.writeFile(out+'/results.json',JSON.stringify({base,checks,errors},null,2)+'\n');
-}catch(error){await page.screenshot({path:out+'/failure.png',fullPage:true});console.error('Browser errors:',errors);console.error('Status:',await page.locator('.sandbox-status').textContent());console.error('Debug:',await page.locator('.meteor-debug-state').allTextContents());throw error;}finally{await browser.close()}
+}catch(error){
+ // A stuck page cannot answer these either, so they must not replace the error that says where it stuck.
+ console.error(String(error));console.error('Browser errors:',errors);
+ try{await page.screenshot({path:out+'/failure.png',fullPage:true,timeout:10000});console.error('Status:',await page.locator('.sandbox-status').textContent({timeout:10000}));console.error('Debug:',await page.locator('.meteor-debug-state').allTextContents());}catch(diagnostic){console.error('Page diagnostics unavailable:',diagnostic.message.split('\n')[0]);}
+ throw error;}finally{await browser.close()}
