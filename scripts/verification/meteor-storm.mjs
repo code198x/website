@@ -8,6 +8,9 @@ const root=path.resolve(import.meta.dirname,'../..'),samples=process.env.CODE_SA
 const route='/systems/sinclair-zx-spectrum/assembly/meteor-storm';
 // The closing lesson: the last unit, which downloads the finished game's files.
 const LAST=26;
+// METEOR_FIRST starts at a later lesson. Anything but a lesson number would skip every lesson and still pass.
+const FIRST=Number(process.env.METEOR_FIRST??1);
+if(!Number.isInteger(FIRST)||FIRST<1||FIRST>LAST)throw Error(`METEOR_FIRST must be a lesson number from 1 to ${LAST}, not ${process.env.METEOR_FIRST}`);
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const context=await browser.newContext({viewport:{width:1280,height:1000}});
 const page=await context.newPage(),errors=[],checks=[];
@@ -31,7 +34,7 @@ async function open(n){
 async function run(){await page.waitForFunction(()=>document.querySelector('.sandbox')?.dataset.sandboxReady==='true'&&document.querySelector('.meteor-experiment')?.dataset.ready==='true');await page.locator('.sandbox-run').click();await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running')||document.querySelector('.sandbox-status').dataset.state==='error',{},{timeout:20000});assert((await page.locator('.sandbox-status').textContent()).startsWith('Running'),await page.locator('.sandbox-status').textContent()+' '+await page.locator('.sandbox-diagnostics').textContent());}
 async function key(name,ms=100){await page.locator('.sandbox-screen').focus();await page.keyboard.down(name);await page.waitForTimeout(ms);await page.keyboard.up(name);}
 try{
- for(let n=Number(process.env.METEOR_FIRST??1);n<=LAST;n++){
+ for(let n=FIRST;n<=LAST;n++){
   const timing=await within(`Lesson ${n}`,120000,async()=>{
   await open(n);
   const prose=await fs.readFile(path.join(root,`src/content/curriculum/sinclair-zx-spectrum/assembly/meteor-storm/unit-${String(n).padStart(2,'0')}.mdx`),'utf8');
