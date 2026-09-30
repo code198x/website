@@ -7,7 +7,7 @@ await fs.mkdir(out,{recursive:true});
 const root=path.resolve(import.meta.dirname,'../..'),samples=process.env.CODE_SAMPLES_PATH||path.resolve(root,'../code-samples');
 const route='/systems/sinclair-zx-spectrum/assembly/meteor-storm';
 // The closing lesson: the last unit, which downloads the finished game's files.
-const LAST=26;
+const LAST=27;
 // METEOR_FIRST starts at a later lesson. Anything but a lesson number would skip every lesson and still pass.
 const FIRST=Number(process.env.METEOR_FIRST??1);
 if(!Number.isInteger(FIRST)||FIRST<1||FIRST>LAST)throw Error(`METEOR_FIRST must be a lesson number from 1 to ${LAST}, not ${process.env.METEOR_FIRST}`);
@@ -97,6 +97,18 @@ try{
    await page.waitForFunction(()=>window.meteorReadings.named.boost_last===1&&window.meteorReadings.named.boost_time===1);
    await page.keyboard.up(' ');await page.waitForFunction(()=>window.meteorReadings.named.boost_last===0||window.meteorReadings.named.phase!==1);
   }
+  if(n===26){
+   // Star and boost play in the frame waits: a long boost owes cycles across
+   // several waits (sound_left) while every update keeps its two frames.
+   await page.locator('.sandbox-source').evaluate((editor,value)=>{editor.value=value;editor.dispatchEvent(new Event('input',{bubbles:true}));},expected.replace('boost_sound: defb 100,4, 70,6, 0','boost_sound: defb 100,255, 0'));await run();
+   await page.evaluate(()=>{window.soundWait={owed:0,delta:0};document.addEventListener('sandbox:memory',e=>{const v=e.detail.named;if(v.phase!==1)return;window.soundWait.owed=Math.max(window.soundWait.owed,v.sound_left);window.soundWait.delta=Math.max(window.soundWait.delta,v.frame_delta);});});
+   await key(' ');await page.waitForFunction(()=>window.meteorReadings.named.phase===1);
+   await key(' ');await page.waitForFunction(()=>window.soundWait.owed>0);
+   await page.waitForFunction(()=>window.meteorReadings.named.sound_left===0||window.meteorReadings.named.phase!==1,{},{timeout:10000});
+   const wait=await page.evaluate(()=>window.soundWait);
+   assert(wait.delta<=2,`Late update during a frame-wait sound: ${JSON.stringify(wait)}`);
+   await page.locator('.sandbox-revert').click();
+  }
   if(n===LAST){
    for(const [selector,name] of [['.sandbox-download-tape','meteor-storm.tap'],['.sandbox-download-source','meteor-storm.asm'],['[data-download-companion]','assets.inc']]){
     const pending=page.waitForEvent('download');await page.locator(selector).click();await(await pending).saveAs(out+'/'+name);
@@ -107,18 +119,18 @@ try{
   checks.push(`Lesson ${n}: maintained files, running browser program, actual RAM and navigation`);console.log('PASS',n,timing);
  }
  console.log('Axe, layout and debugger screenshot',await within('Axe, layout and debugger screenshot',300000,async()=>{
- for(const theme of ['light','dark'])for(const n of [1,5,10,12,22,24,25,26]){
+ for(const theme of ['light','dark'])for(const n of [1,5,10,12,22,24,25,26,27]){
   await open(n);await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);await page.emulateMedia({colorScheme:theme,reducedMotion:'reduce'});
   const violations=(await new AxeBuilder({page}).include('main').analyze()).violations;await fs.writeFile(`${out}/axe-${n}-${theme}.json`,JSON.stringify(violations,null,2));assert(!violations.length,`Axe ${n} ${theme}: ${violations.map(v=>v.id)}`);
  }
  for(const width of [390,1280,1920]){
   await page.setViewportSize({width,height:1000});
-  for(const n of [1,5,10,12,22,24,25,26]){await open(n);assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),`Overflow ${n} ${width}: ${JSON.stringify(await page.evaluate(()=>Array.from(document.querySelectorAll('main *')).filter(el=>el.getBoundingClientRect().right>innerWidth).map(el=>({tag:el.tagName,class:el.className,width:el.getBoundingClientRect().width}))))}`);}
+  for(const n of [1,5,10,12,22,24,25,26,27]){await open(n);assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),`Overflow ${n} ${width}: ${JSON.stringify(await page.evaluate(()=>Array.from(document.querySelectorAll('main *')).filter(el=>el.getBoundingClientRect().right>innerWidth).map(el=>({tag:el.tagName,class:el.className,width:el.getBoundingClientRect().width}))))}`);}
   await open(5);await page.screenshot({path:`${out}/lesson-05-${width}.png`,fullPage:true});
  }
  await open(10);await run();await page.locator('[data-break]').click();await page.waitForFunction(()=>document.querySelector('.meteor-debug-state').textContent.includes('Paused'));await page.locator('.meteor-experiment').screenshot({path:out+'/collision-debugger.png'});
  }));
- checks.push('Source and companion edits/revert, missing includes, shift prediction, steering, collision stepping, loss/retry/title, border kept through the impact tone, boost press edge and file downloads pass');
+ checks.push('Source and companion edits/revert, missing includes, shift prediction, steering, collision stepping, loss/retry/title, border kept through the impact tone, boost press edge, a long boost played across frame waits without a late update and file downloads pass');
  checks.push('Representative lesson types pass axe in both themes and fit mobile, desktop and wide viewports');
  assert(!errors.length,errors.join('\n'));await fs.writeFile(out+'/results.json',JSON.stringify({base,checks,errors},null,2)+'\n');
 }catch(error){

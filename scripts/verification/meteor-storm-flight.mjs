@@ -8,7 +8,7 @@ const positions=JSON.parse(await fs.readFile(samples+'/sinclair-zx-spectrum/asse
 const bundle=(await fs.readdir(website+'/dist/_astro')).find(name=>/^spectrum-runner\..*\.js$/.test(name));
 const browser=await chromium.launch({channel:'chrome',headless:true});const context=await browser.newContext({viewport:{width:1280,height:1000}});const page=await context.newPage();
 try{
- await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-26/');
+ await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-27/');
  await page.evaluate(async({bundle,positions})=>{
   window.flight={};document.addEventListener('sandbox:memory',e=>window.flight.reading=e.detail);
   const exports=await import('/_astro/'+bundle);
