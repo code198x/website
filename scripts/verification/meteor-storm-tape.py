@@ -38,7 +38,7 @@ def main():
         blocks.append(block)
         cursor += size + 2
     assert cursor == len(data) and len(blocks) == 4 and blocks[-1][0] == 255
-    source = SAMPLES / 'sinclair-zx-spectrum/assembly/meteor-storm/checkpoints/debris/meteor-storm.asm'
+    source = SAMPLES / 'sinclair-zx-spectrum/assembly/meteor-storm/checkpoints/colour-bands/meteor-storm.asm'
     subprocess.run(['asm198x', '--dialect', 'pasmo', '--cpu', 'z80', '--sym=' + str(out / 'program.sym'),
                     str(source), '-o', str(out / 'program.bin')], check=True)
     native = (out / 'program.bin').read_bytes()
@@ -61,6 +61,11 @@ def main():
         machine.frames(8)
         assert value('phase') == 1 and value('hull') == 1 and value('ship_x') == 116
         checks.append('Tape-loaded game launches after key release')
+        # Colour by place: every cell of each character row holds that row's row_colours byte.
+        bands = machine.call('memory_read', addr=symbols['row_colours'], len=24)['bytes']
+        attributes = machine.call('memory_read', addr=0x5800, len=768)['bytes']
+        assert attributes == [byte for byte in bands for _ in range(32)], 'Attribute map differs from row_colours'
+        checks.append('In flight the attribute map holds row_colours, one byte per character row')
         machine.frames(300)
         assert value('phase') == 2 and value('hull') == 0
         machine.call('press_key', key='r', hold_frames=3)
