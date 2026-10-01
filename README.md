@@ -70,7 +70,7 @@ Run commands from this directory:
 ### House198x kit
 
 The site consumes the shared [198x-ui](https://github.com/stevehill1981/198x-ui)
-kit at the `v0.7.0` tag. `predev` and `prebuild` run `scripts/fetch-ui.sh`, which
+kit at the `v0.8.0` tag. `predev` and `prebuild` run `scripts/fetch-ui.sh`, which
 checks out that tag into ignored `_198x-ui/` and copies its font files to the
 ignored `public/fonts/` directory. This keeps local development and CI on the
 same pinned components and preserves self-hosted font delivery. Override the
