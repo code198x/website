@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-const GATE = ['/sinclair-zx-spectrum/assembly/meteor-storm/unit-28', '/sinclair-zx-spectrum/basic/meet-basic/unit-01'];
+const GATE = ['/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-28', '/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer'];
 
 for (const path of GATE) {
   test(`lesson v1: ${path}`, async ({ page }) => {

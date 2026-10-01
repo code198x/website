@@ -57,8 +57,8 @@ const PAGES: Record<string, string> = {
   'system stage spectrum': '/systems/sinclair-zx-spectrum',
   'system stage vic-20': '/systems/commodore-vic-20',
   'lesson strip c64': '/systems/commodore-64/assembly/starfield/unit-03/',
-  'gate: meteor storm 28': '/sinclair-zx-spectrum/assembly/meteor-storm/unit-28',
-  'gate: meet basic 1': '/sinclair-zx-spectrum/basic/meet-basic/unit-01',
+  'gate: meteor storm 28': '/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-28',
+  'gate: meet basic 1': '/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer',
   'lesson strip amiga': '/systems/commodore-amiga/assembly/meet-the-machine/unit-02/',
 };
 
