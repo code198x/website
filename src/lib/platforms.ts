@@ -138,14 +138,6 @@ export async function getPlatformsForPatternLibrary(): Promise<Array<{
     'nintendo-entertainment-system': 'nintendo-nes',
   };
 
-  // Map to pattern library format with CSS variable references
-  const cssVarNames: Record<string, string> = {
-    'commodore-64': '--c64-blue',
-    'sinclair-zx-spectrum': '--zx-magenta',
-    'commodore-amiga': '--amiga-orange',
-    'nintendo-entertainment-system': '--nes-red',
-  };
-
   // Gradients for platform pages
   const gradients: Record<string, string> = {
     'commodore-64': 'linear-gradient(135deg, #3b3b8f 0%, #5555bb 50%, #7777dd 100%)',
@@ -157,7 +149,10 @@ export async function getPlatformsForPatternLibrary(): Promise<Array<{
   const result = platforms.map(p => ({
     slug: patternSlugs[p.id] || p.id,
     name: p.data.name,
-    color: cssVarNames[p.id] ? `var(${cssVarNames[p.id]})` : p.data.color,
+    // The declared colour, never a hand-kept copy of it: the copies this read
+    // from in Layout.astro had the Spectrum as magenta, and as a var() they
+    // also kept inkStyle() from deriving an accessible ink.
+    color: p.data.color,
     gradient: gradients[p.id] || `linear-gradient(135deg, ${p.data.color} 0%, ${p.data.color} 100%)`,
   }));
 
