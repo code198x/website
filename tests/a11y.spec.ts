@@ -57,6 +57,8 @@ const PAGES: Record<string, string> = {
   'system stage spectrum': '/systems/sinclair-zx-spectrum',
   'system stage vic-20': '/systems/commodore-vic-20',
   'lesson strip c64': '/systems/commodore-64/assembly/starfield/unit-03/',
+  'gate: meteor storm 28': '/sinclair-zx-spectrum/assembly/meteor-storm/unit-28',
+  'gate: meet basic 1': '/sinclair-zx-spectrum/basic/meet-basic/unit-01',
   'lesson strip amiga': '/systems/commodore-amiga/assembly/meet-the-machine/unit-02/',
 };
 
@@ -82,6 +84,10 @@ for (const [name, path] of Object.entries(PAGES)) {
     await page.goto(path);
     await page.emulateMedia({ colorScheme: theme });
     await page.waitForLoadState('networkidle');
+
+    // Paper leads: a reader who asked for dark still gets the paper ground.
+    // toHaveCSS retries, so a soft navigation settling does not fail it.
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(246, 244, 238)');
 
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

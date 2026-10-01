@@ -29,16 +29,3 @@ test('mobile menu remains usable after client navigation and closes with Escape'
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 });
-
-test('the menu carries the theme choice, and it survives a soft navigation', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('banner').getByRole('button', { name: 'Menu', exact: true }).click();
-  const menu = page.locator('.site-menu');
-  await menu.getByRole('radio', { name: 'Light' }).check();
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await menu.getByRole('link', { name: 'VAULT', exact: true }).click();
-  await expect(page).toHaveURL(/\/vault\/?$/);
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-  await page.getByRole('banner').getByRole('button', { name: 'Menu', exact: true }).click();
-  await expect(menu.getByRole('radio', { name: 'Light' })).toBeChecked();
-});
