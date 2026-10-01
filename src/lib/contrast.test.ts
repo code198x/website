@@ -23,10 +23,19 @@ describe('spotStyle', () => {
   });
 });
 
+const APPROVED_PRIMARY: Record<string, string> = {
+  'sinclair-zx-spectrum': '#c20000',
+  'commodore-64': '#706deb',
+  'commodore-amiga': '#0055aa',
+  'nintendo-entertainment-system': '#e60012',
+};
 const LAUNCH = ['sinclair-zx-spectrum', 'commodore-64', 'commodore-amiga', 'nintendo-entertainment-system'];
 
 describe.each(LAUNCH)('%s curated spot ink', (id) => {
   const data = yaml.load(readFileSync(`src/content/systems/${id}.yaml`, 'utf8')) as { colours?: MachineColour[] };
+  it('keeps the primary Steve approved on 2026-10-01', () => {
+    expect(primaryColour(data.colours)?.hex.toLowerCase()).toBe(APPROVED_PRIMARY[id]);
+  });
   it('has a primary colour that derives a readable spot', () => {
     const primary = primaryColour(data.colours);
     expect(primary, `${id} has no primary colour`).toBeDefined();
