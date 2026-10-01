@@ -4,13 +4,15 @@
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import yaml from 'js-yaml';
+import { machinesJson } from '../src/lib/machine-colours.ts'; // Node strips the types natively
 
 const out = process.argv[2];
 if (!out) { console.error('usage: generate-machines-json.mjs <out.json>'); process.exit(2); }
 const dir = 'src/content/systems';
-const systems = readdirSync(dir).filter((f) => f.endsWith('.yaml')).sort().map((f) => {
-  const d = yaml.load(readFileSync(join(dir, f), 'utf8'));
-  return [f.replace(/\.yaml$/, ''), { name: d.name, short: d.shortName, year: String(d.year), color: d.color, colours: d.colours ?? [] }];
-});
-writeFileSync(out, JSON.stringify(Object.fromEntries(systems), null, 2) + '\n');
-console.log(`${systems.length} machines → ${out}`);
+const systems = readdirSync(dir).filter((f) => f.endsWith('.yaml')).map((f) => ({
+  id: f.replace(/\.yaml$/, ''),
+  data: yaml.load(readFileSync(join(dir, f), 'utf8')),
+}));
+const machines = machinesJson(systems);
+writeFileSync(out, JSON.stringify(machines, null, 2) + '\n');
+console.log(`${Object.keys(machines).length} machines → ${out}`);
