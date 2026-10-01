@@ -1,5 +1,37 @@
 # Browser lesson checks
 
+## Spectrum source and download audit
+
+From the website directory, with Asm198x and Build198x on PATH:
+
+```sh
+node scripts/check-spectrum-samples.mjs --build --report /tmp/spectrum-audit.json
+```
+
+`--samples`, `--asm` and `--build198x` override the sample root and executables.
+Without `--build`, the check only reads the catalogues, pages and maintained
+sources. Build mode copies tracked Spectrum samples to a new temporary
+directory, removes existing build products from that copy, forces every
+Makefile to build, lints BASIC and checks unit downloads. It also validates
+TAP checksums, checks BASIC Makefile sources against lesson listings, and
+compares Meteor Storm's downloadable machine code with each lesson's
+interactive checkpoint. It keeps the temporary copy for inspection and records
+its location, tool versions and source/output hashes in the JSON report.
+
+This is delivery evidence, not execution evidence. Follow it with the native
+checks in the sample repository: Meet BASIC's
+`basic/meet-basic/opening/verification/verify.py`, Meet Assembly's
+`assembly/meet-assembly/opening/verification/verify.py`, and Meteor Storm's
+`assembly/meteor-storm/verification/{checkpoints,endpoint,boundaries}.py`.
+Those scripts take `--emulator` and `--output`; Meet Assembly additionally
+requires `--pasmo`, and Meteor Storm's endpoint accepts
+`--checkpoint colour-bands`. Run `--help` for each command's arguments. Native
+checks require a configured Spectrum 48K ROM and report the configuration they
+actually exercise. Retained BASIC `teaching/verification/audit.py` checks
+validate recorded source lineage and tapes; they do not rerun the games.
+
+## Browser execution
+
 Serve a production website build, then run a check from the website directory:
 
 ```sh
