@@ -61,11 +61,30 @@ Run commands from this directory:
 | `npm run build` | Build the production site, run redirect noindex marking, and index with Pagefind. |
 | `npm run build:wasm` | Build the `play198x-web` decoder that `NativeImage.astro` reads at build time. Run before `npm run build` on any page using `<NativeImage>`. |
 | `npm run preview` | Preview the production build locally. |
+| `npm run check:content` | Run quick template, catalogue, imagery and Vault-link checks (also the small CI smoke check). |
+| `npm run check` | Run local unit, content and prepared-player/assembler checks. |
+| `npm run check:release` | Run local checks, announcement regressions, production build, focused browser/accessibility checks and offline built-site links. Needs prepared sibling assets, Playwright Chromium and lychee. |
 | `npm test` | Run the Vitest unit tests under `src/**/*.test.ts`. |
 | `npm run test:e2e` | Run Playwright end-to-end tests. |
 | `npm run test:a11y` | Run accessibility-focused Playwright tests. |
 | `npm run prose:check` | Run Vale prose checks and the prose readability report. |
 | `npm run surfaces:gaps` | Report support-surface catalogue gaps. |
+
+### Local release checks
+
+Run `npm run check:release` before a release when you want the full local
+check. Prepare the sample downloads, decoder, NES assembler and browser players
+using the build commands below and `scripts/build-artefacts.sh ../code-samples`.
+Install Playwright Chromium with `npx playwright install chromium` and provide
+`lychee` on PATH. `CODE_SAMPLES_PATH` and `PLAY198X_WASM_PATH` override the
+usual family checkout paths. The command stops at the first failing check.
+
+`npm run build` generates the site and search index; it does not run tests.
+CI runs quick content checks only. Pages builds the required assets and site,
+then publishes; browser tests, link audits and announcement regressions run
+locally. The payload builder still validates messages as part of preparing
+announcements. The wider end-to-end and full-site accessibility suites remain
+available as separate local commands.
 
 ### House198x kit
 

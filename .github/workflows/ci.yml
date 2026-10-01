@@ -11,17 +11,11 @@ permissions:
   contents: read
 
 jobs:
-  build-and-check:
+  content-smoke:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout website
         uses: actions/checkout@v7
-
-      - name: Checkout code-samples
-        uses: actions/checkout@v7
-        with:
-          repository: code198x/code-samples
-          path: code-samples
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -29,152 +23,10 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
-      - name: Test announcement payloads
-        run: python3 -m unittest discover -s scripts -p 'test_discord_*.py'
-
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
-      - name: Checkout play198x
-        uses: actions/checkout@v7
-        with:
-          repository: play198x/play198x
-          path: play198x
-
-      - name: Read pinned toolchain
-        id: toolchain
-        run: echo "channel=$(grep '^channel' play198x/rust-toolchain.toml | cut -d'"' -f2)" >> "$GITHUB_OUTPUT"
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ steps.toolchain.outputs.channel }}
-          targets: wasm32-unknown-unknown
-
-      - name: Cache Rust build artifacts
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: play198x/crates/play198x-web
-
-      - name: Install wasm-pack
-        uses: taiki-e/install-action@v2
-        with:
-          tool: wasm-pack
-
-      # Before npm run build, so a Rust failure is attributed to Rust rather
-      # than surfacing as a mystery inside the Astro build.
-      - name: Build the decoder
-        run: node scripts/build-wasm.mjs
-        env:
-          PLAY198X_PATH: ${{ github.workspace }}/play198x
-
-      # Before the site build: a regression in the hand-written PNG encoder or
-      # in native-image's decode logic should fail here, not slip through as a
-      # green build that happens not to exercise the broken path yet. Needs the
-      # wasm built above — two of these tests load it directly.
-      - name: Checkout Asm198x assembler source
-        uses: actions/checkout@v7
-        with:
-          repository: asm198x/asm198x
-          path: asm198x-source
-
-      - name: Install Asm198x toolchain
-        working-directory: asm198x-source
-        run: rustup show active-toolchain && rustup target add wasm32-unknown-unknown
-
-      - name: Build NES browser assembler
-        run: npm run build:nes-assembler
-        env:
-          ASM198X_SOURCE_ROOT: ${{ github.workspace }}/asm198x-source
-
-      - name: Checkout Emu198x player source
-        uses: actions/checkout@v7
-        with:
-          repository: emu198x/emu198x
-          path: emu198x-source
-
-      - name: Install Emu198x toolchain
-        working-directory: emu198x-source
-        run: rustup show active-toolchain && rustup target add wasm32-unknown-unknown
-
-      - name: Install native libraries for the player catalogue tool
-        # build-browser-player runs Emu198x's native fleet-catalogue, whose
-        # dependencies link ALSA (audio) and udev (gamepads), as in Emu198x CI.
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libasound2-dev libudev-dev
-
-      # The Spectrum 48K ROM reaches the player build only through an encrypted
-      # secret and a runner temp file: it is embedded in the Spectrum wasm under
-      # Amstrad's permission and never enters the repository or the site as a
-      # file (198x decisions/browser-player-rollout.md). Without the secret the
-      # player builds as before and asks for the reader's own ROM.
-      - name: Provide the Spectrum 48K ROM for the player build
-        run: |
-          if [ -n "$ROM_B64" ]; then
-            printf '%s' "$ROM_B64" | base64 -d > "$RUNNER_TEMP/spectrum-48k.rom"
-            echo "EMU198X_SPECTRUM_48K_ROM=$RUNNER_TEMP/spectrum-48k.rom" >> "$GITHUB_ENV"
-          fi
-        env:
-          ROM_B64: ${{ secrets.EMU198X_SPECTRUM_48K_ROM_B64 }}
-
-      - name: Build browser players
-        run: npm run build:player
-        env:
-          EMU198X_SOURCE_ROOT: ${{ github.workspace }}/emu198x-source
-
-      - name: Run unit tests
-        run: npx vitest run
-        env:
-          PLAY198X_WASM_PATH: ${{ github.workspace }}/play198x/crates/play198x-web/pkg-node
-
-      # The unit tests above are entirely self-referential about the
-      # hand-written PNG encoder: the CRC test uses the same node:zlib.crc32
-      # the encoder called, and the round trip is deflateSync checked by
-      # inflateSync. This is the one check where something other than our own
-      # code checks our own code — a real browser decodes the PNG and its
-      # pixels are compared against the core's own output.
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
-
-      - name: Run browser-decode test
-        run: npx playwright test tests/native-image.spec.ts
-        env:
-          CODE_SAMPLES_PATH: ${{ github.workspace }}/code-samples
-          PLAY198X_WASM_PATH: ${{ github.workspace }}/play198x/crates/play198x-web/pkg-node
-
-      - name: Build unit artefacts
-        run: ./scripts/build-artefacts.sh "${{ github.workspace }}/code-samples"
-
-      - name: Build site
-        run: npm run build
-        env:
-          CODE_SAMPLES_PATH: ${{ github.workspace }}/code-samples
-          PLAY198X_WASM_PATH: ${{ github.workspace }}/play198x/crates/play198x-web/pkg-node
-
-      # The player stage, run panel and accessibility gates, against the site
-      # just built: A11Y_SWEEP serves dist/ with astro preview, which is what
-      # ships, rather than compiling pages on demand in astro dev.
-      - name: Run player and accessibility browser tests
-        run: npx playwright test tests/player-integration.spec.ts tests/a11y.spec.ts
-        env:
-          A11Y_SWEEP: '1'
-          CODE_SAMPLES_PATH: ${{ github.workspace }}/code-samples
-
-      - name: Check internal links
-        uses: lycheeverse/lychee-action@v2
-        with:
-          args: >
-            --root-dir ${{ github.workspace }}/dist
-            --no-progress
-            --exclude-path ${{ github.workspace }}/dist/assets
-            --exclude 'mailto:.*'
-            --exclude 'localhost'
-            --exclude '/images/'
-            --offline
-            '${{ github.workspace }}/dist/**/*.html'
-          fail: true
-
-      - name: Link check results
-        if: failure()
-        run: |
-          echo "Broken links detected! See the lychee output above for details."
-          echo "Fix all broken internal links before merging."
+      # Full checks are run locally with npm run check:release.
+      # No sibling builds, firmware, browser installs or deployment gates here.
+      - name: Check templates and content routes
+        run: npm run check:content
