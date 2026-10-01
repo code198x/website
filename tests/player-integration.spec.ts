@@ -209,7 +209,7 @@ test.describe('lesson run panel', () => {
       for (const selector of ['.unit-content', '.unit-sidebar', '.unit-navigation', 'footer.footer']) {
         await expect(page.locator(selector), selector).toHaveJSProperty('inert', true);
       }
-      await expect(page.locator('nav.nav')).toHaveJSProperty('inert', false);
+      await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveJSProperty('inert', false);
       await expect(page.locator('nav.breadcrumbs')).toHaveJSProperty('inert', false);
       for (let i = 0; i < 8; i++) {
         await page.keyboard.press('Tab');
