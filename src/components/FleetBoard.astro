@@ -1,236 +1,423 @@
 ---
+/**
+ * The systems directory: /systems and its three other arrangements
+ * (by-region, by-maker, by-tier). One page, four URLs; `view` picks the
+ * arrangement of the catalogue at the bottom.
+ *
+ * On the approved concept (Code198x/website-preview/public/concepts/
+ * systems.html) and family-visual-identity.md §7:
+ *
+ * - The machine is the hero. The machines with lessons, and those prioritised
+ *   next, each show our own capture through the kit's Screen, at 1x of the
+ *   true grid (a doubled capture is halved; the Amiga declares 320x256). A
+ *   machine with no capture yet says so rather than borrow another's.
+ * - Cards are objects (the kit's device Shell): round. The lenses, the search
+ *   and the chips are interface: square, with inverse video for current only.
+ * - Nothing is told apart by colour. In the catalogue, a machine with lessons
+ *   and one prioritised next carry a word in their chip; the availability
+ *   arrangement lists every tier.
+ *
+ * Every number is counted from the catalogue at build time. Lesson
+ * availability is authored lesson pages; catalogue priority is the manifest's
+ * `tier`, and the two are kept apart (src/lib/system-directory.ts).
+ */
+import catalog from '../../public/emulators/catalog.json';
+import Eyebrow from '@198x-ui/components/Eyebrow.astro';
+import Shell from '@198x-ui/components/Shell.astro';
+import Screen from '@198x-ui/components/Screen.astro';
+import Chip from '@198x-ui/components/Chip.astro';
+import SearchField from '@198x-ui/components/SearchField.astro';
+import RefitScreens from './RefitScreens.astro';
+import { getCollection } from 'astro:content';
 import { getAllPlatforms, getAllManufacturers } from '../lib/platforms';
-
 import { systemStatus, systemLessonCounts } from '../lib/system-directory';
-const lessonCounts = await systemLessonCounts();
+import { posterFor } from '../lib/player-posters';
+import { pngSize } from '../lib/pixel-frame';
+import { sameJob } from '../data/same-job';
+import { readFileSync } from 'node:fs';
 
 interface Props { view: 'decade' | 'maker' | 'tier' | 'region' }
 const { view } = Astro.props;
 
+const lessonCounts = await systemLessonCounts();
 const platforms = await getAllPlatforms();
 const manufacturers = await getAllManufacturers();
-const makerName = new Map(manufacturers.map(m => [m.id, m.data.shortName]));
-const REGION_CODE: Record<string, string> = { US: 'US', UK: 'UK', Japan: 'JP', Europe: 'EU', Netherlands: 'NL' };
-const KIND: Record<string, string> = { computer: 'computer', console: 'console', handheld: 'handheld' };
-// Fuller labels for the region lens; anything not listed shows its raw name.
+const makerName = new Map(manufacturers.map((m) => [m.id, m.data.shortName]));
 const REGION_LABEL: Record<string, string> = { US: 'United States', UK: 'United Kingdom', USSR: 'Soviet Union', Europe: 'Europe (multi-country)' };
+const regionName = (r: string) => REGION_LABEL[r] ?? r;
+const catalogues = (await getCollection('modules')).filter((m) => m.data.platform && m.data.track !== 'machine');
 
-interface Sys { year: number; slug: string; name: string; kind: string; maker: string; tier: string; region: string; country: string; color: string }
-// Authored pages establish lesson availability; catalogue priority is separate.
-const startable = platforms
-  .filter(p => (lessonCounts.get(p.id) ?? 0) > 0)
-  .sort((a, b) => a.data.year - b.data.year);
+/** Our own capture for a machine, through the browser player's poster list,
+    with its stored size; null when there is none yet. */
+const capture = (id: string, name: string) => {
+  const entry = catalog.find((e) => e.id === id || e.aliases.includes(id));
+  const poster = entry ? posterFor(entry.id, name) : null;
+  if (!poster) return null;
+  const { width, height } = pngSize(new Uint8Array(readFileSync(`public${poster.src}`)));
+  /* The Amiga stores its 320x256 screen at twice that, which its pixels
+     cannot always reveal, so it is declared (§7). */
+  const grid = id === 'commodore-amiga' && width === 640 && height === 512 ? { w: 320, h: 256 } : undefined;
+  return { ...poster, width, height, grid };
+};
+
+/* In the homepage explorer's order (src/data/same-job.ts), then navOrder. */
+const order = Object.keys(sameJob);
+const rank = (id: string) => order.indexOf(id) + 1 || order.length + 1;
+const live = platforms
+  .filter((p) => lessonCounts.has(p.id))
+  .sort((a, b) => rank(a.id) - rank(b.id) || a.data.navOrder - b.data.navOrder)
+  .map((p) => {
+    const tracks = new Set(catalogues.filter((c) => c.data.platform === p.id).map((c) => c.data.track!));
+    const langs = Object.entries(sameJob[p.id]?.langs ?? {}).filter(([t]) => tracks.has(t as never)).map(([, l]) => l.label);
+    return { p, maker: makerName.get(p.data.manufacturer) ?? p.data.manufacturer, langs, shot: capture(p.id, p.data.shortName) };
+  });
 
 const prioritised = platforms
-  .filter(p => p.data.tier === 'next' && !lessonCounts.has(p.id))
-  .sort((a, b) => a.data.year - b.data.year);
+  .filter((p) => p.data.tier === 'next' && !lessonCounts.has(p.id))
+  .sort((a, b) => a.data.navOrder - b.data.navOrder)
+  .map((p) => ({ p, maker: makerName.get(p.data.manufacturer) ?? p.data.manufacturer, shot: capture(p.id, p.data.shortName) }));
 
-const fleet: Sys[] = platforms.map(p => ({
-  year: p.data.year, slug: p.id, name: p.data.shortName,
-  kind: KIND[p.data.type] ?? p.data.type,
-  maker: makerName.get(p.data.manufacturer) ?? p.data.manufacturer,
-  tier: p.data.tier ?? 'planned',
-  region: p.data.region,
-  country: REGION_CODE[p.data.region] ?? p.data.region,
-  color: p.data.color,
-})).sort((a, b) => a.year - b.year || a.slug.localeCompare(b.slug));
+interface Sys { year: number; slug: string; name: string; maker: string; tier: string; region: string; lessons: boolean; q: string }
+const fleet: Sys[] = platforms.map((p) => {
+  const maker = makerName.get(p.data.manufacturer) ?? p.data.manufacturer;
+  return {
+    year: p.data.year, slug: p.id, name: p.data.shortName, maker,
+    tier: p.data.tier ?? 'planned', region: p.data.region, lessons: lessonCounts.has(p.id),
+    q: [p.data.name, p.data.shortName, maker, p.data.year, p.data.region, regionName(p.data.region)].join(' ').toLowerCase(),
+  };
+}).sort((a, b) => a.year - b.year || a.slug.localeCompare(b.slug));
 
-const total = fleet.length;
+const years = fleet.map((e) => e.year);
 
-interface Column { title: string; blurb?: string; items: Sys[] }
-let columns: Column[] = [];
+interface Group { title: string; blurb?: string; items: Sys[] }
+let groups: Group[] = [];
 if (view === 'decade') {
-  const starts = [...new Set(fleet.map(e => Math.floor(e.year / 5) * 5))].sort((a, b) => a - b);
-  columns = starts.map(start => ({ title: `${start}–${start + 4}`, items: fleet.filter(e => e.year >= start && e.year <= start + 4) }));
+  const starts = [...new Set(fleet.map((e) => Math.floor(e.year / 5) * 5))].sort((a, b) => a - b);
+  groups = starts.map((start) => ({ title: `${start} to ${start + 4}`, items: fleet.filter((e) => e.year >= start && e.year <= start + 4) }));
 } else if (view === 'tier') {
-  columns = ['live', 'next', 'planned', 'edge', 'beyond'].map(tier => ({
+  groups = ['live', 'next', 'planned', 'edge', 'beyond'].map((tier) => ({
     title: systemStatus[tier].label,
-    blurb: tier === 'live' ? 'Published lessons; not a claim of a complete course' : systemStatus[tier].description,
-    items: fleet.filter(e => tier === 'live' ? lessonCounts.has(e.slug) : !lessonCounts.has(e.slug) && (e.tier === tier || (tier === 'planned' && e.tier === 'live'))),
+    blurb: tier === 'live' ? 'Published lessons; not a claim of a complete course.' : systemStatus[tier].description,
+    items: fleet.filter((e) => tier === 'live' ? e.lessons : !e.lessons && (e.tier === tier || (tier === 'planned' && e.tier === 'live'))),
   }));
 } else if (view === 'region') {
-  // Keep every region present in the catalogue.
-  columns = [...new Set(fleet.map(e => e.region))]
-    .map(r => ({ title: REGION_LABEL[r] ?? r, items: fleet.filter(e => e.region === r) }))
+  groups = [...new Set(fleet.map((e) => e.region))]
+    .map((r) => ({ title: regionName(r), items: fleet.filter((e) => e.region === r) }))
     .sort((a, b) => b.items.length - a.items.length || a.title.localeCompare(b.title));
 } else {
-  columns = [...new Set(fleet.map(e => e.maker))]
-    .map(m => ({ title: m, items: fleet.filter(e => e.maker === m) }))
+  groups = [...new Set(fleet.map((e) => e.maker))]
+    .map((m) => ({ title: m, items: fleet.filter((e) => e.maker === m) }))
     .sort((a, b) => b.items.length - a.items.length || a.title.localeCompare(b.title));
 }
+groups = groups.filter((g) => g.items.length > 0);
 
-const isActive = (t: string) => t === 'live' || t === 'next';
-const tabs: Array<[string, string, string]> = [['decade', '/systems', 'By era'], ['region', '/systems/by-region', 'By region'], ['maker', '/systems/by-maker', 'By maker'], ['tier', '/systems/by-tier', 'By availability']];
+const lenses: Array<[Props['view'], string, string]> = [
+  ['decade', '/systems/', 'By era'],
+  ['region', '/systems/by-region/', 'By region'],
+  ['maker', '/systems/by-maker/', 'By maker'],
+  ['tier', '/systems/by-tier/', 'By availability'],
+];
+const count = (n: number) => `${n} ${n === 1 ? 'machine' : 'machines'}`;
 ---
 
-<div class="wrap">
-  <div class="eyebrow">Computers, consoles and more</div>
-  <h1>Systems</h1>
-  <div class="herorule"></div>
-  <p class="intro">Explore the machines through their games, languages and hardware.
-    Start with a system that has lessons, or browse the wider directory for reference
-    material and planned coverage. A listing does not mean that a course or a working toolchain is available.</p>
+<RefitScreens />
+<div class="systems">
+  <header class="page-head">
+    <div>
+      <Eyebrow>Computers, consoles and more</Eyebrow>
+      <h1>Systems.</h1>
+      <p class="intro">Explore the machines through their games, languages and hardware. Start with a system that has lessons, or browse the wider directory for reference material and planned coverage. A listing does not mean that a course or a working toolchain is available.</p>
+    </div>
+    <dl class="tally">
+      <div><dt>machines catalogued</dt><dd>{fleet.length}</dd></div>
+      <div><dt>with lessons</dt><dd>{live.length}</dd></div>
+      <div><dt>to {Math.max(...years)}</dt><dd>{Math.min(...years)}</dd></div>
+    </dl>
+  </header>
 
-  <div class="startable">
-    <p class="startable-head">Lessons you can start today</p>
-    <div class="startable-row">
-      {startable.map((p) => (
-        <a href={`/systems/${p.id}`} style={`--pc: ${p.data.color}`}>
-          <span class="y">{p.data.year}</span>
-          <span class="n">{p.data.shortName}</span>
-          {lessonCounts.has(p.id) && <span class="y">{lessonCounts.get(p.id)} lesson pages</span>}
-        </a>
+  <section class="block" aria-labelledby="live-h">
+    <h2 id="live-h">Lessons you can start today.</h2>
+    <ul class="live">
+      {live.map(({ p, maker, langs, shot }) => (
+        <li>
+          <Shell variant="device" href={`/systems/${p.id}/`} class="sys">
+            <div class="sys-in">
+              {shot ? (
+                <Screen src={shot.src} alt={shot.caption} width={shot.width} height={shot.height} grid={shot.grid} class="tube" />
+              ) : (
+                <div class="tube-off"><span>No capture yet</span></div>
+              )}
+              <div class="info">
+                <span class="rule" style={`--m:${p.data.color}`}></span>
+                <h3>{p.data.name}</h3>
+                <p class="meta">{maker}, {p.data.year}, {p.data.cpu}</p>
+                {langs.length > 0 && <p class="langs">{langs.map((l) => <Chip>{l}</Chip>)}</p>}
+                <span class="go">Open the {p.data.shortName}</span>
+              </div>
+            </div>
+          </Shell>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  {prioritised.length > 0 && (
+    <section class="block" aria-labelledby="next-h">
+      <h2 id="next-h">Prioritised next.</h2>
+      <p class="sec-intro">These machines are next for lessons. There is no published lesson sequence or release date yet.</p>
+      <ul class="next">
+        {prioritised.map(({ p, maker, shot }) => (
+          <li>
+            <Shell variant="device" href={`/systems/${p.id}/`} class="nx">
+              {shot ? (
+                <Screen src={shot.src} alt={shot.caption} width={shot.width} height={shot.height} grid={shot.grid} class="tube" />
+              ) : (
+                <div class="tube-off"><span>No capture yet</span></div>
+              )}
+              <p class="name">{p.data.name}</p>
+              <p class="meta">{maker}, {p.data.year}</p>
+            </Shell>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+
+  <section class="block" aria-labelledby="all-h" data-catalogue>
+    <h2 id="all-h">Every machine.</h2>
+    <p class="sec-intro">The whole catalogue, including machines kept for reference only.</p>
+    <div class="tools">
+      <nav class="lenses" aria-label="Arrange the catalogue">
+        {lenses.map(([v, href, label]) => (
+          <a href={href} aria-current={view === v ? 'page' : undefined}>{label}</a>
+        ))}
+      </nav>
+      <SearchField label="Find a machine" placeholder="Find a machine, maker or year" name="find" id="find-machine" class="find" />
+    </div>
+    <p class="legend">A machine marked <b>Lessons</b> has published lessons; one marked <b>Next</b> is prioritised for them. Every other machine is listed for reference or planned coverage; <a href="/systems/by-tier/">by availability</a> sorts them all.</p>
+    <div class="groups" data-groups>
+      {groups.map((g) => (
+        <div class="group" data-group>
+          <div class="ghead">
+            <h3>{g.title}</h3>
+            <p class="n" data-n data-total={g.items.length}>{count(g.items.length)}</p>
+            {g.blurb && <p class="blurb">{g.blurb}</p>}
+          </div>
+          <ul class="chips">
+            {g.items.map((e) => (
+              <li data-q={e.q}>
+                <Chip href={`/systems/${e.slug}/`}>{e.name}<span slot="meta">{e.year}{e.lessons ? ' · Lessons' : e.tier === 'next' ? ' · Next' : ''}</span></Chip>
+              </li>
+            ))}
+          </ul>
+        </div>
       ))}
     </div>
-    {prioritised.length > 0 && (
-      <>
-        <p class="startable-head next-head">Prioritised for future lessons</p>
-        <div class="startable-row next-row">
-          {prioritised.map((p) => (
-            <a href={`/systems/${p.id}`} style={`--pc: ${p.data.color}`}>
-              <span class="y">{p.data.year}</span>
-              <span class="n">{p.data.shortName}</span>
-            </a>
-          ))}
-        </div>
-      </>
-    )}
-  </div>
-  <p class="summary"><b>{total}</b> systems listed · <b>{startable.length}</b> with lesson pages.
-    Counts describe published pages, not completed games or verified hardware configurations.</p>
+    <p class="none" data-none role="status"></p>
+  </section>
 
-  <div class="controls">
-    <div class="legend">
-      <span class="sw"><i class="live"></i> Lessons available</span>
-      <span class="sw"><i class="next"></i> Prioritised</span>
-      <span class="sw"><i class="planned"></i> Planned</span>
-      <span class="sw"><i class="edge"></i> Under consideration</span>
-      <span class="sw"><i class="beyond"></i> Reference only</span>
-    </div>
-    <div class="tabs">
-      {tabs.map(([v, href, label]) => (
-        <a href={href} class={view === v ? 'on' : ''} aria-current={view === v ? 'page' : undefined}>{label}</a>
-      ))}
-    </div>
-  </div>
-
-  <div class={`board ${view}`}>
-    {columns.filter(col => col.items.length > 0).map(col => (
-      <div class="col">
-        <div class="chead">
-          <span class="t">{col.title}</span><span class="n">{col.items.length}</span>
-          {col.blurb && <span class="blurb">{col.blurb}</span>}
-        </div>
-        <div class="stack">
-          {col.items.map(e => (
-            <a href={`/systems/${e.slug}`} class={`pill ${e.tier} ${isActive(e.tier) ? 'active' : ''}`} style={isActive(e.tier) ? `border-left-color: ${e.color}` : undefined}>
-              {(lessonCounts.has(e.slug) || e.tier === 'next') && <span class={`stamp ${e.tier === 'next' ? 'next' : ''}`}>{lessonCounts.has(e.slug) ? 'LESSONS' : 'PRIORITY'}</span>}
-              <div class="top"><span>{e.year} · {e.maker}</span><span class="ctry">{e.country}</span></div>
-              <div class="name">{e.name}</div>
-              <div class="kind">{e.kind} · {lessonCounts.has(e.slug) ? 'Lessons available' : systemStatus[e.tier]?.label}</div>
-            </a>
-          ))}
-        </div>
-      </div>
-    ))}
-  </div>
-
-  <div class="foot">
-    <a href="/curriculum">Explore the curriculum map</a>
-    <a href="/contribute">Help develop the curriculum</a>
-  </div>
+  <p class="foot">
+    <a href="/curriculum/">Explore the curriculum map</a>
+    <a href="/contribute/">Help develop the curriculum</a>
+  </p>
 </div>
 
 <style>
-  /* The four with lessons, above the wall of 150-odd that mostly have none. */
-  .startable { margin: var(--space-5) 0 var(--space-4); }
-  .startable-head { font-family: var(--font-family-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-text-secondary); margin: 0 0 var(--space-3); }
-  .startable-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); }
-  .startable-row a { border: 3px solid var(--color-text); border-top-width: 10px; border-top-color: var(--pc); background: var(--color-surface); box-shadow: var(--shadow-chunky); padding: var(--space-4); text-decoration: none; color: var(--color-text); display: block; transition: border-color var(--transition-base), box-shadow var(--transition-base); }
-  .startable-row a:hover, .startable-row a:focus-visible { transform: translate(-3px, -3px); box-shadow: 7px 7px 0 var(--pc); }
-  .startable-row .y { display: block; font-family: var(--font-family-mono); font-size: 0.66rem; letter-spacing: 0.1em; color: var(--color-text-secondary); }
-  .startable-row .n { display: block; font-weight: 800; font-size: 1.05rem; margin-top: 2px; }
-  .next-head { margin-top: var(--space-5); }
-  .next-row { grid-template-columns: repeat(6, 1fr); }
-  /* Thinner top edge and no shadow: in build is a weaker promise than shipping,
-     and the cards should say so before the label is read. */
-  .next-row a { border-width: 3px; border-top-width: 6px; box-shadow: none; padding: var(--space-3); }
-  .next-row .n { font-size: 0.92rem; }
-  @media (max-width: 900px) { .next-row { grid-template-columns: repeat(3, 1fr); } }
-  @media (max-width: 720px) { .startable-row { grid-template-columns: 1fr 1fr; } }
-
-  .wrap { max-width: var(--container-max-width); margin: 0 auto; padding: var(--space-5) var(--gutter) var(--space-16); }
-  .eyebrow { font-family: var(--font-family-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-text-secondary); }
-  .wrap h1 { font-family: var(--font-family-read); font-weight: 700; font-size: clamp(3.2rem, 8vw, 4.6rem); line-height: 0.86;
-      /* Reserve the descender the tight line-height does not: Literata's ink
-         drops ~0.33em past the box, which collided with the strapline. */
-      padding-bottom: 0.25em; margin: var(--space-1) 0 0; color: var(--color-text); }
-  .herorule { height: 9px; width: 240px; background: var(--color-house); position: relative; margin-top: var(--space-2); }
-  .herorule::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 24%; background: var(--color-house-2); }
-  .foot a { color: inherit; text-decoration: underline; }
-  .intro { font-size: 0.95rem; max-width: 78ch; margin: var(--space-3) 0 0; color: var(--color-text); }
-  .intro b { color: var(--color-house-2); }
-  .summary { font-family: var(--font-family-mono); font-size: 0.75rem; color: var(--color-text-secondary); margin-top: var(--space-2); letter-spacing: 0.03em; }
-  .summary b { color: var(--color-text); }
-
-  .controls { display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap; margin-top: var(--space-4); padding-bottom: var(--space-3); border-bottom: 3px solid var(--color-text); }
-  .legend { display: flex; gap: var(--space-3); flex-wrap: wrap; font-family: var(--font-family-mono); font-size: 0.66rem; letter-spacing: 0.04em; color: var(--color-text-secondary); align-items: center; }
-  .legend .sw { display: inline-flex; align-items: center; gap: 5px; }
-  .legend i { width: 16px; height: 12px; display: inline-block; border: 2px solid var(--color-text); background: var(--color-surface); }
-  .legend i.live { box-shadow: 2px 2px 0 rgb(0 0 0 / 0.2); }
-  .legend i.next { background: var(--color-house-tint); }
-  .legend i.planned { border-color: var(--color-border); }
-  .legend i.edge { border-style: dashed; border-color: var(--color-text-secondary); opacity: 0.7; }
-  .legend i.beyond { border-style: dashed; border-color: var(--color-text-muted); opacity: 0.5; }
-  .tabs { margin-left: auto; display: flex; gap: 0; }
-  .tabs a { font-family: var(--font-family-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
-    padding: 8px 13px; border: 3px solid var(--color-text); background: var(--color-surface); color: var(--color-text); text-decoration: none; border-right-width: 0; }
-  .tabs a:last-child { border-right-width: 3px; }
-  .tabs a.on { background: var(--color-house); color: #f6efe2; }
-  /* --color-house is a light tan in dark mode, so cream text fails there —
-     use dark text on the tan pill instead. */
-  :global(:root[data-theme="dark"]) .tabs a.on { color: #241a10; }
-  @media (prefers-color-scheme: dark) {
-    :global(:root:not([data-theme])) .tabs a.on { color: #241a10; }
+  .systems {
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--gutter) calc(var(--h-cell) * 12);
   }
 
-  .board { margin-top: var(--space-4); }
-  /* Era, tier and region: stacked full-width bands, each group's systems in a
-     flowing grid, so a huge group (66 in the boom, ~130 planned, 49 US) reads as
-     rows rather than one towering column. */
-  .board.decade, .board.tier, .board.region { display: flex; flex-direction: column; gap: var(--space-8); }
-  /* Maker: a compact wall of columns — many small makers pack better this way. */
-  .board.maker { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px, 1fr)); gap: var(--space-4); align-items: start; }
+  .page-head {
+    display: grid;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: calc(var(--h-cell) * 6);
+    align-items: end;
+    padding: calc(var(--h-cell) * 10) 0 calc(var(--h-cell) * 4);
+  }
+  h1 {
+    margin: calc(var(--h-cell) * 3) 0 0;
+    font-family: var(--h-font-ui);
+    font-weight: 700;
+    font-size: clamp(3rem, 7vw, 6rem);
+    line-height: 0.95;
+    letter-spacing: -0.04em;
+    color: var(--h-ink);
+  }
+  .intro { max-width: 46ch; margin: calc(var(--h-cell) * 3) 0 0; font-size: var(--h-text-body); color: var(--h-ink-body); }
 
-  .col .chead { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; border-bottom: 2px solid var(--color-text); padding-bottom: 4px; margin-bottom: 8px; }
-  .col .chead .t { font-family: var(--font-family-read); font-weight: 700; font-size: 1.5rem; line-height: 1; }
-  .col .chead .n { font-family: var(--font-family-mono); font-size: 0.7rem; color: var(--color-text-secondary); }
-  .col .chead .blurb { font-family: var(--font-family-mono); font-size: 0.56rem; letter-spacing: 0.06em; color: var(--color-text-secondary); text-transform: uppercase; width: 100%; margin-top: 2px; }
-  /* Band views: pills flow in a responsive grid. Maker keeps a vertical list. */
-  .board.decade .stack, .board.tier .stack, .board.region .stack { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 8px; align-items: stretch; }
-  .board.maker .stack { display: flex; flex-direction: column; gap: 7px; }
-  /* Band headers read as section titles. */
-  .board.decade .chead .t, .board.tier .chead .t, .board.region .chead .t { font-size: 1.9rem; }
+  .tally { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--h-cell); margin: 0; }
+  .tally div {
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: flex-end;
+    padding: calc(var(--h-cell) * 2);
+    border: 1px solid var(--h-line);
+    background: var(--h-ground);
+  }
+  .tally dd { margin: 0; font: 700 clamp(1.6rem, 3vw, 2.2rem)/1 var(--h-font-ui); letter-spacing: -0.03em; color: var(--h-ink); }
+  .tally dt { margin-top: var(--h-cell); font-size: var(--h-text-micro); line-height: var(--h-lh-micro); color: var(--h-ink-muted); }
 
-  .pill { border: 2px solid var(--color-text); background: var(--color-surface); padding: 6px 8px 7px; position: relative; text-decoration: none; color: var(--color-text); display: block; transition: transform var(--transition-base), box-shadow var(--transition-base); }
-  .pill:hover, .pill:focus-visible { transform: translate(-2px, -2px); box-shadow: var(--shadow-chunky); }
-  .pill .top { display: flex; justify-content: space-between; align-items: center; font-family: var(--font-family-mono); font-size: 0.56rem; color: var(--color-text-secondary); }
-  .pill .ctry { background: rgb(26 24 20 / 0.08); padding: 0 4px; letter-spacing: 0.05em; color: var(--color-text); }
-  .pill .name { font-weight: 700; font-size: 0.84rem; line-height: 1.05; margin-top: 2px; }
-  .pill .kind { font-family: var(--font-family-mono); font-size: 0.5rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-text-secondary); margin-top: 2px; }
-  .pill.live { border-width: 3px; box-shadow: var(--shadow-chunky); }
-  .pill.next { background: var(--color-house-tint); }
-  .pill.planned { border-color: var(--color-border); }
-  .pill.edge { border-style: dashed; border-color: var(--color-text-secondary); }
-  .pill.beyond { border-style: dashed; border-color: var(--color-border); }
-  .pill.edge .name, .pill.beyond .name { color: var(--color-text-secondary); font-weight: 600; }
-  .pill.active { border-left-width: 6px; }
-  .pill .stamp { position: absolute; top: -9px; right: -5px; font-family: var(--font-family-mono); font-size: 0.5rem; font-weight: 700; letter-spacing: 0.1em;
-    padding: 1px 5px; border: 2px solid var(--color-text); background: var(--color-surface); transform: rotate(5deg); }
-  .pill .stamp.next { border-color: var(--color-house-2); color: var(--color-house-2); transform: rotate(-5deg); }
+  .block { padding-top: calc(var(--h-cell) * 8); }
+  .block h2 {
+    margin: 0;
+    font-family: var(--h-font-ui);
+    font-weight: 700;
+    font-size: clamp(2rem, 4vw, var(--h-text-h1));
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    color: var(--h-ink);
+  }
+  .sec-intro { max-width: 52ch; margin: calc(var(--h-cell) * 1.5) 0 0; color: var(--h-ink-body); }
 
-  .foot { margin-top: var(--space-8); border-top: 3px solid var(--color-text); padding-top: var(--space-4); display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3);
-    font-family: var(--font-family-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-secondary); }
+  ul { margin: 0; padding: 0; list-style: none; }
 
-  @media (max-width: 620px) { .wrap h1 { font-size: 3rem; } }
+  /* ---- with lessons ---- */
+  .live { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: calc(var(--h-cell) * 2); margin-top: calc(var(--h-cell) * 4); }
+  .live li, .next li { display: flex; }
+  .live li > :global(.sys), .next li > :global(.nx) { flex: 1; }
+  .live li > :global(.sys > .h-shell-core) { height: 100%; }
+  .sys-in { display: grid; gap: calc(var(--h-cell) * 3); align-content: start; }
+  .sys-in > :global(.tube) { justify-self: center; }
+  .info { display: grid; gap: calc(var(--h-cell) * 1); justify-items: start; }
+  /* The machine's own colour, as a marker on its card: the subject axis (§3). */
+  .rule { width: 3rem; height: 3px; background: var(--m); }
+  .info h3 {
+    margin: 0;
+    font-family: var(--h-font-ui);
+    font-weight: 700;
+    font-size: clamp(1.5rem, 2.4vw, var(--h-text-h3));
+    line-height: 1.05;
+    letter-spacing: -0.025em;
+    color: var(--h-ink);
+  }
+  .meta { margin: 0; font-family: var(--h-font-mono); font-size: var(--h-text-micro); line-height: 1.5; color: var(--h-ink-muted); }
+  .langs { display: flex; flex-wrap: wrap; gap: var(--h-cell); margin: var(--h-cell) 0 0; }
+  .go { margin-top: var(--h-cell); font-weight: var(--h-weight-minor); color: var(--h-ink); text-decoration: underline; text-underline-offset: 0.2em; }
+
+  /* An empty tube: the same object, dark, saying what is missing. */
+  .tube-off {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 4 / 3;
+    width: calc(100% - 1.2rem);
+    max-width: 352px;
+    margin: 0.6rem;
+    justify-self: center;
+    border-radius: 1.4rem / 1.6rem;
+    background: var(--h-screen-glass);
+    box-shadow: 0 0 0 0.6rem var(--h-screen-bezel), 0 0 0 calc(0.6rem + 1px) var(--h-screen-rim);
+  }
+  .tube-off span { font-family: var(--h-font-mono); font-size: var(--h-text-micro); color: #a39883; }
+
+  /* ---- prioritised ---- */
+  .next {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 30rem), 1fr));
+    gap: calc(var(--h-cell) * 1.5);
+    margin-top: calc(var(--h-cell) * 4);
+  }
+  .next :global(.nx > .h-shell-core) { height: 100%; padding: calc(var(--h-cell) * 1.5); display: grid; align-content: start; justify-items: center; gap: calc(var(--h-cell) * 1.5); }
+  .nx .name, .nx .meta { justify-self: start; }
+  .name { margin: var(--h-cell) 0 0; font-weight: 600; font-size: var(--h-text-body); line-height: 1.2; color: var(--h-ink); }
+
+  /* ---- the catalogue ---- */
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--h-cell) * 1.5);
+    justify-content: space-between;
+    align-items: center;
+    margin: calc(var(--h-cell) * 4) 0 calc(var(--h-cell) * 2);
+  }
+  .lenses { display: flex; flex-wrap: wrap; gap: var(--h-cell); }
+  .lenses a {
+    display: inline-flex;
+    align-items: center;
+    min-height: calc(var(--h-cell) * 5);
+    padding: 0 calc(var(--h-cell) * 2);
+    border: 1px solid var(--h-line);
+    background: var(--h-shell);
+    color: var(--h-ink-body);
+    font-size: var(--h-text-micro);
+    font-weight: var(--h-weight-minor);
+    text-decoration: none;
+  }
+  .lenses a:hover { background: var(--h-wash); color: var(--h-ink); }
+  .lenses a:focus-visible { outline: 2px solid var(--h-accent); outline-offset: 2px; }
+  /* Current: inverse video (§7). */
+  .lenses a[aria-current] { background: var(--h-ink); border-color: var(--h-ink); color: var(--h-ground); }
+  .tools :global(.find) { flex: 0 1 22rem; }
+  .legend { max-width: 70ch; margin: 0 0 calc(var(--h-cell) * 3); font-size: var(--h-text-small); line-height: var(--h-lh-small); color: var(--h-ink-muted); }
+  .legend b { color: var(--h-ink-body); font-weight: 600; }
+  .legend a { color: var(--h-ink-body); }
+
+  .group {
+    display: grid;
+    grid-template-columns: minmax(10rem, 2fr) minmax(0, 10fr);
+    gap: calc(var(--h-cell) * 4);
+    padding: calc(var(--h-cell) * 3) 0;
+    border-top: 1px solid var(--h-line);
+  }
+  .group:last-child { border-bottom: 1px solid var(--h-line); }
+  .group[hidden] { display: none; }
+  .ghead h3 { margin: 0; font: 700 1.35rem/1.15 var(--h-font-ui); letter-spacing: -0.015em; color: var(--h-ink); }
+  .n { margin: var(--h-cell) 0 0; font-family: var(--h-font-mono); font-size: var(--h-text-micro); color: var(--h-ink-muted); }
+  .blurb { margin: var(--h-cell) 0 0; font-size: var(--h-text-micro); line-height: var(--h-lh-micro); color: var(--h-ink-muted); }
+  .chips { display: flex; flex-wrap: wrap; gap: var(--h-cell); align-content: start; }
+  .chips li[hidden] { display: none; }
+  .none { margin: 0; padding: calc(var(--h-cell) * 4) 0; color: var(--h-ink-muted); }
+  .none:empty { padding: 0; }
+
+  .foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: calc(var(--h-cell) * 2);
+    margin: calc(var(--h-cell) * 8) 0 0;
+    padding-top: calc(var(--h-cell) * 3);
+    border-top: 1px solid var(--h-line);
+  }
+  .foot a { color: var(--h-ink-body); }
+
+  @media (max-width: 1100px) {
+    .page-head { grid-template-columns: minmax(0, 1fr); }
+    .live { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 767px) {
+    .page-head { padding-top: calc(var(--h-cell) * 6); }
+    .group { grid-template-columns: minmax(0, 1fr); gap: calc(var(--h-cell) * 2); }
+    .tools :global(.find) { flex-basis: 100%; }
+  }
 </style>
+
+<script>
+  /* The find field filters the catalogue in place; Enter does not reload. */
+  function init() {
+    const root = document.querySelector<HTMLElement>('[data-catalogue]:not([data-bound])');
+    if (!root) return;
+    root.dataset.bound = 'true';
+    const form = root.querySelector<HTMLFormElement>('form[role="search"]')!;
+    const input = form.querySelector<HTMLInputElement>('input')!;
+    const none = root.querySelector<HTMLElement>('[data-none]')!;
+    const filter = () => {
+      const q = input.value.trim().toLowerCase();
+      let any = false;
+      root.querySelectorAll<HTMLElement>('[data-group]').forEach((g) => {
+        const items = [...g.querySelectorAll<HTMLElement>('li[data-q]')];
+        let shown = 0;
+        items.forEach((li) => { const hit = !q || (li.dataset.q ?? '').includes(q); li.hidden = !hit; if (hit) shown++; });
+        g.hidden = shown === 0;
+        const n = g.querySelector<HTMLElement>('[data-n]')!;
+        const total = items.length;
+        n.textContent = q ? `${shown} of ${total}` : `${total} ${total === 1 ? 'machine' : 'machines'}`;
+        if (shown) any = true;
+      });
+      none.textContent = any ? '' : 'No machine matches that search.';
+    };
+    form.addEventListener('submit', (e) => { e.preventDefault(); filter(); });
+    input.addEventListener('input', filter);
+  }
+  document.addEventListener('astro:page-load', init);
+</script>
