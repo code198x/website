@@ -4,7 +4,7 @@
 set -euo pipefail
 
 REPO="https://github.com/stevehill1981/198x-ui.git"
-REF="${UI_REF:-v0.6.2}"
+REF="${UI_REF:-v0.7.0}"
 DIR="_198x-ui"
 
 if [ -d "$DIR/.git" ]; then
