@@ -43,4 +43,10 @@ test('prediction panel is yellow with readable ink', async ({ page }) => {
   const q = page.locator('.question').first();
   expect(await q.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgb(242, 210, 46)');
   expect(await q.locator('.question-prompt').evaluate((el) => getComputedStyle(el).color)).toBe('rgb(27, 26, 23)');
+  // Spot reds measure ~4.3:1 on the yellow; inside the panel the accent is ink.
+  const { accent, ink } = await q.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { accent: cs.getPropertyValue('--h-accent-ink').trim(), ink: cs.getPropertyValue('--h-ink').trim() };
+  });
+  expect(accent).toBe(ink);
 });
