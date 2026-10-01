@@ -1,16 +1,36 @@
 ---
+/**
+ * The shell every page shares: head, nav, breadcrumb trail, footer and the
+ * global rules underneath them.
+ *
+ * Governed by 198x/decisions/family-visual-identity.md (§4 palette and type,
+ * §6 scale and motion, §7 the cell system: interface square on an 8px cell,
+ * inverse video for "current" and nothing else, dark leading) and by
+ * sibling-cross-promotion.md for the footer family strip. The approved concept
+ * is Code198x/website-preview/public/concepts/ (home, lesson, systems).
+ *
+ * Two places where it departs from the concept, both deliberate:
+ *
+ * - The nav is docked, not a floating island. The breadcrumb bar, the unit
+ *   contents rail and the run panel are sticky and stack under it at
+ *   --nav-height; an island floating above a docked bar leaves a strip of page
+ *   scrolling through the gap between them.
+ * - The theme control is the kit's ThemeToggle, three visible radios, not the
+ *   concept's cycling icon button. The kit explains why in its header; where
+ *   the kit and the concept differ, the kit wins.
+ */
 import '@198x-ui/tokens.css';
 import '../styles/tint.css';
 import '@198x-ui/fonts.css';
 import { ClientRouter } from 'astro:transitions';
-import ThemeToggle from '../components/ThemeToggle.astro';
-import Breadcrumbs from '../components/Breadcrumbs.astro';
-import Search from '../components/Search.astro';
+import ThemeBoot from '@198x-ui/components/ThemeBoot.astro';
+import ThemeToggle from '@198x-ui/components/ThemeToggle.astro';
 import Plate from '@198x-ui/components/Plate.astro';
 import FamilyStrip from '@198x-ui/components/FamilyStrip.astro';
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import Search from '../components/Search.astro';
 import { getActivePlatforms } from '../lib/platforms';
 import { inkStyle } from '../lib/contrast';
-
 
 // Get platforms for nav and footer
 const platforms = await getActivePlatforms();
@@ -48,6 +68,30 @@ const siteUrl = "https://code198x.com";
 const fullTitle = `${title} | Code Like It's 198x`;
 const canonicalUrl = new URL(currentPath, siteUrl).href;
 const ogImageUrl = new URL(image, siteUrl).href;
+
+/* The build writes directories, so a page's path ends in a slash ("/about/").
+   Compare without it, or a section is never current on its own page. */
+const here = currentPath.replace(/\/+$/, '') || '/';
+const within = (base: string) => here === base || here.startsWith(`${base}/`);
+
+/* Current is inverse video (§7). The section's own page is the page itself;
+   anything beneath it is "in" the section, which aria-current="true" says. */
+const nav = [
+  { label: 'START HERE', href: '/start-here', page: here === '/start-here', section: false },
+  {
+    label: 'SYSTEMS',
+    href: '/systems',
+    page: here === '/systems',
+    section: within('/systems') || platforms.some((p) => here.includes(p.id)),
+  },
+  { label: 'VAULT', href: '/vault', page: here === '/vault', section: within('/vault') },
+  { label: 'ABOUT', href: '/about', page: here === '/about', section: false },
+].map((item) => ({
+  ...item,
+  current: item.page ? 'page' : item.section ? 'true' : undefined,
+}));
+
+const THEME_KEY = 'theme';
 ---
 
 <!DOCTYPE html>
@@ -78,35 +122,33 @@ const ogImageUrl = new URL(image, siteUrl).href;
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageUrl} />
 
-    <!-- Theme initialization (inline to prevent flash) -->
-    <script is:inline>
-      (function() {
-        function applyTheme() {
-          const stored = localStorage.getItem('theme');
-          if (stored === 'dark' || stored === 'light') {
-            document.documentElement.setAttribute('data-theme', stored);
-          } else {
-            document.documentElement.removeAttribute('data-theme');
-          }
-        }
-        // Apply on initial load
-        applyTheme();
-        // Re-apply after View Transitions page swap
-        document.addEventListener('astro:after-swap', applyTheme);
-      })();
+    <!-- The reader's stored theme, applied before paint. The key is the one
+         this site has always used, so a choice made before the kit's toggle
+         arrived still holds. -->
+    <ThemeBoot storageKey={THEME_KEY} />
+    <!-- ThemeBoot runs once per document. A soft navigation swaps in the new
+         page's <html> attributes, which carry no data-theme, so the stored
+         choice is put back before the new page paints. -->
+    <script is:inline define:vars={{ key: THEME_KEY }}>
+      document.addEventListener('astro:after-swap', () => {
+        try {
+          const t = localStorage.getItem(key);
+          if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+        } catch {}
+      });
     </script>
 
     <!-- View transitions for smooth page navigation -->
     <ClientRouter />
 
-    <!-- Navigation progress bar -->
+    <!-- Navigation progress: answers a click while the next page loads. -->
     <style is:inline>
       #nav-progress {
         position: fixed;
         top: 0;
         left: 0;
         height: 3px;
-        background: var(--color-primary, #3b82f6);
+        background: var(--h-accent);
         z-index: 9999;
         opacity: 0;
         transition: opacity 0.2s;
@@ -149,26 +191,42 @@ const ogImageUrl = new URL(image, siteUrl).href;
     <a href="#main-content" class="skip-to-content">Skip to content</a>
 
     {showNav && (
-      <nav class="nav" aria-label="Primary">
-        <div class="nav-container">
-          <a href="/" class="nav-logo">
-            <Plate prefix="code" project="code" size={14} label="Code Like It's 198x" />
-          </a>
+      <header class="site-header">
+        <div class="site-bar">
+          <Plate prefix="code" project="code" size={13} href="/" label="Code Like It's 198x" />
 
-          <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="primary-links">
-            <span class="hamburger"></span>
-          </button>
+          <nav class="nav-links" aria-label="Primary">
+            <ul>
+              {nav.map((item) => (
+                <li><a href={item.href} aria-current={item.current}>{item.label}</a></li>
+              ))}
+            </ul>
+          </nav>
 
-          <div class="nav-links" id="primary-links">
-            <a href="/start-here" class={currentPath === '/start-here' ? 'active' : ''}>START HERE</a>
-            <a href="/systems" class={currentPath === '/systems' || platforms.some(p => currentPath.includes(p.id)) ? 'active' : ''}>SYSTEMS</a>
-            <a href="/vault" class={currentPath.includes('/vault') ? 'active' : ''}>VAULT</a>
-            <a href="/about" class={currentPath === '/about' ? 'active' : ''}>ABOUT</a>
+          <div class="site-tools">
+            <Search />
+            <div class="bar-theme" transition:persist="theme-bar">
+              <ThemeToggle storageKey={THEME_KEY} />
+            </div>
+            <button class="nav-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="site-menu">
+              <span aria-hidden="true"></span><span aria-hidden="true"></span>
+            </button>
           </div>
-          <Search />
-          <ThemeToggle />
         </div>
-      </nav>
+
+        <div class="site-menu" id="site-menu">
+          <nav aria-label="Menu">
+            <ul>
+              {nav.map((item) => (
+                <li><a href={item.href} aria-current={item.current}>{item.label}</a></li>
+              ))}
+            </ul>
+          </nav>
+          <div class="menu-theme" transition:persist="theme-menu">
+            <ThemeToggle storageKey={THEME_KEY} showLabel />
+          </div>
+        </div>
+      </header>
     )}
 
     <Breadcrumbs platformColor={platformColor} items={breadcrumbs} currentLabel={currentLabel}>
@@ -183,9 +241,7 @@ const ogImageUrl = new URL(image, siteUrl).href;
       <div class="footer-container">
         <div class="footer-grid">
           <div class="footer-brand">
-            <a href="/" class="footer-logo">
-              <Plate prefix="code" project="code" size={12} label="Code Like It's 198x" />
-            </a>
+            <Plate prefix="code" project="code" size={16} href="/" label="Code Like It's 198x" />
             <p class="footer-tagline">Learn to program by building complete games on classic 8-bit and 16-bit systems.</p>
           </div>
 
@@ -228,34 +284,29 @@ const ogImageUrl = new URL(image, siteUrl).href;
               <li><a href="https://github.com/orgs/code198x/discussions" target="_blank" rel="noopener">GitHub Discussions</a></li>
               <li><a href="https://www.patreon.com/c/code_like_its_198x" target="_blank" rel="noopener">Patreon</a></li>
               <li><a href="https://code198x.substack.com/" target="_blank" rel="noopener">Newsletter</a></li>
-              <li><a href="/rss.xml" class="rss-link">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-                  <circle cx="6.18" cy="17.82" r="2.18"/>
-                  <path d="M4 4.44v2.83c7.03 0 12.73 5.7 12.73 12.73h2.83c0-8.59-6.97-15.56-15.56-15.56zm0 5.66v2.83c3.9 0 7.07 3.17 7.07 7.07h2.83c0-5.47-4.43-9.9-9.9-9.9z"/>
-                </svg>
-                RSS Feed
-              </a></li>
+              <li><a href="/rss.xml">RSS Feed</a></li>
             </ul>
           </div>
         </div>
 
-        <div class="footer-family">
-          <FamilyStrip
-            hubHref="/family"
-            siblings={[
-              { name: 'Emu198x', href: 'https://github.com/emu198x' },
-              { name: 'Asm198x', href: 'https://github.com/asm198x' },
-              { name: 'Cat198x', href: 'https://github.com/cat198x' },
-              { name: 'Build198x', href: 'https://github.com/build198x' },
-            ]}
-          />
-        </div>
-
-        <div class="footer-bottom">
+        <div class="footer-legal">
+          <div class="footer-family">
+            <FamilyStrip
+              hubHref="/family"
+              siblings={[
+                { name: 'Emu198x', href: 'https://github.com/emu198x' },
+                { name: 'Asm198x', href: 'https://github.com/asm198x' },
+                { name: 'Cat198x', href: 'https://github.com/cat198x' },
+                { name: 'Build198x', href: 'https://github.com/build198x' },
+              ]}
+            />
+          </div>
           <p>© 2025–{new Date().getFullYear()} Code Like It's 198x</p>
-          <p class="footer-credits">Open source • Made with care for retro computing</p>
-          <p class="footer-rights">Original prose: <a href="/standards#licence">CC BY 4.0</a>. Code and third-party material have separate terms.</p>
-          <p class="footer-rights">
+          <p>Open source • Made with care for retro computing</p>
+          <p>Original prose: <a href="/standards#licence">CC BY 4.0</a>. Code and third-party material have separate terms.</p>
+          <!-- Standing rights notice, required on every public surface carrying
+               imagery by 198x/decisions/publishing-third-party-imagery.md. -->
+          <p>
             Games, artwork, logos and trademarks remain the property of their respective owners
             and are reproduced here to illustrate criticism and review.{' '}
             <a href="/standards#rights">Rights &amp; attribution</a>
@@ -266,22 +317,17 @@ const ogImageUrl = new URL(image, siteUrl).href;
   </body>
 </html>
 
-<!-- Global reset. Astro scopes a component's styles to that component's own
-     elements, so a `*` rule written in a scoped block covers this layout's
-     markup and nothing any child component renders. The rules below have to
-     be global to do the job they were written for. -->
+<!-- Global rules. Astro scopes a component's styles to that component's own
+     elements, so anything meant to reach page content, MDX prose or a child
+     component has to be global. -->
 <style is:global>
-  /* Was declared scoped, so 190 of 310 elements on a unit page were still
-     content-box — including containers whose padding was meant to inset their
-     contents rather than widen them. */
   *,
   *::before,
   *::after {
     box-sizing: border-box;
   }
 
-  /* Form controls have never inherited the page font. Every button and input
-     on the site was rendering in Arial against Nebula Sans. */
+  /* Form controls have never inherited the page font. */
   input,
   button,
   textarea,
@@ -304,15 +350,208 @@ const ogImageUrl = new URL(image, siteUrl).href;
     max-width: 100%;
   }
 
-  /* Anything that can be jumped to clears the sticky bars above it. Without
-     this a heading reached from the table of contents lands at the top of the
-     window with the nav and the breadcrumb bar drawn over it — 100px of the
-     page hidden, including the heading you asked for. --crumbs-height is
-     published by Breadcrumbs; the fallback covers a page without it. */
+  /* Anything that can be jumped to clears the sticky bars above it.
+     --crumbs-height is published by Breadcrumbs; the fallback covers a page
+     without it. */
   [id] {
     scroll-margin-top: calc(var(--nav-height) + var(--crumbs-height, 0px) + 1rem);
   }
 
+  /* ---- Type roles (§4) -------------------------------------------------
+     Nebula Sans is the interface and the default; pages set their reading
+     prose in Literata through --font-family-read. JetBrains Mono for anything
+     the machine said. Captions are Literata italic everywhere, photographs
+     included. Element selectors only, so a component's own rule still wins. */
+  code, kbd, samp, pre {
+    font-family: var(--h-font-mono);
+  }
+
+  figcaption {
+    font-family: var(--h-font-read);
+    font-style: italic;
+  }
+
+  /* Headings break into balanced lines. Face, size and colour stay with each
+     page: some headings sit on bands of their own colour and inherit it. */
+  :where(h1, h2, h3, h4, h5, h6) {
+    text-wrap: balance;
+  }
+
+  /* ---- Focus and selection -------------------------------------------
+     One focus ring, keyboard only: :focus-visible already leaves pointer
+     clicks alone. A component that draws its own ring keeps it. */
+  :focus-visible {
+    outline: 2px solid var(--h-accent);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    background: var(--h-accent);
+    color: var(--h-ink-on-accent);
+  }
+
+  /* ---- Links ---------------------------------------------------------
+     The floor for every link, MDX prose included: the accent at ink strength
+     (--h-accent-ink, never the fill). A component that styles its own links
+     outranks this; it is the floor, not an override. */
+  a {
+    color: var(--h-accent-ink);
+    text-decoration: none;
+    text-underline-offset: 0.18em;
+    transition: color var(--h-rise) var(--h-ease);
+  }
+
+  a:hover {
+    color: var(--h-accent-deep);
+  }
+
+  /* The mono face ships programming ligatures, which draw >= as an unkeyable
+     single glyph. Listings here are meant to be typed character for character,
+     so code shows the keystrokes rather than the typographic contraction. */
+  code,
+  pre {
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+
+  /* ---- Buttons -------------------------------------------------------
+     Page bodies still write <a class="btn btn-primary">. These match the
+     kit's Button (square, on the 8px cell, flat at rest, a lift on hover and
+     focus that rises fast and decays slowly) until each page moves to the
+     component itself. */
+  .btn {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--h-cell);
+    min-height: calc(var(--h-cell) * 7);
+    padding: calc(var(--h-cell) - 1px) calc(var(--h-cell) * 3 - 1px);
+    border: 1px solid var(--h-line);
+    border-radius: 0;
+    background: var(--h-shell);
+    color: var(--h-ink);
+    font-family: var(--h-font-ui);
+    font-size: var(--h-text-small);
+    font-weight: var(--h-weight-minor);
+    line-height: 1.2;
+    text-align: center;
+    text-decoration: none;
+    touch-action: manipulation;
+    cursor: pointer;
+    transition:
+      box-shadow var(--h-decay) var(--h-ease),
+      background-color var(--h-decay) var(--h-ease),
+      border-color var(--h-decay) var(--h-ease),
+      color var(--h-decay) var(--h-ease);
+  }
+
+  .btn:hover,
+  .btn:focus-visible {
+    box-shadow: var(--h-lift-1);
+    background: var(--h-wash);
+    color: var(--h-ink);
+    text-decoration: none;
+    transition-duration: var(--h-rise);
+  }
+
+  .btn:active { transform: translate(1px, 1px); }
+
+  .btn-primary {
+    background: var(--h-accent);
+    border-color: var(--h-accent);
+    color: var(--h-ink-on-accent);
+  }
+
+  .btn-primary:hover,
+  .btn-primary:focus-visible {
+    background: var(--h-accent-hover);
+    border-color: var(--h-accent-hover);
+    color: var(--h-ink-on-accent);
+  }
+
+  .btn-secondary {
+    background: var(--h-shell);
+    color: var(--h-ink);
+  }
+
+  .btn-sm {
+    min-height: calc(var(--h-cell) * 5);
+    padding: calc(var(--h-cell) * 0.5 - 1px) calc(var(--h-cell) * 2 - 1px);
+    font-size: var(--h-text-micro);
+  }
+
+  /* ---- Tables -------------------------------------------------------- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: var(--space-6) 0;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 0;
+    overflow: hidden;
+    font-size: 0.95rem;
+  }
+
+  thead {
+    background: color-mix(in oklab, var(--h-ink) 6%, var(--color-surface));
+    border-bottom: 2px solid var(--color-border);
+  }
+
+  th {
+    padding: var(--space-3) var(--space-4);
+    text-align: left;
+    font-weight: 600;
+    color: var(--color-text);
+    font-size: 0.9rem;
+    letter-spacing: 0.025em;
+  }
+
+  td {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border-light);
+  }
+
+  tbody tr:nth-child(even) {
+    background: color-mix(in oklab, var(--color-bg) 30%, var(--color-surface) 70%);
+  }
+
+  tbody tr:hover {
+    background: var(--h-wash);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  td code, th code {
+    font-family: var(--font-family-mono);
+    font-size: 0.875em;
+    background: color-mix(in oklab, var(--color-bg) 50%, transparent 50%);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0;
+  }
+
+  @media (max-width: 768px) {
+    table {
+      font-size: 0.875rem;
+      display: block;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    th, td {
+      padding: var(--space-2) var(--space-3);
+    }
+
+    td code, th code {
+      white-space: nowrap;
+    }
+  }
+
+  /* ---- Reduced motion (§6) -------------------------------------------
+     Everything that moves is off when the reader asks; the kit zeroes its own
+     rise and decay. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -327,72 +566,51 @@ const ogImageUrl = new URL(image, siteUrl).href;
 
 <style>
   /* ============================================
-     Design Tokens - Simplified from archive
+     Site tokens
+     Roles resolve through the kit (_198x-ui/tokens.css). What stays here is
+     what the kit does not own: the legacy names page bodies still use, the
+     state colours, the diagram scale, and the frame's own measurements.
+     Machine ink and fill values are derived by src/lib/contrast.ts and never
+     written down.
      ============================================ */
   :root {
-    /* Shared roles resolve through House198x; component-specific machine ink
-       and fill values remain derived by src/lib/contrast.ts. */
     --color-house: var(--h-ink);
     --color-house-2: var(--h-accent-ink);
     --color-house-tint: color-mix(in oklab, var(--h-accent) 10%, transparent);
     --color-primary: var(--h-accent-ink);
-    --color-primary-dark: var(--h-accent-deep);
     --color-accent: var(--h-ink);
-    --color-accent-dark: var(--h-accent-deep);
-
-    /* Retro System Colors - These intentionally stay constant in dark mode */
-    --c64-blue: #4a4dff;
-    --c64-beige: #b8b5a3;
-    --spectrum-red: #cc0000;
-    --spectrum-rainbow: linear-gradient(90deg, #00FF00, #FFFF00, #00FFFF, #FF0000, #FF00FF);
-    --nes-red: #e30613;
-    --amiga-orange: #ff6600;
-
-    /* Legacy aliases */
-    --zx-magenta: #ff00ff;
-    --zx-cyan: #00ffff;
 
     --color-bg: var(--h-page);
     --color-bg-secondary: var(--h-ground);
     --color-surface: var(--h-ground);
     --color-read: var(--h-page);
     --color-header-band: color-mix(in oklab, var(--h-ground) 88%, var(--h-page));
-    --color-surface-translucent: color-mix(in oklab, var(--h-page) 94%, transparent);
-    --paper-dot: color-mix(in oklab, var(--h-ink) 4%, transparent);
-    --paper-dot-2: color-mix(in oklab, var(--h-ink) 2.5%, transparent);
 
     --color-text: var(--h-ink-body);
     --color-text-secondary: var(--h-ink-muted);
     --color-text-muted: var(--h-ink-muted);
 
-    /* Default brand-ink + white-safe button fill. Pages/components override
-       --ink-l/--ink-d for their own brand colour; the --ink switch resolves
-       the theme-correct one. The default is the kit's accent text ink, not a
-       private copy of it: the hand-written #ac482a/#e17b52 held here drifted
-       from the house rust when the §4 palette moved it to #a53a0f/#e4784e.
-       --h-accent-ink is light-dark(), so each half resolves to its own theme. */
+    /* Default brand ink. Pages and components override --ink-l/--ink-d for
+       their own machine colour; the --ink switch below resolves the theme's. */
     --ink-l: var(--h-accent-ink);
     --ink-d: var(--h-accent-ink);
     --btn-fill: var(--h-accent-deep);
     --color-border: var(--h-line);
     --color-border-light: var(--h-line-soft);
 
-    /* Semantic Colors */
-    --color-success: #22c55e;
-    --color-success-muted: rgba(34, 197, 94, 0.15);
-    --color-error: #ef4444;
-    --color-error-muted: rgba(239, 68, 68, 0.1);
-    --color-warning: #f59e0b;
-    --color-warning-muted: rgba(245, 158, 11, 0.1);
+    /* State colours. Not part of the house palette; each pair is the light and
+       the dark value, resolved by the kit's color-scheme. */
+    --color-success: light-dark(#22c55e, #4ade80);
+    --color-success-muted: light-dark(rgba(34, 197, 94, 0.15), rgba(74, 222, 128, 0.15));
+    --color-error: light-dark(#ef4444, #f87171);
+    --color-error-muted: light-dark(rgba(239, 68, 68, 0.1), rgba(248, 113, 113, 0.1));
+    --color-warning: light-dark(#f59e0b, #fbbf24);
+    --color-warning-muted: light-dark(rgba(245, 158, 11, 0.1), rgba(251, 191, 36, 0.1));
 
-    /* Diagrams in src/components/diagrams draw with these. They are SVG on a
-       ground of their own, so they need a ground and an ink scale rather than
-       the surface/text tokens the rest of the page uses. Each diagram keeps its
-       own accent palette, because those carry meaning specific to it.
-
-       The ground is transparent so a diagram sits on the page rather than in a
-       panel on top of it. A diagram that needs a ground of its own — a pixel
-       grid, where "no pixel" has to look like something — overrides this. */
+    /* Diagrams in src/components/diagrams draw with these. They sit on the page
+       rather than in a panel; a diagram that needs a ground of its own (a pixel
+       grid, where "no pixel" has to look like something) overrides it. The
+       inks are the kit's, so they follow the theme without a dark block. */
     --diagram-bg: transparent;
     --diagram-ink: var(--color-text);
     --diagram-ink-dim: var(--color-text-secondary);
@@ -405,22 +623,19 @@ const ogImageUrl = new URL(image, siteUrl).href;
     --color-code-bg: light-dark(var(--color-surface), var(--h-code-bg));
     --color-code-text: light-dark(var(--color-text), var(--h-code-ink));
 
-    /* Note/Callout Colors */
     --color-note-bg: var(--color-surface);
     --color-note-border: var(--color-primary);
     --color-note-text: var(--color-text);
 
-    /* Difficulty Level Colors */
-    --color-beginner: #10b981;
-    --color-beginner-muted: rgba(16, 185, 129, 0.1);
-    --color-intermediate: #3b82f6;
-    --color-intermediate-muted: rgba(59, 130, 246, 0.1);
-    --color-advanced: #a855f7;
-    --color-advanced-muted: rgba(168, 85, 247, 0.1);
-
     --font-family-sans: var(--h-font-ui);
     --font-family-read: var(--h-font-read);
     --font-family-mono: var(--h-font-mono);
+
+    /* The hero step, §6. The kit's scale stops at display; the record added
+       hero for the homepage headline on 2026-09-30. */
+    --text-hero: 5rem;
+    --lh-hero: calc(84 / 80);
+    --tr-hero: -0.03em;
 
     --space-1: var(--h-space-1); --space-2: var(--h-space-2); --space-3: var(--h-space-3);
     --space-4: var(--h-space-4); --space-5: calc(var(--h-space-4) + var(--h-space-1));
@@ -435,102 +650,45 @@ const ogImageUrl = new URL(image, siteUrl).href;
     --shadow-chunky-hi: var(--h-lift-2);
     --transition-base: var(--h-rise) var(--h-ease);
 
-    /* Layout */
-    --container-max-width: 1440px;
-    /* The inset every full-width bar uses: the nav, the breadcrumb trail and
-       a unit's content. One value so they cannot drift apart. */
-    --gutter: var(--h-inset);
-    --nav-height: 4rem;
-  }
+    /* The frame. Wide enough for a 16-inch laptop (1728pt) to feel full; prose
+       keeps its own measure inside. The gutter is the concept's, 16px at its
+       narrowest. */
+    --container-max-width: 1600px;
+    --gutter: clamp(1rem, 4vw, 3rem);
+    /* The nav bar: one cell of padding round a five-cell control row, plus its
+       1px rule. Sticky bars below it stack from here. */
+    --nav-height: calc(var(--h-cell) * 7 + 1px);
+    /* The kit's own bars (FamilyStrip) inset by the same amount. */
+    --h-inset: var(--gutter);
 
-  /* Dark Mode - via manual selection */
-  :root[data-theme="dark"] {
-    /* Semantic Colors - slightly brighter in dark mode */
-    --color-success: #4ade80;
-    --color-success-muted: rgba(74, 222, 128, 0.15);
-    --color-error: #f87171;
-    --color-error-muted: rgba(248, 113, 113, 0.1);
-    --color-warning: #fbbf24;
-    --color-warning-muted: rgba(251, 191, 36, 0.1);
-
-    /* Diagram ink for the dark ground — the values the diagrams always had */
-    --diagram-bg: transparent;
-    --diagram-ink: #e0e0e0;
-    --diagram-ink-dim: #aaa;
-    --diagram-ink-faint: #666;
-    --diagram-rule: #444;
-    --diagram-rule-faint: #2b2419;
-
-  }
-
-  /* Dark Mode - via system preference (only when no manual selection) */
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme]) {
-      /* Semantic Colors - slightly brighter in dark mode */
-      --color-success: #4ade80;
-      --color-success-muted: rgba(74, 222, 128, 0.15);
-      --color-error: #f87171;
-      --color-error-muted: rgba(248, 113, 113, 0.1);
-      --color-warning: #fbbf24;
-      --color-warning-muted: rgba(251, 191, 36, 0.1);
-
-      /* Code blocks stay dark in both modes */
-      --diagram-bg: transparent;
-      --diagram-ink: #e0e0e0;
-      --diagram-ink-dim: #aaa;
-      --diagram-ink-faint: #666;
-      --diagram-rule: #444;
-      --diagram-rule-faint: #2b2419;
-
-    }
+    /* The ambient light on the ground (§4: capped at 0.13 dark, 0.12 light). */
+    --glow-a: light-dark(rgb(224 116 74 / 0.12), rgb(224 116 74 / 0.13));
+    --glow-b: light-dark(rgb(200 81 34 / 0.07), rgb(200 81 34 / 0.10));
+    --nav-bg: light-dark(rgb(252 251 248 / 0.78), rgb(13 12 10 / 0.72));
   }
 
   /* ============================================
-     Brand-ink: theme-aware accessible text colour
-     Brand/platform colours used as small text must meet AA on the current
-     theme's surface, but the same hex is too light on a light bg or too dark
-     on a dark one. An ancestor sets --ink-l (light theme) and --ink-d (dark),
-     each derived via accessibleInk() so a colour is nudged only as far as
-     needed. The --ink var below resolves to the right one per theme, so any
-     `color: var(--ink)` usage is automatically theme-correct. Fills, bars, and
-     borders keep the raw brand colour. Falls back to --platform-color if inks
-     aren't set, preserving prior behaviour.
+     Brand ink: theme-aware accessible text colour.
+     An ancestor sets --ink-l (light theme) and --ink-d (dark), each derived by
+     accessibleInk() so a colour moves only as far as it must. light-dark()
+     picks the one for the theme the kit's color-scheme says is showing, so it
+     can never disagree with the tokens. Falls back to --platform-color when no
+     inks are set.
      ============================================ */
   :global(*) {
-    --ink: var(--ink-l, var(--platform-color));
-    --chip-ink: var(--chip-ink-l, var(--ink));
-  }
-  :global(:root[data-theme="dark"] *) {
-    --ink: var(--ink-d, var(--platform-color));
-    --chip-ink: var(--chip-ink-d, var(--ink));
-  }
-  @media (prefers-color-scheme: dark) {
-    :global(:root:not([data-theme]) *) {
-      --ink: var(--ink-d, var(--platform-color));
-      --chip-ink: var(--chip-ink-d, var(--ink));
-    }
+    --ink: light-dark(var(--ink-l, var(--platform-color)), var(--ink-d, var(--platform-color)));
+    --chip-ink: light-dark(var(--chip-ink-l, var(--ink-l, var(--platform-color))), var(--chip-ink-d, var(--ink-d, var(--platform-color))));
   }
   :global(.brand-ink) {
     color: var(--ink);
   }
 
   /* ============================================
-     Global Styles
+     Ground and page
      ============================================ */
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-
   html {
     font-family: var(--font-family-sans);
     background-color: var(--color-bg);
-    background-image:
-      radial-gradient(var(--paper-dot) 1px, transparent 1.5px),
-      radial-gradient(var(--paper-dot-2) 1px, transparent 1.6px);
-    background-size: 5px 5px, 11px 11px;
-    background-position: 0 0, 2px 3px;
     color: var(--color-text);
     line-height: var(--h-lh-body);
     -webkit-font-smoothing: antialiased;
@@ -539,10 +697,26 @@ const ogImageUrl = new URL(image, siteUrl).href;
 
   body {
     min-height: 100vh;
+    margin: 0;
     display: flex;
     flex-direction: column;
     font-size: var(--h-text-body);
     line-height: var(--h-lh-body);
+    background-color: var(--color-bg);
+    overflow-x: clip;
+  }
+
+  /* Ambient light, fixed behind everything. It sits under the content, never
+     over it: nothing is laid on a capture (§7). */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(60rem 40rem at 85% -10%, var(--glow-a), transparent 60%),
+      radial-gradient(50rem 36rem at -10% 110%, var(--glow-b), transparent 60%);
   }
 
   main {
@@ -550,387 +724,171 @@ const ogImageUrl = new URL(image, siteUrl).href;
     width: 100%;
   }
 
-  /* Typography */
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-family-sans);
-    font-weight: 700;
-    color: var(--h-ink);
-    text-wrap: balance;
-    margin-top: var(--space-8);
-    margin-bottom: var(--space-4);
-  }
-
-  h1 { font-size: var(--h-text-h1); line-height: var(--h-lh-h1); letter-spacing: var(--h-tr-h1); }
-  h2 { font-size: var(--h-text-h2); line-height: var(--h-lh-h2); letter-spacing: var(--h-tr-h2); }
-  h3 { font-size: var(--h-text-h3); line-height: var(--h-lh-h3); letter-spacing: var(--h-tr-h3); }
-  h4 { font-size: var(--h-text-h4); line-height: var(--h-lh-h4); letter-spacing: var(--h-tr-h4); }
-  h5, h6 { font-size: var(--h-text-small); line-height: var(--h-lh-small); }
-
-  p {
-    margin-bottom: var(--space-4);
-  }
-
-  /* Global, not scoped. Astro scopes a component's styles by default, so a
-     bare `a` here compiled to `a[data-astro-cid-…]` and matched only links
-     written in this file — never the ones inside MDX prose, which fell back
-     to the browser's #0000EE. On the dark background that is 1.9:1, against
-     the 4.5:1 WCAG AA needs for body text; the colour below is 5.75:1.
-
-     A component that styles its own links still wins: a scoped rule carries
-     an attribute selector and outranks this. It is the floor, not an
-     override. */
-  :global(a) {
-    color: var(--color-primary);
+  /* ============================================
+     Skip link: the accent fill, as a button would carry it.
+     ============================================ */
+  .skip-to-content {
+    position: absolute;
+    top: 0;
+    left: var(--gutter);
+    z-index: 200;
+    padding: var(--h-cell) calc(var(--h-cell) * 2);
+    background: var(--h-accent);
+    color: var(--h-ink-on-accent);
+    font-size: var(--h-text-small);
+    font-weight: var(--h-weight-minor);
     text-decoration: none;
-    transition: color var(--transition-base);
+    transform: translateY(-120%);
   }
 
-  :global(a:hover) {
-    color: var(--color-primary-dark);
-  }
-
-  code {
-    font-family: var(--font-family-mono);
-    background: var(--color-surface);
-    padding: 0.125rem 0.25rem;
-    border-radius: 0.25rem;
-    font-size: 0.9em;
-  }
-
-  pre {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 0;                  /* square — structural block */
-    padding: var(--space-4);
-    overflow-x: auto;
-    margin: var(--space-4) 0;
-  }
-
-  pre code {
-    background: none;
-    padding: 0;
-  }
-
-  /* The mono face ships programming ligatures, which draw >= as an unkeyable
-     single glyph. Listings here are meant to be typed character for character,
-     so code shows the keystrokes rather than the typographic contraction.
-     UnitLayout already does this for curriculum pages; this covers the rest. */
-  :global(code),
-  :global(pre) {
-    font-variant-ligatures: none;
-    font-feature-settings: "liga" 0, "calt" 0;
+  .skip-to-content:focus {
+    transform: none;
   }
 
   /* ============================================
-     Table Styles - Retro-inspired, readable
+     Nav: a square bar on the cell (§7). Only "you are here" is inverse.
      ============================================ */
-  :global(table) {
-    width: 100%;
-    border-collapse: collapse;
-    margin: var(--space-6) 0;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 0;                  /* square — structural block */
-    overflow: hidden;
-    font-size: 0.95rem;
-  }
-
-  :global(thead) {
-    background: linear-gradient(135deg,
-      color-mix(in oklab, var(--color-primary) 15%, var(--color-surface) 85%),
-      color-mix(in oklab, var(--color-primary) 10%, var(--color-surface) 90%)
-    );
-    border-bottom: 2px solid var(--color-border);
-  }
-
-  :global(th) {
-    padding: var(--space-3) var(--space-4);
-    text-align: left;
-    font-weight: 600;
-    color: var(--color-text);
-    font-size: 0.9rem;
-    letter-spacing: 0.025em;
-  }
-
-  :global(td) {
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--color-border-light);
-  }
-
-  /* Zebra striping */
-  :global(tbody tr:nth-child(even)) {
-    background: color-mix(in oklab, var(--color-bg) 30%, var(--color-surface) 70%);
-  }
-
-  /* Hover effect */
-  :global(tbody tr:hover) {
-    background: color-mix(in oklab, var(--color-primary) 8%, var(--color-surface) 92%);
-    transition: background var(--transition-base);
-  }
-
-  /* Last row no border */
-  :global(tbody tr:last-child td) {
-    border-bottom: none;
-  }
-
-  /* Code/hex values in tables */
-  :global(td code), :global(th code) {
-    font-family: var(--font-family-mono);
-    font-size: 0.875em;
-    background: color-mix(in oklab, var(--color-bg) 50%, transparent 50%);
-    padding: 0.125rem 0.375rem;
-    border-radius: 0.25rem;
-  }
-
-  /* Responsive tables */
-  @media (max-width: 768px) {
-    :global(table) {
-      font-size: 0.875rem;
-      display: block;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-
-    :global(th), :global(td) {
-      padding: var(--space-2) var(--space-3);
-    }
-
-    /* Only nowrap for code/hex columns */
-    :global(td code), :global(th code) {
-      white-space: nowrap;
-    }
-  }
-
-  /* ============================================
-     Navigation
-     ============================================ */
-  .nav {
-    background: var(--color-surface-translucent);
-    border-bottom: 1px solid var(--color-border);
-    height: var(--nav-height);
+  .site-header {
     position: sticky;
     top: 0;
     z-index: 100;
-    backdrop-filter: blur(10px);
   }
 
-  .nav-container {
-    max-width: var(--container-max-width);
-    margin: 0 auto;
-    height: 100%;
+  .site-bar {
+    box-sizing: border-box;
+    height: var(--nav-height);
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    padding: 0 var(--gutter);
+    gap: var(--h-cell);
+    padding: var(--h-cell) max(var(--gutter), calc((100% - var(--container-max-width)) / 2 + var(--gutter)));
+    background: var(--nav-bg);
+    border-bottom: 1px solid var(--h-line);
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
   }
 
-  .nav-logo {
+  .site-bar :global(.h-plate) {
+    flex: none;
+    margin-right: calc(var(--h-cell) * 2);
+  }
+
+  .nav-links ul,
+  .site-menu ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .nav-links ul {
     display: flex;
-    align-items: center;
-    text-decoration: none;
-  }
-
-  .nav-logo :global(.h-plate) {
-    flex: 0 0 auto;
-  }
-
-  .nav-logo img {
-    height: 32px;
-    width: auto;
-  }
-
-  .logo-compact {
-    display: none;
-  }
-
-  .nav-links {
-    display: flex;
-    gap: var(--space-6);
-    align-items: center;
-    margin-left: auto;
+    gap: 0;
   }
 
   .nav-links a {
-    font-weight: 500;
-    color: var(--color-text-secondary);
-    transition: color var(--transition-base);
-    position: relative;
+    display: grid;
+    place-items: center;
+    height: calc(var(--h-cell) * 5);
+    padding: 0 calc(var(--h-cell) * 2);
+    color: var(--h-ink-body);
+    font-size: var(--h-text-micro);
+    font-weight: var(--h-weight-minor);
+    letter-spacing: 0.12em;
+    line-height: 1;
+    text-decoration: none;
   }
 
   .nav-links a:hover,
-  .nav-links a:focus-visible,
-  .nav-links a.active {
-    color: var(--color-primary);
-  }
-
   .nav-links a:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-    border-radius: 0.25rem;
+    background: var(--h-wash-2);
+    color: var(--h-ink);
+    text-decoration: none;
   }
 
-  .nav-links a.active::after {
-    content: '';
-    position: absolute;
-    bottom: -0.5rem;
-    left: 0;
-    right: 0;
-    height: 2px;
-    background: var(--color-primary);
+  /* Inverse video means current (§7), and switches instantly. */
+  .nav-links a[aria-current],
+  .site-menu a[aria-current] {
+    background: var(--h-ink);
+    color: var(--h-page);
   }
 
-  /* Hamburger Button - Hidden on Desktop */
+  .site-tools {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--h-cell);
+  }
+
   .nav-toggle {
     display: none;
-    background: none;
-    border: none;
-    cursor: pointer;
-    min-width: 44px;
-    min-height: 44px;
-    padding: var(--space-2);
-    touch-action: manipulation;
-    z-index: 101;
-  }
-
-  .hamburger {
-    display: block;
-    width: 24px;
-    height: 2px;
-    background: var(--color-text);
     position: relative;
-    transition: background var(--transition-base);
+    width: calc(var(--h-cell) * 5);
+    height: calc(var(--h-cell) * 5);
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: var(--h-wash);
+    color: var(--h-ink);
+    cursor: pointer;
+    touch-action: manipulation;
   }
 
-  .hamburger::before,
-  .hamburger::after {
-    content: '';
+  .nav-toggle:hover { background: var(--h-wash-2); }
+
+  .nav-toggle span {
     position: absolute;
-    width: 24px;
+    left: 50%;
+    top: 50%;
+    width: calc(var(--h-cell) * 2);
     height: 2px;
-    background: var(--color-text);
-    left: 0;
-    transition: transform var(--transition-base);
+    margin-left: calc(var(--h-cell) * -1);
+    background: currentColor;
   }
 
-  .hamburger::before { top: -7px; }
-  .hamburger::after { top: 7px; }
+  .nav-toggle span:nth-child(1) { transform: translateY(-4px); }
+  .nav-toggle span:nth-child(2) { transform: translateY(2px); }
+  .nav-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(-1px) rotate(45deg); }
+  .nav-toggle[aria-expanded="true"] span:nth-child(2) { transform: translateY(-1px) rotate(-45deg); }
 
-  /* Hamburger animation when open */
-  .nav-toggle[aria-expanded="true"] .hamburger {
-    background: transparent;
+  /* The menu: the whole window under the bar, opened and closed instantly. */
+  .site-menu {
+    display: none;
   }
 
-  .nav-toggle[aria-expanded="true"] .hamburger::before {
-    transform: rotate(45deg) translate(5px, 5px);
-  }
-
-  .nav-toggle[aria-expanded="true"] .hamburger::after {
-    transform: rotate(-45deg) translate(5px, -5px);
-  }
-
-  /* Mobile/Tablet Navigation - hamburger menu for screens under 1024px */
-  @media (max-width: 1024px) {
-    :root {
-      --gutter: var(--space-3);
-    }
-
-    .nav-container {
-      gap: var(--space-2);
-    }
-
-    .logo-full {
+  @media (max-width: 860px) {
+    .nav-links,
+    .bar-theme {
       display: none;
-    }
-
-    .logo-compact {
-      display: block;
-      height: 36px;
-    }
-
-    /* Push all items after logo to the right */
-    .nav-container > :global(.search-trigger) {
-      margin-left: auto;
-      order: 1;
-    }
-
-    .nav-container > :global(.theme-toggle) {
-      order: 2;
     }
 
     .nav-toggle {
       display: block;
-      order: 3;
     }
 
-    .nav-links {
+    .site-menu.open {
       position: fixed;
-      top: var(--nav-height);
-      left: 0;
-      right: 0;
-      background: var(--color-surface);
-      border-bottom: 1px solid var(--color-border);
+      inset: var(--nav-height) 0 0 0;
+      display: flex;
       flex-direction: column;
-      padding: var(--space-4);
-      gap: 0;
-      transform: translateY(-10px);
-      opacity: 0;
-      visibility: hidden;
-      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                  opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
-                  visibility 0.25s;
-      box-shadow: var(--shadow-lg);
+      gap: calc(var(--h-cell) * 4);
+      padding: calc(var(--h-cell) * 4) var(--gutter);
+      overflow-y: auto;
+      background: var(--h-page);
     }
 
-    .nav-links.open {
-      transform: translateY(0);
-      opacity: 1;
-      visibility: visible;
+    .site-menu a {
+      display: block;
+      padding: var(--h-cell) calc(var(--h-cell) * 2);
+      color: var(--h-ink);
+      font-size: var(--h-text-h3);
+      line-height: var(--h-lh-h3);
+      font-weight: var(--h-weight-major);
+      letter-spacing: var(--h-tr-h3);
+      text-decoration: none;
     }
 
-    .nav-links a {
-      padding: var(--space-3) var(--space-4);
-      border-radius: 0;
-      font-size: 1rem;
-      /* Staggered animation for links */
-      opacity: 0;
-      transform: translateX(-10px);
-      transition: background var(--transition-base),
-                  color var(--transition-base),
-                  opacity 0.2s ease,
-                  transform 0.2s ease;
-    }
-
-    /* Staggered delays for each link */
-    .nav-links.open a:nth-child(1) { transition-delay: 0.05s; }
-    .nav-links.open a:nth-child(2) { transition-delay: 0.08s; }
-    .nav-links.open a:nth-child(3) { transition-delay: 0.11s; }
-    .nav-links.open a:nth-child(4) { transition-delay: 0.14s; }
-    .nav-links.open a:nth-child(5) { transition-delay: 0.17s; }
-    .nav-links.open a:nth-child(6) { transition-delay: 0.20s; }
-    .nav-links.open a:nth-child(7) { transition-delay: 0.23s; }
-    .nav-links.open a:nth-child(8) { transition-delay: 0.26s; }
-    .nav-links.open a:nth-child(9) { transition-delay: 0.29s; }
-
-    .nav-links.open a {
-      opacity: 1;
-      transform: translateX(0);
-    }
-
-    .nav-links a:hover {
-      background: var(--color-bg-secondary);
-    }
-
-    .nav-links a.active {
-      background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface) 90%);
-    }
-
-    .nav-links a.active::after {
-      display: none;
-    }
-
-    .nav-logo {
-      font-size: 1rem;
+    .site-menu a:hover,
+    .site-menu a:focus-visible {
+      background: var(--h-wash-2);
     }
   }
 
@@ -938,9 +896,11 @@ const ogImageUrl = new URL(image, siteUrl).href;
      Footer
      ============================================ */
   .footer {
-    background: var(--color-surface);
-    border-top: 1px solid var(--color-border);
-    padding: var(--space-12) 0 var(--space-8);
+    margin-top: calc(var(--h-cell) * 8);
+    padding: calc(var(--h-cell) * 10) 0 calc(var(--h-cell) * 6);
+    border-top: 1px solid var(--h-line);
+    font-size: var(--h-text-small);
+    line-height: var(--h-lh-small);
   }
 
   .footer-container {
@@ -951,278 +911,103 @@ const ogImageUrl = new URL(image, siteUrl).href;
 
   .footer-grid {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-    gap: var(--space-8);
-    margin-bottom: var(--space-8);
-    padding-bottom: var(--space-8);
-    border-bottom: 1px solid var(--color-border);
-  }
-
-  .footer-brand {
-    max-width: 280px;
-  }
-
-  .footer-logo {
-    display: inline-flex;
-    margin-bottom: var(--space-3);
+    grid-template-columns: 2fr repeat(3, 1fr);
+    gap: calc(var(--h-cell) * 4);
   }
 
   .footer-tagline {
-    color: var(--color-text-secondary);
-    font-size: 0.875rem;
-    line-height: 1.6;
-    margin: 0;
+    max-width: 30ch;
+    margin: calc(var(--h-cell) * 2.5) 0 0;
+    color: var(--h-ink-body);
   }
 
   .footer-links h2 {
-    font-size: 0.75rem;
-    font-weight: 600;
+    margin: 0 0 calc(var(--h-cell) * 2.5);
+    color: var(--h-ink-muted);
+    font-size: var(--h-text-micro);
+    line-height: 1;
+    font-weight: var(--h-weight-minor);
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--color-text);
-    margin: 0 0 var(--space-3) 0;
   }
 
   .footer-links ul {
-    list-style: none;
-    padding: 0;
+    display: grid;
+    gap: var(--h-cell);
     margin: 0;
-  }
-
-  .footer-links li {
-    margin-bottom: var(--space-2);
+    padding: 0;
+    list-style: none;
   }
 
   .footer-links a {
-    color: var(--color-text-secondary);
-    font-size: 0.875rem;
+    color: var(--h-ink-body);
     text-decoration: none;
-    transition: color var(--transition-base);
   }
 
   .footer-links a:hover {
-    color: var(--color-primary);
-  }
-
-  .rss-link {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-  }
-
-  .rss-link svg {
-    color: #f26522;
-  }
-
-  .footer-family {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-4);
-    font-size: 0.8125rem;
-    color: var(--color-text-secondary);
-  }
-
-  .footer-family span {
-    color: var(--color-text-secondary);
-  }
-
-  .footer-family a {
-    color: var(--color-text-secondary);
+    color: var(--h-ink);
     text-decoration: underline;
-    text-underline-offset: 0.15em;
-    transition: color var(--transition-base);
   }
 
-  .footer-family a:hover {
-    color: var(--color-primary);
+  .footer-legal {
+    display: grid;
+    gap: var(--h-cell);
+    margin-top: calc(var(--h-cell) * 8);
+    padding-top: calc(var(--h-cell) * 4);
+    border-top: 1px solid var(--h-line);
+    color: var(--h-ink-muted);
+    font-size: var(--h-text-micro);
+    line-height: var(--h-lh-micro);
   }
 
-  .footer-family-sep {
-    opacity: 0.5;
-  }
-
-  .footer-bottom {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
-  .footer-bottom p {
-    color: var(--color-text-secondary);
-    font-size: 0.8125rem;
+  .footer-legal p {
     margin: 0;
   }
 
-  .footer-credits {
-    font-size: 0.8125rem;
-  }
-
-  /* Standing rights notice — required on every public surface carrying imagery
-     by 198x/decisions/publishing-third-party-imagery.md. Full-width so it reads
-     as a statement rather than a footer credit sitting beside the copyright. */
-  /* No opacity muting here: this is small text, and dimming it below
-     --color-text-secondary is what failed AA in light theme. Same trap the
-     footer credits fell into. */
-  .footer-rights {
-    flex-basis: 100%;
-    font-size: 0.75rem;
-    line-height: 1.5;
-    color: var(--color-text-secondary);
-  }
-
-  .footer-rights a {
-    color: inherit;
+  /* Links in a line of text are underlined, so they are not told apart by
+     colour alone (WCAG 1.4.1). */
+  .footer-legal a {
+    color: var(--h-ink-body);
     text-decoration: underline;
-    white-space: nowrap;
   }
 
-  @media (max-width: 768px) {
+  .footer-legal a:hover {
+    color: var(--h-ink);
+  }
+
+  /* The kit's strip is a bar of its own; here it is the first line of the
+     legal block, so it takes the block's type and drops its own rule. */
+  .footer-family :global(.h-family) {
+    padding: 0;
+    border-top: 0;
+    font-size: inherit;
+    color: inherit;
+  }
+
+  .footer-legal .footer-family :global(.h-family a) {
+    color: var(--h-ink-body);
+    text-decoration: underline;
+  }
+
+  .footer-legal .footer-family :global(.h-family a:hover) {
+    color: var(--h-ink);
+  }
+
+  @media (max-width: 767px) {
     .footer-grid {
-      grid-template-columns: 1fr 1fr;
-      gap: var(--space-6);
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     }
 
     .footer-brand {
       grid-column: 1 / -1;
-      max-width: none;
-      text-align: center;
-    }
-
-    .footer-logo {
-      margin-bottom: var(--space-2);
-    }
-
-    .footer-bottom {
-      flex-direction: column;
-      text-align: center;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .footer-grid {
-      grid-template-columns: 1fr;
-      text-align: center;
-    }
-
-    .footer-links h2 {
-      margin-top: var(--space-2);
     }
   }
 
   /* ============================================
-     Buttons
-     ============================================ */
-  :global(.btn) {
-    display: inline-block;
-    padding: var(--space-3) var(--space-6);
-    border-radius: 0;                  /* square — brand signature */
-    font-weight: 600;
-    text-decoration: none;
-    touch-action: manipulation;
-    transition: transform var(--transition-base), box-shadow var(--transition-base), background-color var(--transition-base), color var(--transition-base), border-color var(--transition-base);
-    border: 3px solid transparent;
-    box-shadow: var(--shadow-chunky);  /* chunky hard offset */
-    cursor: pointer;
-    text-align: center;
-  }
-
-  :global(.btn:hover),
-  :global(.btn:focus-visible) {
-    transform: translate(-2px, -2px);
-    box-shadow: var(--shadow-chunky-hi);
-  }
-
-  :global(.btn:focus-visible) {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-
-  /* Primary filled button - platform fill (white-safe) via CSS variable, else
-     house brick. --platform-fill is a darkened brand shade so white text meets
-     AA; falls back to the theme's --btn-fill (house) when no platform class. */
-  :global(.btn-primary) {
-    background: var(--platform-fill, var(--btn-fill));
-    color: white;
-    border-color: var(--platform-fill, var(--btn-fill));
-  }
-
-  :global(.btn-primary:hover) {
-    color: white;
-  }
-
-  /* Secondary outlined button - accessible ink text, raw brand border */
-  :global(.btn-secondary) {
-    background: var(--color-surface);
-    color: var(--ink);
-    border-color: var(--platform-color, var(--color-primary));
-  }
-
-  :global(.btn-secondary:hover) {
-    background: var(--platform-fill, var(--btn-fill));
-    color: white;
-  }
-
-  /* ============================================
-     Utilities
-     ============================================ */
-  .container {
-    max-width: var(--container-max-width);
-    margin: 0 auto;
-    padding: 0 var(--space-4);
-  }
-
-  .content-container {
-    max-width: 65ch;
-    margin: 0 auto;
-    padding: var(--space-8) var(--space-4);
-  }
-
-  /* Skip to content (accessibility) */
-  .skip-to-content {
-    position: absolute;
-    top: -100%;
-    left: 0;
-    background: var(--color-primary);
-    color: white;
-    padding: var(--space-2) var(--space-4);
-    text-decoration: none;
-    z-index: 200;
-  }
-
-  .skip-to-content:focus {
-    top: 0;
-  }
-
-  /* ============================================
-     Keyboard Navigation Indicator
-     ============================================ */
-  /* Hide focus rings for mouse users, show for keyboard */
-  :global(.using-mouse) *:focus {
-    outline: none;
-  }
-
-  :global(.using-mouse) *:focus-visible {
-    outline: none;
-  }
-
-  :global(:not(.using-mouse)) *:focus-visible {
-    outline: 2px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-
-  /* ============================================
-     Reduced Motion Support
-     ============================================ */
-
-  /* ============================================
-     Print Styles
+     Print
      ============================================ */
   @media print {
-    .nav,
+    .site-header,
     .footer,
     .skip-to-content {
       display: none !important;
@@ -1231,6 +1016,10 @@ const ogImageUrl = new URL(image, siteUrl).href;
     body {
       background: white !important;
       color: black !important;
+    }
+
+    body::before {
+      display: none;
     }
 
     main {
@@ -1260,42 +1049,43 @@ const ogImageUrl = new URL(image, siteUrl).href;
 </style>
 
 <script>
-  // Resolve the current shell on each event: Astro navigation replaces its
-  // elements without re-running this bundled script.
-  function setNavigationOpen(open: boolean) {
+  // The menu under 861px. Resolve the shell on each event: a soft navigation
+  // replaces these elements without re-running this bundled script.
+  function setMenuOpen(open: boolean) {
     const toggle = document.querySelector<HTMLButtonElement>('.nav-toggle');
-    const links = document.querySelector<HTMLElement>('.nav-links');
-    toggle?.setAttribute('aria-expanded', String(open));
-    links?.classList.toggle('open', open);
+    const menu = document.querySelector<HTMLElement>('.site-menu');
+    if (!toggle || !menu) return;
+    toggle.setAttribute('aria-expanded', String(open));
+    menu.classList.toggle('open', open);
+    // While the menu covers the page, the page behind it is out of reach.
+    for (const el of document.querySelectorAll<HTMLElement>('body > :not(.site-header):not(script)')) {
+      el.inert = open;
+    }
   }
 
   document.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return;
     const toggle = event.target.closest('.nav-toggle');
     if (toggle) {
-      setNavigationOpen(toggle.getAttribute('aria-expanded') !== 'true');
-    } else if (event.target.closest('.nav-links a') || !event.target.closest('.nav-links')) {
-      setNavigationOpen(false);
+      setMenuOpen(toggle.getAttribute('aria-expanded') !== 'true');
+    } else if (event.target.closest('.site-menu a')) {
+      setMenuOpen(false);
     }
   });
 
   document.addEventListener('keydown', (event) => {
     const toggle = document.querySelector<HTMLButtonElement>('.nav-toggle');
     if (event.key === 'Escape' && toggle?.getAttribute('aria-expanded') === 'true') {
-      setNavigationOpen(false);
+      setMenuOpen(false);
       toggle.focus();
     }
   });
 
-  // Keyboard vs mouse navigation detection
-  // Add .using-mouse class when mouse is used, remove when Tab is pressed
-  document.addEventListener('mousedown', () => {
-    document.documentElement.classList.add('using-mouse');
+  // A page that grows past the breakpoint with the menu open closes it.
+  matchMedia('(min-width: 861px)').addEventListener('change', (e) => {
+    if (e.matches) setMenuOpen(false);
   });
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
-      document.documentElement.classList.remove('using-mouse');
-    }
-  });
+  // Each new page starts with the menu closed and nothing inert.
+  document.addEventListener('astro:after-swap', () => setMenuOpen(false));
 </script>
