@@ -7,6 +7,16 @@
  *   <VideoPlayer src="/videos/commodore-amiga/game-01-signal/unit-16/gameplay.mp4" />
  *   <VideoPlayer src="/videos/..." caption="Frog hopping demonstration" />
  *   <VideoPlayer src="/videos/..." poster="/images/.../screenshot.png" />
+ *
+ * A recording of a machine's screen is a capture that moves, so it is shown
+ * the way the kit's Screen shows a still (family-visual-identity.md §7): in
+ * the dark bezel, at a whole multiple of the recording's own size, never a
+ * fraction unless the column is narrower than the recording at 1x. `width`
+ * caps the size, as it always has. The caption is Literata italic (§4).
+ *
+ * `autoplay` keeps its meaning (muted, looping), but under
+ * prefers-reduced-motion the recording waits for the reader to press play:
+ * looping motion is not on §6's list unless the reader asked for it.
  */
 
 interface Props {
@@ -36,44 +46,100 @@ import { inlineMarkdown } from '../lib/inline-markdown';
 ---
 
 <figure class="video-container">
-  <video
-    width={width}
-    controls
-    loop={loop}
-    muted={autoplay}
-    autoplay={autoplay}
-    playsinline
-    preload="metadata"
-    poster={poster}
-  >
-    <source src={src} type={mimeType} />
-    Your browser does not support the video tag.
-  </video>
+  <div class="video-bezel">
+    <video
+      width={width}
+      controls
+      loop={loop}
+      muted={autoplay}
+      data-autoplay={autoplay ? '' : undefined}
+      playsinline
+      preload="metadata"
+      poster={poster}
+      data-cap={width}
+    >
+      <source src={src} type={mimeType} />
+      Your browser does not support the video tag.
+    </video>
+  </div>
   {caption && <figcaption set:html={inlineMarkdown(caption)} />}
 </figure>
 
 <style>
   .video-container {
-    margin: var(--space-6, 1.5rem) 0;
+    display: grid;
+    justify-items: start;
+    gap: calc(var(--h-cell) * 1.5);
+    margin: var(--h-space-8) 0;
     padding: 0;
-    text-align: center;
+  }
+
+  /* The kit Screen's bezel: hardware, so dark in both themes. */
+  .video-bezel {
+    max-width: calc(100% - 1.2rem);
+    margin: 0.6rem;
+    border-radius: 0.3rem;
+    overflow: hidden;
+    background: var(--h-screen-glass);
+    box-shadow:
+      0 0 0 0.6rem var(--h-screen-bezel),
+      0 0 0 calc(0.6rem + 1px) var(--h-screen-rim),
+      0 0 60px 0 var(--h-screen-glow);
   }
 
   video {
+    display: block;
     width: 100%;
     max-width: 100%;
     height: auto;
     border-radius: 0;
-    background: var(--color-code-bg, #000);
-    display: block;
-    margin: 0 auto;
+    background: var(--h-screen-glass);
+    image-rendering: pixelated;
   }
 
   figcaption {
-    margin-top: var(--space-2, 0.5rem);
-    font-size: 0.875rem;
-    color: var(--color-text-secondary, #555);
-    text-align: center;
+    max-width: var(--h-measure);
+    padding-inline: 0.6rem;
+    font-family: var(--h-font-read);
     font-style: italic;
+    font-size: var(--h-text-small);
+    line-height: var(--h-lh-small);
+    color: var(--h-ink-muted);
+  }
+
+  @media (max-width: 420px) {
+    .video-bezel { margin: 3px; max-width: calc(100% - 6px); }
   }
 </style>
+
+<script>
+  // Size each recording to a whole multiple of its own pixels (§7), capped
+  // by its `width`; start the ones marked autoplay unless motion is reduced.
+  function fitVideos() {
+    for (const video of document.querySelectorAll<HTMLVideoElement>('.video-container video')) {
+      const bezel = video.parentElement as HTMLElement;
+      const fit = () => {
+        if (!video.videoWidth) return;
+        const avail = (bezel.parentElement?.clientWidth ?? 0) - 2 * parseFloat(getComputedStyle(bezel).marginLeft);
+        const cap = Number(video.dataset.cap) || Infinity;
+        const room = Math.min(avail, cap);
+        const k = Math.floor(room / video.videoWidth);
+        bezel.style.width = k >= 1 ? `${video.videoWidth * k}px` : `${avail}px`;
+        bezel.dataset.scale = String(k >= 1 ? k : avail / video.videoWidth);
+      };
+      if (video.readyState >= 1) fit();
+      else video.addEventListener('loadedmetadata', fit, { once: true });
+      if (!video.dataset.ready) {
+        video.dataset.ready = '';
+        if (video.hasAttribute('data-autoplay') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          video.muted = true;
+          video.play().catch(() => {});
+        }
+      }
+    }
+  }
+  fitVideos();
+  document.addEventListener('astro:page-load', fitVideos);
+  let t: ReturnType<typeof setTimeout>;
+  addEventListener('resize', () => { clearTimeout(t); t = setTimeout(fitVideos, 100); });
+</script>

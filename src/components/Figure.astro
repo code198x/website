@@ -1,11 +1,30 @@
 ---
 /**
- * Figure - Image with caption
+ * Figure - A capture or picture, with its caption.
  *
  * Usage:
  *   import Figure from '@components/Figure.astro';
  *   <Figure src="/images/c64/game-01/unit-08/screenshot.png" alt="Menu screen" />
+ *
+ * Drawn by the kit's Figure (_198x-ui/components/Figure.astro), with the site's
+ * props kept so no lesson changes:
+ *
+ * - A machine's screen (pixelated, a PNG under /images/<system>/) is a
+ *   `capture`: the kit's Screen bezel, at a whole multiple of its true grid
+ *   (family-visual-identity.md §7). The grid is read from the PNG at build
+ *   time (src/lib/capture-grid.ts), so a capture stored doubled, as every
+ *   Amiga capture is, is declared rather than guessed.
+ * - Anything else, and anything marked `rendering="smooth"`, is an `image`:
+ *   rounded, a hairline edge, never stretched.
+ * - `width`, where given, caps the size: a capture takes the largest whole
+ *   multiple of its grid that is no wider. Without it a capture may reach 2x.
+ * - Captions and credits sit in the kit's Literata italic caption.
+ * - `clickToEnlarge` (default true) opens the capture at the largest whole
+ *   multiple that fits the window.
  */
+import KitFigure from '@198x-ui/components/Figure.astro';
+import { captureGrid } from '../lib/capture-grid';
+import { inlineMarkdown } from '../lib/inline-markdown';
 
 interface Props {
   src: string;           // Path to image (relative to public/)
@@ -33,88 +52,68 @@ const {
   licenceUrl
 } = Astro.props;
 
-const enlargeClass = clickToEnlarge ? 'can-enlarge' : '';
-import { inlineMarkdown } from '../lib/inline-markdown';
+const grid = rendering === 'smooth' ? null : captureGrid(src);
+// A machine screen lives under /images/<system>/; diagrams, photographs and
+// scans elsewhere are pictures, not screens, and take no bezel.
+const isCapture = Boolean(grid) && /^\/images\/(?!vault\/|field-notes\/|photos\/)[a-z0-9-]+\//.test(src);
+const maxScale = isCapture && grid
+  ? (width ? Math.max(1, Math.floor(width / grid.w)) : 2)
+  : undefined;
+const declared = isCapture && grid && (grid.w !== grid.width || grid.h !== grid.height) ? { w: grid.w, h: grid.h } : undefined;
+const hasCaption = Boolean(caption || credit);
 ---
 
-<figure class="figure">
-  <div class="image-wrapper">
-    <img
-      src={src}
-      alt={alt}
-      width={width}
-      loading="lazy"
-      decoding="async"
-      class:list={[enlargeClass, rendering === 'smooth' && 'smooth']}
-      data-lightbox={clickToEnlarge ? 'true' : undefined}
-      data-rendering={rendering}
-    />
-  </div>
-  {(caption || credit) && (
-    <figcaption>
-      <Fragment set:html={inlineMarkdown(caption)} />
-      {credit && (
-        <span class="credit">
-          Photo: {creditUrl
-            ? <a href={creditUrl} target="_blank" rel="noopener noreferrer">{credit}</a>
-            : credit}
-          {licence && (
-            <> &middot; {licenceUrl
-              ? <a href={licenceUrl} target="_blank" rel="license noopener noreferrer">{licence}</a>
-              : licence}</>
-          )}
-        </span>
-      )}
-    </figcaption>
+<div class:list={['figure', isCapture ? 'figure-capture' : 'figure-image', rendering === 'smooth' && 'smooth', clickToEnlarge && 'can-enlarge']} data-lightbox={clickToEnlarge ? 'true' : undefined} data-rendering={rendering} style={!isCapture && width ? `--figure-max: ${width}px` : undefined}>
+  {isCapture && grid ? (
+    <KitFigure kind="capture" src={src} alt={alt} width={grid.width} height={grid.height} grid={declared} maxScale={maxScale}>
+      {hasCaption && <Fragment slot="caption"><Fragment set:html={inlineMarkdown(caption)} />{credit && <span class="credit">Photo: {creditUrl ? <a href={creditUrl} target="_blank" rel="noopener noreferrer">{credit}</a> : credit}{licence && <> &middot; {licenceUrl ? <a href={licenceUrl} target="_blank" rel="license noopener noreferrer">{licence}</a> : licence}</>}</span>}</Fragment>}
+    </KitFigure>
+  ) : !grid ? (
+    /* A picture whose size the build cannot read (not a PNG): the kit's image
+       treatment, drawn here because the kit's Figure needs the file's size. */
+    <figure class="h-figure-like">
+      <img class="figure-plain-img" src={src} alt={alt} width={width} loading="lazy" decoding="async" />
+      {hasCaption && <figcaption class="figure-plain-caption"><Fragment set:html={inlineMarkdown(caption)} />{credit && <span class="credit">Photo: {creditUrl ? <a href={creditUrl} target="_blank" rel="noopener noreferrer">{credit}</a> : credit}{licence && <> &middot; {licenceUrl ? <a href={licenceUrl} target="_blank" rel="license noopener noreferrer">{licence}</a> : licence}</>}</span>}</figcaption>}
+    </figure>
+  ) : (
+    <KitFigure kind="image" src={src} alt={alt} width={grid.width} height={grid.height}>
+      {hasCaption && <Fragment slot="caption"><Fragment set:html={inlineMarkdown(caption)} />{credit && <span class="credit">Photo: {creditUrl ? <a href={creditUrl} target="_blank" rel="noopener noreferrer">{credit}</a> : credit}{licence && <> &middot; {licenceUrl ? <a href={licenceUrl} target="_blank" rel="license noopener noreferrer">{licence}</a> : licence}</>}</span>}</Fragment>}
+    </KitFigure>
   )}
-</figure>
+</div>
 
 <style>
   .figure {
-    margin: var(--space-6, 1.5rem) 0;
+    margin: var(--h-space-8) 0;
     padding: 0;
   }
 
-  .image-wrapper {
-    position: relative;
+  /* The kit sizes an image to its file or its cell; a `width` prop caps it. */
+  .figure-image :global(.h-figure-img) { max-width: min(100%, var(--figure-max, 100%)); }
+  /* Pixel art that is not a screen still keeps its pixels square. */
+  .figure-image:not(.smooth) :global(.h-figure-img) { image-rendering: pixelated; }
+  .h-figure-like { display: grid; justify-items: start; gap: calc(var(--h-cell) * 1.5); margin: 0; }
+  .figure-plain-img {
     display: block;
-    line-height: 0;
-  }
-
-  img {
-    width: 100%;
-    max-width: 100%;
+    max-width: min(100%, var(--figure-max, 100%));
     height: auto;
-    display: block;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
+    border-radius: 0.75rem;
+    outline: 1px solid var(--h-line);
+    outline-offset: -1px;
   }
-
-  /* Photographs are not pixel art. Scaling one with nearest-neighbour makes
-     its edges jagged, so a photograph asks for the browser's own filtering. */
-  img.smooth {
-    image-rendering: auto;
-  }
-
-  img.can-enlarge {
-    cursor: zoom-in;
-    transition: transform 0.15s ease;
-  }
-
-  /* A capture is evidence: scaling it by anything but a whole number makes
-     some source pixels wider than others. Only photographs grow on hover. */
-  img.can-enlarge.smooth:hover {
-    transform: scale(1.02);
-  }
-
-  figcaption {
-    margin-top: var(--space-2, 0.5rem);
-    font-size: 0.875rem;
-    color: var(--color-text-secondary, #555);
-    text-align: left;
+  .figure-image:not(.smooth) .figure-plain-img { image-rendering: pixelated; }
+  .figure-plain-caption {
+    max-width: var(--h-measure);
+    font-family: var(--h-font-read);
     font-style: italic;
-    max-width: 768px;
+    font-size: var(--h-text-small);
+    line-height: var(--h-lh-small);
+    color: var(--h-ink-muted);
   }
+
+  .can-enlarge :global(.h-screen-img),
+  .can-enlarge :global(.h-figure-img),
+  .can-enlarge .figure-plain-img { cursor: zoom-in; }
 
   /* A credit is not the caption talking; it is the small print that says whose
      picture this is. Subordinate to the caption, but still plainly readable —
@@ -123,7 +122,8 @@ import { inlineMarkdown } from '../lib/inline-markdown';
     display: block;
     margin-top: 0.35rem;
     font-style: normal;
-    font-size: 0.8125rem;
+    font-size: var(--h-text-micro);
+    line-height: var(--h-lh-micro);
     /* Subordinate by size, not by fading: opacity took the muted ink to 3.27:1. */
     color: var(--h-ink-muted);
   }
@@ -133,130 +133,77 @@ import { inlineMarkdown } from '../lib/inline-markdown';
     text-decoration: underline;
     text-underline-offset: 0.15em;
   }
-
 </style>
 
 <script>
-  // Pixel captures render at the largest whole multiple of their native size
-  // that fits, so every source pixel stays the same size. Narrower than native
-  // (a phone) cannot be whole, so the image falls back to fitting the column.
-  function wholeScale(available: number, natural: number): number {
-    return Math.floor(available / natural);
+  // Enlarge: the capture at the largest whole multiple of its true grid that
+  // fits the window (§7), or a picture fitted to it. A native <dialog>, so it
+  // traps focus, closes on Escape and returns focus to the page by itself.
+  function open(target: HTMLImageElement, rendering: string) {
+    const dialog = document.createElement('dialog');
+    dialog.className = 'figure-lightbox';
+    dialog.setAttribute('aria-label', target.alt ? `Enlarged: ${target.alt}` : 'Enlarged picture');
+    const img = document.createElement('img');
+    img.src = target.currentSrc || target.src;
+    img.alt = target.alt;
+    const screen = target.closest<HTMLElement>('[data-h-screen]');
+    const gw = Number(screen?.dataset.gw) || target.naturalWidth;
+    const gh = Number(screen?.dataset.gh) || target.naturalHeight;
+    if (rendering !== 'smooth' && gw) {
+      const k = Math.max(1, Math.floor(Math.min((innerWidth * 0.9) / gw, (innerHeight * 0.85) / gh)));
+      img.style.width = `${gw * k}px`;
+      img.style.height = `${gh * k}px`;
+      img.style.imageRendering = 'pixelated';
+    }
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'figure-lightbox-close';
+    close.textContent = 'Close';
+    close.addEventListener('click', () => dialog.close());
+    dialog.append(close, img);
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
+    dialog.addEventListener('close', () => dialog.remove());
+    document.body.append(dialog);
+    dialog.showModal();
   }
 
-  function fitPixelFigure(img: HTMLImageElement) {
-    if (img.dataset.rendering === 'smooth' || !img.naturalWidth) return;
-    const box = img.parentElement;
-    if (!box) return;
-    const k = wholeScale(box.clientWidth, img.naturalWidth);
-    img.style.width = k >= 1 ? `${img.naturalWidth * k}px` : '';
-  }
-
-  function fitAllPixelFigures() {
-    document.querySelectorAll<HTMLImageElement>('.figure img').forEach((img) => {
-      if (img.complete) fitPixelFigure(img);
-      else img.addEventListener('load', () => fitPixelFigure(img), { once: true });
+  if (!(window as unknown as { __figureLightbox?: boolean }).__figureLightbox) {
+    (window as unknown as { __figureLightbox?: boolean }).__figureLightbox = true;
+    document.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      if (!(target instanceof HTMLImageElement)) return;
+      const figure = target.closest<HTMLElement>('.figure[data-lightbox="true"]');
+      if (!figure || !target.matches('.h-screen-img, .h-figure-img, .figure-plain-img')) return;
+      open(target, figure.dataset.rendering ?? 'pixelated');
     });
   }
-
-  fitAllPixelFigures();
-  document.addEventListener('astro:page-load', fitAllPixelFigures);
-  let resizeTimer: number | undefined;
-  window.addEventListener('resize', () => {
-    window.clearTimeout(resizeTimer);
-    resizeTimer = window.setTimeout(fitAllPixelFigures, 100);
-  });
-
-  // Simple lightbox functionality using safe DOM methods
-  document.addEventListener('click', (e) => {
-    const target = e.target as HTMLElement;
-    if (target.tagName === 'IMG' && target.dataset.lightbox === 'true') {
-      const src = target.getAttribute('src');
-      const alt = target.getAttribute('alt') || '';
-      const rendering = target.dataset.rendering === 'smooth' ? 'auto' : 'pixelated';
-
-      if (!src) return;
-
-      // Create lightbox using DOM methods (safe, no innerHTML)
-      const overlay = document.createElement('div');
-      overlay.className = 'lightbox-overlay';
-      overlay.style.cssText = `
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.9);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        cursor: zoom-out;
-        animation: fadeIn 0.2s ease;
-      `;
-
-      const content = document.createElement('div');
-      content.className = 'lightbox-content';
-      content.style.cssText = `
-        position: relative;
-        max-width: 90vw;
-        max-height: 90vh;
-      `;
-
-      const img = document.createElement('img');
-      img.src = src;
-      img.alt = alt;
-      // Fixed viewport-sized box + object-fit so small captures scale UP
-      // to fill it (a 352px Spectrum screen at natural size in an overlay
-      // is smaller than the inline figure it "enlarges").
-      if (rendering === 'pixelated' && target instanceof HTMLImageElement && target.naturalWidth) {
-        // Largest whole multiple that fits the overlay, as inline.
-        const nw = target.naturalWidth, nh = target.naturalHeight;
-        const k = Math.max(1, Math.floor(Math.min((window.innerWidth * 0.9) / nw, (window.innerHeight * 0.9) / nh)));
-        img.style.cssText = `
-          width: ${nw * k}px;
-          height: ${nh * k}px;
-          image-rendering: pixelated;
-        `;
-      } else {
-        img.style.cssText = `
-          width: 90vw;
-          height: 90vh;
-          object-fit: contain;
-          image-rendering: ${rendering};
-        `;
-      }
-
-      const closeBtn = document.createElement('button');
-      closeBtn.className = 'lightbox-close';
-      closeBtn.setAttribute('aria-label', 'Close');
-      closeBtn.textContent = '\u00d7'; // × character
-      closeBtn.style.cssText = `
-        position: absolute;
-        top: -40px;
-        right: 0;
-        background: none;
-        border: none;
-        color: white;
-        font-size: 2rem;
-        cursor: pointer;
-        padding: 0.5rem;
-        line-height: 1;
-      `;
-
-      content.appendChild(img);
-      content.appendChild(closeBtn);
-      overlay.appendChild(content);
-
-      // Close handlers
-      const close = () => overlay.remove();
-      overlay.addEventListener('click', close);
-      closeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        close();
-      });
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') close();
-      }, { once: true });
-
-      document.body.appendChild(overlay);
-    }
-  });
 </script>
+
+<style is:global>
+  dialog.figure-lightbox {
+    max-width: none;
+    max-height: none;
+    margin: auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    overflow: visible;
+  }
+  dialog.figure-lightbox::backdrop { background: rgb(5 5 5 / 0.85); }
+  dialog.figure-lightbox img { display: block; max-width: 90vw; max-height: 85vh; width: auto; height: auto; object-fit: contain; }
+  dialog.figure-lightbox img[style*="pixelated"] { max-width: none; max-height: none; }
+  .figure-lightbox-close {
+    display: block;
+    margin: 0 0 var(--h-cell) auto;
+    min-height: calc(var(--h-cell) * 5);
+    padding: 0 calc(var(--h-cell) * 2);
+    border: 1px solid rgb(239 231 214 / 0.3);
+    border-radius: 0;
+    background: #0d0c0a;
+    color: #efe7d6;
+    font: var(--h-weight-minor) var(--h-text-micro) var(--h-font-ui);
+    cursor: pointer;
+  }
+  .figure-lightbox-close:hover,
+  .figure-lightbox-close:focus-visible { background: #242019; }
+</style>
