@@ -21,9 +21,9 @@ test.describe('system page stage', () => {
     page.on('request', r => requests.push(r.url()));
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/systems/sinclair-zx-spectrum/');
-    await expect(page.locator('.stage .pf-well img')).toBeVisible();
+    await expect(page.locator('.stage .h-screen-img')).toBeVisible();
     expect(requests.some(u => u.includes('/emulators/embed.js'))).toBe(false);
-    const width = await page.locator('.stage .pf-well img').evaluate(i => i.getBoundingClientRect().width);
+    const width = await page.locator('.stage .h-screen-img').evaluate(i => i.getBoundingClientRect().width);
     expect(width % 352).toBe(0);
     await page.getByRole('button', { name: /Play the/ }).click();
     await expect(page.locator('.stage emu198x-player')).toBeAttached();
@@ -40,7 +40,7 @@ test.describe('system page stage', () => {
   test('Play swaps in a player the same width as the poster', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/systems/sinclair-zx-spectrum/');
-    const before = await page.locator('.stage .pf-well img').evaluate(i => i.getBoundingClientRect().width);
+    const before = await page.locator('.stage .h-screen-img').evaluate(i => i.getBoundingClientRect().width);
     await page.getByRole('button', { name: /Play the/ }).click();
     const player = page.locator('.stage emu198x-player');
     await expect(player).toBeAttached();
@@ -52,7 +52,7 @@ test.describe('system page stage', () => {
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();
     await page.goto('/systems/sinclair-zx-spectrum/');
-    await expect(page.locator('.stage .pf-well img')).toBeVisible();
+    await expect(page.locator('.stage .h-screen-img')).toBeVisible();
     await expect(page.getByRole('button', { name: /Play the/ })).toBeHidden();
     await context.close();
   });

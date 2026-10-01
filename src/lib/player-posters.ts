@@ -53,3 +53,14 @@ export function stageWidth(system: string, machineName: string): number | null {
   const { width } = pngSize(new Uint8Array(readFileSync(path.join('public', poster.src))));
   return width * poster.ceiling;
 }
+
+/**
+ * A capture's true grid when its pixels cannot show it: the Amiga stores its
+ * 320x256 screen at 640x512, and family-visual-identity.md §7 shows it at
+ * 320x256 so machines read at comparable sizes. Column- or row-doubled
+ * captures (a BBC Micro's 640x256) need no declaration; the kit's Screen
+ * detects and halves them.
+ */
+export function declaredGrid(system: string, width: number, height: number): { w: number; h: number } | undefined {
+  return system === 'commodore-amiga' && width === 640 && height === 512 ? { w: 320, h: 256 } : undefined;
+}

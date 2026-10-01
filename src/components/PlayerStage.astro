@@ -5,8 +5,11 @@
  * script loads only on Play. Spec §4.
  */
 import catalog from '../../public/emulators/catalog.json';
-import PixelFrame from './PixelFrame.astro';
-import { posterFor, stageWidth } from '../lib/player-posters';
+import { readFileSync } from 'node:fs';
+import Screen from '@198x-ui/components/Screen.astro';
+import RefitScreens from './RefitScreens.astro';
+import { pngSize } from '../lib/pixel-frame';
+import { posterFor, stageWidth, declaredGrid } from '../lib/player-posters';
 import { whiteSafeFill } from '../lib/contrast';
 
 interface Props { system: string; name: string; color: string; facts: Array<{ label: string; value: string | number }> }
@@ -23,11 +26,20 @@ const note = entry?.demo
     : 'Runs without ROM files · add yours for the original firmware';
 const rule = whiteSafeFill(color);
 const max = entry ? stageWidth(system, name) : null;
+/* The poster through the kit's Screen: a whole multiple of its true grid
+   (§7). A declared grid (the Amiga's 320x256 in a 640x512 file) or a
+   column-doubled file (which Screen halves) may take twice the ceiling, so
+   the stage stays the width the player will take. */
+const size = poster ? pngSize(new Uint8Array(readFileSync(`public${poster.src}`))) : null;
+const grid = poster && size ? declaredGrid(system, size.width, size.height) : undefined;
+const doubled = !!grid || (!!size && size.width / size.height > 1.8);
+const maxScale = poster ? poster.ceiling * (doubled ? 2 : 1) : 1;
 ---
-{entry && <div class="stage" data-system={entry.id} data-variant={variant} style={`--stage-rule: ${rule}; --stage-max: ${max}px`}>
+<RefitScreens />
+{entry && <div class="stage" data-system={entry.id} data-variant={variant} style={`--stage-rule: ${rule}; --stage-max: calc(${max}px + 1.2rem)`}>
   <div class="stage-screen">
     {poster
-      ? <PixelFrame src={poster.src} alt={`${name}: ${poster.caption}`} label={`${name} screen`} ceiling={poster.ceiling} rule={rule} />
+      ? <Screen src={poster.src} alt={`${name}: ${poster.caption}`} width={size!.width} height={size!.height} grid={grid} maxScale={maxScale} loading="eager" />
       : <div class="stage-empty" role="img" aria-label={`${name}, not started`}></div>}
   </div>
   <dl class="stage-facts">
@@ -72,7 +84,8 @@ const max = entry ? stageWidth(system, name) : null;
           return;
         }
         const screen = stage.querySelector<HTMLElement>('.stage-screen')!;
-        const width = screen.getBoundingClientRect().width;
+        // The player takes the poster's width: the capture, not its bezel.
+        const width = (screen.querySelector('.h-screen') ?? screen).getBoundingClientRect().width;
         const player = document.createElement('emu198x-player');
         player.setAttribute('system', stage.dataset.system!);
         if (stage.dataset.variant) player.setAttribute('variant', stage.dataset.variant);
