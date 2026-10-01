@@ -1,10 +1,9 @@
 ---
 title: "Sound Beep"
-summary: "Generate a simple beep or tone by toggling the speaker bit. Rising or falling pitch for feedback sounds."
+summary: "Make a fixed beep, a rising or falling effect, and a short click with separate pitch and length controls."
 platform: "sinclair-zx-spectrum"
 category: "audio"
 difficulty: "beginner"
-taught_in: "Game 1, Unit 2"
 tags: ["sound", "beeper", "audio", "speaker"]
 evolution:
   previous: null
@@ -14,212 +13,82 @@ related:
   vault: ["sinclair-zx-spectrum"]
 ---
 
-## Overview
+import CodeFromFile from '@components/CodeFromFile.astro';
+import AssembleAndRun from '@components/AssembleAndRun.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
 
-The Spectrum 16K/48K has no dedicated sound chip - just a 1-bit speaker controlled through port `$FE`. Toggle bit 4 on and off at different speeds to create tones. Vary the delay between toggles for pitch, and loop duration for length. Simple but effective for game feedback.
+## A delay and a count
 
-**Important:** port `$FE` writes also control the **border colour** (bits 0-2) and **MIC out** (bit 3). The naive code below clobbers both. See "Border-safe writes" further down.
+The Spectrum's beeper needs the processor to change bit 4 of output port `$FE`. Set it, wait, clear it, wait, and we have one cycle. Repeating that cycle makes a tone. The delay between changes controls **pitch**; the number of complete cycles controls **length**.
 
-The 128K Spectrum and beyond add an [AY-3-8912](/vault/hardware/ay-3-8912) sound chip with three voices and proper envelopes — preferred for music when targeting 128K+ machines.
+This example targets a stock **48K PAL Spectrum**, with code at `$8000` and the stack at `$FF00`. It provides short blocking feedback. During a sound, the game cannot update or read its controls. [Meteor Storm's impact lesson](/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-24/) uses that trade-off after the run ends; a game that needs movement throughout the sound needs a different scheduling arrangement.
 
-## Code
+## The routine's contract
 
-```z80
-; =============================================================================
-; SOUND BEEP - ZX SPECTRUM
-; Generate tones via speaker bit toggling
-; Taught: Game 1 (Ink War), Unit 2
-; CPU: Variable (blocks during playback) | Memory: ~40 bytes
-; =============================================================================
+Before calling `sound_beep`, put the half-period delay in **H**, the number of cycles in **L**, and the border/MIC output in **A**. H and L must each be **1–255**. Zero wraps to 256 loop iterations; it does not mean silence.
 
-KEY_PORT    equ     $fe
-SPEAKER_BIT equ     $10         ; Bit 4 of port $FE
+The caller disables maskable interrupts for the sound and decides when to enable them again. Otherwise an interrupt handler can interrupt the timing. The routine leaves the interrupt state alone and returns with the speaker bit clear.
 
-; Rising tone (success sound)
-; Good for: claiming cells, collecting items, positive feedback
-sound_success:
-    ld      hl, 400             ; Starting pitch (higher = lower frequency)
-    ld      b, 20               ; Duration (number of cycles)
+It changes AF, B, D and L. C, E and H are preserved. It also needs an ordinary working stack for CALL and RET.
 
-.loop:
-    push    bc
-    push    hl
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/audio/sound-beep/sound-beep.inc" lang="z80" />
 
-    ; Generate one cycle of tone
-    ld      b, h
-    ld      c, l                ; BC = delay count
-.tone_loop:
-    ld      a, SPEAKER_BIT      ; Speaker on
-    out     (KEY_PORT), a
-    call    .delay
-    xor     a                   ; Speaker off
-    out     (KEY_PORT), a
-    call    .delay
-    dec     bc
-    ld      a, b
-    or      c
-    jr      nz, .tone_loop
+Each `ld b,h` loads the same delay. `djnz` reduces B until it reaches zero. `dec l` counts whole high/low cycles. H is never reduced by the inner loop, so changing L changes length without changing the period.
 
-    pop     hl
-    pop     bc
+Port `$FE` also controls the border in bits 0–2 and MIC in bit 3. D keeps those four bits for both writes. With A=1, the writes alternate between 17 and 1: blue border throughout. With A=9, they alternate between 25 and 9: the same border and a preserved high MIC bit. That preserves the chosen digital output; it does not isolate the analogue cassette connection.
 
-    ; Decrease delay (increase pitch)
-    ld      de, 20
-    or      a
-    sbc     hl, de
+In a game, all code writing this port must share a maintained output byte. Reading `$FE` reads the keyboard and EAR input, not the previous output value.
 
-    djnz    .loop
-    ret
+## Predict the pitch and length
 
-.delay:
-    push    bc
-    ld      b, 5
-.delay_loop:
-    djnz    .delay_loop
-    pop     bc
-    ret
+At a nominal 3.5 MHz, ignoring contention and interrupts, the interval from one rising speaker write to the next is `26×H+51` T-states. The two halves differ slightly because the low half also counts cycles and jumps back. These are approximate tuning values for this routine, not a table for every beeper engine.
 
-; Falling tone (error/failure sound)
-; Good for: invalid moves, damage, negative feedback
-sound_error:
-    ld      hl, 100             ; Start high pitched
-    ld      b, 15               ; Duration
+| H | L | Approximate pitch | Approximate length |
+|---|---|---|---|
+| 255 | 105 | 524 Hz | 200 ms |
+| 127 | 105 | 1044 Hz | 100 ms |
+| 127 | 210 | 1044 Hz | 201 ms |
+| 255 | 20 | 524 Hz | 38 ms |
 
-.error_loop:
-    push    bc
-    push    hl
+`DJNZ` takes 13 T-states when it jumps and 8 on its final iteration. Counting the surrounding instructions gives the period above. The 48K ULA can delay port accesses, so a capture will differ slightly from this calculation. Moving the code or stack into contended memory changes the assumption too.
 
-    ld      b, h
-    ld      c, l
-.error_tone:
-    ld      a, SPEAKER_BIT
-    out     (KEY_PORT), a
-    call    .delay
-    xor     a
-    out     (KEY_PORT), a
-    call    .delay
-    dec     bc
-    ld      a, b
-    or      c
-    jr      nz, .error_tone
+<Question prompt="If we halve H but leave L alone, which changes: pitch, length, or both?">
 
-    pop     hl
-    pop     bc
+Both change. The shorter period raises pitch, and the same number of shorter cycles finishes sooner. Approximately doubling L restores the length while retaining the higher pitch.
 
-    ; Increase delay (decrease pitch)
-    ld      de, 15
-    add     hl, de
+</Question>
 
-    djnz    .error_loop
-    ret
+## Rising, falling and click effects
+
+These wrappers use `ula_output` as their border/MIC state. The success effect plays sixteen cycles at each of eight delays, reducing H from 200 to 88. The error effect uses the same delays in reverse. Each higher note is shorter because its cycle count stays fixed. The click uses twelve cycles at H=127.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/audio/sound-beep/effects.inc" lang="z80" />
+
+`push hl` and `pop hl` recover the note's parameters after the beep has consumed L. The labels are distinct global names, so no call relies on another routine's local-label scope. Include these files once; the wrapper contract is the same blocking/interrupt contract, with H also changed.
+
+## Run the complete example
+
+Turn on **Sound**, then assemble and run. You should hear the fixed tone, the rising effect, the falling effect and the click, separated by half-second gaps. The border should stay blue. The demonstration enables the ROM interrupt during the gaps and after playback; it disables it for each sound.
+
+<AssembleAndRun system="sinclair-zx-spectrum" src="sinclair-zx-spectrum/patterns/assembly/audio/sound-beep/demo.asm" dialect="pasmo" includes={{'sound-beep.inc':'sinclair-zx-spectrum/patterns/assembly/audio/sound-beep/sound-beep.inc','effects.inc':'sinclair-zx-spectrum/patterns/assembly/audio/sound-beep/effects.inc'}} executionHints={false} inspectSymbols={['done']} downloads={true} />
+
+Change the demo's first `ld hl,$ff69` to `ld hl,$7f69`, then `$7fd2`, and compare with the table. `$FF` and `$7F` are the H values; `$69` and `$D2` are the L values. Try `ula_output: defb 2` to keep a red border instead.
+
+For local work, save the three maintained files together and run:
+
+```sh
+asm198x --dialect pasmo --cpu z80 --tapbas demo.asm -o demo.tap
 ```
 
-**Simple single beep:**
-
-```z80
-; Quick beep (for button press feedback)
-sound_click:
-    ld      hl, 200             ; Pitch
-    ld      b, 5                ; Short duration
-
-.click_loop:
-    push    bc
-    push    hl
-
-    ld      b, h
-    ld      c, l
-.click_tone:
-    ld      a, SPEAKER_BIT
-    out     (KEY_PORT), a
-    call    short_delay
-    xor     a
-    out     (KEY_PORT), a
-    call    short_delay
-    dec     bc
-    ld      a, b
-    or      c
-    jr      nz, .click_tone
-
-    pop     hl
-    pop     bc
-    djnz    .click_loop
-    ret
-
-short_delay:
-    push    bc
-    ld      b, 3
-.sd_loop:
-    djnz    .sd_loop
-    pop     bc
-    ret
-```
-
-## Trade-offs
-
-| Aspect | Cost |
-|--------|------|
-| CPU | Blocks execution during playback |
-| Memory | ~40 bytes per sound routine |
-| Limitation | No background playback, mono only |
-
-**When to use:** Short feedback sounds (clicks, beeps, success/error tones).
-
-**When to avoid:** Background music or sounds during gameplay - CPU is blocked.
-
-## How It Works
-
-1. The speaker is controlled by bit 4 of port `$FE`
-2. Set bit 4 high (`$10`) to push the speaker cone out
-3. Set bit 4 low (`$00`) to let it return
-4. The speed of toggling determines the pitch
-5. Smaller delay = higher frequency = higher pitch
-
-## Border-safe writes
-
-The naive code in this pattern writes `$10` and `$00` to port `$FE`, which forces the border to colour 0 (black) and MIC low on every toggle. Any game with a coloured border will see it flash to black during sound playback. The fix is to OR the speaker bit with a stored border value:
-
-```z80
-; Globally maintained border colour (bits 0-2)
-current_border:
-    defb    1               ; Blue border, MIC low
-
-play_click_safe:
-    ld      b, 50           ; Number of toggles
-.loop:
-    ld      a, (current_border)
-    or      SPEAKER_BIT     ; Speaker on, border preserved
-    out     ($fe), a
-    call    delay
-    ld      a, (current_border)
-    out     ($fe), a        ; Speaker off, border preserved
-    call    delay
-    djnz    .loop
-    ret
-```
-
-To change the border colour later, update `current_border` and the next toggle picks it up.
-
-## Louder beeper (issue 1 hardware trick)
-
-On issue 1 Spectrum boards, MIC out (bit 3) is connected to the speaker through a passive feedback path. Setting bits 3 and 4 together produces a noticeably louder click than bit 4 alone. Issue 2+ boards isolated MIC from EAR, so the trick has minimal effect there:
-
-```z80
-SPEAKER_LOUD equ %00011000  ; Bits 3 + 4 (MIC + EAR)
-```
-
-Use sparingly — the louder click is also harsher and bypasses the saturation curve of the standard beeper.
-
-## Pitch Reference
-
-| Delay Value | Approximate Note |
-|-------------|------------------|
-| 50-100 | High beep |
-| 100-200 | Medium tone |
-| 200-400 | Low tone |
-| 400+ | Very low rumble |
+Mount the tape in a 48K Spectrum emulator, enter `LOAD ""` and start playback. The sample's [source and verification recipe](https://github.com/code198x/code-samples/tree/main/sinclair-zx-spectrum/patterns/assembly/audio/sound-beep) includes a Makefile and an executable check. Native checks cover pitch versus length, both sweep directions, border/MIC writes, register and stack contracts, and a fresh ROM tape load. They establish emulator behaviour; listening and original-hardware checks are separate.
 
 ## Related
 
-**Patterns:** [Beeper Music](/patterns/sinclair-zx-spectrum/assembly/audio/beeper-music), [Game Loop (HALT)](/patterns/sinclair-zx-spectrum/assembly/framework/game-loop-halt)
+[Beeper Music](/patterns/sinclair-zx-spectrum/assembly/audio/beeper-music) arranges tones into a sequence. [Four Ways to Make a Sound](/patterns/cross-platform/audio/making-a-sound) compares the beeper's CPU cost with dedicated sound hardware. The [ULA port reference](/vault/techniques/zx-spectrum-hardware-ports/) explains the shared output bits.
 
-**Vault:** [ULA](/vault/hardware/ula) — port $FE bit layout | [AY-3-8912](/vault/hardware/ay-3-8912) — 128K sound chip | [ZX Spectrum](/vault/systems/sinclair-zx-spectrum)
+<Sources>
+
+Sinclair Research, *ZX Spectrum BASIC Programming*, chapter 23, [IN and OUT](https://worldofspectrum.org/ZXBasicManual/zxmanchap23.html): port 254's speaker, MIC and border outputs. Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf): DJNZ, OUT, register-load and branch instruction timings. The pitch and length table is calculated from the maintained routine above.
+
+</Sources>

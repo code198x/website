@@ -61,3 +61,8 @@ midpoint: the impact tone should read about 523 Hz for 105 cycles, and
 `BEEP 1,12` about 523 Hz for a second. It also checks the choice carries to the
 next lesson, that Stop suspends the AudioContext and that unticking closes it.
 It measures delivered samples, not what reaches a listener's ears.
+
+`sound-beep` checks the maintained beeper pattern: both editable includes, actual
+completion, four separated sounds delivered to the AudioWorklet, source and
+include downloads, tape download, changed-source execution, revert, Sound off
+and narrow-screen overflow. Listening remains a separate check.
