@@ -1,0 +1,213 @@
+---
+/**
+ * "Same job. Different machine." The homepage explorer: every machine with
+ * lessons, each in every language it is taught in, painting the screen red.
+ *
+ * - Machines and languages come from the catalogues: a machine is here when
+ *   it has lesson pages, and its languages are its module catalogues
+ *   (src/content/modules/<system>/<track>.yaml) other than the machine
+ *   briefing. src/data/same-job.ts holds one snippet per language; the build
+ *   fails if a taught language has no snippet or a snippet has no catalogue.
+ * - Machines and languages are the kit's Tabs (vertical, then horizontal
+ *   inside each panel). The current one is in inverse video and nothing is
+ *   told apart by colour (§3, §7).
+ * - The small TV shows the machine as it starts and then what the snippet
+ *   paints, in Emu198x's own colours: a machine lighting itself (§7). It
+ *   lights when the explorer first comes into view and again on every change
+ *   of machine or language; that is the screen's reveal when a program runs
+ *   (§6). Under reduced motion it is lit at once and never transitions.
+ * - Machines prioritised next sit under the tabs as plain links.
+ */
+import { getCollection } from 'astro:content';
+import Tabs from '@198x-ui/components/Tabs.astro';
+import SameJobPanel from './SameJobPanel.astro';
+import Chip from '@198x-ui/components/Chip.astro';
+import { getAllPlatforms } from '../../lib/platforms';
+import { systemLessonCounts } from '../../lib/system-directory';
+import { sameJob } from '../../data/same-job';
+
+const platforms = await getAllPlatforms();
+const lessons = await systemLessonCounts();
+const catalogues = (await getCollection('modules')).filter((m) => m.data.platform && m.data.track !== 'machine');
+
+/* In the order same-job.ts lists them: the Spectrum first, as the hero is. */
+const order = Object.keys(sameJob);
+const machines = platforms
+  .filter((p) => lessons.has(p.id))
+  .sort((a, b) => (order.indexOf(a.id) + 1 || 99) - (order.indexOf(b.id) + 1 || 99))
+  .map((p) => {
+    const job = sameJob[p.id];
+    if (!job) throw new Error(`[home] ${p.id} has lessons but no entry in src/data/same-job.ts.`);
+    const tracks = new Set(catalogues.filter((c) => c.data.platform === p.id).map((c) => c.data.track!));
+    for (const t of tracks) {
+      if (!job.langs[t]) throw new Error(`[home] ${p.id} teaches ${t} but src/data/same-job.ts has no snippet for it.`);
+    }
+    for (const t of Object.keys(job.langs)) {
+      if (!tracks.has(t as never)) throw new Error(`[home] src/data/same-job.ts has a ${t} snippet for ${p.id}, which has no ${t} catalogue.`);
+    }
+    return { p, job };
+  });
+
+const next = platforms.filter((p) => p.data.tier === 'next' && !lessons.has(p.id));
+
+/* Tabs takes one named slot per panel, and Astro cannot name a slot from
+   inside a .map(), so the slots are written out in the template. */
+const SLOTS = 8;
+if (machines.length > SLOTS) throw new Error(`[home] ${machines.length} machines have lessons; SameJob has slots for ${SLOTS}.`);
+const panel = (i: number) => {
+  const { p, job } = machines[i];
+  return { id: p.id, name: p.data.name, shortName: p.data.shortName, cpu: p.data.cpu, year: p.data.year, job };
+};
+---
+
+<div class="explorer" data-same-job>
+  <Tabs
+    id="same-job"
+    class="machines"
+    orientation="vertical"
+    label="Machines"
+    items={machines.map(({ p }) => ({ label: p.data.name, value: p.id }))}
+  >
+    {machines[0] && <SameJobPanel slot="panel-0" {...panel(0)} />}
+    {machines[1] && <SameJobPanel slot="panel-1" {...panel(1)} />}
+    {machines[2] && <SameJobPanel slot="panel-2" {...panel(2)} />}
+    {machines[3] && <SameJobPanel slot="panel-3" {...panel(3)} />}
+    {machines[4] && <SameJobPanel slot="panel-4" {...panel(4)} />}
+    {machines[5] && <SameJobPanel slot="panel-5" {...panel(5)} />}
+    {machines[6] && <SameJobPanel slot="panel-6" {...panel(6)} />}
+    {machines[7] && <SameJobPanel slot="panel-7" {...panel(7)} />}
+  </Tabs>
+
+  {next.length > 0 && (
+    <div class="coming">
+      <p class="coming-head">Coming next</p>
+      <ul>
+        {next.map((p) => (
+          <li><Chip href={`/systems/${p.id}/`}>{p.data.shortName}<span slot="meta">Preview</span></Chip></li>
+        ))}
+      </ul>
+    </div>
+  )}
+</div>
+
+<style>
+  .explorer { display: grid; gap: calc(var(--h-cell) * 3); margin-top: calc(var(--h-cell) * 6); }
+
+  /* The machine tabs beside their panel. */
+  .explorer :global(.machines.h-tabs-vertical) {
+    display: grid;
+    grid-template-columns: minmax(15rem, 4fr) minmax(0, 8fr);
+    gap: calc(var(--h-cell) * 2);
+    align-items: stretch;
+  }
+  .explorer :global(.machines > .h-tabs-list) {
+    align-content: start;
+    padding: var(--h-cell);
+    border: 1px solid var(--h-line);
+    background: var(--h-ground);
+  }
+  .explorer :global(.machines > .h-tabs-list > .h-tabs-tab) {
+    width: 100%;
+    min-height: calc(var(--h-cell) * 7);
+    padding: 0 calc(var(--h-cell) * 2);
+    border-color: transparent;
+    background: none;
+    font-size: var(--h-text-small);
+    font-weight: var(--h-weight-major);
+  }
+  .explorer :global(.machines > .h-tabs-list > .h-tabs-tab[aria-selected="true"]) {
+    background: var(--h-ink);
+    border-color: var(--h-ink);
+    color: var(--h-ground);
+  }
+  .explorer :global(.machines > .h-tabs-panel) {
+    margin: 0;
+    padding: calc(var(--h-cell) * 4);
+    border: 1px solid var(--h-line);
+    background: var(--h-ground);
+  }
+
+  .coming { display: flex; flex-wrap: wrap; align-items: center; gap: var(--h-cell) calc(var(--h-cell) * 2); }
+  .coming-head { margin: 0; font-family: var(--h-font-mono); font-size: var(--h-text-micro); letter-spacing: 0.14em; text-transform: uppercase; color: var(--h-ink-muted); }
+  .coming ul { display: flex; flex-wrap: wrap; gap: var(--h-cell); margin: 0; padding: 0; list-style: none; }
+
+  @media (max-width: 1100px) {
+    .explorer :global(.machines.h-tabs-vertical) { grid-template-columns: minmax(0, 1fr); }
+    .explorer :global(.machines > .h-tabs-list) { flex-direction: row; flex-wrap: wrap; }
+  }
+  @media (max-width: 767px) {
+    .explorer :global(.machines > .h-tabs-panel) { padding: calc(var(--h-cell) * 2.5); }
+  }
+</style>
+
+<script>
+  /*
+   * The TV, and the tabs on a revisit.
+   *
+   * Astro's ClientRouter runs a bundled script once per session, so the kit's
+   * Tabs wires the tabs it finds on first load and never sees this page's
+   * tabs again after a soft navigation away and back. Each visit therefore
+   * wires them here too. On the first visit both handlers run: a click
+   * selects the same tab twice (the second is a no-op, and fires no event),
+   * and a key the kit has already handled is left alone (defaultPrevented).
+   */
+  const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function wireTabs(root: HTMLElement) {
+    const isTabs = root.dataset.hTabs === 'tabs';
+    const vertical = root.dataset.orientation === 'vertical';
+    const list = root.querySelector<HTMLElement>(':scope > .h-tabs-list')!;
+    const options = [...list.querySelectorAll<HTMLButtonElement>(':scope > .h-tabs-tab')];
+    const panels = [...root.querySelectorAll<HTMLElement>(':scope > .h-tabs-panel')];
+    const attr = isTabs ? 'aria-selected' : 'aria-checked';
+    const select = (n: number, focus: boolean) => {
+      const was = options.findIndex((o) => o.getAttribute(attr) === 'true');
+      options.forEach((o, i) => { o.setAttribute(attr, String(i === n)); o.tabIndex = i === n ? 0 : -1; });
+      panels.forEach((p, i) => { p.hidden = i !== n; });
+      if (focus) options[n].focus();
+      if (was !== n) root.dispatchEvent(new CustomEvent('h-tabs-change', { bubbles: true, detail: { index: n, value: options[n].dataset.value } }));
+    };
+    options.forEach((o, i) => o.addEventListener('click', () => select(i, false)));
+    list.addEventListener('keydown', (e) => {
+      if (e.defaultPrevented) return;
+      const at = options.indexOf(document.activeElement as HTMLButtonElement);
+      if (at < 0) return;
+      const last = options.length - 1;
+      const next = [vertical ? 'ArrowDown' : 'ArrowRight'];
+      const prev = [vertical ? 'ArrowUp' : 'ArrowLeft'];
+      const to = next.includes(e.key) ? (at === last ? 0 : at + 1)
+        : prev.includes(e.key) ? (at === 0 ? last : at - 1)
+        : e.key === 'Home' ? 0 : e.key === 'End' ? last : -1;
+      if (to < 0) return;
+      e.preventDefault();
+      select(to, true);
+    });
+  }
+
+  function light(tv: HTMLElement | null) {
+    if (!tv) return;
+    tv.classList.remove('lit');
+    if (reduce()) { tv.classList.add('lit'); return; }
+    void tv.offsetWidth;
+    setTimeout(() => tv.classList.add('lit'), 220);
+  }
+
+  function visibleTv(explorer: HTMLElement) {
+    const panel = explorer.querySelector<HTMLElement>('.machines > .h-tabs-panel:not([hidden])');
+    return panel?.querySelector<HTMLElement>('[data-tv]') ?? null;
+  }
+
+  function init() {
+    document.querySelectorAll<HTMLElement>('[data-same-job]:not([data-bound])').forEach((explorer) => {
+      explorer.dataset.bound = 'true';
+      explorer.querySelectorAll<HTMLElement>('[data-h-tabs]').forEach(wireTabs);
+      explorer.addEventListener('h-tabs-change', () => light(visibleTv(explorer)));
+      // Light the first TV when the explorer comes into view, once.
+      const io = new IntersectionObserver((entries) => {
+        if (entries.some((e) => e.isIntersecting)) { light(visibleTv(explorer)); io.disconnect(); }
+      }, { threshold: 0.3 });
+      io.observe(explorer);
+    });
+  }
+  document.addEventListener('astro:page-load', init);
+</script>
