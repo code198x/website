@@ -17,15 +17,21 @@
  *   + JSR new_routine`}
  *   </CodeDiff>
  *
- * Lines starting with + are additions (green)
- * Lines starting with - are deletions (red)
+ * Lines starting with + are additions
+ * Lines starting with - are deletions
  * Lines starting with space or no prefix are context
+ *
+ * Drawn as a House198x listing (styles/lesson.css). An added line carries the
+ * kit's mark and a removed line a neutral wash and a strike; each also starts
+ * with its sign and is an ins or del element, so the change is never shown by
+ * colour alone (§3: state is not a machine or a project colour).
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { codeToHighlightHtml } from 'shiki-highlight-api';
-import { loadCode198xLanguages } from '../lib/load-custom-languages';
+import { tokenise, tokensHtml } from '../lib/kit-highlight';
 import { getAllPlatforms } from '../lib/platforms';
+import { inlineMarkdown } from '../lib/inline-markdown';
+import '../styles/lesson.css';
 
 interface Props {
   before?: string;    // Path to "before" file (relative to code-samples)
@@ -222,385 +228,117 @@ function computeDiff(beforeLines: string[], afterLines: string[], contextLines: 
   return result;
 }
 
-// Load custom languages for highlighting
-await loadCode198xLanguages();
-
-// Generate syntax-highlighted HTML for each line
-async function highlightLine(content: string): Promise<string> {
-  if (!content || content === '...') return content;
-
-  const blockId = `diff-${Math.random().toString(36).slice(2, 9)}`;
-  try {
-    const result = await codeToHighlightHtml(content, {
-      lang: language,
-      theme: 'dark-plus',
-      blockId,
-    });
-
-    // Extract just the code content (strip outer pre/code tags)
-    const match = result.html.match(/<code[^>]*>([\s\S]*?)<\/code>/);
-    return match ? match[1] : content;
-  } catch {
-    return content;
-  }
-}
-
-// Highlight all lines
+// Colour each line in the kit's four roles. Lines are tokenised one at a
+// time, as the old renderer did: assembly and BASIC are line-shaped, so a
+// line needs no state from the one before it.
 const highlightedLines = await Promise.all(
   diffLines.map(async (line) => ({
     ...line,
-    highlighted: await highlightLine(line.content)
+    highlighted: line.type === 'separator' ? '' : tokensHtml((await tokenise(line.content, language))[0] ?? []),
   }))
 );
 
 // Count stats
 const addCount = diffLines.filter(l => l.type === 'add').length;
 const delCount = diffLines.filter(l => l.type === 'del').length;
+// The region's name is plain text: drop the Markdown emphasis and code marks.
+const plainTitle = title?.replace(/[*_`]/g, '');
+const label = plainTitle ? 'Changes: ' + plainTitle : 'Changes';
+const widest = Math.max(1, ...diffLines.map((l) => String(l.afterLineNum ?? l.beforeLineNum ?? '').length));
+const gutter = `--ll-gutter: ${widest}ch`;
 
-const blockId = `diff-${Math.random().toString(36).slice(2, 9)}`;
-import { inlineMarkdown } from '../lib/inline-markdown';
+/** One rendered row. The gutter shows the line's number in the version it
+ *  belongs to: the new file for added and unchanged lines, the old one for a
+ *  removed line. Its sign is read out, so the change never rests on colour. */
+const row = (line: (typeof highlightedLines)[number], side: 'unified' | 'before' | 'after') => {
+  if (line.type === 'separator') return `<span class="ll-line ll-sep"><span class="ll-text">…</span></span>`;
+  const num = side === 'before' ? line.beforeLineNum : side === 'after' ? line.afterLineNum : (line.afterLineNum ?? line.beforeLineNum);
+  const sign = line.type === 'add' ? '+' : line.type === 'del' ? '−' : ' ';
+  const spoken = line.type === 'add' ? 'Added: ' : line.type === 'del' ? 'Removed: ' : '';
+  const tag = line.type === 'add' ? 'ins' : line.type === 'del' ? 'del' : 'span';
+  const cls = line.type === 'add' ? ' ll-add' : line.type === 'del' ? ' ll-del' : '';
+  return `<${tag} class="ll-line${cls}"><span class="ll-gutter" aria-hidden="true">${num ?? ''}</span><span class="ll-marker" aria-hidden="true">${sign}</span>${spoken ? `<span class="ll-sr">${spoken}</span>` : ''}<span class="ll-text">${line.highlighted}\n</span></${tag}>`;
+};
+const unified = highlightedLines.map((l) => row(l, 'unified')).join('');
+const beforeRows = highlightedLines.filter((l) => l.type !== 'add').map((l) => row(l, 'before')).join('');
+const afterRows = highlightedLines.filter((l) => l.type !== 'del').map((l) => row(l, 'after')).join('');
 ---
-
-{title && (
-  <div class="diff-header">
-    <span class="diff-title" set:html={inlineMarkdown(title)} />
-    <div class="diff-stats">
-      {addCount > 0 && <span class="stat-added">+{addCount}</span>}
-      {delCount > 0 && <span class="stat-deleted">-{delCount}</span>}
-    </div>
-  </div>
-)}
 
 {error ? (
   <div class="diff-error" role="alert">
     <p class="error-message">{error}</p>
   </div>
-) : mode === 'unified' ? (
-  <div
-      class="diff-container unified"
-      id={blockId}
-      tabindex="0"
-      role="region"
-      aria-label={title ? `Code diff: ${title}` : 'Code diff'}
-    >
-    {/* Layout.astro's global responsive-tables rule makes every <table>
-        `display: block; overflow-x: auto` below 768px, on top of this
-        container's own overflow-x. At that width the table becomes its own,
-        independently-scrollable region, so it needs its own tabindex. */}
-    <table class="diff-table" tabindex="0">
-      <tbody>
-        {highlightedLines.map((line) => (
-          <tr class={`diff-line ${line.type}`}>
-            <td class="line-num before">{line.type !== 'separator' ? (line.beforeLineNum || '') : ''}</td>
-            <td class="line-num after">{line.type !== 'separator' ? (line.afterLineNum || '') : ''}</td>
-            <td class="line-marker">
-              {line.type === 'add' ? '+' : line.type === 'del' ? '-' : line.type === 'separator' ? '' : ' '}
-            </td>
-            <td class="line-content">
-              {line.type === 'separator' ? (
-                <span class="separator">{line.content}</span>
-              ) : (
-                <code set:html={line.highlighted} />
-              )}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
 ) : (
-  <div
-      class="diff-container side-by-side"
-      id={blockId}
-      tabindex="0"
-      role="region"
-      aria-label={title ? `Code diff: ${title}` : 'Code diff'}
-    >
-    <div class="diff-pane before-pane">
-      <div class="pane-header">Before</div>
-      <table class="diff-table" tabindex="0">
-        <tbody>
-          {highlightedLines.filter(l => l.type !== 'add').map((line) => (
-            <tr class={`diff-line ${line.type}`}>
-              <td class="line-num">{line.type !== 'separator' ? (line.beforeLineNum || '') : ''}</td>
-              <td class="line-content">
-                {line.type === 'separator' ? (
-                  <span class="separator">{line.content}</span>
-                ) : (
-                  <code set:html={line.highlighted} />
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-    <div class="diff-pane after-pane">
-      <div class="pane-header">After</div>
-      <table class="diff-table" tabindex="0">
-        <tbody>
-          {highlightedLines.filter(l => l.type !== 'del').map((line) => (
-            <tr class={`diff-line ${line.type}`}>
-              <td class="line-num">{line.type !== 'separator' ? (line.afterLineNum || '') : ''}</td>
-              <td class="line-content">
-                {line.type === 'separator' ? (
-                  <span class="separator">{line.content}</span>
-                ) : (
-                  <code set:html={line.highlighted} />
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  </div>
+  <figure class:list={['lesson-listing', 'code-diff', mode]} style={gutter}>
+    <figcaption class="ll-head">
+      <span class="ll-label diff-title">{title ? <span set:html={inlineMarkdown(title)} /> : 'Changes'}</span>
+      <span class="ll-head-end ll-stat">
+        {addCount > 0 && <span class="stat-added">+{addCount}<span class="ll-sr"> added</span></span>}
+        {delCount > 0 && <span class="stat-deleted">−{delCount}<span class="ll-sr"> removed</span></span>}
+      </span>
+    </figcaption>
+    {mode === 'unified' ? (
+      <div class="ll-scroll diff-container" data-ll-scroll data-label={label} tabindex="0" role="region" aria-label={label}><pre class="ll-pre"><code set:html={unified} /></pre></div>
+    ) : (
+      <div class="diff-panes">
+        <div class="diff-pane">
+          <p class="diff-pane-head">Before</p>
+          <div class="ll-scroll" data-ll-scroll data-label={`${label}, before`} tabindex="0" role="region" aria-label={`${label}, before`}><pre class="ll-pre"><code set:html={beforeRows} /></pre></div>
+        </div>
+        <div class="diff-pane">
+          <p class="diff-pane-head">After</p>
+          <div class="ll-scroll" data-ll-scroll data-label={`${label}, after`} tabindex="0" role="region" aria-label={`${label}, after`}><pre class="ll-pre"><code set:html={afterRows} /></pre></div>
+        </div>
+      </div>
+    )}
+  </figure>
 )}
 
 <style>
-  .diff-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 1rem;
-    /* The same tint Layout gives a table's thead, because the body below is a
-       table and the global rule already paints it --color-surface. Hard-coded
-       darks here left the header and footer black around a light diff. */
-    background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface) 90%);
-    border: 1px solid var(--color-border);
-    border-bottom: none;
-    border-radius: 0;
-    margin-bottom: 0;
+  /* The head carries the title in the interface face: it names a change,
+     not a file. */
+  .code-diff .diff-title {
+    font-family: var(--h-font-ui);
+    font-size: var(--h-text-micro);
+    font-weight: var(--h-weight-minor);
+    letter-spacing: 0;
+    color: var(--h-ink);
+    white-space: normal;
+    padding-block: var(--h-cell);
   }
+  .code-diff .diff-title :global(code) { font-size: 0.95em; }
+  .ll-stat { display: inline-flex; gap: calc(var(--h-cell) * 1.5); }
 
-  .diff-title {
-    font-family: var(--font-family-mono, monospace);
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--color-text);
-  }
-
-  .diff-stats {
-    display: flex;
-    gap: 0.75rem;
-    font-family: var(--font-family-mono, monospace);
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
-
-  /* 55/45 (hue-dominant) read at 3.46:1 and 4.49:1 against the diff header's
-     light-theme background — both below the 4.5:1 this bold 12px text needs.
-     25/75 clears it with margin (4.68:1 / 5.42:1) while keeping a visible
-     green/red tint. */
-  .stat-added {
-    color: color-mix(in oklab, var(--color-success) 25%, var(--color-text) 75%);
-  }
-
-  .stat-deleted {
-    color: color-mix(in oklab, var(--color-error) 25%, var(--color-text) 75%);
-  }
-
-  .diff-container {
-    margin: 0 0 1.5rem 0;
-    border-radius: 0;
-    overflow: hidden;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    font-family: var(--font-family-mono, 'Fira Code', monospace);
-    font-size: 0.875rem;
-    line-height: 1.25;
-  }
-
-  .diff-header + .diff-container {
-    border-radius: 0;
-  }
-
-  .diff-container:not(.diff-header + .diff-container) {
-    border-radius: 0;
-    margin-top: 1.5rem;
-  }
-
-  /* Unified view */
-  .diff-container.unified {
-    overflow-x: auto;
-  }
-
-  /* Focusable now, so it must show it. There is no blanket `*:focus-visible`
-     rule in the layout, and a scroll box that takes focus silently is its own
-     small trap. */
-  .diff-container:focus-visible {
-    outline: 3px solid var(--color-primary);
-    outline-offset: 2px;
-  }
-
-  .diff-table {
-    width: 100%;
-    border-collapse: collapse;
-    border-spacing: 0;
-  }
-
-  /* UnitLayout's `.unit-content :global(table)` gives every table in a lesson a
-     margin and a border. Inside the diff container both are wrong: they opened a
-     band of dead space above and below the code and doubled the frame. The
-     container has to be in the selector to outrank that rule. */
-  .diff-container .diff-table {
+  .diff-panes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .diff-pane + .diff-pane { border-left: 1px solid var(--h-line); }
+  .diff-pane-head {
     margin: 0;
-    border: none;
-  }
-
-  .diff-line {
-    border: none;
-  }
-
-  .diff-line td {
-    padding-top: 0;
-    padding-bottom: 0;
-  }
-
-  .diff-line.add {
-    background: var(--color-success-muted);
-  }
-
-  .diff-line.del {
-    background: var(--color-error-muted);
-  }
-
-  .diff-line.context {
-    background: transparent;
-  }
-
-  .diff-line.separator {
-    background: var(--color-bg);
-  }
-
-  /* A token, not a fixed grey: the gutter is measured against whichever
-     surface the theme paints behind it, so the contrast holds in both. */
-  .line-num {
-    width: 3rem;
-    padding: 0 0.5rem;
-    text-align: right;
-    color: var(--color-text-secondary);
-    user-select: none;
-    vertical-align: top;
-    font-size: 0.75rem;
-  }
-
-  /* Below 768px, Layout.astro's global responsive-tables rule sets every
-     <table> to `display: block`, which breaks the table formatting context
-     its <tr> row backgrounds rely on. In that state the muted secondary ink
-     reads at 4.22:1 against the add/del row tint — under the 4.5:1 this text
-     needs — so the gutter falls back to full ink specifically on those rows,
-     which clears it with margin (7.05:1) in both themes. */
-  .diff-line.add .line-num,
-  .diff-line.del .line-num {
-    color: var(--color-text);
-  }
-
-  .line-marker {
-    width: 1.5rem;
-    padding: 0 0.25rem;
-    text-align: center;
-    font-weight: bold;
-    user-select: none;
-    vertical-align: top;
-  }
-
-  .diff-line.add .line-marker {
-    color: #22c55e;
-  }
-
-  .diff-line.del .line-marker {
-    color: #ef4444;
-  }
-
-  .line-content {
-    padding: 0 1rem 0 0.5rem;
-    white-space: pre;
-    overflow-x: visible;
-  }
-
-  .line-content code {
-    font-family: inherit;
-  }
-
-  .separator {
-    color: #6b7280;
-    font-style: italic;
-    display: block;
-    text-align: center;
-  }
-
-  /* Side-by-side view */
-  .diff-container.side-by-side {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 2px;
-    background: var(--color-border);
-  }
-
-  .diff-pane {
-    background: var(--color-surface);
-    overflow-x: auto;
-  }
-
-  .pane-header {
-    padding: 0.5rem 1rem;
-    background: color-mix(in oklab, var(--color-primary) 10%, var(--color-surface) 90%);
-    font-weight: 600;
-    font-size: 0.75rem;
+    padding: var(--h-cell) calc(var(--h-cell) * 3);
+    border-bottom: 1px solid var(--h-line);
+    color: var(--h-ink-muted);
+    font-family: var(--h-font-ui);
+    font-size: var(--h-text-micro);
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-text);
-    border-bottom: 1px solid var(--color-border);
   }
-
-  .before-pane .pane-header {
-    color: color-mix(in oklab, var(--color-error) 55%, var(--color-text) 45%);
-  }
-
-  .after-pane .pane-header {
-    color: color-mix(in oklab, var(--color-success) 55%, var(--color-text) 45%);
-  }
-
-  .side-by-side .line-num {
-    width: 2.5rem;
-  }
-
-  .side-by-side .diff-line.add {
-    background: var(--color-success-muted);
-  }
-
-  .side-by-side .diff-line.del {
-    background: var(--color-error-muted);
-  }
-
-  /* Responsive: stack on mobile */
   @media (max-width: 768px) {
-    .diff-container.side-by-side {
-      grid-template-columns: 1fr;
-    }
-
-    .diff-table {
-      font-size: 0.8125rem;
-    }
-
-    .line-num {
-      width: 2rem;
-      font-size: 0.7rem;
-    }
+    .diff-panes { grid-template-columns: minmax(0, 1fr); }
+    .diff-pane + .diff-pane { border-left: 0; border-top: 1px solid var(--h-line); }
   }
 
   .diff-error {
     background: var(--color-error-muted);
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--h-line);
     border-left: 4px solid var(--color-error);
     border-radius: 0;
     padding: 1rem;
     margin: 1.5rem 0;
   }
-
-  .error-message {
-    color: color-mix(in oklab, var(--color-error) 55%, var(--color-text) 45%);
-    margin: 0;
-  }
+  .error-message { color: var(--h-ink); margin: 0; }
 </style>
+
+<script>
+  import { initListings } from '../lib/lesson-listing';
+  initListings();
+  document.addEventListener('astro:page-load', () => initListings());
+</script>

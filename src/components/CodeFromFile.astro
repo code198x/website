@@ -1,17 +1,22 @@
 ---
 /**
- * CodeFromFile - Renders code from an external file with syntax highlighting
+ * CodeFromFile - A listing read from the code-samples repository.
  *
  * Usage:
  *   import CodeFromFile from '@components/CodeFromFile.astro';
  *   <CodeFromFile src="commodore-amiga/game-01-hop/unit-08/hop.asm" lang="asm" />
- *   <CodeFromFile src="commodore-amiga/game-01-hop/unit-08/snippets/01-collision.asm" lang="asm" />
+ *   <CodeFromFile src="…/meteor-storm.asm" from="; --- draw" to="; --- move" />
+ *
+ * Drawn as the House198x Listing (styles/lesson.css): a square panel in the
+ * page's theme, the kit's four syntax roles, and a head bar naming the file.
+ * Highlighting is static spans from src/lib/kit-highlight.ts.
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { codeToThemedHighlight } from '../lib/themed-highlight';
-import { loadCode198xLanguages } from '../lib/load-custom-languages';
+import { listingHtml } from '../lib/kit-highlight';
 import { getAllPlatforms } from '../lib/platforms';
+import { inlineMarkdown } from '../lib/inline-markdown';
+import '../styles/lesson.css';
 
 interface Props {
   src: string;      // Path relative to code-samples root
@@ -76,23 +81,11 @@ function inferLanguage(srcPath: string, ext: string): string {
 
 const language = lang || inferLanguage(src, extension);
 
-// Load custom languages and generate highlighted HTML using CSS Highlights API
-await loadCode198xLanguages();
-
-// Generate unique block ID for CSS Highlights API
-const blockId = `code-${(src + (from ?? '')).replace(/[^a-z0-9]/gi, '-')}`;
-
-const highlightResult = await codeToThemedHighlight(code, {
-  lang: language,
-  blockId,
-});
-
-// Make the scrollable <pre> keyboard-focusable (WCAG scrollable-region-focusable).
-const highlightHtml = highlightResult.html.replace(
-  /<pre(?![^>]*\btabindex)/,
-  '<pre tabindex="0"',
-);
-import { inlineMarkdown } from '../lib/inline-markdown';
+// Trailing newlines would draw as empty lines at the foot of the panel.
+const shown = code.replace(/\n+$/, '');
+const listing = fileError ? '' : await listingHtml(shown, language);
+const fileName = path.basename(src);
+const label = from ? `${fileName}, excerpt` : fileName;
 ---
 
 {title && <p class="code-title"><strong set:html={inlineMarkdown(title)} /></p>}
@@ -102,120 +95,26 @@ import { inlineMarkdown } from '../lib/inline-markdown';
     <p class="error-hint">This code sample could not be loaded. The file may be missing or the path may be incorrect.</p>
   </div>
 ) : (
-  <div class="code-container" data-code={code}>
-    <button class="copy-button" aria-label="Copy code to clipboard">
-      <span class="copy-icon">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-        </svg>
-        <span>Copy</span>
-      </span>
-      <span class="copied-icon">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="checkmark">
-          <polyline points="20 6 9 17 4 12"></polyline>
-        </svg>
-        <span>Copied!</span>
-      </span>
-    </button>
-    <Fragment set:html={highlightHtml} />
+  <div class="lesson-listing code-container" data-code={code}>
+    <div class="ll-head">
+      <span class="ll-label">{label}</span>
+      <button type="button" class="ll-copy copy-button" hidden aria-label={`Copy ${label}`}><span class="ll-copy-label" aria-live="polite">Copy</span></button>
+    </div>
+    <div class="ll-scroll" data-ll-scroll data-label={`${label}, listing`} tabindex="0" role="region" aria-label={`${label}, listing`}><pre class="ll-pre"><code set:html={listing} /></pre></div>
   </div>
 )}
-<Fragment set:html={highlightResult.css} />
-<Fragment set:html={highlightResult.script} />
 
 <style>
   .code-title {
     margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-    color: var(--text-muted, #888);
-  }
-
-  .code-container {
-    position: relative;
-  }
-
-  .copy-button {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    padding: 0.35rem 0.6rem;
-    font-size: 0.75rem;
-    font-family: var(--font-family-mono, monospace);
-    background: rgba(30, 41, 59, 0.9);
-    border: 1px solid rgba(100, 116, 139, 0.4);
-    border-radius: 0.25rem;
-    color: #94a3b8;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.15s ease, background 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
-    z-index: 10;
-  }
-
-  .copy-icon,
-  .copied-icon {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-  }
-
-  .copied-icon {
-    display: none;
-  }
-
-  .copy-button.copied .copy-icon {
-    display: none;
-  }
-
-  .copy-button.copied .copied-icon {
-    display: flex;
-  }
-
-  /* Checkmark draw animation */
-  .checkmark polyline {
-    stroke-dasharray: 24;
-    stroke-dashoffset: 24;
-  }
-
-  .copy-button.copied .checkmark polyline {
-    animation: draw-check 0.3s ease-out forwards;
-  }
-
-  @keyframes draw-check {
-    to {
-      stroke-dashoffset: 0;
-    }
-  }
-
-  .code-container:hover .copy-button,
-  .copy-button:focus-visible {
-    opacity: 1;
-  }
-
-  .copy-button:hover {
-    background: rgba(51, 65, 85, 0.95);
-    color: #f1f5f9;
-    box-shadow: 0 0 8px rgba(74, 77, 255, 0.3);
-  }
-
-  .copy-button:active {
-    transform: scale(0.95);
-  }
-
-  .copy-button.copied {
-    background: rgba(34, 197, 94, 0.15);
-    border-color: rgba(34, 197, 94, 0.4);
-    color: #22c55e;
-  }
-
-  .copy-button:focus-visible {
-    outline: 2px solid var(--color-primary, #3b82f6);
-    outline-offset: 2px;
+    font-family: var(--h-font-ui);
+    font-size: var(--h-text-small);
+    color: var(--h-ink-body);
   }
 
   .code-error {
     background: var(--color-error-muted);
-    border: 1px solid color-mix(in oklab, var(--color-error) 30%, transparent);
+    border: 1px solid var(--h-line);
     border-left: 4px solid var(--color-error);
     border-radius: 0;
     padding: 1rem 1.25rem;
@@ -223,74 +122,20 @@ import { inlineMarkdown } from '../lib/inline-markdown';
   }
 
   .error-message {
-    color: var(--color-error);
+    color: var(--h-ink);
     font-weight: 600;
     margin: 0 0 0.5rem 0;
   }
 
   .error-hint {
-    color: var(--color-text-secondary, #64748b);
+    color: var(--h-ink-muted);
     font-size: 0.875rem;
     margin: 0;
-  }
-
-  /* Retro blinking cursor - appears after the code on hover */
-  .code-container::after {
-    content: '_';
-    position: absolute;
-    bottom: 1rem;
-    left: 1rem;
-    font-family: var(--font-family-mono, monospace);
-    font-size: 0.875rem;
-    color: #22c55e;
-    opacity: 0;
-    animation: cursor-blink 1s step-end infinite;
-    transition: opacity 0.2s ease;
-    pointer-events: none;
-  }
-
-  .code-container:hover::after {
-    opacity: 1;
-  }
-
-  @keyframes cursor-blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-  }
-
-  /* Override animation opacity when not hovering */
-  .code-container:not(:hover)::after {
-    animation: none;
-    opacity: 0;
-  }
-
-  /* Respect reduced-motion: stop the infinite terminal-cursor blink. */
-  @media (prefers-reduced-motion: reduce) {
-    .code-container::after { animation: none; }
   }
 </style>
 
 <script>
-  document.querySelectorAll('.code-container').forEach(container => {
-    const button = container.querySelector('.copy-button');
-    const copyIcon = button?.querySelector('.copy-icon');
-    const copiedIcon = button?.querySelector('.copied-icon');
-    // Get raw code from data attribute (preserved for accurate copying)
-    const rawCode = container.getAttribute('data-code');
-
-    button?.addEventListener('click', async () => {
-      if (!rawCode || !button) return;
-
-      try {
-        await navigator.clipboard.writeText(rawCode);
-        button.classList.add('copied');
-
-        setTimeout(() => {
-          button.classList.remove('copied');
-        }, 2000);
-      } catch (err) {
-        console.error('Failed to copy:', err);
-      }
-    });
-  });
+  import { initListings } from '../lib/lesson-listing';
+  initListings();
+  document.addEventListener('astro:page-load', () => initListings());
 </script>

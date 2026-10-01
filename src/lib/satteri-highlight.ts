@@ -1,60 +1,32 @@
 /**
- * Sätteri HAST plugin that highlights fenced code blocks with the CSS Custom
- * Highlight API (via shiki-highlight-api), producing the same markup as the
- * unified-era `remark-shiki-highlight-api` pipeline and the CodeFromFile
- * component. Lets us move the markdown processor to Sätteri without changing
- * the highlighting output or the DOM-size optimisation.
+ * Sätteri HAST plugin that renders fenced code blocks as House198x listings:
+ * the same panel and the same four syntax roles as CodeFromFile
+ * (styles/lesson.css, src/lib/kit-highlight.ts), so a fence and a listing
+ * read from a file cannot drift apart.
  *
  * Sätteri wraps injected HTML as a `raw` node for `.md` and a `Fragment`
  * (mdxJsxFlowElement) for `.mdx`; the `mdx` option picks the right one.
+ *
+ * Fence meta strings ({1,2} line highlights, lineNumbers, +/- diff lines,
+ * focus{…}) were parsed for the CSS Highlight API pipeline. No page uses
+ * one, so they are not carried over; a diff is CodeDiff's job.
  */
-import { loadCustomLanguage } from 'shiki-highlight-api';
-import { codeToThemedHighlight } from './themed-highlight';
-import { bundledLanguages } from 'shiki';
-import { loadCode198xLanguages } from './load-custom-languages';
-
-// Meta-string parsing copied verbatim from remark-shiki-highlight-api for parity
-// ({1,2-3} line highlights, lineNumbers, +/- diff lines, focus{…}).
-function parseMetaString(meta?: string) {
-  if (!meta) return {} as Record<string, unknown>;
-  const options: Record<string, any> = {};
-  const highlightMatch = meta.match(/\{([0-9,-]+)\}/);
-  if (highlightMatch) options.highlightLines = highlightMatch[1];
-  if (meta.includes('showLineNumbers') || meta.includes('lineNumbers')) {
-    options.lineNumbers = true;
-    const startMatch = meta.match(/(?:showLineNumbers|lineNumbers):(\d+)/);
-    if (startMatch) options.lineNumbers = { start: parseInt(startMatch[1], 10) };
-  }
-  const diffAddMatch = meta.match(/\+([0-9,]+)/);
-  const diffRemoveMatch = meta.match(/-([0-9,]+)/);
-  if (diffAddMatch || diffRemoveMatch) {
-    options.diffLines = {};
-    if (diffAddMatch) options.diffLines.added = diffAddMatch[1].split(',').map((n) => parseInt(n.trim(), 10));
-    if (diffRemoveMatch) options.diffLines.removed = diffRemoveMatch[1].split(',').map((n) => parseInt(n.trim(), 10));
-  }
-  const focusMatch = meta.match(/focus\{([0-9,-]+)\}/);
-  if (focusMatch) {
-    options.focusLines = focusMatch[1].split(',').flatMap((part) => {
-      if (part.includes('-')) {
-        const [start, end] = part.split('-').map((n) => parseInt(n.trim(), 10));
-        return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-      }
-      return [parseInt(part.trim(), 10)];
-    });
-  }
-  return options;
-}
-
-let languagesReady: Promise<void> | undefined;
-const loadedBundled = new Set<string>();
-let blockCounter = 0;
+import { escapeHtml, listingHtml } from './kit-highlight';
 
 interface Options {
   mdx?: boolean;
-  lineNumbers?: boolean | { start: number };
 }
 
-export function code198xHighlightPlugin({ mdx = false, lineNumbers: globalLineNumbers }: Options = {}) {
+/** A fence's label: the language a reader would recognise, or "Code". */
+const LABELS: Record<string, string> = {
+  bash: 'Shell', sh: 'Shell', shell: 'Shell', powershell: 'PowerShell', text: 'Code',
+  z80: 'Z80 assembly', ca65: '6502 assembly', '6502': '6502 assembly', asm: 'Assembly',
+  m68k: '68000 assembly', '68000': '68000 assembly', basic: 'BASIC',
+  'sinclair-basic': 'Sinclair BASIC', 'commodore-basic': 'Commodore BASIC', amos: 'AMOS',
+  blitz: 'Blitz BASIC', forth: 'Forth',
+};
+
+export function code198xHighlightPlugin({ mdx = false }: Options = {}) {
   const wrap = mdx
     ? (html: string) => ({
         type: 'mdxJsxFlowElement',
@@ -73,38 +45,17 @@ export function code198xHighlightPlugin({ mdx = false, lineNumbers: globalLineNu
         if (!codeChild) return;
 
         const lang = codeChild.data?.lang ?? 'text';
-        const meta = codeChild.data?.meta ?? undefined;
+        const code = ctx.textContent(codeChild).replace(/\n+$/, '');
+        const label = escapeHtml(LABELS[lang] ?? 'Code');
+        const body = await listingHtml(code, lang);
 
-        if (!languagesReady) languagesReady = loadCode198xLanguages();
-        await languagesReady;
-
-        // Auto-load bundled Shiki languages on demand, mirroring the remark plugin.
-        if (lang !== 'text' && !loadedBundled.has(lang) && lang in bundledLanguages) {
-          try {
-            await loadCustomLanguage(await (bundledLanguages as any)[lang]());
-            loadedBundled.add(lang);
-          } catch (error) {
-            console.warn(`Failed to load language ${lang}:`, error);
-          }
-        }
-
-        const code = ctx.textContent(codeChild).replace(/\n$/, '');
-        const metaOptions = parseMetaString(meta);
-        const blockId = `hl-${++blockCounter}`;
-        const result = await codeToThemedHighlight(code, {
-          lang,
-          blockId,
-          lineNumbers: (metaOptions as any).lineNumbers ?? globalLineNumbers,
-          ...metaOptions,
-        });
-
-        // Make the scrollable <pre> keyboard-focusable (WCAG), matching rehypePreTabindex —
-        // appended last so the tag matches the unified-era output attribute-for-attribute.
-        const html =
-          result.html.replace(/<pre\b(?![^>]*\btabindex)([^>]*)>/, '<pre$1 tabindex="0">') +
-          result.css +
-          result.script;
-        return wrap(html);
+        // Focusable and named while it scrolls; lesson-listing.ts drops both
+        // when it does not. Shipping them means no-JS readers can scroll it.
+        return wrap(
+          `<div class="lesson-listing lesson-fence"><div class="ll-head"><span class="ll-label">${label}</span></div>` +
+          `<div class="ll-scroll" data-ll-scroll data-label="${label}, listing" tabindex="0" role="region" aria-label="${label}, listing">` +
+          `<pre class="ll-pre"><code>${body}</code></pre></div></div>`,
+        );
       },
     },
   };
