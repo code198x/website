@@ -38,7 +38,7 @@ def main():
         blocks.append(block)
         cursor += size + 2
     assert cursor == len(data) and len(blocks) == 4 and blocks[-1][0] == 255
-    source = SAMPLES / 'sinclair-zx-spectrum/assembly/meteor-storm/checkpoints/colour-bands/meteor-storm.asm'
+    source = SAMPLES / 'sinclair-zx-spectrum/assembly/meteor-storm/checkpoints/voyage/meteor-storm.asm'
     subprocess.run(['asm198x', '--dialect', 'pasmo', '--cpu', 'z80', '--sym=' + str(out / 'program.sym'),
                     str(source), '-o', str(out / 'program.bin')], check=True)
     native = (out / 'program.bin').read_bytes()
@@ -59,8 +59,8 @@ def main():
         checks.append('Fresh ROM LOAD reaches the exact program and title')
         machine.call('press_key', key='space', hold_frames=3)
         machine.frames(8)
-        assert value('phase') == 1 and value('hull') == 1 and value('ship_x') == 116
-        checks.append('Tape-loaded game launches after key release')
+        assert value('phase') == 1 and value('hull') == 1 and value('ship_x') == 116 and value('storm') == 0
+        checks.append('Tape-loaded game launches into the first storm after key release')
         # Colour by place: every cell of each character row holds that row's row_colours byte.
         bands = machine.call('memory_read', addr=symbols['row_colours'], len=24)['bytes']
         # memory_read returns at most 256 bytes, so read the 768-byte map a third at a time.
