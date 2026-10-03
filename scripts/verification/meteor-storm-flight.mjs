@@ -5,7 +5,10 @@ import path from 'node:path';
 const base=process.argv[2]||'http://127.0.0.1:1986',out=process.argv[3]||'/tmp/meteor-browser-flight';await fs.mkdir(out,{recursive:true});
 const website=path.resolve(import.meta.dirname,'../..'),samples=process.env.CODE_SAMPLES_PATH||path.resolve(website,'../code-samples');
 // The closing lesson runs the voyage: one keyboard route per storm, as the native checks fly them.
-const routes=JSON.parse(await fs.readFile(samples+'/sinclair-zx-spectrum/assembly/meteor-storm/verification/evidence/voyage-routes.json','utf8')).routes;
+const evidence=samples+'/sinclair-zx-spectrum/assembly/meteor-storm/verification/evidence';
+const routes=JSON.parse(await fs.readFile(evidence+'/voyage-routes.json','utf8')).routes;
+// The native run's end state: the browser runner must finish the voyage exactly where Emu198x did.
+const native=JSON.parse(await fs.readFile(evidence+'/voyage.json','utf8')).programs[0].checks.find(c=>c.check==='the voyage ends in clear space after the last storm').detail;
 const bundle=(await fs.readdir(website+'/dist/_astro')).find(name=>/^spectrum-runner\..*\.js$/.test(name));
 const browser=await chromium.launch({channel:'chrome',headless:true});const context=await browser.newContext({viewport:{width:1280,height:1000}});const page=await context.newPage();
 try{
@@ -39,8 +42,7 @@ try{
  });
  await page.waitForTimeout(600);
  await fs.writeFile(out+'/result.png',Buffer.from(await page.locator('.sandbox-screen').evaluate(canvas=>canvas.toDataURL().split(',')[1]),'base64'));
- // best_time is the fastest storm, so at most the last storm's time.
- if(state.phase!==3||state.hull!==1||state.storm!==routes.length-1||state.ticks!==routes.at(-1).length-1||state.bestTime>state.elapsed||state.bestScore!==state.score)throw Error('Pilot outcome: '+JSON.stringify(state));
+  if(state.phase!==3||state.hull!==1||state.storm!==routes.length-1||state.ticks!==native.ticks||state.elapsed!==native.elapsed||state.score!==native.score||state.bestTime!==native.best_time||state.bestScore!==native.best_score)throw Error('Pilot outcome: '+JSON.stringify(state));
  // Compare all result score glyphs with actual ROM font bytes, then compare bitmap bits with the canvas.
  const pixels=await page.evaluate(()=>{
   const {runner,reading}=window.flight,sy=reading.symbols,score=runner.readMemory(sy.score,1)[0];
@@ -59,5 +61,5 @@ try{
   }
   return checked;
  });
- await fs.writeFile(out+'/results.json',JSON.stringify({method:'Real browser runner, ordinary elapsed-time ticks, keyboard feedback pilot and read-only state/bitmap probes. No game-state writes or debugger stepping.',state,scorePixelsChecked:pixels},null,2)+'\n');console.log(state,pixels);
+ await fs.writeFile(out+'/results.json',JSON.stringify({method:'Real browser runner, ordinary elapsed-time ticks, keyboard feedback pilot and read-only state/bitmap probes. No game-state writes or debugger stepping.',state,native,scorePixelsChecked:pixels},null,2)+'\n');console.log(state,pixels);
 }finally{await browser.close()}

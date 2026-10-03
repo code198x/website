@@ -168,7 +168,11 @@ try{
  }
  console.log('Axe, layout and debugger screenshot',await within('Axe, layout and debugger screenshot',300000,async()=>{
  for(const theme of ['light','dark'])for(const n of [1,5,10,12,22,24,25,26,27,28,29,30]){
-  await open(n);await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);await page.emulateMedia({colorScheme:theme,reducedMotion:'reduce'});
+  await open(n);await page.emulateMedia({colorScheme:theme,reducedMotion:'reduce'});await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
+  // Listing colours transition on a theme change; axe must see the settled colours, not a frame of the old ink.
+  // Two frames first, so the style change has started its transitions before we wait for them.
+  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+  await page.evaluate(()=>Promise.all(document.getAnimations().map(a=>a.finished)));
   const violations=(await new AxeBuilder({page}).include('main').analyze()).violations;await fs.writeFile(`${out}/axe-${n}-${theme}.json`,JSON.stringify(violations,null,2));assert(!violations.length,`Axe ${n} ${theme}: ${violations.map(v=>v.id)}`);
  }
  for(const width of [390,1280,1920]){
