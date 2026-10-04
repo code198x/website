@@ -6,13 +6,19 @@ const base=process.argv[2]||'http://127.0.0.1:1986',out=process.argv[3]||'/tmp/m
 const website=path.resolve(import.meta.dirname,'../..'),samples=process.env.CODE_SAMPLES_PATH||path.resolve(website,'../code-samples');
 // The closing lesson runs the voyage: one keyboard route per storm, as the native checks fly them.
 const evidence=samples+'/sinclair-zx-spectrum/assembly/meteor-storm/verification/evidence';
-const routes=JSON.parse(await fs.readFile(evidence+'/voyage-routes.json','utf8')).routes;
+// The closing lesson's checkpoint names its native evidence: the routes it flew and where it ended.
+const lessons=website+'/src/content/curriculum/sinclair-zx-spectrum/assembly/meteor-storm';
+const closing=(await fs.readdir(lessons)).filter(name=>/^unit-\d+\.mdx$/.test(name)).sort().at(-1);
+const checkpoint=(await fs.readFile(lessons+'/'+closing,'utf8')).match(/<MeteorExperiment checkpoint="([^"]+)"/)[1];
+// Checkpoints that keep the voyage's rules fly its routes; those that change them keep their own.
+const routesFile=await fs.access(`${evidence}/${checkpoint}-routes.json`).then(()=>`${checkpoint}-routes.json`,()=>'voyage-routes.json');
+const routes=JSON.parse(await fs.readFile(`${evidence}/${routesFile}`,'utf8')).routes;
 // The native run's end state: the browser runner must finish the voyage exactly where Emu198x did.
-const native=JSON.parse(await fs.readFile(evidence+'/voyage.json','utf8')).programs[0].checks.find(c=>c.check==='the voyage ends in clear space after the last storm').detail;
+const native=JSON.parse(await fs.readFile(`${evidence}/${checkpoint}.json`,'utf8')).programs[0].checks.find(c=>c.check==='the voyage ends in clear space after the last storm').detail;
 const bundle=(await fs.readdir(website+'/dist/_astro')).find(name=>/^spectrum-runner\..*\.js$/.test(name));
 const browser=await chromium.launch({channel:'chrome',headless:true});const context=await browser.newContext({viewport:{width:1280,height:1000}});const page=await context.newPage();
 try{
- await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-30/');
+ await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meteor-storm/'+closing.replace('.mdx','/'));
  await page.evaluate(async({bundle,routes})=>{
   window.flight={};document.addEventListener('sandbox:memory',e=>window.flight.reading=e.detail);
   const exports=await import('/_astro/'+bundle);
@@ -38,15 +44,18 @@ try{
  const state=await page.evaluate(()=>{
   const {runner,reading}=window.flight,sy=reading.symbols;
   const byte=name=>runner.readMemory(sy[name],1)[0];const word=name=>{const b=runner.readMemory(sy[name],2);return b[0]+256*b[1];};
-  return {phase:byte('phase'),hull:byte('hull'),storm:byte('storm'),ticks:word('ticks'),elapsed:word('elapsed'),score:byte('score'),bestTime:word('best_time'),bestScore:byte('best_score')};
+  // From two-byte-score on the score is a word; from furthest-storm on the record replaces the best score.
+  const score=sy.decimal4?word:byte;const best=sy.record_score?'record_score':'best_score';
+  return {phase:byte('phase'),hull:byte('hull'),storm:byte('storm'),ticks:word('ticks'),elapsed:word('elapsed'),score:score('score'),bestTime:word('best_time'),bestScore:score(best)};
  });
  await page.waitForTimeout(600);
  await fs.writeFile(out+'/result.png',Buffer.from(await page.locator('.sandbox-screen').evaluate(canvas=>canvas.toDataURL().split(',')[1]),'base64'));
   if(state.phase!==3||state.hull!==1||state.storm!==routes.length-1||state.ticks!==native.ticks||state.elapsed!==native.elapsed||state.score!==native.score||state.bestTime!==native.best_time||state.bestScore!==native.best_score)throw Error('Pilot outcome: '+JSON.stringify(state));
  // Compare all result score glyphs with actual ROM font bytes, then compare bitmap bits with the canvas.
  const pixels=await page.evaluate(()=>{
-  const {runner,reading}=window.flight,sy=reading.symbols,score=runner.readMemory(sy.score,1)[0];
-  const text='SCORE '+String(score*10).padStart(4,'0'),canvas=document.querySelector('.sandbox-screen'),ctx=canvas.getContext('2d');
+  const {runner,reading}=window.flight,sy=reading.symbols,bytes=runner.readMemory(sy.score,2);
+  const score=sy.decimal4?bytes[0]+256*bytes[1]:bytes[0];
+  const text='SCORE '+String(score*10).padStart(sy.decimal4?5:4,'0'),canvas=document.querySelector('.sandbox-screen'),ctx=canvas.getContext('2d');
   let checked=0;
   for(let row=0;row<8;row++){
    const y=16+row,address=0x4000|((y&192)<<5)|((y&7)<<8)|((y&56)<<2);
@@ -61,5 +70,5 @@ try{
   }
   return checked;
  });
- await fs.writeFile(out+'/results.json',JSON.stringify({method:'Real browser runner, ordinary elapsed-time ticks, keyboard feedback pilot and read-only state/bitmap probes. No game-state writes or debugger stepping.',state,native,scorePixelsChecked:pixels},null,2)+'\n');console.log(state,pixels);
+ await fs.writeFile(out+'/results.json',JSON.stringify({method:'Real browser runner, ordinary elapsed-time ticks, keyboard feedback pilot and read-only state/bitmap probes. No game-state writes or debugger stepping.',checkpoint,routesFile,state,native,scorePixelsChecked:pixels},null,2)+'\n');console.log(state,pixels);
 }finally{await browser.close()}
