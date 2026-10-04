@@ -1,67 +1,98 @@
 ---
-title: "Keep and share the game"
+title: "Remember the furthest storm"
 game: 1
 unit: 33
 ---
 
 import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Figure from '@components/Figure.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-The browser experiment proves that our code can run when placed directly into a prepared machine. A distributable tape needs a different check: loading through the Spectrum's ROM from a fresh start, then playing with the sound on.
+Since [unit 22](../unit-22/) the game has kept two records for the session: the best time and the best score. They were made for a single storm. On a voyage the best score says little on its own: a run lost in the third storm can outscore one lost in the fourth, but the second run got further, and getting further is what the voyage is about.
 
-Use [unit 32](../unit-32/)'s program: four sounds, with the star, boost and impact playing while the loop waits for the frame, a ship that breaks apart when it is hit, a storm coloured in bands, and a voyage of five storms with a score that counts all of it a bonus multiplied by the storm, and storms that get faster, closer and hotter as the voyage goes on. This lesson adds no new game code. First play it, then save the files you intend to share.
+In this lesson the best score gives way to a voyage record: how many storms the best run crossed, and that run's score. A run beats the record by crossing more storms, or as many with a higher score.
 
-<MeteorExperiment checkpoint="harder-storms" bytes={["phase","storm"]} words={["score","elapsed","best_time"]} controls="finished" />
+<MeteorExperiment checkpoint="furthest-storm" bytes={["phase","storm","record_crossed"]} words={["score","record_score"]} controls="finished" />
 
-## Keep source and data together
+Space launches; O/P steer; hold Space for 2X. One hit ends the voyage. At the result R retries from the first storm and Q returns to the title.
 
-Download **source** and **assets.inc**. The source contains the program, its sound tables, the starting records for the pieces and the table of row colours; the companion contains the pre-shifted artwork, including the eight pieces cut from the ship, and the five prepared courses. Keep both in one directory. Saving only the assembly file leaves its include dependency missing.
+Lose in the second storm, then press Q: the title now shows your record.
 
-You can also download a tape assembled from the current contents of both editors. Edits that have not been run yet are still included in that download, so test the version you intend to distribute. Revert restores both editors.
+## What you should see
 
-For an independent local build:
+<Figure src="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-33/furthest-storm-title.png" alt="The title screen. METEOR STORM, CROSS 5 STORMS. ONE HIT ENDS IT, O LEFT P RIGHT, HOLD SPACE: DOUBLE SPEED, STARS: 10 / BOOST: 20, FAST FINISH: BONUS X STORM, SPACE TO LAUNCH and, below it, BEST VOYAGE 5/5 13730." caption="The title after a whole voyage, then a retry lost at once. The record still shows all five storms and their 13,730 points: crossing none could not beat it." />
 
-```sh
-asm198x --dialect pasmo --cpu z80 --tapbas meteor-storm.asm -o meteor-storm.tap
-```
+The result screen's last line, where BEST SCORE was, now reads `BEST VOYAGE 2/5 03120`, say: two storms crossed, with that run's score. The same line appears on the title, below SPACE TO LAUNCH, once there is a record worth showing. The fastest storm is still kept, as BEST STORM.
 
-Or use upstream Pasmo:
+## Two numbers make one record
 
-```sh
-pasmo --tapbas meteor-storm.asm meteor-storm.tap
-```
+The best score was a word, `best_score`. The record is a byte and a word, kept with the best time outside the run's block of memory, so a retry keeps them:
 
-The tape contains a small BASIC loader and the machine-code block. You do not need to author a BASIC game to use that loading convention. The code begins at 32768 and establishes its own stack, interrupt route and border colour when entered.
+- `record_crossed`: how many storms the record run crossed, 0 to 5.
+- `record_score`: that run's score, in tens, like `score`.
 
-## Load what you will share
+Comparing records means comparing two numbers in order of importance, the way a dictionary compares words: the first letter decides, and only a tie goes on to the second.
 
-The experiment above plays sound when you tick **Sound**, but it starts the code directly rather than loading a tape. The site's Spectrum player does what this check needs: it loads a tape through the ROM on a fresh 48K machine, with sound. Open the [Sinclair ZX Spectrum page](/systems/sinclair-zx-spectrum/), press the play button under its screen and tick **Sound**, which starts unticked. Press **Choose program or disk**, pick `meteor-storm.tap`, then press **Start**. The ROM loads the tape on its own; you will hear the loading tones. Click the screen before using the keys.
+## Saving a record
 
-On the desktop, start a fresh 48K Spectrum emulator, mount `meteor-storm.tap`, enter `LOAD ""` and start tape playback. In Emu198x the equivalent command is:
+`save_score` becomes `save_record`. Its caller passes the number of storms the run crossed in A:
 
-```sh
-emu198x-spectrum --machine spectrum_48k --tape meteor-storm.tap --autoload-tape --scale 3
-```
+<AssemblyExcerpt checkpoint="furthest-storm" from="; A = storms this run crossed" to="; HL = sound:" />
 
-Confirm that the title appears in its bands of cyan, green, yellow, red and white, Space launches after release, O/P steer and held Space boosts. In flight the time and speed are cyan over a white score, and each meteor changes colour as it falls: cyan, green, yellow, then red just above the white ship. Listen for each event: a chirp for a star, a lower one when you press Space in flight (and none while you keep holding it) and a rising fanfare in clear space. Let a meteor hit the ship and watch the crash: the border flashes red, the storm freezes, and the ship breaks into eight pieces that fly up and land during a rattling, falling tone. About a second later the result appears with a black border and no pieces left. Cross a storm and check the voyage carries on: the fanfare, two seconds of CLEAR SPACE with the finish bonus, then `STORM 2/5` with the clock back at 00.00 and the ship in the centre. If the storm is all white, the border stays red, the result cuts in at once or clear space ends the game after one storm, you are not running this lesson's program. Retry after the crash; then return to the title. Cross a storm when you can and check that the BEST STORM time and the best score survive another retry within that session.
+The run's count goes into B. `ld a,(record_crossed)` and `cp b` compare the record's count with it. `cp` subtracts without keeping the result, and sets the carry flag when B is the larger: the run crossed more storms, so `jr c,save_record_new` makes it the record. If there was no carry, the zero flag tells the rest. Not zero means the record crossed more, and `ret nz` keeps it.
 
-A snapshot saves a machine's state and can be useful while investigating a fault. It is not the same evidence as a fresh ROM load of the tape. A snapshot can preserve an already configured stack, interrupt mode or record that a fresh launch has not established yet.
+Only a tie reaches the second comparison, the 16-bit subtraction from [unit 30](../unit-30/). A lower score sets the carry and `ret c` keeps the record; an equal or higher one falls through to `save_record_new`, which stores the count and the score.
 
-<Question prompt="You set a best time, download the tape, reset, and load it again. Should that record still be there?">
+The count comes from where the run ended. A ship lost in storm 3 crossed two storms, and `storm`, which counts from 0, is 2 there. So `lost` passes `storm` as it is:
 
-No. Tape download assembles the source and initial data, not a recording of the running machine's RAM. Session records begin unset on a fresh program launch. Saving records across sessions would require a separate persistence feature.
+<AssemblyExcerpt checkpoint="furthest-storm" from="lost:" to=" ld a,2" />
+
+A voyage that reaches clear space after the fifth storm crossed all five, one more than `storm`:
+
+<AssemblyExcerpt checkpoint="furthest-storm" from="won:" to=" ld a,3" />
+
+<Question prompt="The record is 2/5 with 03120. You lose in the third storm with 02950. Then you lose in the third storm with 03300. Which runs become the record?">
+
+Only the second. A run lost in the third storm crossed two, the same as the record, so both runs are ties and the scores decide. 02950 is lower than 03120, so the first run leaves the record alone. 03300 is higher, so the second becomes the record: `2/5 03300`.
 
 </Question>
 
-## Choose a next experiment
+## Showing the record
 
-Keep a working copy before changing the game. Try one design change with a prediction: a different drift cadence, an altered event spacing, revised star artwork or a new sound table. State which behaviour should change and which should remain intact, then retest collision, retry and completion. For a sound, work out its length in T-states first. A star or boost sound plays in the time an update leaves over; one longer than that is split across several waits and flutters.
+`record_text` fills one line of text from the two numbers:
 
-We have built a game whose positions and rules live in state, whose picture is drawn from that state, and whose progress is measured separately from time. Its sounds are data too, and the ones heard in flight play in time the game would otherwise spend waiting. Even its crash is state: eight small records, moved by one rule and drawn from the ship's own artwork. Its colours belong to places, not objects: 24 bytes written once per screen, so nothing ever clashes. And its storms are data: five tables, chosen by one address. Those distinctions will still matter when another game needs a different renderer, more objects or a different machine.
+<AssemblyExcerpt checkpoint="furthest-storm" from="; Fill record_line" to="; A = storms this run crossed" />
+
+The text is three labelled pieces with no zero byte between them, like [unit 31](../unit-31/)'s bonus line:
+
+<AssemblyExcerpt checkpoint="furthest-storm" from="record_line:" to="best_time:" />
+
+The storms go in as a digit at `record_digit`, the `/5` is assembled from `STORMS`, and `decimal4` writes the score into `record_digits`. `records`, the result screen's routine, prints the line where BEST SCORE used to be.
+
+The title prints it too, but not before there is anything to show:
+
+<AssemblyExcerpt checkpoint="furthest-storm" from=" ; The session's best voyage" to="title_no_record:" />
+
+A record of 0 storms and 0 points is no record at all. `or h` and `or l` combine the count with both bytes of the score: A ends up zero only if all three are, and then the line is skipped. A first run that crosses no storms and collects no stars leaves the title as it was.
+
+## Experiments
+
+Keep a working copy before each change, then press **Revert** when you have finished.
+
+<Question prompt="Swap `jr c,save_record_new` and `ret nz` in save_record. Which runs become the record now?">
+
+Only ties. `ret nz` now comes first, so any run that crossed a different number of storms, more or fewer, returns without saving. A tie leaves the carry clear too, so `jr c` never jumps and the scores decide as before. A run that gets further than the record is ignored. The order of the two tests is part of the rule.
+
+</Question>
+
+Then make the title show the record even when it is empty, by deleting the three lines from `or h` to `jr z,title_no_record`, and decide which looks better on a first launch.
+
+The game now remembers the best voyage. Its title still just waits for a key, though. [The next lesson](../unit-34/) packages the game as a tape; a later one makes the title play itself.
 
 <Sources>
 
-The maintained Meteor Storm source linked through this page supplies the game rules, sound tables, row colours, courses and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf): `CP r` compares a register with A by subtraction, setting the carry flag when the register is larger and the zero flag when they are equal, without changing A; `OR r`. The maintained Meteor Storm source linked through this page supplies the record code; its verification checks that a whole voyage becomes the record, that a run crossing fewer storms leaves it alone, and that the title shows it. The screenshot is a native Emu198x capture of this program.
 
 </Sources>
