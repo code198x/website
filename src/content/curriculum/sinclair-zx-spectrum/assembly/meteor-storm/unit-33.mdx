@@ -1,0 +1,98 @@
+---
+title: "Remember the furthest storm"
+game: 1
+unit: 33
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Figure from '@components/Figure.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+Since [unit 22](../unit-22/) the game has kept two records for the session: the best time and the best score. They were made for a single storm. On a voyage the best score says little on its own: a run lost in the third storm can outscore one lost in the fourth, but the second run got further, and getting further is what the voyage is about.
+
+In this lesson the best score gives way to a voyage record: how many storms the best run crossed, and that run's score. A run beats the record by crossing more storms, or as many with a higher score.
+
+<MeteorExperiment checkpoint="furthest-storm" bytes={["phase","storm","record_crossed"]} words={["score","record_score"]} controls="finished" />
+
+Space launches; O/P steer; hold Space for 2X. One hit ends the voyage. At the result R retries from the first storm and Q returns to the title.
+
+Lose in the second storm, then press Q: the title now shows your record.
+
+## What you should see
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-33/furthest-storm-title.png" alt="The title screen. METEOR STORM, CROSS 5 STORMS. ONE HIT ENDS IT, O LEFT P RIGHT, HOLD SPACE: DOUBLE SPEED, STARS: 10 / BOOST: 20, FAST FINISH: BONUS X STORM, SPACE TO LAUNCH and, below it, BEST VOYAGE 5/5 13730." caption="The title after a whole voyage, then a retry lost at once. The record still shows all five storms and their 13,730 points: crossing none could not beat it." />
+
+The result screen's last line, where BEST SCORE was, now reads `BEST VOYAGE 2/5 03120`, say: two storms crossed, with that run's score. The same line appears on the title, below SPACE TO LAUNCH, once there is a record worth showing. The fastest storm is still kept, as BEST STORM.
+
+## Two numbers make one record
+
+The best score was a word, `best_score`. The record is a byte and a word, kept with the best time outside the run's block of memory, so a retry keeps them:
+
+- `record_crossed`: how many storms the record run crossed, 0 to 5.
+- `record_score`: that run's score, in tens, like `score`.
+
+Comparing records means comparing two numbers in order of importance, the way a dictionary compares words: the first letter decides, and only a tie goes on to the second.
+
+## Saving a record
+
+`save_score` becomes `save_record`. Its caller passes the number of storms the run crossed in A:
+
+<AssemblyExcerpt checkpoint="furthest-storm" from="; A = storms this run crossed" to="; HL = sound:" />
+
+The run's count goes into B. `ld a,(record_crossed)` and `cp b` compare the record's count with it. `cp` subtracts without keeping the result, and sets the carry flag when B is the larger: the run crossed more storms, so `jr c,save_record_new` makes it the record. If there was no carry, the zero flag tells the rest. Not zero means the record crossed more, and `ret nz` keeps it.
+
+Only a tie reaches the second comparison, the 16-bit subtraction from [unit 30](../unit-30/). A lower score sets the carry and `ret c` keeps the record; an equal or higher one falls through to `save_record_new`, which stores the count and the score.
+
+The count comes from where the run ended. A ship lost in storm 3 crossed two storms, and `storm`, which counts from 0, is 2 there. So `lost` passes `storm` as it is:
+
+<AssemblyExcerpt checkpoint="furthest-storm" from="lost:" to=" ld a,2" />
+
+A voyage that reaches clear space after the fifth storm crossed all five, one more than `storm`:
+
+<AssemblyExcerpt checkpoint="furthest-storm" from="won:" to=" ld a,3" />
+
+<Question prompt="The record is 2/5 with 03120. You lose in the third storm with 02950. Then you lose in the third storm with 03300. Which runs become the record?">
+
+Only the second. A run lost in the third storm crossed two, the same as the record, so both runs are ties and the scores decide. 02950 is lower than 03120, so the first run leaves the record alone. 03300 is higher, so the second becomes the record: `2/5 03300`.
+
+</Question>
+
+## Showing the record
+
+`record_text` fills one line of text from the two numbers:
+
+<AssemblyExcerpt checkpoint="furthest-storm" from="; Fill record_line" to="; A = storms this run crossed" />
+
+The text is three labelled pieces with no zero byte between them, like [unit 31](../unit-31/)'s bonus line:
+
+<AssemblyExcerpt checkpoint="furthest-storm" from="record_line:" to="best_time:" />
+
+The storms go in as a digit at `record_digit`, the `/5` is assembled from `STORMS`, and `decimal4` writes the score into `record_digits`. `records`, the result screen's routine, prints the line where BEST SCORE used to be.
+
+The title prints it too, but not before there is anything to show:
+
+<AssemblyExcerpt checkpoint="furthest-storm" from=" ; The session's best voyage" to="title_no_record:" />
+
+A record of 0 storms and 0 points is no record at all. `or h` and `or l` combine the count with both bytes of the score: A ends up zero only if all three are, and then the line is skipped. A first run that crosses no storms and collects no stars leaves the title as it was.
+
+## Experiments
+
+Keep a working copy before each change, then press **Revert** when you have finished.
+
+<Question prompt="Swap `jr c,save_record_new` and `ret nz` in save_record. Which runs become the record now?">
+
+Only ties. `ret nz` now comes first, so any run that crossed a different number of storms, more or fewer, returns without saving. A tie leaves the carry clear too, so `jr c` never jumps and the scores decide as before. A run that gets further than the record is ignored. The order of the two tests is part of the rule.
+
+</Question>
+
+Then make the title show the record even when it is empty, by deleting the three lines from `or h` to `jr z,title_no_record`, and decide which looks better on a first launch.
+
+The game now remembers the best voyage. Its title still just waits for a key, though. [The next lesson](../unit-34/) makes it play itself.
+
+<Sources>
+
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf): `CP r` compares a register with A by subtraction, setting the carry flag when the register is larger and the zero flag when they are equal, without changing A; `OR r`. The maintained Meteor Storm source linked through this page supplies the record code; its verification checks that a whole voyage becomes the record, that a run crossing fewer storms leaves it alone, and that the title shows it. The screenshot is a native Emu198x capture of this program.
+
+</Sources>

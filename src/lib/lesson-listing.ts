@@ -8,6 +8,8 @@
  * - While focused, Left, Right, Home and End scroll it. WebKit does not
  *   scroll a focused overflow box by itself.
  * - Copy puts the listing's source on the clipboard and says so.
+ * - Listings that share a name on one page are numbered ("Shell, listing 2
+ *   of 3"): landmark regions need distinct names to be told apart.
  *
  * Idempotent per element, and run again on every soft navigation.
  */
@@ -33,7 +35,27 @@ function fit(el: HTMLElement) {
   }
 }
 
+/** Number listings that share a name across the whole page. The first name
+ * seen is kept in data-ll-name, so running again on a soft navigation or
+ * after more listings appear renumbers rather than appending twice. */
+function numberSharedNames() {
+  const groups = new Map<string, HTMLElement[]>();
+  for (const el of document.querySelectorAll<HTMLElement>('[data-ll-scroll]')) {
+    const name = (el.dataset.llName ??= el.dataset.label || 'Listing');
+    const group = groups.get(name);
+    if (group) group.push(el);
+    else groups.set(name, [el]);
+  }
+  for (const [name, group] of groups) {
+    group.forEach((el, index) => {
+      el.dataset.label = group.length > 1 ? `${name} ${index + 1} of ${group.length}` : name;
+      if (el.hasAttribute('aria-label')) el.setAttribute('aria-label', el.dataset.label);
+    });
+  }
+}
+
 export function initListings(root: ParentNode = document) {
+  numberSharedNames();
   observer ??= new ResizeObserver((entries) => {
     for (const e of entries) {
       const el = (e.target as HTMLElement).closest<HTMLElement>('[data-ll-scroll]');

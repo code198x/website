@@ -38,7 +38,11 @@ def main():
         blocks.append(block)
         cursor += size + 2
     assert cursor == len(data) and len(blocks) == 4 and blocks[-1][0] == 255
-    source = SAMPLES / 'sinclair-zx-spectrum/assembly/meteor-storm/checkpoints/colour-bands/meteor-storm.asm'
+    # The closing lesson (the highest-numbered unit) names the checkpoint its tape holds.
+    lessons = WEBSITE / 'src/content/curriculum/sinclair-zx-spectrum/assembly/meteor-storm'
+    closing = max(lessons.glob('unit-*.mdx'))
+    checkpoint = re.search(r'<MeteorExperiment checkpoint="([^"]+)"', closing.read_text())[1]
+    source = SAMPLES / 'sinclair-zx-spectrum/assembly/meteor-storm/checkpoints' / checkpoint / 'meteor-storm.asm'
     subprocess.run(['asm198x', '--dialect', 'pasmo', '--cpu', 'z80', '--sym=' + str(out / 'program.sym'),
                     str(source), '-o', str(out / 'program.bin')], check=True)
     native = (out / 'program.bin').read_bytes()
@@ -59,8 +63,8 @@ def main():
         checks.append('Fresh ROM LOAD reaches the exact program and title')
         machine.call('press_key', key='space', hold_frames=3)
         machine.frames(8)
-        assert value('phase') == 1 and value('hull') == 1 and value('ship_x') == 116
-        checks.append('Tape-loaded game launches after key release')
+        assert value('phase') == 1 and value('hull') == 1 and value('ship_x') == 116 and value('storm') == 0
+        checks.append('Tape-loaded game launches into the first storm after key release')
         # Colour by place: every cell of each character row holds that row's row_colours byte.
         bands = machine.call('memory_read', addr=symbols['row_colours'], len=24)['bytes']
         # memory_read returns at most 256 bytes, so read the 768-byte map a third at a time.
@@ -80,6 +84,7 @@ def main():
         assert value('phase') == 0
         checks.append('First-hit loss, retry and title return work after real tape loading')
         report = {'method': 'Fresh native 48K ROM tape load, ordinary keyboard and frames, read-only state probes.',
+                  'checkpoint': checkpoint,
                   'tape_sha256': hashlib.sha256(data).hexdigest(),
                   'binary_sha256': hashlib.sha256(native).hexdigest(),
                   'emulator_sha256': hashlib.sha256(Path(args.emulator).read_bytes()).hexdigest(), 'checks': checks}

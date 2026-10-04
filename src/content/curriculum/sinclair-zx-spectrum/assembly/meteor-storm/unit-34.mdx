@@ -1,0 +1,101 @@
+---
+title: "Let the title play itself"
+game: 1
+unit: 34
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Figure from '@components/Figure.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+Meteor Storm's title screen sits still until someone presses Space. Arcade machines of the period never did: between games they played themselves, to catch the eye of anyone walking past. That was called attract mode, and many home computer games copied it.
+
+In this lesson the title plays the first storm behind its text, without a ship, and the prompt flashes. Almost everything it needs already exists: the object pool, the course, the routines that move and draw. The new work is in running them where nothing can be hit, and in making text flash without drawing it again.
+
+<MeteorExperiment checkpoint="attract" bytes={["phase","active_count","wave"]} words={["ticks"]} controls="finished" />
+
+Run the program and leave it on the title. Space launches as before; O/P steer; hold Space for 2X.
+
+## What you should see
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-34/attract-title.png" alt="The title screen with the attract storm running. SPACE TO LAUNCH is at the top, above METEOR STORM. A cyan meteor crosses the line CROSS 5 STORMS. ONE HIT ENDS IT, a green star falls below it, a yellow meteor passes between O LEFT and P RIGHT, and another covers part of DOUBLE SPEED, which shows through it." caption="The first storm's course falling through the title. Where a meteor crosses a line of text, the two combine; when it moves on, the letters are back as they were." />
+
+SPACE TO LAUNCH has moved to the top of the screen, above the name, and flashes. Meteors and stars fall through the title in its colour bands, crossing the lines of text and leaving them as they were. After about 36 seconds the course runs out and starts again. If you have a voyage record, it shows lower down, at row 20.
+
+## A storm with nobody in it
+
+The title already cleared the screen and printed its text. Now, after printing, it also sets up a storm:
+
+<AssemblyExcerpt checkpoint="attract" from="title_no_record:" to="main_loop:" />
+
+The six instructions after the comment are `new_game`'s: they fill the run's block of memory with zeros, which empties the object pool and sets `storm` to 0. `start_storm` then points `course` at the first storm's table, sets its rules and starts the course from the top.
+
+The wait for Space gains three lines. After each `halt`, on even frames, it calls `attract_step`:
+
+<AssemblyExcerpt checkpoint="attract" from="; One update of the storm behind the title" to="new_game:" />
+
+This is the main loop's update, in the same order: move every object, perhaps spawn the next, count what is left, and add one to the course step. There is no boost, so `boost_time` is 0, and one step per update, so `steps_left` is 1. When every event has been read and the playfield is empty, `jp start_storm` starts the course again: `start_storm` ends with `ret`, which returns to the title's loop as `attract_step` would have.
+
+Every second frame, as in flight, because the title runs at the speed of the game. A storm behind the title that moved twice as fast as the real one would teach the eye the wrong speed.
+
+## Nothing to hit
+
+`advance_meteors` was written for flight. Near the bottom of the screen it tests each object against the ship, and a meteor there clears `hull`. On the title there is no ship, but `ship_x` still holds a value, so a meteor falling past X 116 would count as a hit. The contact test now starts by asking which phase the game is in:
+
+<AssemblyExcerpt checkpoint="attract" from=" ; The title's attract storm has no ship" to=" ; Inset rectangles" />
+
+The object's Y is still in A, so it is parked in C while A reads `phase`. On the title `phase` is 0, and the jump skips the contact test entirely: meteors fall past, and stars are not collected. In flight `phase` is 1, and the test runs as before.
+
+<Question prompt="Why does the program put `phase` to work here, rather than giving attract mode its own copy of advance_meteors?">
+
+A copy would be a second routine of nearly a hundred lines to keep in step with the first. Every later change to how objects move or draw would have to be made twice, and the title's storm would drift away from the real one. One test, in the one place the behaviour differs, keeps the two the same.
+
+</Question>
+
+## Drawing through text
+
+The title's text is drawn once, with ordinary stores. The meteors are drawn over it with `draw_sprite`, which has used XOR since [unit 4](../unit-04/). Where a meteor's pixels land on a letter's, the two combine, so the letters show through as holes in the meteor. When the meteor is erased, XOR-ing the same pixels again takes them out and leaves exactly the letters that were there.
+
+That only works if nothing else writes those pixels in between, the condition [unit 5](../unit-05/) set out when it first erased the ship. If the title printed text over a meteor with an ordinary store, the store would wipe the meteor's pixels from those bytes. When the meteor was erased, XOR would then cut its shape out of the letters. So the title text is drawn before the storm starts and never again while it runs.
+
+The checks hold the program to this. They record the screen before the first meteor appears, let the course run all the way through (1,790 frames) and compare: every byte of the bitmap is as it was drawn.
+
+## A flashing prompt
+
+The prompt has to flash, but redrawing it would break that rule. The Spectrum can flash text without touching its pixels at all. Bit 7 of an attribute byte, which [unit 28](../unit-28/) decoded, is FLASH: in a cell with FLASH set, the ULA swaps INK and PAPER over every 16 frames, so the text turns from cyan on black to black on cyan and back.
+
+<AssemblyExcerpt checkpoint="attract" from=" ; The prompt sits in row 1" to=" ; The session's best voyage" />
+
+`set 7,(hl)` sets bit 7 of the byte HL points at and leaves the other bits alone, so each cell keeps its colours and gains FLASH. The loop walks the 32 attribute bytes of row 1, from $5800+32.
+
+Why row 1? A flashing cell flashes whatever is in it. If the prompt stayed in row 20, every meteor falling through row 20 would flash too. The course starts at Y 24, row 3, so rows 0 to 2 are never crossed, and the prompt moves up there. The record takes row 20 in its place.
+
+When Space starts a run, `new_game`'s `clear` repaints every row from the colour table, and FLASH is gone.
+
+<Question prompt="Change `ld hl,$5800+32` to `ld hl,$5800+320`, row 10, which holds O LEFT and P RIGHT. What happens on the title?">
+
+Row 10 flashes instead: O LEFT and P RIGHT swap colours every 16 frames, and so does every meteor and star while it falls through row 10. The colour belongs to the cells, and the meteor is only passing through them. SPACE TO LAUNCH, in row 1, stays still.
+
+</Question>
+
+## Experiments
+
+Keep a working copy before each change, then press **Revert** when you have finished.
+
+<Question prompt="Delete the five lines from `ld c,a` to `ld a,c` in advance_meteors, then watch the title. What happens, and does it matter?">
+
+Meteors falling near X 116 at the bottom now count as hits: `hull` goes to 0, and stars near X 116 add to `score`. Nothing on the title reads either, so the screen looks the same, and `new_game` resets both when a run starts. It matters for anything that would read them later. A routine that quietly changes state no one asked it to change is a bug that waits for its moment.
+
+</Question>
+
+Then try running the attract storm at the fifth storm's rules: give the title's `start_storm` a `storm` of 4 by storing it after the block is cleared. Which looks better behind the title?
+
+The title now shows the game off. There is one wait left with nothing to look at: the two minutes the tape takes to load. [The next lesson](../unit-35/) fills it with a picture.
+
+<Sources>
+
+Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 16](https://worldofspectrum.org/ZXBasicManual/zxmanchap16.html), colours: FLASH as 128 in an attribute value, alternating INK and PAPER. Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf): `SET b,(HL)` sets one bit of the byte HL points at. The maintained Meteor Storm source linked through this page supplies the title and `attract_step`; its verification checks the flashing row, that objects fall with nothing to hit, that a whole attract course leaves the title bitmap exactly as drawn, and that a launch starts on an empty playfield. The screenshot is a native Emu198x capture of this program.
+
+</Sources>

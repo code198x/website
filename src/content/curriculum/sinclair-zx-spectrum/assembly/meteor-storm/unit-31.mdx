@@ -1,0 +1,99 @@
+---
+title: "Reward each storm cleared"
+game: 1
+unit: 31
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Figure from '@components/Figure.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+Every storm's finish bonus has been the same deal: ten points for each second under 100. A fast fifth storm paid no more than a fast first one, although the player had to survive four storms to reach it. In this lesson each storm's bonus is multiplied by the storm's number: ×1 for the first, up to ×5 for the fifth.
+
+The Z80 has no multiply instruction. Here we multiply the way it is usually done for small numbers: by adding the same thing several times.
+
+<MeteorExperiment checkpoint="storm-bonus" bytes={["phase","storm","finish_points"]} words={["score","elapsed"]} controls="finished" />
+
+Space launches; O/P steer; hold Space for 2X. One hit ends the voyage. At the result R retries from the first storm and Q returns to the title.
+
+Cross a storm and read the interlude: the bonus line now says what it is multiplied by.
+
+## What you should see
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-31/storm-bonus-interlude-3.png" alt="Clear space after the third storm. The HUD reads TIME 20.76, SCORE 03060 and STORM 3/5. In the middle: CLEAR SPACE in green, FINISH BONUS 0800 X3 in yellow and NEXT STORM in red. The white ship is at the bottom." caption="Clear space after the third storm. It took 20 whole seconds, so the 80 under 100 make a bonus of 800 points, three times over. The HUD still shows the score from before the bonus; it catches up when the next storm starts." />
+
+The interludes read `FINISH BONUS 0800 X1`, then `X2` and so on, and the score jumps further each time. The title's bonus line now reads `FAST FINISH: BONUS X STORM`.
+
+## Multiplying by adding
+
+Here is where `storm_cleared` adds the bonus:
+
+<AssemblyExcerpt checkpoint="storm-bonus" from="finish_bonus:" to=" ld de,(best_time)" />
+
+The bonus goes into DE as before. Then `storm`, which counts from 0, plus 1 goes into B: 1 for the first storm, 5 for the fifth. The loop at `bonus_add` adds DE to HL, and `djnz` counts B down and jumps back until it reaches zero. So the bonus is added B times: the bonus times the storm's number.
+
+That is how [unit 14](../unit-14/) found an event's address, with five `add hl,de` instructions in a row, and how [unit 29](../unit-29/) found a course with two. There the multiplier was fixed and the additions were written out. Here it changes with the storm, so a loop does the counting.
+
+Repeated addition is only sensible because the multiplier is small. The largest bonus is 99 tens, for a storm under a second, and five additions of it make 495 tens: [unit 30](../unit-30/)'s two-byte score has room to spare.
+
+<Question prompt="Why `inc a` before `ld b,a`? What would the loop do for the first storm without it?">
+
+`storm` is 0 for the first storm, so without `inc a`, B would be 0. `djnz` takes 1 from B *before* it tests B, and 0 minus 1 is 255, not zero. The loop would run 256 times: a bonus of 80 would add 20,480 tens. The score line can only print four digits of tens, so its first digit would run past 9 into other characters.
+
+</Question>
+
+## Naming the multiplier
+
+A bonus that changes from storm to storm needs explaining on screen. `bonus_line` writes the storm's digit into the line before it prints it:
+
+<AssemblyExcerpt checkpoint="storm-bonus" from="bonus_line:" to="records:" />
+
+`storm` plus the character code of `'1'` gives `'1'` to `'5'`, the trick `hud` uses for `STORM 3/5`. The text it lands in is three pieces with labels, so the program can write into the middle of it:
+
+<AssemblyExcerpt checkpoint="storm-bonus" from="bonus_digits:" to="title_start:" />
+
+`bonus_text`, the digits and `bonus_times` have no zero byte between them, so `text` prints straight through all three and stops at the zero after `bonus_storm`.
+
+One more change keeps the line honest. `start_storm` now sets `finish_points` to 0 when a storm begins. Before this, a ship lost in the third storm showed the second storm's bonus on the result screen with the third storm's number beside it. Now it shows `FINISH BONUS 0000 X3`: nothing earned in the storm it was lost in.
+
+## How much more
+
+On the route the checks fly, with Space held, the storms and their bonuses come out like this:
+
+| Storm | Time | Bonus | × | Added |
+|---|---|---|---|---|
+| 1 | 20.92 s | 80 | 1 | 80 |
+| 2 | 20.92 s | 80 | 2 | 160 |
+| 3 | 20.80 s | 80 | 3 | 240 |
+| 4 | 21.60 s | 79 | 4 | 316 |
+| 5 | 19.60 s | 81 | 5 | 405 |
+
+The route and the stars are the same as in unit 30, so the only difference is the multiplied bonuses: 801 tens more than before. The voyage that ended at 05140 now ends at 13150.
+
+<Question prompt="With the bonus multiplied, which storm is it most worth speeding up for, and by how much?">
+
+The fifth. Each second saved adds one to the bonus, and the bonus counts five times there, so a second faster in the fifth storm is worth 50 points. In the first storm it is worth 10.
+
+</Question>
+
+## Experiments
+
+Keep a working copy before each change, then press **Revert** when you have finished.
+
+<Question prompt="Replace `inc a` with `add a,a` and cross the second storm. What does the interlude say, and how much is added?">
+
+`storm` is 1 in the second storm, and doubling it gives 2: the same as `inc a` would. The line says `X2` and adds 160, so nothing seems wrong. The third storm gives 4 instead of 3 and the fifth 8 instead of 5, while the line still says `X3` and `X5`. And the first storm gives B=0 and 256 additions. A change that works for one test case is not enough: try the first and the last as well.
+
+</Question>
+
+Then make the bonus count for the storms still to come instead: `ld a,STORMS` and `sub` the storm number, so the first storm counts five times and the last once. Which voyage does that reward?
+
+The score now rewards getting further. The storms themselves are still alike: the same speeds, the same density, the same colours. [The next lesson](../unit-32/) makes each storm harder than the last.
+
+<Sources>
+
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf): `DJNZ` decrements B and jumps unless the result is zero; `ADD HL,ss`. The maintained Meteor Storm source linked through this page supplies the bonus code, and its verification flies the measured route and reads every interlude's bonus line back from the screen. The screenshot is a native Emu198x capture of this program.
+
+</Sources>

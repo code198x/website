@@ -1,0 +1,145 @@
+---
+title: "Make each storm harder"
+game: 1
+unit: 32
+---
+
+import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Figure from '@components/Figure.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+The five storms have different courses, but they play alike: the same speeds, the same spacing, the same gentle drift and the same colours. Reaching the fifth storm should feel like getting somewhere. In this lesson each storm gets rules of its own, and the rules are data: five bytes per storm in a table, read when the storm starts.
+
+<MeteorExperiment checkpoint="harder-storms" bytes={["phase","storm","storm_speed","storm_cut","drift_mask"]} words={["score","elapsed"]} controls="finished" />
+
+Space launches; O/P steer; hold Space for 2X. One hit ends the voyage. At the result R retries from the first storm and Q returns to the title.
+
+The inspector shows the three rule bytes of the current storm. Cross a storm and watch them change.
+
+## What you should see
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-32/harder-storms-storm-3-flight.png" alt="Six seconds into the third storm. The HUD reads STORM 3/5. Two magenta meteors and a red one are in the middle of the playfield, one of them yellow along its top edge; a yellow star is on the right. The ship is white at the bottom." caption="The third storm: yellow at the top, magenta in the middle, red above the ship. Its meteors fall a pixel per update faster than the first storm's and drift every second update." />
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-32/harder-storms-storm-5-flight.png" alt="Six seconds into the fifth storm. The HUD reads STORM 5/5 and SCORE 09210. Five meteors and a star, all red, are spread across the playfield above the white ship." caption="The fifth storm is red from top to bottom. Its meteors are two pixels per update faster than the first storm's, come three updates closer together and drift on every update." />
+
+The first storm is the one we have always flown. From the second on, meteors fall faster and arrive closer together, and from the third they wander sideways more. Each storm also has its own colours, getting hotter: green, yellow, magenta and red in the second, until the fifth is red all the way down.
+
+## The rules as data
+
+All of that comes from one table:
+
+<AssemblyExcerpt checkpoint="harder-storms" from="; Each storm's rules:" to="; The later storms keep" />
+
+Each storm's record is five bytes: three `defb` values and a `defw` address.
+
+| Storm | Extra speed | Gap cut | Drift mask | Colours |
+|---|---|---|---|---|
+| 1 | 0 | 0 | 3 | `row_colours` |
+| 2 | 1 | 1 | 3 | `storm_2_colours` |
+| 3 | 1 | 2 | 1 | `storm_3_colours` |
+| 4 | 2 | 2 | 1 | `storm_4_colours` |
+| 5 | 2 | 3 | 0 | `storm_5_colours` |
+
+The extra speed is added to every spawn's speed. The gap cut is taken off every delay between spawns. The drift mask sets how often meteors drift, which we come to below. The last two bytes are the address of a 24-byte colour table, one byte per character row, like [unit 28](../unit-28/)'s `row_colours`. The first storm's record keeps everything as it was, so the first storm plays exactly as it did in [unit 31](../unit-31/).
+
+Nothing else about a storm needs to know these numbers. Changing how hard the fifth storm is means changing five bytes, not finding every place the program uses a speed.
+
+## Reading a storm's record
+
+`start_storm` already finds the storm's course. Now it also finds its rules:
+
+<AssemblyExcerpt checkpoint="harder-storms" from=" ; Five bytes per storm" to=" ; Hold Space for unlimited" />
+
+The record for storm number `storm` is at `storm_rules` plus five times `storm`. Five `add hl,de` instructions make that, as [unit 14](../unit-14/) found an event, and then the record is copied out a byte at a time: into `storm_speed`, `storm_cut` and `drift_mask`, which are in the run's block of memory, and the address into `band_colours`, which is not. Copying the rules once, when the storm starts, means the code that runs every update reads a plain variable instead of finding the record again.
+
+## Faster and closer
+
+`waves` reads each event's speed and delay. Here is how it uses the rules:
+
+<AssemblyExcerpt checkpoint="harder-storms" from="waves:" to="spawn:" />
+
+The speed is loaded into A as `storm_speed`, and `add a,(hl)` adds the event's own speed from the table, with HL pointing at it. The delay goes the other way: the cut goes into C, the event's delay into A, and `sub c` takes the cut away.
+
+The events' delays are 6 to 10 updates and the largest cut is 3, so the shortest gap in the fifth storm is 3 updates. The speeds are 2 to 5, so the fifth storm's meteors fall at 4 to 7 pixels per update.
+
+<Question prompt="What would happen if a storm's gap cut were 6, and an event's delay was 6?">
+
+`sub c` gives 0, and `wave_timer` becomes 0. `waves` takes 1 from the timer before it tests it, and 0 minus 1 is 255: the next spawn waits 256 updates, more than ten seconds. The storm would stall. A cut has to stay below the smallest delay.
+
+</Question>
+
+## How often to drift
+
+Since [unit 15](../unit-15/), meteors have drifted sideways on every fourth update. The test was `ld a,(ticks)` and `and 3`: the two low bits of the course step are both zero on every fourth step. Now the 3 comes from `drift_mask`:
+
+<AssemblyExcerpt checkpoint="harder-storms" from=" ; Stars fall vertically" to="drift_left_edge:" />
+
+`and c` keeps only the bits of `ticks` that are set in the mask, and the meteor drifts when what is left is zero.
+
+| Mask | Bits tested | Zero on | Drift |
+|---|---|---|---|
+| 3 (%11) | bits 0 and 1 | steps 0, 4, 8, ... | every fourth update |
+| 1 (%01) | bit 0 | steps 0, 2, 4, ... | every second update |
+| 0 | none | every step | every update |
+
+The mask is not a count. It works for every fourth and every second step because 4 and 2 are powers of two: a mask of 2 would make meteors drift on two steps out of every four, in pairs.
+
+## Each storm's colours
+
+[Unit 28](../unit-28/)'s `clear` wrote `row_colours` into the attribute map. Its second half is now a routine of its own, `paint_bands`, and reads whichever table `band_colours` points at:
+
+<AssemblyExcerpt checkpoint="harder-storms" from=" ; Colour by place:" to=" ; B=row, DE=string." />
+
+`clear` runs straight on into `paint_bands`, so every screen still gets its colours the same way. Three places choose the table first:
+
+- The title points `band_colours` at `row_colours`, so the title has the first storm's colours whichever storm the last run ended in.
+- `new_game` now calls `start_storm` before `clear`, so a retry paints the first storm's colours.
+- The interlude calls `paint_bands` straight after `start_storm` has picked the next storm's table. It changes all 768 attributes between storms, when nothing is moving, and never during flight.
+
+Each later table keeps the cyan HUD, the white score and the white rows for the ship, and changes the storm in between.
+
+## Still survivable
+
+Faster meteors that arrive closer together could make a storm that cannot be crossed at all, whoever is playing. The checks rule that out. The route model that steers through the courses now reads each storm's rules from the program's memory, applies the same speeds, gaps and drift, and finds a keyboard route through every storm before the checks fly it. They also record every object's speed in flight: 2 to 5 pixels per update in the first storm, 3 to 6 in the second and third, 4 to 7 in the fourth and fifth.
+
+A route existing does not make a storm comfortable. These are first values, chosen so the model always finds a way through. Play the voyage and tune the table.
+
+There is a side effect. Faster meteors that arrive closer together finish their course sooner, so the storms get shorter:
+
+| Storm | Time | Bonus | × | Added |
+|---|---|---|---|---|
+| 1 | 20.92 s | 80 | 1 | 80 |
+| 2 | 18.28 s | 82 | 2 | 164 |
+| 3 | 15.56 s | 85 | 3 | 255 |
+| 4 | 16.08 s | 84 | 4 | 336 |
+| 5 | 12.08 s | 88 | 5 | 440 |
+
+A harder storm is a quicker one, and [unit 31](../unit-31/)'s bonus pays for speed, so the voyage on the measured route now ends at 13730, up from 13150.
+
+## Experiments
+
+Keep a working copy before each change, then press **Revert** when you have finished.
+
+<Question prompt="Change storm 5's record to `defb 2,3,3`. What changes in the fifth storm, and what stays the same?">
+
+Only the drift: the mask is 3 again, so its meteors drift on every fourth update instead of every update. They still fall 2 pixels per update faster and arrive 3 updates sooner, and the storm is still red. Each byte of the record controls one thing.
+
+</Question>
+
+<Question prompt="Make the first storm's record the same as the fifth's: `defb 2,3,0` and `defw storm_5_colours`. What do you see on launch, and on the title?">
+
+A red storm from the start, falling fast and drifting on every update. The title is unchanged: it always points `band_colours` at `row_colours`, not at the first storm's table.
+
+</Question>
+
+Then try a palette of your own for one storm, keeping the first three and last four bytes so the HUD and the ship rows stay as they are.
+
+The game now gets harder as it goes on. Its record still only keeps the best score, though, which says little about how far a voyage got. [The next lesson](../unit-33/) remembers the furthest storm instead.
+
+<Sources>
+
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf): `ADD A,(HL)` adds the byte HL points at to A; `SUB r` subtracts a register from A; `AND r` keeps the bits set in both. The maintained Meteor Storm source linked through this page supplies the rules table and the routines; its verification reads the rules from the running program, routes and flies every storm, checks every cell's colour in each storm and records every object's speed. The screenshots are native Emu198x captures of this program.
+
+</Sources>
