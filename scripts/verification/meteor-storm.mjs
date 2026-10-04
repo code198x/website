@@ -7,7 +7,7 @@ await fs.mkdir(out,{recursive:true});
 const root=path.resolve(import.meta.dirname,'../..'),samples=process.env.CODE_SAMPLES_PATH||path.resolve(root,'../code-samples');
 const route='/systems/sinclair-zx-spectrum/assembly/meteor-storm';
 // The closing lesson: the last unit, which downloads the finished game's files.
-const LAST=31;
+const LAST=32;
 // METEOR_FIRST starts at a later lesson. Anything but a lesson number would skip every lesson and still pass.
 const FIRST=Number(process.env.METEOR_FIRST??1);
 if(!Number.isInteger(FIRST)||FIRST<1||FIRST>LAST)throw Error(`METEOR_FIRST must be a lesson number from 1 to ${LAST}, not ${process.env.METEOR_FIRST}`);
@@ -167,7 +167,7 @@ try{
   checks.push(`Lesson ${n}: maintained files, running browser program, actual RAM and navigation`);console.log('PASS',n,timing);
  }
  console.log('Axe, layout and debugger screenshot',await within('Axe, layout and debugger screenshot',300000,async()=>{
- for(const theme of ['light','dark'])for(const n of [1,5,10,12,22,24,25,26,27,28,29,30,31]){
+ for(const theme of ['light','dark'])for(const n of [1,5,10,12,22,24,25,26,27,28,29,30,31,32]){
   await open(n);await page.emulateMedia({colorScheme:theme,reducedMotion:'reduce'});await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
   // Listing colours transition on a theme change; axe must see the settled colours, not a frame of the old ink.
   // Two frames first, so the style change has started its transitions before we wait for them.
@@ -177,7 +177,7 @@ try{
  }
  for(const width of [390,1280,1920]){
   await page.setViewportSize({width,height:1000});
-  for(const n of [1,5,10,12,22,24,25,26,27,28,29,30,31]){await open(n);assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),`Overflow ${n} ${width}: ${JSON.stringify(await page.evaluate(()=>Array.from(document.querySelectorAll('main *')).filter(el=>el.getBoundingClientRect().right>innerWidth).map(el=>({tag:el.tagName,class:el.className,width:el.getBoundingClientRect().width}))))}`);}
+  for(const n of [1,5,10,12,22,24,25,26,27,28,29,30,31,32]){await open(n);assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),`Overflow ${n} ${width}: ${JSON.stringify(await page.evaluate(()=>Array.from(document.querySelectorAll('main *')).filter(el=>el.getBoundingClientRect().right>innerWidth).map(el=>({tag:el.tagName,class:el.className,width:el.getBoundingClientRect().width}))))}`);}
   await open(5);await page.screenshot({path:`${out}/lesson-05-${width}.png`,fullPage:true});
  }
  await open(10);await run();await page.locator('[data-break]').click();await page.waitForFunction(()=>document.querySelector('.meteor-debug-state').textContent.includes('Paused'));await page.locator('.meteor-experiment').screenshot({path:out+'/collision-debugger.png'});

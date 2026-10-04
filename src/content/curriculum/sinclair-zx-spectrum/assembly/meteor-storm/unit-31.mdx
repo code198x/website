@@ -1,67 +1,99 @@
 ---
-title: "Keep and share the game"
+title: "Reward each storm cleared"
 game: 1
 unit: 31
 ---
 
 import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Figure from '@components/Figure.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-The browser experiment proves that our code can run when placed directly into a prepared machine. A distributable tape needs a different check: loading through the Spectrum's ROM from a fresh start, then playing with the sound on.
+Every storm's finish bonus has been the same deal: ten points for each second under 100. A fast fifth storm paid no more than a fast first one, although the player had to survive four storms to reach it. In this lesson each storm's bonus is multiplied by the storm's number: ×1 for the first, up to ×5 for the fifth.
 
-Use [unit 30](../unit-30/)'s program: four sounds, with the star, boost and impact playing while the loop waits for the frame, a ship that breaks apart when it is hit, a storm coloured in bands, and a voyage of five storms with a score that counts all of it. This lesson adds no new game code. First play it, then save the files you intend to share.
+The Z80 has no multiply instruction. Here we multiply the way it is usually done for small numbers: by adding the same thing several times.
 
-<MeteorExperiment checkpoint="two-byte-score" bytes={["phase","storm"]} words={["score","elapsed","best_time"]} controls="finished" />
+<MeteorExperiment checkpoint="storm-bonus" bytes={["phase","storm","finish_points"]} words={["score","elapsed"]} controls="finished" />
 
-## Keep source and data together
+Space launches; O/P steer; hold Space for 2X. One hit ends the voyage. At the result R retries from the first storm and Q returns to the title.
 
-Download **source** and **assets.inc**. The source contains the program, its sound tables, the starting records for the pieces and the table of row colours; the companion contains the pre-shifted artwork, including the eight pieces cut from the ship, and the five prepared courses. Keep both in one directory. Saving only the assembly file leaves its include dependency missing.
+Cross a storm and read the interlude: the bonus line now says what it is multiplied by.
 
-You can also download a tape assembled from the current contents of both editors. Edits that have not been run yet are still included in that download, so test the version you intend to distribute. Revert restores both editors.
+## What you should see
 
-For an independent local build:
+<Figure src="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-31/storm-bonus-interlude-3.png" alt="Clear space after the third storm. The HUD reads TIME 20.76, SCORE 03060 and STORM 3/5. In the middle: CLEAR SPACE in green, FINISH BONUS 0800 X3 in yellow and NEXT STORM in red. The white ship is at the bottom." caption="Clear space after the third storm. It took 20 whole seconds, so the 80 under 100 make a bonus of 800 points, three times over. The HUD still shows the score from before the bonus; it catches up when the next storm starts." />
 
-```sh
-asm198x --dialect pasmo --cpu z80 --tapbas meteor-storm.asm -o meteor-storm.tap
-```
+The interludes read `FINISH BONUS 0800 X1`, then `X2` and so on, and the score jumps further each time. The title's bonus line now reads `FAST FINISH: BONUS X STORM`.
 
-Or use upstream Pasmo:
+## Multiplying by adding
 
-```sh
-pasmo --tapbas meteor-storm.asm meteor-storm.tap
-```
+Here is where `storm_cleared` adds the bonus:
 
-The tape contains a small BASIC loader and the machine-code block. You do not need to author a BASIC game to use that loading convention. The code begins at 32768 and establishes its own stack, interrupt route and border colour when entered.
+<AssemblyExcerpt checkpoint="storm-bonus" from="finish_bonus:" to=" ld de,(best_time)" />
 
-## Load what you will share
+The bonus goes into DE as before. Then `storm`, which counts from 0, plus 1 goes into B: 1 for the first storm, 5 for the fifth. The loop at `bonus_add` adds DE to HL, and `djnz` counts B down and jumps back until it reaches zero. So the bonus is added B times: the bonus times the storm's number.
 
-The experiment above plays sound when you tick **Sound**, but it starts the code directly rather than loading a tape. The site's Spectrum player does what this check needs: it loads a tape through the ROM on a fresh 48K machine, with sound. Open the [Sinclair ZX Spectrum page](/systems/sinclair-zx-spectrum/), press the play button under its screen and tick **Sound**, which starts unticked. Press **Choose program or disk**, pick `meteor-storm.tap`, then press **Start**. The ROM loads the tape on its own; you will hear the loading tones. Click the screen before using the keys.
+That is how [unit 14](../unit-14/) found an event's address, with five `add hl,de` instructions in a row, and how [unit 29](../unit-29/) found a course with two. There the multiplier was fixed and the additions were written out. Here it changes with the storm, so a loop does the counting.
 
-On the desktop, start a fresh 48K Spectrum emulator, mount `meteor-storm.tap`, enter `LOAD ""` and start tape playback. In Emu198x the equivalent command is:
+Repeated addition is only sensible because the multiplier is small. The largest bonus is 99 tens, for a storm under a second, and five additions of it make 495 tens: [unit 30](../unit-30/)'s two-byte score has room to spare.
 
-```sh
-emu198x-spectrum --machine spectrum_48k --tape meteor-storm.tap --autoload-tape --scale 3
-```
+<Question prompt="Why `inc a` before `ld b,a`? What would the loop do for the first storm without it?">
 
-Confirm that the title appears in its bands of cyan, green, yellow, red and white, Space launches after release, O/P steer and held Space boosts. In flight the time and speed are cyan over a white score, and each meteor changes colour as it falls: cyan, green, yellow, then red just above the white ship. Listen for each event: a chirp for a star, a lower one when you press Space in flight (and none while you keep holding it) and a rising fanfare in clear space. Let a meteor hit the ship and watch the crash: the border flashes red, the storm freezes, and the ship breaks into eight pieces that fly up and land during a rattling, falling tone. About a second later the result appears with a black border and no pieces left. Cross a storm and check the voyage carries on: the fanfare, two seconds of CLEAR SPACE with the finish bonus, then `STORM 2/5` with the clock back at 00.00 and the ship in the centre. If the storm is all white, the border stays red, the result cuts in at once or clear space ends the game after one storm, you are not running this lesson's program. Retry after the crash; then return to the title. Cross a storm when you can and check that the BEST STORM time and the best score survive another retry within that session.
-
-A snapshot saves a machine's state and can be useful while investigating a fault. It is not the same evidence as a fresh ROM load of the tape. A snapshot can preserve an already configured stack, interrupt mode or record that a fresh launch has not established yet.
-
-<Question prompt="You set a best time, download the tape, reset, and load it again. Should that record still be there?">
-
-No. Tape download assembles the source and initial data, not a recording of the running machine's RAM. Session records begin unset on a fresh program launch. Saving records across sessions would require a separate persistence feature.
+`storm` is 0 for the first storm, so without `inc a`, B would be 0. `djnz` takes 1 from B *before* it tests B, and 0 minus 1 is 255, not zero. The loop would run 256 times: a bonus of 80 would add 20,480 tens. The score line can only print four digits of tens, so its first digit would run past 9 into other characters.
 
 </Question>
 
-## Choose a next experiment
+## Naming the multiplier
 
-Keep a working copy before changing the game. Try one design change with a prediction: a different drift cadence, an altered event spacing, revised star artwork or a new sound table. State which behaviour should change and which should remain intact, then retest collision, retry and completion. For a sound, work out its length in T-states first. A star or boost sound plays in the time an update leaves over; one longer than that is split across several waits and flutters.
+A bonus that changes from storm to storm needs explaining on screen. `bonus_line` writes the storm's digit into the line before it prints it:
 
-We have built a game whose positions and rules live in state, whose picture is drawn from that state, and whose progress is measured separately from time. Its sounds are data too, and the ones heard in flight play in time the game would otherwise spend waiting. Even its crash is state: eight small records, moved by one rule and drawn from the ship's own artwork. Its colours belong to places, not objects: 24 bytes written once per screen, so nothing ever clashes. And its storms are data: five tables, chosen by one address. Those distinctions will still matter when another game needs a different renderer, more objects or a different machine.
+<AssemblyExcerpt checkpoint="storm-bonus" from="bonus_line:" to="records:" />
+
+`storm` plus the character code of `'1'` gives `'1'` to `'5'`, the trick `hud` uses for `STORM 3/5`. The text it lands in is three pieces with labels, so the program can write into the middle of it:
+
+<AssemblyExcerpt checkpoint="storm-bonus" from="bonus_digits:" to="title_start:" />
+
+`bonus_text`, the digits and `bonus_times` have no zero byte between them, so `text` prints straight through all three and stops at the zero after `bonus_storm`.
+
+One more change keeps the line honest. `start_storm` now sets `finish_points` to 0 when a storm begins. Before this, a ship lost in the third storm showed the second storm's bonus on the result screen with the third storm's number beside it. Now it shows `FINISH BONUS 0000 X3`: nothing earned in the storm it was lost in.
+
+## How much more
+
+On the route the checks fly, with Space held, the storms and their bonuses come out like this:
+
+| Storm | Time | Bonus | × | Added |
+|---|---|---|---|---|
+| 1 | 20.92 s | 80 | 1 | 80 |
+| 2 | 20.92 s | 80 | 2 | 160 |
+| 3 | 20.80 s | 80 | 3 | 240 |
+| 4 | 21.60 s | 79 | 4 | 316 |
+| 5 | 19.60 s | 81 | 5 | 405 |
+
+The route and the stars are the same as in unit 30, so the only difference is the multiplied bonuses: 801 tens more than before. The voyage that ended at 05140 now ends at 13150.
+
+<Question prompt="With the bonus multiplied, which storm is it most worth speeding up for, and by how much?">
+
+The fifth. Each second saved adds one to the bonus, and the bonus counts five times there, so a second faster in the fifth storm is worth 50 points. In the first storm it is worth 10.
+
+</Question>
+
+## Experiments
+
+Keep a working copy before each change, then press **Revert** when you have finished.
+
+<Question prompt="Replace `inc a` with `add a,a` and cross the second storm. What does the interlude say, and how much is added?">
+
+`storm` is 1 in the second storm, and doubling it gives 2: the same as `inc a` would. The line says `X2` and adds 160, so nothing seems wrong. The third storm gives 4 instead of 3 and the fifth 8 instead of 5, while the line still says `X3` and `X5`. And the first storm gives B=0 and 256 additions. A change that works for one test case is not enough: try the first and the last as well.
+
+</Question>
+
+Then make the bonus count for the storms still to come instead: `ld a,STORMS` and `sub` the storm number, so the first storm counts five times and the last once. Which voyage does that reward?
+
+The score now rewards getting further. The storms themselves are still alike: the same speeds, the same density, the same colours. [The next lesson](../unit-32/) packages the game as a tape; a later one makes each storm harder than the last.
 
 <Sources>
 
-The maintained Meteor Storm source linked through this page supplies the game rules, sound tables, row colours, courses and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf): `DJNZ` decrements B and jumps unless the result is zero; `ADD HL,ss`. The maintained Meteor Storm source linked through this page supplies the bonus code, and its verification flies the measured route and reads every interlude's bonus line back from the screen. The screenshot is a native Emu198x capture of this program.
 
 </Sources>
