@@ -33,7 +33,7 @@ test.describe('system page stage', () => {
   test('keeps route choice above the fold at 1440×900', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/systems/sinclair-zx-spectrum/');
-    const bottom = await page.locator('.route-links').evaluate(l => l.getBoundingClientRect().bottom);
+    const bottom = await page.getByLabel('Language routes').evaluate(l => l.getBoundingClientRect().bottom);
     expect(bottom).toBeLessThanOrEqual(900);
   });
 

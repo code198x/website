@@ -104,6 +104,12 @@ export const SURFACE_LIGHT = '#f5e2d8';
 export const SURFACE_DARK = '#3d2c21';
 
 /**
+ * The paper ground (family-visual-identity.md §3a). A spot ink is derived
+ * against this: the darkest light surface text on the page meets.
+ */
+export const PAPER = '#f6f4ee';
+
+/**
  * Build the `--ink-l` / `--ink-d` custom-property pair for a brand colour,
  * ready to drop into a `style` attribute. The global `--ink` switch (see
  * Layout.astro) resolves these to the theme-correct value, so descendant text
@@ -160,6 +166,18 @@ export function chipInkStyle(color: string): string {
  */
 export function whiteSafeFill(color: string): string {
   return accessibleInk(color, '#ffffff');
+}
+
+/**
+ * The page's spot ink from a machine's curated primary colour
+ * (family-visual-identity.md §3). Both values are derived, never the raw
+ * colour: the ink against the paper ground, so it reads on paper; the fill so
+ * white text on it reads. Anything that is not a hex colour returns '', and
+ * the page keeps its project's spot ink.
+ */
+export function spotStyle(primaryHex?: string): string {
+  if (!primaryHex || !/^#[0-9a-fA-F]{6}$/.test(primaryHex)) return '';
+  return `--h-spot: ${whiteSafeFill(primaryHex)}; --h-spot-ink: ${accessibleInk(primaryHex, PAPER)}`;
 }
 
 /**
