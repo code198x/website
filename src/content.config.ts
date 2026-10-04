@@ -1,5 +1,6 @@
 import { defineCollection, z } from 'astro:content';
 import { glob, file } from 'astro/loaders';
+import { COLOUR_ROLES, CONFIDENCES } from './lib/machine-colours';
 
 // CPU families a system can be keyed by — shared by the primary and secondary
 // architecture fields on the systems collection.
@@ -40,6 +41,17 @@ const systems = defineCollection({
     shortName: z.string(),
     year: z.number(),
     color: z.string(),
+    // Curated, sourced machine colours (family-visual-identity.md §3). Optional:
+    // a machine without them takes its project's spot ink.
+    colours: z.array(z.object({
+      name: z.string(),
+      hex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+      role: z.enum(COLOUR_ROLES),
+      primary: z.boolean().default(false),
+      confidence: z.enum(CONFIDENCES),
+      source: z.string().min(1),
+    })).optional()
+      .refine((c) => !c || c.filter((x) => x.primary).length <= 1, 'at most one primary colour'),
     tagline: z.string(),
 
     // Classification

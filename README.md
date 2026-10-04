@@ -89,13 +89,34 @@ available as separate local commands.
 ### House198x kit
 
 The site consumes the shared [198x-ui](https://github.com/stevehill1981/198x-ui)
-kit at the `v0.10.0` tag. `predev` and `prebuild` run `scripts/fetch-ui.sh`, which
-checks out that tag into ignored `_198x-ui/` and copies its font files to the
+kit at commit `7eda45e1c2f8b8f919359c971b2e210822e431f2` (the approved paper and magazine foundation). `predev` and `prebuild` run `scripts/fetch-ui.sh`, which
+checks out that revision into ignored `_198x-ui/` and copies its font files to the
 ignored `public/fonts/` directory. This keeps local development and CI on the
 same pinned components and preserves self-hosted font delivery. Override the
 pin for a development session with `UI_REF=vX.Y.Z npm run dev` (or supply
 the same variable to `npm run build`). Update the documented pin and validate
 the site before changing the default.
+
+### Magazine presentation
+
+`Layout.astro` supplies the shared navigation, full-width section mast and page frame.
+`PageMasthead` and `PageHeader` serve system gateways, directories and editorial pages;
+reading text keeps a bounded measure while browsing grids use the available width.
+Site additions to the family palette live in `src/styles/site-tokens.css`; component
+rules refer to those tokens rather than specifying their own colours.
+
+Curate Vault features in `src/data/vault-features.ts`. Select a reviewed article,
+write its placement headline and deck, choose images already used in that article,
+and list related article identifiers in reading order. The build validates those
+references. Category colours come from `src/lib/vault-colours.ts` and never recolour
+captures.
+
+`SourceDrawer` provides the same native source disclosure for BASIC, Spectrum
+assembly and NES assembly. `LessonMachine` and `LessonExperimentButton` allow
+several authored experiments to share one running machine and keep separate source
+edits. Meteor Storm unit 28 uses this treatment on its canonical lesson route.
+Existing download, keyboard, sound, inspection and run-panel behaviour remains in
+the underlying player components.
 
 ### `<NativeImage>` needs a Rust toolchain
 

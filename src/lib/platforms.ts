@@ -2,6 +2,7 @@
  * Platform utilities - helpers for working with the platforms collection
  */
 import { getCollection, type CollectionEntry } from 'astro:content';
+import { primaryColour } from './machine-colours';
 
 export type Platform = CollectionEntry<'systems'>;
 export type PlatformData = Platform['data'];
@@ -214,4 +215,9 @@ export async function getPlatformsByManufacturer(): Promise<Map<string, Platform
  */
 export async function getPlatformsByType(): Promise<Map<string, Platform[]>> {
   return getPlatformsGroupedBy('type');
+}
+
+/** The machine's curated primary colour, if it has one; undefined means the project's spot ink. */
+export function getSpotColour(platform?: Platform): string | undefined {
+  return primaryColour(platform?.data.colours)?.hex;
 }

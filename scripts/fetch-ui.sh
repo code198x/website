@@ -4,21 +4,25 @@
 set -euo pipefail
 
 REPO="https://github.com/stevehill1981/198x-ui.git"
-REF="${UI_REF:-v0.10.0}"
+REF="${UI_REF:-7eda45e1c2f8b8f919359c971b2e210822e431f2}"
 DIR="_198x-ui"
 
 if [ -d "$DIR/.git" ]; then
-  current=$(git -C "$DIR" describe --tags --exact-match 2>/dev/null || echo "")
-  if [ "$current" != "$REF" ]; then
-    git -C "$DIR" fetch --quiet --tags origin
-    git -C "$DIR" checkout --quiet "$REF"
+  current=$(git -C "$DIR" rev-parse HEAD)
+  wanted=$(git -C "$DIR" rev-parse --verify "$REF^{commit}" 2>/dev/null || echo "")
+  if [ "$current" != "$wanted" ]; then
+    git -C "$DIR" fetch --quiet --depth 1 origin "$REF"
+    git -C "$DIR" checkout --quiet --detach FETCH_HEAD
     echo "198x-ui: moved to $REF"
   else
     echo "198x-ui: already at $REF"
   fi
 else
   rm -rf "$DIR"
-  git clone --quiet --depth 1 --branch "$REF" "$REPO" "$DIR"
+  git init --quiet "$DIR"
+  git -C "$DIR" remote add origin "$REPO"
+  git -C "$DIR" fetch --quiet --depth 1 origin "$REF"
+  git -C "$DIR" checkout --quiet --detach FETCH_HEAD
   echo "198x-ui: cloned at $REF"
 fi
 

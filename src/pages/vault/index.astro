@@ -1,134 +1,115 @@
 ---
 import { getCollection } from 'astro:content';
+import VaultFeature from '../../components/VaultFeature.astro';
+import { vaultFeatures } from '../../data/vault-features';
+import { resolveVaultFeatures } from '../../lib/vault-features';
+import PageMasthead from '../../components/PageMasthead.astro';
 import Layout from '../../layouts/Layout.astro';
-import InlineMarkdown from '../../components/InlineMarkdown.astro';
-import { HardDrive, Cpu, Users, Building2, Gamepad2, BookOpen, Wrench } from '@lucide/astro';
+import { getVaultCategories } from '../../lib/categories';
+import '../../styles/vault.css';
+import { vaultColourGroup } from '../../lib/vault-colours';
 
-// Get all vault entries from the content collection
-const allEntries = await getCollection('vault');
-
-// Group entries by category
-const entriesByCategory = allEntries.reduce((acc, entry) => {
-  const category = entry.data.category;
-  if (!acc[category]) {
-    acc[category] = [];
-  }
-  acc[category].push({
-    name: entry.data.title,
-    url: `/vault/${entry.id}`,
-    desc: entry.data.summary,
-  });
-  return acc;
-}, {} as Record<string, { name: string; url: string; desc: string }[]>);
-
-// Sort entries within each category alphabetically
-Object.keys(entriesByCategory).forEach(category => {
-  entriesByCategory[category].sort((a, b) => a.name.localeCompare(b.name));
-});
-
-// Preview limit per category
-const PREVIEW_LIMIT = 6;
-
-// Category metadata
-const categoryMeta = {
-  systems: { name: 'Systems', icon: HardDrive, intro: 'The machines that defined an era.' },
-  hardware: { name: 'Hardware', icon: Cpu, intro: 'The chips and components that made it all possible.' },
-  people: { name: 'People', icon: Users, intro: 'The developers, designers, and composers who defined the era.' },
-  companies: { name: 'Companies & Studios', icon: Building2, intro: 'From bedroom operations to publishing empires.' },
-  games: { name: 'Classic Games', icon: Gamepad2, intro: 'The titles that pushed boundaries and defined genres.' },
-  culture: { name: 'Culture & Community', icon: BookOpen, intro: 'Magazines, movements, and the scenes that connected it all.' },
-  techniques: { name: 'Techniques', icon: Wrench, intro: 'Programming and graphics techniques, from raster interrupts to sprite multiplexing.' },
-};
-const order = ['systems', 'hardware', 'people', 'companies', 'games', 'culture', 'techniques'];
+const entries = await getCollection('vault');
+const categories = (await getVaultCategories()).map(category => ({
+  id: category.id,
+  name: category.data.name,
+  colour: vaultColourGroup(category.id),
+  count: entries.filter(entry => entry.data.category === category.id).length,
+})).filter(category => category.count > 0);
+const [feature] = resolveVaultFeatures(vaultFeatures, entries);
+const reading = feature.related;
+const searchIndex = entries.map(entry => ({
+  title: entry.data.title,
+  url: `/vault/${entry.id}`,
+  category: categories.find(category => category.id === entry.data.category)?.name ?? entry.data.category,
+  colour: vaultColourGroup(entry.data.category),
+})).sort((a, b) => a.title.localeCompare(b.title));
 ---
 
-<Layout title="The Vault" description="Explore the people, hardware, companies, games, and techniques that defined 1980s home computing.">
-  <div class="wrap">
-    <div class="vhead">
-      <p class="eyebrow">Reference library · cross-system</p>
-      <h1>The Vault.</h1>
-      <div class="herorule"></div>
-      <p class="lede">A curated encyclopaedia of vintage computing — connecting the hands-on lessons to
-        their cultural and technical roots. The chips that powered the machines, and the people who
-        pushed them past their limits.</p>
-      <p class="summary"><b>{allEntries.length}</b> articles · <b>{Object.keys(entriesByCategory).length}</b> categories</p>
-    </div>
+<Layout masthead={false} title="The Vault" description="Explore the people, hardware, companies, games, and techniques that defined home computing.">
+  <div class="vault-index">
+    <PageMasthead class="vault-mast" label="The Vault" heading noteClass="vault-mast-note"><span>The reference library</span><span>{entries.length.toLocaleString('en-GB')} articles / {categories.length} subjects</span></PageMasthead>
+    <p class="vault-introduction">The machines, people and ideas behind the games. Explore how they worked, and why they mattered.</p>
 
-    {order.map(categoryKey => {
-      const meta = categoryMeta[categoryKey];
-      const articles = entriesByCategory[categoryKey] || [];
-      if (!meta || articles.length === 0) return null;
-      const IconComponent = meta.icon;
-      const previewArticles = articles.slice(0, PREVIEW_LIMIT);
-      const hasMore = articles.length > PREVIEW_LIMIT;
-      return (
-        <section class="cat">
-          <div class="cat-head">
-            <h2><span class="cat-icon"><IconComponent size={22} /></span>{meta.name}</h2>
-            {hasMore && <a href={`/vault/category/${categoryKey}`} class="view-all">View all {articles.length} →</a>}
-          </div>
-          <p class="cat-intro">{meta.intro}</p>
-          <div class="grid">
-            {previewArticles.map(article => (
-              <a href={article.url} class="acard">
-                <h3>{article.name}</h3>
-                <p><InlineMarkdown text={article.desc} /></p>
-              </a>
-            ))}
-          </div>
+    <div class="vault-columns">
+      <div class="vault-editorial">
+        <VaultFeature feature={feature} categoryName={categories.find(category => category.id === feature.entry.data.category)!.name} />
+        <section class="vault-reading" aria-labelledby="vault-reading-title">
+          <h2 id="vault-reading-title">Keep exploring.</h2>
+          {reading.map(entry => (
+            <a href={`/vault/${entry!.id}`} class="vault-reading-link" data-vault-colour={vaultColourGroup(entry!.data.category)}>
+              <span><span class="vault-category-label">{categories.find(category => category.id === entry!.data.category)?.name}</span><strong>{entry!.data.title}</strong><small>{entry!.data.subtitle}</small></span>
+              <span aria-hidden="true">↗</span>
+            </a>
+          ))}
         </section>
-      );
-    })}
+      </div>
 
-    <section class="contribute">
-      <div>
-        <p class="kicker">Open source · community-built</p>
-        <h2>Help expand the Vault.</h2>
-        <p>Have sources, scans, memories, or technical insight to add? The Vault grows with community expertise — every entry is a real, citable page.</p>
-      </div>
-      <div class="contribute-cta">
-        <a class="btn btn-primary" href="https://github.com/code198x" rel="noopener">Contribute on GitHub →</a>
-      </div>
+      <aside class="vault-directory" aria-labelledby="vault-directory-title">
+        <h2 id="vault-directory-title">Find something.</h2>
+        <div class="vault-search" data-vault-search>
+          <label for="vault-query">Search article titles</label>
+          <div class="vault-search-field"><input id="vault-query" type="search" placeholder="Try Z80, Tetris, or Sinclair" autocomplete="off" aria-controls="vault-results" /><button type="button" data-clear hidden>Clear</button></div>
+          <div id="vault-results" hidden><p class="vault-search-status" aria-live="polite"></p><ul></ul></div>
+          <script type="application/json" data-search-index set:html={JSON.stringify(searchIndex).replace(/</g, '\\u003c')} />
+        </div>
+        <nav class="vault-subjects" aria-label="Vault subjects">
+          <details open data-vault-subjects><summary>Browse by subject</summary>
+          <ul>{categories.map(category => (
+            <li data-vault-colour={category.colour}><a href={`/vault/category/${category.id}`}><span>{category.name}</span><small>{category.count}</small></a></li>
+          ))}</ul></details>
+        </nav>
+      </aside>
+    </div>
+    <section class="vault-contribute">
+      <h2>Help expand the Vault.</h2>
+      <p>Have sources, scans, or technical insight to add?</p>
+      <a href="https://github.com/code198x" rel="noopener">Contribute on GitHub ↗</a>
     </section>
   </div>
 </Layout>
 
-<style>
-  .wrap { max-width: var(--container-max-width); margin: 0 auto; padding: var(--space-5) var(--gutter) var(--space-16); }
-  .eyebrow, .kicker { font-family: var(--font-family-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-text-secondary); }
-
-  .vhead { margin-bottom: var(--space-10); }
-  .vhead h1 { font-family: var(--font-family-read); font-weight: 700; font-size: clamp(3.4rem, 8vw, 5.25rem); line-height: 0.84;
-      /* Reserve the descender the tight line-height does not: Literata's ink
-         drops ~0.33em past the box, which collided with the strapline. */
-      padding-bottom: 0.25em; margin: var(--space-1) 0 0; color: var(--color-text); }
-  .herorule { height: 9px; width: 260px; max-width: 80%; background: var(--color-house); position: relative; margin: var(--space-3) 0 0; }
-  .herorule::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 24%; background: var(--color-house-2); }
-  .lede { font-size: 1.05rem; max-width: 70ch; margin: var(--space-4) 0 0; color: var(--color-text); }
-  .summary { font-family: var(--font-family-mono); font-size: 0.75rem; color: var(--color-text-secondary); margin-top: var(--space-3); }
-  .summary b { color: var(--color-text); }
-
-  .cat { margin-top: var(--space-10); }
-  .cat-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4); border-bottom: 3px solid var(--color-text); padding-bottom: var(--space-2); margin-bottom: var(--space-2); }
-  .cat-head h2 { display: flex; align-items: center; gap: var(--space-3); font-size: 1.5rem; font-weight: 800; margin: 0; }
-  .cat-icon { display: inline-flex; color: var(--color-house-2); }
-  .view-all { font-family: var(--font-family-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.06em; color: var(--color-house-2); text-decoration: none; white-space: nowrap; }
-  .cat-intro { color: var(--color-text-secondary); margin: 0 0 var(--space-5); }
-
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); }
-  .acard { display: block; padding: var(--space-5); background: var(--color-surface); border: 3px solid var(--color-border); text-decoration: none; color: var(--color-text); transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base); }
-  .acard:hover, .acard:focus-visible { border-color: var(--color-house-2); transform: translate(-4px, -4px); box-shadow: 8px 8px 0 var(--color-house-2); }
-  .acard h3 { font-size: 1.15rem; font-weight: 700; margin: 0 0 var(--space-2); }
-  .acard p { font-size: 0.88rem; color: var(--color-text-secondary); line-height: 1.55; margin: 0; }
-
-  .contribute { margin-top: var(--space-12); border: 3px solid #241a12; background: #3a2c1f; box-shadow: var(--shadow-chunky); padding: var(--space-8); display: grid; grid-template-columns: 1fr auto; gap: var(--space-8); align-items: center; }
-  .contribute .kicker { color: #e8a07e; }
-  .contribute h2 { font-family: var(--font-family-read); font-weight: 700; font-size: clamp(1.8rem, 3.5vw, 2.6rem); line-height: 0.95; color: #f6efe2; margin: var(--space-1) 0 0; }
-  .contribute p { color: #dac9b4; max-width: 60ch; margin: var(--space-3) 0 0; font-size: 0.95rem; }
-  .contribute-cta { text-align: right; }
-
-  @media (max-width: 760px) {
-    .contribute { grid-template-columns: 1fr; }
-    .contribute-cta { text-align: left; }
+<script>
+  function initialiseVaultSearch() {
+    document.querySelectorAll<HTMLElement>('[data-vault-search]:not([data-bound])').forEach(root => {
+      root.dataset.bound = 'true';
+      const subjects = document.querySelector<HTMLDetailsElement>('[data-vault-subjects]');
+      if (subjects && matchMedia('(max-width:900px)').matches) subjects.open = false;
+      const input = root.querySelector<HTMLInputElement>('input')!;
+      const clear = root.querySelector<HTMLButtonElement>('[data-clear]')!;
+      const results = root.querySelector<HTMLElement>('#vault-results')!;
+      const status = results.querySelector<HTMLElement>('[aria-live]')!;
+      const list = results.querySelector<HTMLUListElement>('ul')!;
+      const index: {title: string; url: string; category: string; colour: string}[] = JSON.parse(root.querySelector('[data-search-index]')!.textContent!);
+      const normalise = (value: string) => value.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('en-GB');
+      function update() {
+        const query = normalise(input.value.trim());
+        results.hidden = !query;
+        clear.hidden = !query;
+        list.replaceChildren();
+        if (!query) return;
+        const matches = index.filter(entry => normalise(entry.title).includes(query));
+        status.textContent = matches.length ? `${matches.length} ${matches.length === 1 ? 'article' : 'articles'}${matches.length > 20 ? '. Showing the first 20; refine your search for more.' : '.'}` : 'No matching titles. Try a machine, person, game, or technique.';
+        for (const entry of matches.slice(0, 20)) {
+          const item = document.createElement('li');
+          const link = document.createElement('a');
+          link.href = entry.url;
+          const title = document.createElement('strong');
+          title.textContent = entry.title;
+          const category = document.createElement('small');
+          category.textContent = entry.category;
+          category.className = 'vault-category-label';
+          link.dataset.vaultColour = entry.colour;
+          link.append(title, category);
+          item.append(link);
+          list.append(item);
+        }
+      }
+      input.addEventListener('input', update);
+      clear.addEventListener('click', () => {input.value = ''; update(); input.focus();});
+      input.addEventListener('keydown', event => {if(event.key === 'Escape') {input.value = ''; update();}});
+    });
   }
-</style>
+  initialiseVaultSearch();
+  document.addEventListener('astro:page-load', initialiseVaultSearch);
+</script>
