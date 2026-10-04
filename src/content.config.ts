@@ -575,6 +575,7 @@ const modulePages = defineCollection({
   schema: z.object({
     title: z.string(),
     presentation: z.enum(['classic', 'house']).default('classic'),
+    entryAdvice: z.object({ message: z.string(), label: z.string(), href: z.string().startsWith('/') }).optional(),
     plannedTopicsNote: z.string().optional(),
     plannedTopics: z.array(z.object({
       title: z.string(),

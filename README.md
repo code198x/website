@@ -136,6 +136,8 @@ dependency. Building that page locally needs:
 
 Tests that do not load the decoder can run without `PLAY198X_WASM_PATH`; decoder-dependent tests then skip. A production build containing native images needs the decoder. CI builds and supplies it before testing and rendering.
 
+House module overviews can supply `entryAdvice: { message, label, href }` in frontmatter to place a useful route beside their start links. Keep it optional advice rather than a completion gate.
+
 ## Discord announcements
 
 The Pages workflow announces newly live RSS entries after deployment. The feed-diff and payload builders live in `scripts/discord-new-items.py` and `scripts/discord-payloads.py`. Run their offline regression checks with `python3 -m unittest discover -s scripts -p 'test_discord_*.py'`.

@@ -1,3 +1,4 @@
+import {openSourceEditors} from './source-editors.mjs';
 import {chromium} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import fs from 'node:fs/promises';
@@ -13,7 +14,7 @@ const path='/systems/sinclair-zx-spectrum/assembly/meet-assembly';
 try {
  await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/');
  await page.getByRole('link',{name:'Start: Meet Assembly'}).click();
- await page.waitForURL('**/meet-assembly/unit-01/');
+ await page.waitForURL(/\/meet-assembly\/unit-01\/?$/);await openSourceEditors(page);
  await page.locator('.sandbox-run').click();
  await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running'));
  await page.waitForFunction(()=>{const c=document.querySelector('.sandbox-screen');const rgba=c.getContext('2d').getImageData(0,0,1,1).data;return rgba[0]>100&&rgba[1]===0&&rgba[2]===0});
@@ -22,7 +23,7 @@ try {
  await page.waitForFunction(()=>{const c=document.querySelector('.sandbox-screen');const rgba=c.getContext('2d').getImageData(0,0,1,1).data;return rgba[0]===0&&rgba[1]>100&&rgba[2]===0});
  checks.push('Recommended starting link reaches lesson 1; real border changes red to green');
  for(let n=1;n<=8;n++){
-  if(n>1){await page.locator('a.nav-next').click();await page.waitForURL(`**/unit-0${n}/`)}
+  if(n>1){await page.locator('a.nav-next').click();await page.waitForURL(new RegExp(`/unit-0${n}/?$`))}
   assert(await page.locator('h1').count()===1,`Lesson ${n} heading`);
   const expected=await fs.readFile(`${samples}/sinclair-zx-spectrum/assembly/meet-assembly/opening/${['first-program','one-byte','eight-rows','row-loop','draw-routine','move-character','clocked-character','debug-branch'][n-1]}.asm`,'utf8');
   if(n>1)assert((await source.inputValue()).trim()===expected.trim(),`Lesson ${n} source differs`);

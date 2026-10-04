@@ -1,3 +1,4 @@
+import {openSourceEditors} from './source-editors.mjs';
 import {chromium} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import fs from 'node:fs/promises';
@@ -8,8 +9,8 @@ const context=await browser.newContext({viewport:{width:1280,height:1000}}),page
 const checks=[],errors=[];page.on('pageerror',e=>errors.push(String(e)));
 const assert=(x,msg)=>{if(!x)throw Error(msg)};
 try{
- await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-06/');
- await page.locator('a.nav-next').click();await page.waitForURL('**/unit-07/');
+ await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-06/');await openSourceEditors(page);
+ await page.locator('a.nav-next').click();await page.waitForURL(/\/unit-07\/?$/);await openSourceEditors(page);
  const root=page.locator('.movement-lesson'),source=root.locator('textarea'),screen=root.locator('.sandbox-screen');
  await root.locator('.assembly-editor-colours span').first().waitFor();
  await page.waitForFunction(()=>document.querySelector('.movement-lesson').dataset.ready==='true');

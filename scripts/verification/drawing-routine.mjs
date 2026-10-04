@@ -1,3 +1,4 @@
+import {openSourceEditors} from './source-editors.mjs';
 import {chromium} from '@playwright/test';
 import fs from 'node:fs/promises';
 const [base='http://127.0.0.1:1986',output='/tmp/drawing-routine-checks']=process.argv.slice(2);
@@ -6,7 +7,7 @@ const browser=await chromium.launch({channel:'chrome',headless:true});
 const page=await browser.newPage({viewport:{width:1280,height:1000}});
 const checks=[],errors=[];page.on('pageerror',e=>errors.push(String(e)));
 try{
- await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-05/');
+ await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-05/');await openSourceEditors(page);
  const root=page.locator('.routine-lesson'),source=root.locator('textarea');
  await root.locator('.assembly-editor-colours span').first().waitFor();
  await page.waitForFunction(()=>document.querySelector('.routine-lesson').dataset.ready==='true');

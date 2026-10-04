@@ -1,3 +1,4 @@
+import {openSourceEditors} from './source-editors.mjs';
 import {chromium} from '@playwright/test';
 import fs from 'node:fs/promises';
 const [base='http://127.0.0.1:1986',output='/tmp/row-loop-checks']=process.argv.slice(2);
@@ -12,13 +13,13 @@ try {
  async function run(){await root.locator('.sandbox-run').click();await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running'))}
  async function count(n){await page.waitForFunction(n=>document.querySelector('.replay-note').textContent.startsWith(`0 of ${n} captured`),n)}
  async function next(n){for(let i=0;i<n;i++)await root.locator('.replay-next').click()}
- await page.goto(base+route+'unit-03/');await source.waitFor();await root.locator('.assembly-editor-colours span').first().waitFor();await page.waitForFunction(()=>document.querySelector('.byte-lesson').dataset.ready==='true');
+ await page.goto(base+route+'unit-03/');await openSourceEditors(page);await source.waitFor();await root.locator('.assembly-editor-colours span').first().waitFor();await page.waitForFunction(()=>document.querySelector('.byte-lesson').dataset.ready==='true');
  await source.fill((await source.inputValue()).replace('%00011000','%10011000'));
  await root.locator('.transfer-character').click();
  if(!(await root.locator('.transfer-note').textContent()).includes('Run the current'))throw Error('Allowed transfer before execution');
  await run();await page.waitForFunction(()=>document.querySelector('[data-live-row="0"]').textContent==='10011000');
  await root.locator('.transfer-character').click();
- await page.locator('a.nav-next').click();await page.waitForURL('**/unit-04/');
+ await page.locator('a.nav-next').click();await page.waitForURL(/\/unit-04\/?$/);await openSourceEditors(page);
  await root.locator('.assembly-editor-colours span').first().waitFor();
  const original=await source.inputValue();
  await run();await count(8);await next(8);
