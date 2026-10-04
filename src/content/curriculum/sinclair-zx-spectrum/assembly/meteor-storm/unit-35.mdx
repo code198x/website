@@ -1,67 +1,134 @@
 ---
-title: "Keep and share the game"
+title: "Draw a loading screen"
 game: 1
 unit: 35
 ---
 
 import MeteorExperiment from '@components/MeteorExperiment.astro';
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Emulator from '@components/Emulator.astro';
+import Figure from '@components/Figure.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-The browser experiment proves that our code can run when placed directly into a prepared machine. A distributable tape needs a different check: loading through the Spectrum's ROM from a fresh start, then playing with the sound on.
+Meteor Storm's tape takes about two minutes to load: the game is over 11,000 bytes, and a cassette delivers them a bit at a time as tones. Spectrum players spent those minutes looking at the screen, and most commercial games gave them something to look at: a picture, loaded before the game, that stayed up while the rest of the tape played. A loading screen.
 
-Use [unit 34](../unit-34/)'s program: four sounds, with the star, boost and impact playing while the loop waits for the frame, a ship that breaks apart when it is hit, a storm coloured in bands, and a voyage of five storms with a score that counts all of it a bonus multiplied by the storm, and storms that get faster, closer and hotter as the voyage goes on, a record of the furthest voyage, and a title that plays the first storm behind its text. This lesson adds no new game code. First play it, then save the files you intend to share.
+This lesson makes one. The game itself does not change. The new work is a picture, a short BASIC program to load it, and a tape that holds all three parts in order.
 
-<MeteorExperiment checkpoint="attract" bytes={["phase","storm"]} words={["score","elapsed","best_time"]} controls="finished" />
+<Emulator
+  system="sinclair-zx-spectrum"
+  src="/code-samples/sinclair-zx-spectrum/assembly/meteor-storm/unit-35/meteor-storm.tap"
+  poster="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-35/loading-screen-loaded.png"
+  caption="This lesson's tape on a fresh 48K Spectrum. Press Run: the machine types LOAD &quot;&quot; and the ROM loads the tape, block by block. This player runs it faster than a cassette would; on a real Spectrum the picture appears after about 45 seconds and the game's title after about two minutes."
+/>
 
-## Keep source and data together
+Press Run and let it play; it takes under a minute here. The loader comes first and the screen goes black. Then comes the picture, and for a while nothing seems to happen except the border's loading stripes. Then the whole picture appears at once, and it stays up while the game loads beneath it. When the game starts, its title clears the picture away.
 
-Download **source** and **assets.inc**. The source contains the program, its sound tables, the starting records for the pieces and the table of row colours; the companion contains the pre-shifted artwork, including the eight pieces cut from the ship, and the five prepared courses. Keep both in one directory. Saving only the assembly file leaves its include dependency missing.
+## Three blocks on one tape
 
-You can also download a tape assembled from the current contents of both editors. Edits that have not been run yet are still included in that download, so test the version you intend to distribute. Revert restores both editors.
+A Spectrum tape is a sequence of blocks, each with a short header saying what it is. Until now, every lesson's tape held two: a small BASIC program, made by the assembler's `--tapbas` option, that loaded and ran the code. This tape holds three:
 
-For an independent local build:
+| Block | Kind | Contents |
+|---|---|---|
+| `meteor` | Program, runs from line 10 | the loader |
+| `screen` | Bytes, 6,912 at 16384 | the picture |
+| `storm` | Bytes, 11,757 at 32768 | the game |
+
+## The picture
+
+The screen is two areas of memory: 6,144 bytes of bitmap from 16384 ($4000), then 768 bytes of attributes from $5800, which [unit 28](../unit-28/) coloured. Together they are 6,912 bytes. A file holding exactly those bytes, in that order, is called a SCREEN$, after the BASIC keyword that saves and loads one.
+
+Any picture has to fit the attribute grid: each 8×8 cell has one INK and one PAPER. A photograph or a free-hand drawing ignores that, and converting it means choosing two colours for every cell and losing the rest. This picture is drawn to fit from the start, by colouring it the way the game colours its storm: by place. A short Python program, `compose.py`, draws it from the game's own artwork, the ship, meteor and star rows in `assets.py`, plus large letters for the name. Every row of cells gets one bright INK on black PAPER:
+
+<CodeFromFile src="sinclair-zx-spectrum/assembly/meteor-storm/checkpoints/loading-screen/compose.py" from="ROW_INK = [" to="LETTERS = {" />
+
+The name takes four of the rows, two colours to each word, and the meteors fall through the game's own cyan, green, yellow and red. Because colour depends only on the row, whatever is drawn anywhere in a row gets that row's colour, and no cell can hold more than two colours. The bottom three rows are left empty.
+
+`compose.py` writes a PNG. `build198x image`, the family's image converter, turns that into a SCREEN$:
 
 ```sh
-asm198x --dialect pasmo --cpu z80 --tapbas meteor-storm.asm -o meteor-storm.tap
+build198x image loading-screen.png --machine sinclair-zx-spectrum \
+    --format scr --dither none -o meteor-storm.scr
 ```
 
-Or use upstream Pasmo:
+Its report for this picture gives a mean error of 0 and the remark "input appears already constrained": every cell already had two colours or fewer, so nothing had to be changed. `--dither none` keeps it that way, since dithering would only add noise to a picture that needs none.
 
-```sh
-pasmo --tapbas meteor-storm.asm meteor-storm.tap
-```
+To go on the tape, the SCREEN$ needs a header like any other code block. A two-line assembly file makes one:
 
-The tape contains a small BASIC loader and the machine-code block. You do not need to author a BASIC game to use that loading convention. The code begins at 32768 and establishes its own stack, interrupt route and border colour when entered.
+<CodeFromFile src="sinclair-zx-spectrum/assembly/meteor-storm/checkpoints/loading-screen/screen.asm" />
 
-## Load what you will share
+`incbin` copies a file's bytes into the output unchanged, and `org 16384` sets the address the block's header gives: the start of the screen.
 
-The experiment above plays sound when you tick **Sound**, but it starts the code directly rather than loading a tape. The site's Spectrum player does what this check needs: it loads a tape through the ROM on a fresh 48K machine, with sound. Open the [Sinclair ZX Spectrum page](/systems/sinclair-zx-spectrum/), press the play button under its screen and tick **Sound**, which starts unticked. Press **Choose program or disk**, pick `meteor-storm.tap`, then press **Start**. The ROM loads the tape on its own; you will hear the loading tones. Click the screen before using the keys.
+## The loader
 
-On the desktop, start a fresh 48K Spectrum emulator, mount `meteor-storm.tap`, enter `LOAD ""` and start tape playback. In Emu198x the equivalent command is:
+The `--tapbas` loader only knew how to load one code block and run it. This one is written by hand:
 
-```sh
-emu198x-spectrum --machine spectrum_48k --tape meteor-storm.tap --autoload-tape --scale 3
-```
+<CodeFromFile src="sinclair-zx-spectrum/assembly/meteor-storm/checkpoints/loading-screen/loader.bas" />
 
-Confirm that the title appears in its bands of cyan, green, yellow, red and white, with SPACE TO LAUNCH flashing at the top and meteors falling behind the text, Space launches after release, O/P steer and held Space boosts. In flight the time and speed are cyan over a white score, and each meteor changes colour as it falls: cyan, green, yellow, then red just above the white ship. Listen for each event: a chirp for a star, a lower one when you press Space in flight (and none while you keep holding it) and a rising fanfare in clear space. Let a meteor hit the ship and watch the crash: the border flashes red, the storm freezes, and the ship breaks into eight pieces that fly up and land during a rattling, falling tone. About a second later the result appears with a black border and no pieces left. Cross a storm and check the voyage carries on: the fanfare, two seconds of CLEAR SPACE with the finish bonus, then `STORM 2/5` with the clock back at 00.00 and the ship in the centre. If the storm is all white, the border stays red, the result cuts in at once or clear space ends the game after one storm, you are not running this lesson's program. Retry after the crash; then return to the title. Cross a storm when you can and check that the BEST STORM time and the BEST VOYAGE record survive another retry within that session, and that the title shows the record.
+**Line 10** sets the border, the paper and the ink to black. `CLEAR 32767` then clears the screen in those colours, so the screen goes black. It also lowers RAMTOP, the top of the memory BASIC uses, to just below 32768, so BASIC keeps out of the space the game is about to load into.
 
-A snapshot saves a machine's state and can be useful while investigating a fault. It is not the same evidence as a fresh ROM load of the tape. A snapshot can preserve an already configured stack, interrupt mode or record that a fresh launch has not established yet.
+**Line 20** loads the next block into the screen. `SCREEN$` here is shorthand for `CODE 16384,6912`.
 
-<Question prompt="You set a best time, download the tape, reset, and load it again. Should that record still be there?">
+**Line 30** keeps the ROM from printing over the picture. Before loading each block, the ROM prints its header, `Bytes: storm`, on the main screen. With INK and PAPER both black, the message cannot be seen, but printing it still writes zeros over the picture's pixels where it lands, cutting a black strip out of it. We tried exactly that first, and the strip was there.
 
-No. Tape download assembles the source and initial data, not a recording of the running machine's RAM. Session records begin unset on a fresh program launch. Saving records across sessions would require a separate persistence feature.
+The main screen's printing goes through a *channel*, S, and the channel's record in memory holds the address of the routine that does the printing. On a 48K Spectrum, channel S's record starts at 23739, and its first two bytes are that address: $09F4, the ROM's print routine. `POKE 23739,111` changes the low byte from $F4 to $6F, so the address becomes $096F, and the byte at $096F in the ROM is `RET`. Every attempt to print on the main screen now returns at once, having printed nothing.
+
+**Line 40** loads the next block, the game, to the address its header gives, 32768. **Line 50** runs it.
+
+`build198x basic` tokenises the file into a BASIC program that runs from line 10 as soon as it has loaded, the same tool that builds the BASIC courses' tapes.
+
+<Question prompt="Line 30 comes after the picture has loaded. Why not put it before line 20, so no message is ever printed?">
+
+It could go first, and nothing would print. But before line 20 the screen is plain black, and the `Bytes: screen` message would be printed in black on black where there is no picture to damage yet. Only messages printed after the picture has arrived matter, and the only one is `Bytes: storm`. Either place works; line 30 is the latest place that does.
 
 </Question>
 
-## Choose a next experiment
+## One tape from three files
 
-Keep a working copy before changing the game. Try one design change with a prediction: a different drift cadence, an altered event spacing, revised star artwork or a new sound table. State which behaviour should change and which should remain intact, then retest collision, retry and completion. For a sound, work out its length in T-states first. A star or boost sound plays in the time an update leaves over; one longer than that is split across several waits and flutters.
+The unit's Makefile builds each block and joins them:
 
-We have built a game whose positions and rules live in state, whose picture is drawn from that state, and whose progress is measured separately from time. Its sounds are data too, and the ones heard in flight play in time the game would otherwise spend waiting. Even its crash is state: eight small records, moved by one rule and drawn from the ship's own artwork. Its colours belong to places, not objects: 24 bytes written once per screen, so nothing ever clashes. And its storms are data: five tables, chosen by one address. Those distinctions will still matter when another game needs a different renderer, more objects or a different machine.
+<CodeFromFile src="sinclair-zx-spectrum/assembly/meteor-storm/unit-35/Makefile" lang="makefile" from="# The tape shows" to="clean:" />
+
+A block's header carries a name of up to ten characters, which the ROM prints while loading. `build198x basic` takes the loader's from `--name meteor`. `asm198x` uses its output file's name, so the screen and the game are assembled inside `build/` as `screen` and `storm`, giving clean names without a folder or an extension in them.
+
+A TAP file is nothing more than its blocks one after another, each with a two-byte length in front. So joining three TAP files end to end with `cat` gives one tape that holds all three blocks, in order.
+
+## Why it appears all at once
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-35/loading-screen-partial.png" alt="A black screen inside a border of yellow and blue loading stripes." caption="Half-way through the picture's block. Its pixels are arriving, but every cell's INK and PAPER are still black, so none of them can be seen." />
+
+The bitmap comes first in the block and the attributes last. While the bitmap loads, every attribute is still the black-on-black that line 10 left, so the pixels arrive unseen. The colours come in the final 768 bytes, a few seconds of tape, and the picture appears as they land.
+
+<Figure src="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-35/loading-screen-loaded.png" alt="The loading screen: METEOR in white and cyan, STORM in yellow and red, meteors and stars with dotted trails falling through cyan, green, yellow and red rows, and the white ship near the bottom, framed by a black border." caption="The picture once its attributes have loaded. The checks compare it with the SCREEN$ byte for byte here, and again every half second until the game starts." />
+
+The checks for this unit load the tape through a fresh ROM, the way you just did. They find the screen black before the picture, the picture identical to the SCREEN$, nothing printed over it in all the time the game loads, and the game reaching its title.
+
+## Experiments
+
+These change the loader or the picture, not the program, so they are done on your own copy of the files with a local build: the browser editor below runs only the program.
+
+<Question prompt="Change line 10's `INK 0` to `INK 7`. What changes while the tape loads?">
+
+The pixels are now white as they arrive, so you can watch the picture draw in, in the screen's own order: the top line of every character row in the top third, then the next line, and so on, as [unit 3](../unit-03/) found. Colour floods in at the end as before. The `Bytes: screen` message is now visible too, white on black, until the picture loads over it.
+
+</Question>
+
+<Question prompt="Remove line 30 and load the tape. Where does the `Bytes: storm` message go?">
+
+It is printed black on black at the screen's current print position, near the top left in our tests, and wipes a strip of the picture there. The strip stays until the game starts, because nothing puts those pixels back.
+
+</Question>
+
+Then change the picture: edit `ROW_INK` or the meteor positions in `compose.py`, run it, convert the PNG again and rebuild the tape. Keep every cell to one INK, and the converter will report a mean error of 0 again.
+
+The program on the tape is the previous lesson's, unchanged, here so the course runs in order:
+
+<MeteorExperiment checkpoint="loading-screen" bytes={["phase","storm"]} words={["score"]} controls="finished" />
+
+The game is finished. [The last lesson](../unit-36/) checks the release tape on a fresh machine and gathers the files you need to share it.
 
 <Sources>
 
-The maintained Meteor Storm source linked through this page supplies the game rules, sound tables, row colours, courses and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
+Sinclair Research, [*ZX Spectrum BASIC Programming*, chapter 20](https://worldofspectrum.org/ZXBasicManual/zxmanchap20.html), tape storage: `SCREEN$` as `CODE 16384,6912`, and `LOAD "" CODE`. [Chapter 24](https://worldofspectrum.org/ZXBasicManual/zxmanchap24.html), the memory: the display file and attributes, CLEAR clearing the display file and setting RAMTOP, and the channel information for the keyboard, the screen and the printer. The channel record and the ROM addresses were read from a running 48K machine: channel S's output address at 23739-23740 is $09F4, and the byte at $096F is RET. The maintained Meteor Storm source linked through this page supplies the loader, `screen.asm`, `compose.py` and the Makefile; its tape check loads the tape through a fresh ROM. The screenshots are native Emu198x captures of that load.
 
 </Sources>

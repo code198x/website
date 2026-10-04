@@ -7,7 +7,7 @@ await fs.mkdir(out,{recursive:true});
 const root=path.resolve(import.meta.dirname,'../..'),samples=process.env.CODE_SAMPLES_PATH||path.resolve(root,'../code-samples');
 const route='/systems/sinclair-zx-spectrum/assembly/meteor-storm';
 // The closing lesson: the last unit, which downloads the finished game's files.
-const LAST=35;
+const LAST=36;
 // METEOR_FIRST starts at a later lesson. Anything but a lesson number would skip every lesson and still pass.
 const FIRST=Number(process.env.METEOR_FIRST??1);
 if(!Number.isInteger(FIRST)||FIRST<1||FIRST>LAST)throw Error(`METEOR_FIRST must be a lesson number from 1 to ${LAST}, not ${process.env.METEOR_FIRST}`);
@@ -157,6 +157,16 @@ try{
    assert(voyage.storm===0&&voyage.course===voyage.course1,`Voyage start ${JSON.stringify(voyage)}`);
    await key('q');await page.waitForFunction(()=>window.meteorReadings.named.phase===0);
   }
+  if(n===35||n===LAST){
+   // The lesson's player loads the release tape: the loader, the SCREEN$ and the game, in that order.
+   const src=await page.locator('code198x-spectrum-player').first().getAttribute('data-src');
+   const blocks=await page.evaluate(async src=>{
+    const d=new Uint8Array(await (await fetch(src)).arrayBuffer()),out=[];
+    for(let i=0;i<d.length;){const n=d[i]+256*d[i+1],b=d.subarray(i+2,i+2+n);if(b[0]===0)out.push({type:b[1],name:String.fromCharCode(...b.subarray(2,12)).trim(),length:b[12]+256*b[13],start:b[14]+256*b[15]});i+=2+n;}
+    return out;
+   },src);
+   assert(JSON.stringify(blocks.map(b=>[b.type,b.name]))==='[[0,"meteor"],[3,"screen"],[3,"storm"]]'&&blocks[1].length===6912&&blocks[1].start===16384&&blocks[2].start===32768,`Release tape ${n}: ${JSON.stringify(blocks)}`);
+  }
   if(n===LAST){
    for(const [selector,name] of [['.sandbox-download-tape','meteor-storm.tap'],['.sandbox-download-source','meteor-storm.asm'],['[data-download-companion]','assets.inc']]){
     const pending=page.waitForEvent('download');await page.locator(selector).click();await(await pending).saveAs(out+'/'+name);
@@ -167,22 +177,22 @@ try{
   checks.push(`Lesson ${n}: maintained files, running browser program, actual RAM and navigation`);console.log('PASS',n,timing);
  }
  console.log('Axe, layout and debugger screenshot',await within('Axe, layout and debugger screenshot',300000,async()=>{
- for(const theme of ['light','dark'])for(const n of [1,5,10,12,22,24,25,26,27,28,29,30,31,32,33,34,35]){
-  await open(n);await page.emulateMedia({colorScheme:theme,reducedMotion:'reduce'});await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
-  // Listing colours transition on a theme change; axe must see the settled colours, not a frame of the old ink.
-  // Two frames first, so the style change has started its transitions before we wait for them.
-  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
-  await page.evaluate(()=>Promise.all(document.getAnimations().map(a=>a.finished)));
+ for(const theme of ['light','dark'])for(const n of [1,5,10,12,22,24,25,26,27,28,29,30,31,32,33,34,35,36]){
+  await open(n);
+  // Listing colours transition on a theme change, and the transitions keep starting for a while, so waiting
+  // for them is unreliable. Axe judges the colours a reader settles on: switch transitions off, then the theme.
+  await page.addStyleTag({content:'*,*::before,*::after{transition:none!important}'});
+  await page.emulateMedia({colorScheme:theme,reducedMotion:'reduce'});await page.evaluate(t=>document.documentElement.dataset.theme=t,theme);
   const violations=(await new AxeBuilder({page}).include('main').analyze()).violations;await fs.writeFile(`${out}/axe-${n}-${theme}.json`,JSON.stringify(violations,null,2));assert(!violations.length,`Axe ${n} ${theme}: ${violations.map(v=>v.id)}`);
  }
  for(const width of [390,1280,1920]){
   await page.setViewportSize({width,height:1000});
-  for(const n of [1,5,10,12,22,24,25,26,27,28,29,30,31,32,33,34,35]){await open(n);assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),`Overflow ${n} ${width}: ${JSON.stringify(await page.evaluate(()=>Array.from(document.querySelectorAll('main *')).filter(el=>el.getBoundingClientRect().right>innerWidth).map(el=>({tag:el.tagName,class:el.className,width:el.getBoundingClientRect().width}))))}`);}
+  for(const n of [1,5,10,12,22,24,25,26,27,28,29,30,31,32,33,34,35,36]){await open(n);assert(!await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),`Overflow ${n} ${width}: ${JSON.stringify(await page.evaluate(()=>Array.from(document.querySelectorAll('main *')).filter(el=>el.getBoundingClientRect().right>innerWidth).map(el=>({tag:el.tagName,class:el.className,width:el.getBoundingClientRect().width}))))}`);}
   await open(5);await page.screenshot({path:`${out}/lesson-05-${width}.png`,fullPage:true});
  }
  await open(10);await run();await page.locator('[data-break]').click();await page.waitForFunction(()=>document.querySelector('.meteor-debug-state').textContent.includes('Paused'));await page.locator('.meteor-experiment').screenshot({path:out+'/collision-debugger.png'});
  }));
- checks.push('Source and companion edits/revert, missing includes, shift prediction, steering, collision stepping, loss/retry/title, border kept through the impact tone, boost press edge, a long boost played across frame waits without a late update, the destroyed phase (red flash at contact, then a black-bordered result with no pieces), an attribute map matching row_colours in flight, the voyage starting on the first course and file downloads pass');
+ checks.push('Source and companion edits/revert, missing includes, shift prediction, steering, collision stepping, loss/retry/title, border kept through the impact tone, boost press edge, a long boost played across frame waits without a late update, the destroyed phase (red flash at contact, then a black-bordered result with no pieces), an attribute map matching row_colours in flight, the voyage starting on the first course, the three blocks of the release tape and file downloads pass');
  checks.push('Representative lesson types pass axe in both themes and fit mobile, desktop and wide viewports');
  assert(!errors.length,errors.join('\n'));await fs.writeFile(out+'/results.json',JSON.stringify({base,checks,errors},null,2)+'\n');
 }catch(error){
