@@ -112,6 +112,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
   <div class="sandbox-message sandbox-message--build" hidden>
     <p class="sandbox-message-label">The assembler found a problem</p>
     <pre class="sandbox-diagnostics"></pre>
+    <div class="sandbox-diagnostic-links"></div>
   </div>
 
   <div class="sandbox-message sandbox-message--run" hidden>
@@ -121,7 +122,8 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
 </div>
 
 <script>
-  import { expandAssemblyIncludes } from '../lib/assembly-includes';
+  import { expandAssemblyIncludes, expandAssemblyProject } from '../lib/assembly-includes';
+  import { formatAssemblyDiagnostics, type SourceLocation } from '../lib/assembly-diagnostics';
   import { SpectrumRunner, type Verdict } from '../lib/spectrum-runner';
   import { SoundControl } from '../lib/lesson-audio';
 
@@ -166,6 +168,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
       const runBox = root.querySelector<HTMLElement>('.sandbox-message--run')!;
       const diagnostics = root.querySelector<HTMLPreElement>('.sandbox-diagnostics')!;
       const verdictText = root.querySelector<HTMLParagraphElement>('.sandbox-verdict')!;
+      const diagnosticLinks = root.querySelector<HTMLElement>('.sandbox-diagnostic-links')!;
 
       const dialect = root.dataset.dialect ?? 'pasmo';
       const tapeName = root.dataset.tapeName ?? 'program.tap';
@@ -253,10 +256,34 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
         else delete status.dataset.state;
       };
 
-      /** The assembler's own output, kept monospace because its columns line up. */
-      const showDiagnostics = (text: string | null) => {
-        buildBox.hidden = text === null;
-        diagnostics.textContent = text ?? '';
+      const showDiagnostics = (value: unknown, locations: SourceLocation[] = []) => {
+        buildBox.hidden = value === null;
+        diagnosticLinks.replaceChildren();
+        if (value === null) { diagnostics.textContent = ''; return; }
+        const messages = formatAssemblyDiagnostics(value, locations);
+        diagnostics.textContent = messages.map(message => message.text).join('\n\n');
+        const seen = new Set<string>();
+        for (const { location } of messages) {
+          if (!location) continue;
+          const editor = location.file ? companionEditors.find(editor => editor.dataset.filename === location.file) : source;
+          const key = `${location.file ?? ''}:${location.line}`;
+          if (!editor || seen.has(key)) continue;
+          seen.add(key);
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = `Edit ${location.file ? location.file + ', ' : ''}line ${location.line}`;
+          button.addEventListener('click', () => {
+            const drawer = editor.closest('details');
+            if (drawer) drawer.open = true;
+            const lines = editor.value.split('\n');
+            const start = lines.slice(0, location.line - 1).reduce((length, line) => length + line.length + 1, 0);
+            editor.focus();
+            editor.setSelectionRange(start, start + (lines[location.line - 1]?.length ?? 0));
+            editor.scrollTop = Math.max(0, (location.line - 2) * parseFloat(getComputedStyle(editor).lineHeight));
+            editor.dispatchEvent(new Event('scroll'));
+          });
+          diagnosticLinks.append(button);
+        }
       };
 
       /** What the machine did, in prose, so it wraps like prose. */
@@ -296,10 +323,11 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
           if (disposed) return;
           const text = source.value;
 
-          const resultJson = asm.assemble(dialect, assembledSource());
+          const project = expandAssemblyProject(source.value, files());
+          const resultJson = asm.assemble(dialect, project.source);
           const result = resultJson ? JSON.parse(resultJson) : null;
           if (!result || Array.isArray(result)) {
-            showDiagnostics(resultJson ?? 'The source did not assemble.');
+            showDiagnostics(result ?? 'The source did not assemble.', project.locations);
             say('Nothing to run.', 'error');
             return;
           }
@@ -576,7 +604,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
   }
 
   .sandbox-status[data-state='error'] {
-    color: var(--color-error, #c33);
+    color: var(--h-ink);
   }
 
   /* Both messages span the editor and the machine, so a sentence has the
@@ -607,12 +635,12 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
 
   /* The source never became a program. Red: nothing ran. */
   .sandbox-message--build {
-    border-color: var(--color-error, #c33);
+    border-color: var(--h-ink);
     background: var(--color-error-muted, rgba(200, 50, 50, 0.08));
   }
 
   .sandbox-message--build .sandbox-message-label {
-    color: var(--color-error, #c33);
+    color: var(--h-ink);
   }
 
   /* Scoped through the parent deliberately. The site styles a `pre` inside a
@@ -627,8 +655,9 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
     font-family: var(--font-family-mono, monospace);
     font-size: 0.75rem;
     line-height: 1.5;
-    /* The assembler's columns line up; keep them, and scroll rather than wrap. */
-    white-space: pre;
+    /* Keep the message and its line number readable within a narrow panel. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
     overflow-x: auto;
     /* Same reason as the container: without this the pre sets the box's width
        from its longest line rather than scrolling within it. */
@@ -658,4 +687,9 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
     max-width: 62ch;
     color: var(--color-text, #eee);
   }
+</style>
+
+<style>
+  .sandbox-diagnostic-links { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+  .sandbox-diagnostic-links button { margin-top: var(--space-3); min-height: 44px; padding: var(--space-2) var(--space-3); background: var(--h-ground); color: var(--h-ink); border: 1px solid var(--h-line); cursor: pointer; font: inherit; }
 </style>

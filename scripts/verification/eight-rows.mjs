@@ -1,3 +1,4 @@
+import {openSourceEditors} from './source-editors.mjs';
 import {chromium} from '@playwright/test';
 import fs from 'node:fs/promises';
 const [base='http://127.0.0.1:1986',output='/tmp/eight-row-checks']=process.argv.slice(2);
@@ -7,7 +8,7 @@ const page=await browser.newPage({viewport:{width:1280,height:1000}});
 const errors=[];page.on('pageerror',e=>errors.push(String(e)));
 const checks=[];
 try {
- await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-03/');
+ await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-03/');await openSourceEditors(page);
  const root=page.locator('.byte-lesson'),source=root.locator('textarea');
  await root.locator('.assembly-editor-colours span').first().waitFor();
  const original=await source.inputValue();

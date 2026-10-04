@@ -1,3 +1,4 @@
+import {openSourceEditors} from './source-editors.mjs';
 import {chromium} from '@playwright/test';
 import fs from 'node:fs/promises';
 const [base='http://127.0.0.1:1986',output='/tmp/movement-checks']=process.argv.slice(2);
@@ -7,15 +8,15 @@ const page=await browser.newPage({viewport:{width:1280,height:1000}});
 const errors=[],checks=[];page.on('pageerror',e=>errors.push(String(e)));
 const assert=(ok,msg)=>{if(!ok)throw Error(msg)};
 try{
- await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-05/');
- await page.locator('a.nav-next').click();await page.waitForURL('**/unit-06/');
+ await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-05/');await openSourceEditors(page);
+ await page.locator('a.nav-next').click();await page.waitForURL(/\/unit-06\/?$/);await openSourceEditors(page);
  const root=page.locator('.movement-lesson'),source=root.locator('textarea'),screen=root.locator('.sandbox-screen');
  await root.locator('.assembly-editor-colours span').first().waitFor();await page.waitForFunction(()=>document.querySelector('.movement-lesson').dataset.ready==='true');
  await root.evaluate(el=>el.addEventListener('sandbox:memory',e=>window.reading=e.detail));
  const original=await source.inputValue();
  async function state(key,value){await page.waitForFunction(([key,value])=>window.reading?.named[key]===value,[key,value])}
  async function run(){await page.evaluate(()=>window.reading=null);await root.locator('.sandbox-run').click();await state('position',15);await state('armed',1)}
- async function key(code,position){await screen.focus();await page.keyboard.down(code);await state('position',position);await page.keyboard.up(code);await state('armed',1)}
+ async function key(code,position){await screen.focus();await page.keyboard.down(code);await state('keys',code==='KeyO'?1:2);await state('position',position);await page.keyboard.up(code);await state('keys',3);await state('armed',1)}
  await run();
  let reading=await page.evaluate(()=>window.reading);const patterns=[24,60,126,219,255,60,102,66];
  for(let row=0;row<8;row++)for(let col=0;col<32;col++)assert(reading.values[row*32+col]===(col===15?patterns[row]:0),'Initial row dirty');

@@ -1,3 +1,4 @@
+import {openSourceEditors} from './source-editors.mjs';
 import {chromium} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import fs from 'node:fs/promises';
@@ -7,7 +8,7 @@ const browser=await chromium.launch({channel:'chrome',headless:true});const cont
 const checks=[],errors=[];page.on('pageerror',e=>errors.push(String(e)));
 const assert=(x,msg)=>{if(!x)throw Error(msg)};
 try{
- await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-08/');
+ await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-08/');await openSourceEditors(page);
  const root=page.locator('.debugger-lesson'),source=root.locator('textarea'),step=root.locator('.debug-step');
  await root.locator('.assembly-editor-colours span').first().waitFor();await page.waitForFunction(()=>document.querySelector('.debugger-lesson').dataset.ready==='true');
  await root.evaluate(el=>{el.addEventListener('sandbox:debug-state',e=>window.debugState=e.detail);el.addEventListener('sandbox:memory',e=>window.memory=e.detail)});
