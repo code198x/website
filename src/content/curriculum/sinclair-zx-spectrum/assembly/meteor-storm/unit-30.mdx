@@ -1,67 +1,124 @@
 ---
-title: "Keep and share the game"
+title: "Let the score outgrow a byte"
 game: 1
 unit: 30
 ---
 
 import MeteorExperiment from '@components/MeteorExperiment.astro';
+import AssemblyExcerpt from '@components/AssemblyExcerpt.astro';
+import Figure from '@components/Figure.astro';
 import Question from '@components/Question.astro';
 import Sources from '@components/Sources.astro';
 
-The browser experiment proves that our code can run when placed directly into a prepared machine. A distributable tape needs a different check: loading through the Spectrum's ROM from a fresh start, then playing with the sound on.
+[Unit 29](../unit-29/) ended with a score that could not keep up. On a full voyage it climbed to 1940, fell to 0500, climbed again and finished on 0020, although the run had earned 5,140 points. The score was one byte, and a byte stops at 255.
 
-Use [unit 29](../unit-29/)'s program: four sounds, with the star, boost and impact playing while the loop waits for the frame, a ship that breaks apart when it is hit, a storm coloured in bands, and a voyage of five storms. This lesson adds no new game code. First play it, then save the files you intend to share.
+In this lesson the score gets a second byte. That means adding, comparing and printing numbers that do not fit in A, using the 16-bit instructions the Z80 has and one it does not.
 
-<MeteorExperiment checkpoint="voyage" bytes={["phase","storm","score"]} words={["elapsed","best_time"]} controls="finished" />
+<MeteorExperiment checkpoint="two-byte-score" bytes={["phase","storm"]} words={["score","elapsed"]} controls="finished" />
 
-## Keep source and data together
+Space launches; O/P steer; hold Space for 2X. One hit ends the voyage. At the result R retries from the first storm and Q returns to the title.
 
-Download **source** and **assets.inc**. The source contains the program, its sound tables, the starting records for the pieces and the table of row colours; the companion contains the pre-shifted artwork, including the eight pieces cut from the ship, and the five prepared courses. Keep both in one directory. Saving only the assembly file leaves its include dependency missing.
+The inspector now shows `score` as a word. Collect stars and watch it pass 255 without starting again.
 
-You can also download a tape assembled from the current contents of both editors. Edits that have not been run yet are still included in that download, so test the version you intend to distribute. Revert restores both editors.
+## What you should see
 
-For an independent local build:
+<Figure src="/images/sinclair-zx-spectrum/assembly/meteor-storm/unit-30/two-byte-score-result.png" alt="The result after five storms. The HUD reads TIME 19.60, the boost line, SCORE 05140 and STORM 5/5. Below: CLEAR SPACE, METEOR STORM - FLIGHT ENDED, FINISH BONUS 0810, R RETRY Q TITLE, BEST STORM 019.60 and BEST SCORE 05140." caption="The same route as unit 29's, flown with this program. The score that showed 0020 now shows all 5,140 points, and the best score with it." />
 
-```sh
-asm198x --dialect pasmo --cpu z80 --tapbas meteor-storm.asm -o meteor-storm.tap
-```
+The score line has an extra digit: `SCORE 00000`. On the route the checks fly, the score at the start of each storm now reads 0, 960, 1940, 3060 and 4050, and the voyage ends at 05140. Those are unit 29's numbers with the lost 2560s put back.
 
-Or use upstream Pasmo:
+## Two bytes, low first
 
-```sh
-pasmo --tapbas meteor-storm.asm meteor-storm.tap
-```
+`score` changes from `defb 0` to `defw 0`, and so do `best_score` and `hud_last_score`, the HUD's copy of the score it last printed. A word is two bytes, low byte first, the order [unit 18](../unit-18/)'s `elapsed` and [unit 29](../unit-29/)'s `course` use. Together they count to 65,535, and since the score stores tens of points, that is 655,350 points. A five-storm voyage comes nowhere near.
 
-The tape contains a small BASIC loader and the machine-code block. You do not need to author a BASIC game to use that loading convention. The code begins at 32768 and establishes its own stack, interrupt route and border colour when entered.
+The low byte does what the one-byte score did. The high byte counts how many times the low byte has gone round: a score of 5,140 points is 514 tens, which is 2 × 256 + 2, so the high byte holds 2 and the low byte 2. Unit 29's program kept only the low byte, which is why it showed 0020.
 
-## Load what you will share
+## Adding
 
-The experiment above plays sound when you tick **Sound**, but it starts the code directly rather than loading a tape. The site's Spectrum player does what this check needs: it loads a tape through the ROM on a fresh 48K machine, with sound. Open the [Sinclair ZX Spectrum page](/systems/sinclair-zx-spectrum/), press the play button under its screen and tick **Sound**, which starts unticked. Press **Choose program or disk**, pick `meteor-storm.tap`, then press **Start**. The ROM loads the tape on its own; you will hear the loading tones. Click the screen before using the keys.
+A star used to add with `add a,c`. Now:
 
-On the desktop, start a fresh 48K Spectrum emulator, mount `meteor-storm.tap`, enter `LOAD ""` and start tape playback. In Emu198x the equivalent command is:
+<AssemblyExcerpt checkpoint="two-byte-score" from="advance_meteors_absolute:" to="meteor_contact:" />
 
-```sh
-emu198x-spectrum --machine spectrum_48k --tape meteor-storm.tap --autoload-tape --scale 3
-```
+The points, 1 at 1X or 2 at 2X, go into E with D set to 0, so DE holds the same number as a word. `ld hl,(score)` loads both bytes of the score into HL, `add hl,de` adds the two words, and `ld (score),hl` stores both bytes back.
 
-Confirm that the title appears in its bands of cyan, green, yellow, red and white, Space launches after release, O/P steer and held Space boosts. In flight the time and speed are cyan over a white score, and each meteor changes colour as it falls: cyan, green, yellow, then red just above the white ship. Listen for each event: a chirp for a star, a lower one when you press Space in flight (and none while you keep holding it) and a rising fanfare in clear space. Let a meteor hit the ship and watch the crash: the border flashes red, the storm freezes, and the ship breaks into eight pieces that fly up and land during a rattling, falling tone. About a second later the result appears with a black border and no pieces left. Cross a storm and check the voyage carries on: the fanfare, two seconds of CLEAR SPACE with the finish bonus, then `STORM 2/5` with the clock back at 00.00 and the ship in the centre. If the storm is all white, the border stays red, the result cuts in at once or clear space ends the game after one storm, you are not running this lesson's program. Retry after the crash; then return to the title. Cross a storm when you can and check that the BEST STORM time and the best score survive another retry within that session. After a long voyage the score itself is wrong, wrapped round past 2550, as [unit 29](../unit-29/) explains.
+`add hl,de` does the carry for us. When the low bytes add up to more than 255, the extra goes into the high byte, exactly as a carry in column addition goes into the next column. 255 tens plus 2 is 257: low byte 1, high byte 1.
 
-A snapshot saves a machine's state and can be useful while investigating a fault. It is not the same evidence as a fresh ROM load of the tape. A snapshot can preserve an already configured stack, interrupt mode or record that a fresh launch has not established yet.
+The finish bonus is added the same way:
 
-<Question prompt="You set a best time, download the tape, reset, and load it again. Should that record still be there?">
+<AssemblyExcerpt checkpoint="two-byte-score" from="finish_bonus:" to=" ld de,(best_time)" />
 
-No. Tape download assembles the source and initial data, not a recording of the running machine's RAM. Session records begin unset on a fresh program launch. Saving records across sessions would require a separate persistence feature.
+`finish_points` stays one byte. One storm's bonus is never more than 100, and adding it to the score goes through DE like a star's points.
+
+<Question prompt="The score is 255 tens and you collect a star at 2X. What does the HUD show next?">
+
+`SCORE 02570`. DE is 2, so HL goes from 255 to 257. In bytes, the low byte goes from 255 to 1 with a carry, and the high byte from 0 to 1. `decimal4` prints 257 as 0257, and the score line's fixed final 0 makes it 2570.
 
 </Question>
 
-## Choose a next experiment
+## Comparing
 
-Keep a working copy before changing the game. Try one design change with a prediction: a different drift cadence, an altered event spacing, revised star artwork or a new sound table. State which behaviour should change and which should remain intact, then retest collision, retry and completion. For a sound, work out its length in T-states first. A star or boost sound plays in the time an update leaves over; one longer than that is split across several waits and flutters.
+A one-byte comparison was `cp`. The Z80 has no 16-bit compare, so the program subtracts and reads the flags. The HUD only reprints the score when it has changed:
 
-We have built a game whose positions and rules live in state, whose picture is drawn from that state, and whose progress is measured separately from time. Its sounds are data too, and the ones heard in flight play in time the game would otherwise spend waiting. Even its crash is state: eight small records, moved by one rule and drawn from the ship's own artwork. Its colours belong to places, not objects: 24 bytes written once per screen, so nothing ever clashes. And its storms are data: five tables, chosen by one address. Those distinctions will still matter when another game needs a different renderer, more objects or a different machine.
+<AssemblyExcerpt checkpoint="two-byte-score" from="hud_choose_score:" to="bonus_line:" />
+
+`sbc hl,de` subtracts DE from HL, and the carry flag as well. That is what the C in the name means, and it is why `or a` comes first: OR-ing A with itself leaves A unchanged and clears the carry flag, so the subtraction is HL minus DE and nothing more. If the score equals the last one printed, the result is zero, the zero flag is set and `ret z` returns.
+
+The subtraction destroys HL, so the score is loaded again before it is copied into `hud_last_score`.
+
+`save_score` uses the other flag:
+
+<AssemblyExcerpt checkpoint="two-byte-score" from="; Keep the score if it is at least" to="; HL = sound:" />
+
+When the score is lower than the best, the subtraction has to borrow, and the carry flag is set. `ret c` keeps the best. Otherwise the score is at least the best, and it is stored as the new best score.
+
+<Question prompt="Why does save_score need `or a` before `sbc hl,de`, when it has just loaded HL and DE and done nothing else?">
+
+The carry flag is whatever the last instruction that changed it left behind. `ld` instructions do not change the flags, so after the two loads the carry is still whatever it was before `save_score` was called. If it happened to be set, `sbc` would take away one more than DE, and a score equal to the best would look lower than it and not be saved. `or a` makes the carry 0 every time.
+
+</Question>
+
+## Printing four digits
+
+`decimal3` turned a byte into three digits: it subtracted 100 as many times as it could, then 10, and the units were what was left. The new routine, `decimal4`, does the same with 1,000, 100 and 10 for a word in HL:
+
+<AssemblyExcerpt checkpoint="two-byte-score" from="; HL (0-9999) to four decimal" to="; HL holds elapsed PAL frames" />
+
+Each digit comes from `decimal_digit`. It is handed a negative power of ten in BC, and adds it to HL again and again. Adding a negative number is subtracting, but it gives a useful flag. In 16 bits, -100 is 65,436, and adding 65,436 to HL carries out of the top bit exactly when HL was at least 100. So the carry flag means "there was another hundred to take away".
+
+A counts the adds. It starts at one below the character `'0'`, and each pass adds 1 to it before adding BC. Here is the hundreds digit of 514:
+
+| Pass | A | HL after `add hl,bc` | Carry |
+|---|---|---|---|
+| 1 | '0' | 414 | yes |
+| 2 | '1' | 314 | yes |
+| 3 | '2' | 214 | yes |
+| 4 | '3' | 114 | yes |
+| 5 | '4' | 14 | yes |
+| 6 | '5' | 14 - 100, wrapped | no |
+
+The sixth add found no hundred left: HL has gone below zero, wrapping round to 65,450. The carry flag is clear, so `sbc hl,bc` subtracts BC with nothing extra, and subtracting -100 adds the 100 back: HL is 14 again. A holds `'5'`, and `ld (de),a` stores it. The tens digit then comes out as `'1'`, and the 4 left over is the units, made into a character with `add a,'0'`.
+
+Four digits cover 0 to 9,999, or 99,990 points. `score_line` and `records` call `decimal4`, and both digit buffers have a fifth character, the fixed `0`.
+
+## Experiments
+
+Keep a working copy before each change, then press **Revert** when you have finished.
+
+<Question prompt="In decimal4, change the third `ld bc,-10` to `ld bc,-100`. What does the score line show for a score of 514 tens?">
+
+`SCORE 050>0`. The first two steps take out no thousands and five hundreds, leaving 14. The third step now tries to take out 100, finds none and stores `'0'`. The units step is handed 14, and `'0'` plus 14 is character 62, `>`. Each step must take out ten times less than the one before it, or the last step is left with more than one digit's worth.
+
+</Question>
+
+<Question prompt="Put it back. Then, in the star code, replace `ld d,0` with `ld d,1`. What does each star add?">
+
+256 more than before. DE is now 256 plus the star's points, so a star adds 257 or 258 tens, over 2,500 points. `add hl,de` adds all 16 bits of DE, so the high byte has to be set deliberately, which is why the original sets D to 0.
+
+</Question>
+
+The score can now count the whole voyage. Every storm still pays the same bonus, though, and the fifth is the hardest to reach. [The next lesson](../unit-31/) packages the game as a tape; a later one will make the fifth storm's bonus worth more.
 
 <Sources>
 
-The maintained Meteor Storm source linked through this page supplies the game rules, sound tables, row colours, courses and data layout. Its experiments run original Z80 instructions on an emulated 48K PAL Spectrum; the game rules are design choices, not hardware properties.
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf): `ADD HL,ss` adds a register pair to HL and sets the carry flag on a carry out of bit 15; `SBC HL,ss` subtracts the register pair and the carry flag from HL, setting the zero flag when the result is zero and the carry flag on a borrow; `LD HL,(nn)` and `LD (nn),HL` load and store a pair low byte first; `OR r` resets the carry flag. The maintained Meteor Storm source linked through this page supplies `decimal4` and the score code, and its verification flies the measured route and reads the score lines back from the screen. The screenshot is a native Emu198x capture of this program.
 
 </Sources>
