@@ -7,6 +7,8 @@ unit: 2
 tags: ["hardware", "cpu", "briefing"]
 ---
 
+import Sources from "@components/Sources.astro";
+
 Fifty times a second the screen is drawn, whether the program is ready or not. Everything a Spectrum program does has to fit between one drawing and the next, and that turns out to be the constraint the whole machine is organised around.
 
 ## The clock
@@ -29,9 +31,9 @@ At four T-states apiece, a frame would hold about 17,000 of the cheapest instruc
 
 ## The ULA shares the memory
 
-The Spectrum's 48K is not one uniform block. Addresses `$4000` to `$7FFF` — the first 16K of RAM — are what the ULA reads to draw the screen. When it is drawing and the processor reaches into that range, the processor is made to wait.
+The Spectrum's 48K is not one uniform block. Addresses `$4000` to `$7FFF` — the first 16K of RAM — are memory the ULA shares with the processor, and the screen sits at the bottom of it. While the ULA is fetching screen bytes and the processor reaches anywhere into that range, the processor is made to wait.
 
-Not occasionally. Through the active picture, the wait lands on six cycles in every eight.
+Not occasionally. On each of the 192 lines of picture, the ULA fetches for 128 of the line's 224 T-states. An access that lands in six of every eight of those T-states is held up, by as much as six T-states.
 
 Memory above `$7FFF` is untouched and runs at full speed. This is the most consequential thing to know about where code sits on a Spectrum, and the reason a program that runs well can turn sluggish purely by being loaded somewhere else.
 
@@ -39,14 +41,20 @@ Memory above `$7FFF` is untouched and runs at full speed. This is the most conse
 
 The cost is easiest to see with a real job.
 
-The screen's pixels occupy 6,144 bytes. Clearing them with the Z80's block-copy instruction takes about 129,000 T-states with nothing in the way — nearly two whole frames, to do one thing, once.
+The screen's pixels occupy 6,144 bytes. Clearing them with the Z80's block-copy instruction, `LDIR`, costs 21 T-states a byte: about 129,000 T-states with nothing in the way. That is nearly two whole frames, to do one thing, once.
 
-With the ULA contending for the same memory while the picture is drawn, that clear takes around 307,000 T-states: more than four frames, a tenth of a second, to blank the screen.
+On a real 48K those bytes are in shared memory, so some of the accesses wait. We measured the clear in an emulator: started just after the frame interrupt, it takes 161,441 T-states, about 2.3 frames. Started elsewhere in the frame, it takes up to about 168,000. Either way, contention adds roughly a quarter to the job.
 
-Which is why period code cleared during the border — the 14,336 T-states between the frame interrupt and the first line of picture, when the ULA is reading nothing and the memory is entirely the program's. Code that ignored the distinction looked slow, and the reason was never the programmer's arithmetic.
+The penalty is smaller than "six in every eight" suggests, because the ULA only fetches while the picture is being drawn. Between the frame interrupt and the first line of picture there are 14,336 T-states in which nothing waits. That is room for about 680 bytes of `LDIR`, around a ninth of the pixels. A whole clear can't fit in that gap, but a smaller redraw can, and the gap is worth planning around.
 
 ## Why this shapes everything else
 
 Techniques on this machine are mostly responses to that budget. Programs that move whole sprites every frame keep their code above `$7FFF`. Music drivers count T-states rather than trust a loop to take the same time twice. Much Spectrum code is in assembly at all because BASIC spends the budget before the program sees any of it.
 
 Counting T-states is not a prerequisite for starting. Knowing they are countable is, because everything you are about to read was written by someone counting them.
+
+<Sources>
+
+Chris Smith, *The ZX Spectrum ULA: How to Design a Microcomputer* (ZX Design and Media), chapter 10, p. 87: the 14 MHz crystal; chapter 18, pp. 189–192: the ULA holding the Z80's clock for addresses 16384–32767 while it reads video bytes, and the wait window covering six of every eight cycles. Alessandro Grussu, *Spectrumpedia*, volume 1 (English edition), pp. 110–111: contention only while the screen centre is drawn, starting 14,336 T-states after the interrupt, with delays of 1 to 6 T-states. Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf): instruction timings, including 21 T-states per repeated `LDIR` step. The clear timings were measured in Emu198x on a 48K with the official ROM, using `LD (HL),0` and `LDIR` over `$4000`–`$57FF` with interrupts off; the same clear over uncontended RAM took 129,038 T-states.
+
+</Sources>
