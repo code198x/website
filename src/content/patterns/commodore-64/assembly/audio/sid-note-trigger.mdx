@@ -1,116 +1,59 @@
 ---
 title: "SID Note Trigger"
-summary: "Play a single note on the SID chip with gate control. The foundation of all SID audio."
+summary: "Start a note on one SID voice by setting its gate, and end it by clearing the gate, with the envelope rates the chip actually uses."
 platform: "commodore-64"
 category: "audio"
 difficulty: "beginner"
-taught_in: "Game 6, Unit 1"
 tags: ["sid", "audio", "music", "sound"]
 evolution:
   previous: null
   next: "sid-voice-setup"
 related:
-  patterns: ["sid-voice-setup"]
+  patterns: ["sid-voice-setup", "sid-multi-voice"]
   vault: ["sid-chip", "commodore-64"]
 ---
 
-## Overview
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
 
-Trigger a note by setting frequency, waveform, and ADSR envelope, then toggling the gate bit. The gate-on starts the attack phase; gate-off triggers release. This is the core technique for all SID sound — music and effects both build on this foundation.
+## A gate, not a switch
 
-## Code
+Each of the SID's three voices has a **gate** bit, bit 0 of its control register. Setting it starts the voice's envelope: **attack** up to peak, **decay** down to the sustain level, then **sustain** for as long as the gate stays set. Clearing it starts **release**, a fall to silence at the release rate. The envelope alone sets how loud the voice is, so the waveform can stay selected after the note ends.
 
-```asm
-; =============================================================================
-; SID NOTE TRIGGER
-; Play a single note on voice 1
-; Taught: Game 6 (SID Symphony), Unit 1
-; CPU: ~50 cycles | Memory: ~60 bytes
-; =============================================================================
+None of those phases is instant. Even the fastest rate, 0, takes milliseconds. This example targets a **PAL C64**, loaded at `$0801` and started with `RUN`.
 
-SID_BASE    = $D400
+## The routines' contract
 
-; Voice 1 registers
-SID_V1_FREQ_LO  = SID_BASE + $00
-SID_V1_FREQ_HI  = SID_BASE + $01
-SID_V1_PW_LO    = SID_BASE + $02
-SID_V1_PW_HI    = SID_BASE + $03
-SID_V1_CTRL     = SID_BASE + $04
-SID_V1_AD       = SID_BASE + $05
-SID_V1_SR       = SID_BASE + $06
+Before including the file, set `SID_VOICE` to the voice's first register: `$D400` for voice 1, `$D407` for voice 2, `$D40E` for voice 3. Include it once, for one voice.
 
-SID_VOLUME      = SID_BASE + $18
+The routines write only that voice's seven registers. They never read the SID back: registers `$D400`–`$D418` are write-only. Master volume and filter routing (`$D415`–`$D418`) belong to the caller, and so do the other two voices. If an interrupt handler also writes this voice, the caller has to stop the two interleaving; these routines don't arbitrate.
 
-; Control register bits
-GATE_ON     = %00000001
-GATE_OFF    = %00000000
-WAVE_PULSE  = %01000000
-WAVE_SAW    = %00100000
-WAVE_TRI    = %00010000
-WAVE_NOISE  = %10000000
+Each routine changes A and the flags. X and Y are preserved.
 
-; Initialise SID for playing notes
-init_sid:
-    lda #$0F            ; Max volume
-    sta SID_VOLUME
+<CodeFromFile src="commodore-64/patterns/assembly/audio/sid-note-trigger/sid-note.inc" lang="6502" />
 
-    lda #$08            ; Pulse width 50%
-    sta SID_V1_PW_HI
-    lda #$00
-    sta SID_V1_PW_LO
+`sid_voice_setup` takes the attack/decay byte in A and the sustain/release byte in X, in the same layout as the chip's registers: attack and sustain in the high nibble. It selects a pulse wave at 50% width with the gate clear.
 
-    lda #$00            ; Attack=0, Decay=0 (instant)
-    sta SID_V1_AD
-    lda #$F9            ; Sustain=15, Release=9
-    sta SID_V1_SR
-    rts
+`sid_note_on` takes the frequency high byte in A and the low byte in X. It writes the frequency, clears the gate, then sets it. `sid_note_off` clears the gate and leaves the pulse waveform selected.
 
-; Play a note
-; Input: A = frequency high byte, X = frequency low byte
-play_note:
-    stx SID_V1_FREQ_LO
-    sta SID_V1_FREQ_HI
-    lda #WAVE_PULSE | GATE_ON
-    sta SID_V1_CTRL     ; Gate on - note starts
-    rts
+## Starting a note again
 
-; Release the note (start release phase)
-release_note:
-    lda #WAVE_PULSE | GATE_OFF
-    sta SID_V1_CTRL     ; Gate off - release begins
-    rts
-```
+The data sheet describes the sequence this routine relies on. If the gate is cleared before the envelope has finished, release begins from whatever level it had reached. If the gate is then set again before release reaches zero, a new attack begins from that level, not from zero.
 
-**Usage:**
+The data sheet doesn't promise that writing an already-set gate starts another attack. So `sid_note_on` always clears the gate first. Two writes, a few cycles apart, are enough to start a new attack on a voice that is still sounding.
 
-```asm
-    jsr init_sid
+A note restarted this way doesn't begin from silence. Music drivers often clear the gate a frame or two before the next note so the envelope can fall first, a technique called "hard restart".
 
-    ; Play middle C (C4 = 261.63 Hz on PAL = $1167)
-    lda #$11            ; Frequency high
-    ldx #$67            ; Frequency low
-    jsr play_note
+<Question prompt="A note is sustaining at level $88 when sid_note_on is called again with attack 0. Where does the new attack start?">
 
-    ; ... wait for note duration ...
+At about `$88`, the level the envelope had reached. It climbs to peak from there, then decays back to the sustain level. The verification run saw exactly that on voice 3: the first sample after the retrigger read `$8B`.
 
-    jsr release_note    ; Let note fade out
-```
+</Question>
 
-## Trade-offs
+## Envelope rates
 
-| Aspect | Cost |
-|--------|------|
-| CPU | ~50 cycles to trigger |
-| Memory | ~60 bytes |
-| Limitation | Single voice; no music sequencing |
-
-**When to use:** Sound effects, learning SID basics, simple audio feedback.
-
-**When to avoid:** Full music playback (use a music driver instead).
-
-## SID rate tables
-
-The 4-bit Attack, Decay, and Release values map to durations defined in the SID datasheet. Release rates are slower than attack rates by roughly 3× for the same value:
+Attack, decay and release each take a 4-bit rate. The data sheet's Table 2 gives these times for a 1 MHz clock. Attack is the time to rise from zero to peak. Decay and release are the time to fall from peak to zero.
 
 | Value | Attack | Decay / Release |
 |------:|-------:|----------------:|
@@ -131,20 +74,67 @@ The 4-bit Attack, Decay, and Release values map to durations defined in the SID 
 | $E | 5 s | 15 s |
 | $F | 8 s | 24 s |
 
-So Release=9 used in `init_sid` above gives a ~750 ms tail — long enough to hear the note fade after `release_note`.
+For other clocks, multiply by 1 MHz divided by the clock. A PAL C64 runs at about 0.985 MHz, so each time is about 1.5% longer. Decay and release fall from the current level, so they finish sooner when they start below peak.
 
-## Frequency formula
+The demo uses attack 0, decay 0, sustain 15 and release 9. Sustain 15 is peak, so decay has nowhere to fall and the note holds at full level. After the gate clears, release 9 takes about three quarters of a second to fall from peak to zero.
 
-For any note, the 16-bit SID frequency value is:
+In the verification run on Emu198x, attack 0 took 2.28 ms to reach peak and release 9 reached zero within 738 ms. The first attack also began 32.6 ms after the gate was set. That emulator models the envelope's internal rate counter after reSID, and that counter sometimes has to wrap before a new rate takes effect. We haven't measured this delay on a real C64, so don't time game events to the gate write.
+
+## The frequency value
+
+The 16-bit frequency value sets the oscillator's pitch:
 
 ```
-FREQ = Hz × 16777216 / clock
+Fout = Fn × Fclk / 16777216
 ```
 
-Where `clock` is **985,248 Hz** (PAL) or **1,022,727 Hz** (NTSC). So C4 (261.63 Hz) on PAL is `261.63 × 16777216 / 985248 ≈ 4455 = $1167`.
+`Fclk` is the system clock: 0.98525 MHz on PAL, 1.02273 MHz on NTSC. To find `Fn`, rearrange: `Fn = Fout × 16777216 / Fclk`. Middle C (261.63 Hz) on PAL gives 4455, or `$1167`. The same value on NTSC plays about 3.8% sharp, so NTSC programs need their own table.
+
+## Cost
+
+The assembler's listing counts each routine from its first instruction through `RTS`. Add 6 cycles for the `JSR` that calls it.
+
+| Routine | Bytes | Cycles through RTS |
+|---------|------:|-------------------:|
+| `sid_voice_setup` | 22 | 32 |
+| `sid_note_on` | 17 | 26 |
+| `sid_note_off` | 6 | 12 |
+
+These are instruction costs, not elapsed time. The verification script checks the listing against these figures. Once a note is gated, the SID runs the envelope on its own; the processor needs to do nothing more until the next gate change.
+
+## Run the complete example
+
+The demonstration sets master volume 15 with the filter off, sets up voice 1, waits half a second, then plays middle C. It holds the note for 25 frames (half a second on PAL), clears the gate and waits for the release.
+
+<CodeFromFile src="commodore-64/patterns/assembly/audio/sid-note-trigger/demo.asm" lang="6502" />
+
+Save `demo.asm` and `sid-note.inc` together and build with:
+
+```sh
+asm198x --dialect acme --prg demo.asm -o demo.prg
+```
+
+Load `demo.prg` into a PAL C64 emulator and type `RUN`. You should hear one note that fades over most of a second. In Emu198x, writing `$D418` makes a short click before the note.
+
+Try changing `ldx #$f9` to `ldx #$89`. With sustain 8, decay now has somewhere to fall: the note settles at about half its peak level.
+
+The sample's [source and verification recipe](https://github.com/code198x/code-samples/tree/main/commodore-64/patterns/assembly/audio/sid-note-trigger) includes a Makefile and an executable check. The check boots Emu198x's PAL C64 from its ROMs, types `RUN`, and checks four things:
+
+- which bytes the routines write, and that X and Y survive;
+- the attack, release and retrigger timings on voice 3's envelope;
+- the demo's pitch, hold and release in captured audio;
+- the listing costs above.
+
+These establish emulator behaviour. Listening and original-hardware checks are separate.
 
 ## Related
 
 **Patterns:** [SID Voice Setup](/patterns/commodore-64/assembly/audio/sid-voice-setup), [SID Multi-Voice](/patterns/commodore-64/assembly/audio/sid-multi-voice)
 
 **Vault:** [The SID Chip](/vault/hardware/sid-chip) | [Commodore 64](/vault/systems/commodore-64)
+
+<Sources>
+
+MOS Technology, *6581 Sound Interface Device (SID)* data sheet: the register map (write-only voice registers, read-only ENV3), the gate bit, envelope behaviour on re-gating, the frequency equation, and Table 2's envelope rates with the clock-scaling note. Commodore, *Commodore 64 Programmer's Reference Guide* (1983), chapter 6: PAL and NTSC system frequencies. Hard restart: Cadaver, "Building a Musicroutine", codebase64. Timings marked as Emu198x observations come from the sample's verification run, not from hardware.
+
+</Sources>
