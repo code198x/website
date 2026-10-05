@@ -1,6 +1,6 @@
 ---
 title: "A Square Wave"
-summary: "Enable one of the NES APU's pulse channels, set its duty, volume and 11-bit timer, and it holds a tone on its own — the foundation of every NES sound."
+summary: "Enable pulse 1 in $4015, then set its duty, volume, sweep and 11-bit timer. It holds a tone with no further CPU work, as long as nothing mutes it."
 platform: "nintendo-nes"
 category: "audio"
 difficulty: "beginner"
@@ -13,87 +13,110 @@ related:
   vault: ["apu", "nintendo-nes"]
 ---
 
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
 ## Overview
 
-The NES doesn't play samples — its APU **synthesises** five fixed voices: two pulse (square) channels, a triangle, noise, and a one-off sample channel. The two pulse channels are where you start. Unlike [Paula's sample DMA](/patterns/commodore-amiga/assembly/audio/playing-a-sample), you don't hand the NES a waveform; you switch a channel on, pick its **duty** (the shape of the square), its **volume**, and an **11-bit timer** that sets the pitch — and the hardware oscillates by itself, forever, until you change it. Getting a tone out is three registers and an enable bit.
+The NES's APU has five channels. Two pulse (square) channels, a triangle and a noise channel generate their waveforms in hardware from a few register settings. The fifth, the **DMC**, plays samples: 1-bit delta-encoded data fetched from cartridge memory, or 7-bit levels the program writes to `$4011` itself.
 
-## Code
+This pattern uses only **pulse 1**. A pulse channel needs no waveform data. Switch it on, choose its **duty** (the shape of the square), its **volume** and an **11-bit timer** that sets the pitch, and it keeps oscillating until something changes or mutes it. Unlike [Paula's sample DMA](/patterns/commodore-amiga/assembly/audio/playing-a-sample), nothing streams from memory.
 
-```ca65
-; =============================================================================
-; A SQUARE WAVE - NES (APU)
-; Hold a continuous tone on pulse channel 1
-; =============================================================================
+The example targets an **NTSC NES** with an NROM cartridge (mapper 0) and rendering switched off.
 
-APUSTATUS    = $4015    ; channel enable (write) / status (read)
-PULSE1_VOL   = $4000    ; DDLC VVVV - duty, length-halt, const-vol, volume
-PULSE1_SWEEP = $4001    ; frequency sweep unit
-PULSE1_LO    = $4002    ; timer, low 8 bits
-PULSE1_HI    = $4003    ; timer high 3 bits + length-counter load
+## The routine's contract
 
-start:
-    lda #%00000001         ; bit 0 = enable pulse channel 1
-    sta APUSTATUS
+`pulse1_tone` takes the timer's low byte in **A** and its top three bits in **X**. The full 11-bit timer must be **8 to `$7FF`**; below 8 the channel is muted. It changes A and preserves X and Y.
 
-    lda #%10111111         ; duty 10 (50%), length halted, constant vol 15
-    sta PULSE1_VOL
-    lda #%00000000
-    sta PULSE1_SWEEP       ; sweep off — a steady pitch
+The caller must have set **bit 0 of `$4015`** first. Writing `$4003` loads the channel's length counter only while the channel is enabled. Write `$4003` first and enable afterwards, and the counter stays at zero: the channel is silent.
 
-    lda #$FD               ; timer low  \  253 -> ~440 Hz (A-4)
-    sta PULSE1_LO          ;             /
-    lda #$00               ; timer high bits 0 (length load ignored — halted)
-    sta PULSE1_HI
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/audio/square-wave/square-wave.inc" lang="ca65" />
 
-    ; the note now plays on its own — nothing more to do
+The routine leaves `$4015` to the caller because that one register holds the enable bits for all five channels. Writing `%00000001` turns pulse 1 on and every other channel off, and switching a channel off clears its length counter. In a game, every sound routine has to share one copy of that byte.
+
+`$4000` packs four settings into one byte:
+
+| Bits | Value here | Meaning |
+|------|-----------|---------|
+| 7–6 | `10` | Duty 2: 50%, a true square |
+| 5 | `1` | Halt the length counter (also the envelope's loop flag) |
+| 4 | `1` | Constant volume: bits 3–0 *are* the volume |
+| 3–0 | `1111` | Volume 15 |
+
+The `$4003` write also restarts the duty sequence and the envelope. A program that changes pitch while a note plays usually writes only `$4002`, so the wave's phase doesn't jump and click.
+
+## Run the complete example
+
+The demonstration is a complete NROM image. It enables pulse 1, calls `pulse1_tone` with timer 253, then loops forever, copying `$4015` into `status` so a debugger can see that the length counter is still running. The tone needs none of that loop's time.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/audio/square-wave/demo.asm" lang="ca65" />
+
+Save `demo.asm` and `square-wave.inc` together and build with:
+
+```sh
+asm198x --dialect ca65 demo.asm -o demo.nes
 ```
+
+Load `demo.nes` in an NES emulator set to NTSC. The screen stays black. You should hear a steady A-4 at about 440 Hz that keeps going, without fading, until you reset. On a PAL machine the same timer gives about 409 Hz.
+
+## Timer into pitch
+
+A pulse channel's 11-bit timer counts down once every two CPU cycles. Its 8-step duty sequence moves on one step each time the timer reloads, so one full wave takes `16 × (timer + 1)` CPU cycles:
+
+```
+frequency (Hz) = CPU clock / (16 × (timer + 1))
+```
+
+The CPU clock is 1,789,773 Hz on NTSC and 1,662,607 Hz on PAL. A *bigger* timer means a *lower* note:
+
+| Timer | NTSC | PAL |
+|-------|------|-----|
+| 126 (`$07E`) | 880.8 Hz | 818.2 Hz |
+| 253 (`$0FD`) | 440.4 Hz | 409.1 Hz |
+| 1024 (`$400`) | 109.1 Hz | 101.4 Hz |
+
+Halving `timer + 1` doubles the frequency, so 126 is exactly an octave above 253. Music routines keep one timer value per semitone in a table. The triangle channel's sequence has 32 steps rather than 8, so the same timer sounds an octave lower there.
+
+## Why a pulse channel goes silent
+
+Each of these is a classic first-tone bug.
+
+- **The channel was never enabled, or was enabled too late.** With bit 0 of `$4015` clear, the length counter is forced to zero and a `$4003` write cannot load it. Enable first, then write `$4003`.
+- **The length counter ran out.** The top five bits of `$4003` choose a starting count from a 32-entry table; index 0 is 10. If bit 5 of `$4000` is clear, the frame counter decrements it about 120 times a second (NTSC, 4-step mode). At zero the channel stops abruptly. Index 0 lasts about 75–83 ms, depending on when the first decrement arrives. This is a cut-off, not a fade. Setting bit 5 halts the count, as `pulse1_tone` does.
+- **The envelope decayed.** With bit 4 of `$4000` clear, bits 3–0 become the envelope's period instead of the volume. The volume starts at 15 and drops by one every `period + 1` quarter-frames (about 240 a second on NTSC) until it reaches 0. Because bit 5 doubles as the envelope's loop flag, setting it with bit 4 clear makes the decay restart at 15 forever rather than hold.
+- **The sweep unit muted it.** The sweep keeps calculating a target period even when it is disabled. With the negate flag clear and a shift of 0, that target is twice the current timer, and any target above `$7FF` mutes the channel. So `$00` in `$4001` silences every timer from `$400` up, the bottom octave. `$08` (disabled, negate set) keeps the target at or below the current timer. A timer below 8 is always muted.
+
+<Question prompt="Set the sweep register to $00 and the timer to $400. Does $4015 bit 0 still read 1?">
+
+Yes. The length counter is loaded and halted, so `$4015` reports the channel as active. The sweep unit's muting happens after the length counter and isn't visible in `$4015`. A status read can't tell you whether you'll hear anything.
+
+</Question>
 
 ## Trade-offs
 
 | Aspect | Cost |
 |--------|------|
-| CPU | None — the channel oscillates in hardware |
-| Memory | A handful of register writes |
-| Limitation | Fixed square shape; volume is a coarse 0–15; **no** sample playback here |
+| CPU | None once the five writes are made; the channel oscillates in hardware |
+| Memory | About 30 bytes of code |
+| Limitation | Four fixed duty shapes; 4-bit volume through a non-linear mixer; one note per channel |
 
-**When to use:** Every NES tone — leads, bleeps, the start of any music routine.
+**When to use:** Leads, bleeps and harmony, and the first step of any music routine.
 
-**When to avoid:** Nothing simpler exists on the NES; this *is* the base case.
+**When to avoid:** Speech or recorded drums, which need the DMC. Bass often goes on the triangle instead.
 
-## The five voices
+## What has been checked
 
-The APU is a fixed synthesiser, not a sampler. Each channel has its own character and its own register block:
-
-| Channel | Registers | Role |
-|---------|-----------|------|
-| Pulse 1 | `$4000–$4003` | Square wave, four duties, lead |
-| Pulse 2 | `$4004–$4007` | A second square, harmony |
-| Triangle | `$4008–$400B` | Fixed-volume triangle, bass |
-| Noise | `$400C–$400F` | Pseudo-random, percussion & effects |
-| DMC | `$4010–$4013` | 1-bit delta samples, drums & speech |
-
-Nothing plays until you set its bit in `$4015`: bit 0 pulse 1, bit 1 pulse 2, bit 2 triangle, bit 3 noise, bit 4 DMC. Write `%00001111` to arm all but the DMC.
-
-## Timer into pitch
-
-Pitch is the **timer** — an 11-bit value split across `$4002` (low 8 bits) and the bottom 3 bits of `$4003`. A pulse channel's frequency on NTSC is:
-
-```
-frequency (Hz) = 1789773 / (16 * (timer + 1))
-```
-
-So a *bigger* timer means a *lower* note. Timer 253 gives ≈440 Hz (A-4). Music routines keep a table of timer values, one per semitone; halving a timer raises the note an octave. The triangle uses the same idea but divides by 32, so it sounds an octave lower for the same value — handy for bass.
-
-## Why a channel goes silent
-
-Three things can mute a pulse channel, and each is a classic first-tone bug:
-
-- **The length counter.** Every channel has a counter that ticks down and silences it. Set **bit 5** of `$4000` (length-counter halt) to freeze it, as above, and the tone sustains. Leave it clear and the note fades out on its own — which is what you *want* for effects.
-- **Constant vs envelope volume.** **Bit 4** set means "the low nibble *is* the volume". Clear it and that nibble becomes an envelope *rate* instead, and the channel decays from 15 to 0.
-- **The sweep unit.** If `$4001` is misconfigured it can drive the pitch out of range and mute the channel. Write `$00` to leave it alone.
+The sample's [source and verification recipe](https://github.com/code198x/code-samples/tree/main/nintendo-entertainment-system/patterns/assembly/audio/square-wave) runs the demonstration and six variants in Emu198x. It reads `$4015` from the running program and measures the captured audio in emulated time. It confirms the three pitches above, the octave ratio, muting by sweep `$00` at timer `$400` and by a timer below 8, silence when `$4003` is written before enabling, and a full-level cut-off after about 82 ms when the length counter runs. These are emulator observations. Listening and original-hardware checks are separate.
 
 ## Related
 
 **Patterns:** [NMI Game Loop](/patterns/nintendo-nes/assembly/framework/nmi-game-loop)
 
 **Vault:** [APU](/vault/hardware/apu) | [Nintendo Entertainment System](/vault/systems/nintendo-entertainment-system)
+
+<Sources>
+
+NESdev Wiki: [APU](https://www.nesdev.org/wiki/APU) (channels and `$4015`), [APU Pulse](https://www.nesdev.org/wiki/APU_Pulse) (timer, duty, `$4003` side effects), [APU Sweep](https://www.nesdev.org/wiki/APU_Sweep) ("Muting"), [APU Length Counter](https://www.nesdev.org/wiki/APU_Length_Counter), [APU Envelope](https://www.nesdev.org/wiki/APU_Envelope), [APU Frame Counter](https://www.nesdev.org/wiki/APU_Frame_Counter), [APU Triangle](https://www.nesdev.org/wiki/APU_Triangle) and [APU DMC](https://www.nesdev.org/wiki/APU_DMC). These pages are community hardware research. The pitch table is calculated from the formula above.
+
+</Sources>
