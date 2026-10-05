@@ -1,6 +1,9 @@
 /** Check the maintained pattern's browser execution, delivered audio and downloads. */
 import { chromium } from '@playwright/test';
 import fs from 'node:fs/promises';
+// Lesson editors sit in source drawers that start closed; open them as a
+// reader would before touching the source.
+const openDrawers=async page=>{for(const s of await page.locator('details.source-drawer:not([open]) > summary').all())await s.click();};
 const [base = 'http://127.0.0.1:1986', out = '/tmp/sound-beep-browser'] = process.argv.slice(2);
 await fs.mkdir(out, { recursive: true });
 const browser = await chromium.launch({ channel: 'chrome', headless: true });
@@ -22,7 +25,7 @@ await page.addInitScript(() => {
   document.addEventListener('sandbox:memory', event => { window.beepDone = event.detail.named.done === 1; });
 });
 try {
-  await page.goto(base + '/patterns/sinclair-zx-spectrum/assembly/audio/sound-beep/');
+  await page.goto(base + '/patterns/sinclair-zx-spectrum/assembly/audio/sound-beep/');await openDrawers(page);
   const root = page.locator('.sandbox');
   await page.waitForFunction(() => document.querySelector('.sandbox')?.dataset.sandboxReady === 'true');
   await root.scrollIntoViewIfNeeded();

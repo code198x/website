@@ -2,6 +2,9 @@ import {chromium} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+// Lesson editors sit in source drawers that start closed; open them as a
+// reader would before touching the source.
+const openDrawers=async page=>{for(const s of await page.locator('details.source-drawer:not([open]) > summary').all())await s.click();};
 const base=process.argv[2]||'http://127.0.0.1:1986',out=process.argv[3]||'/tmp/meteor-browser';
 await fs.mkdir(out,{recursive:true});
 const root=path.resolve(import.meta.dirname,'../..'),samples=process.env.CODE_SAMPLES_PATH||path.resolve(root,'../code-samples');
@@ -29,7 +32,7 @@ async function within(name,limit,work){
  return `${started.toISOString()} ${((Date.now()-started)/1000).toFixed(1)} s`;
 }
 async function open(n){
- await page.goto(base+route+`/unit-${String(n).padStart(2,'0')}/`);
+ await page.goto(base+route+`/unit-${String(n).padStart(2,'0')}/`);await openDrawers(page);
 }
 async function run(){await page.waitForFunction(()=>document.querySelector('.sandbox')?.dataset.sandboxReady==='true'&&document.querySelector('.meteor-experiment')?.dataset.ready==='true');await page.locator('.sandbox-run').click();await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running')||document.querySelector('.sandbox-status').dataset.state==='error',{},{timeout:20000});assert((await page.locator('.sandbox-status').textContent()).startsWith('Running'),await page.locator('.sandbox-status').textContent()+' '+await page.locator('.sandbox-diagnostics').textContent());}
 async function key(name,ms=100){await page.locator('.sandbox-screen').focus();await page.keyboard.down(name);await page.waitForTimeout(ms);await page.keyboard.up(name);}

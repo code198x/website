@@ -2,6 +2,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {chromium} from '@playwright/test';
+// Lesson editors sit in source drawers that start closed; open them as a
+// reader would before touching the source.
+const openDrawers=async page=>{for(const s of await page.locator('details.source-drawer:not([open]) > summary').all())await s.click();};
 const [base='http://127.0.0.1:1986', output='/tmp/basic-wasm-checks']=process.argv.slice(2);
 await fs.mkdir(output,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -21,12 +24,12 @@ async function alignment(width){
  const result=await root.evaluate(root=>{
   const s=root.querySelector('textarea'),m=root.querySelector('.assembly-editor-colours');
   const a=s.getBoundingClientRect(),b=root.querySelector('canvas').getBoundingClientRect(),c=m.getBoundingClientRect();
-  return {delta:Math.max(Math.abs(a.y-b.y),Math.abs(a.width-b.width),Math.abs(a.height-b.height)),mirror:Math.max(Math.abs(a.y-c.y),Math.abs(a.height-c.height)),background:getComputedStyle(s).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth};
+  return {delta:Math.max(Math.abs(a.x-b.x),Math.abs(a.width-b.width),Math.max(0,b.bottom-a.top)),mirror:Math.max(Math.abs(a.y-c.y),Math.abs(a.height-c.height)),background:getComputedStyle(s).backgroundColor,overflow:document.documentElement.scrollWidth>innerWidth};
  });
  if(result.overflow || result.mirror>1 || (width>=960 && result.delta>1) || result.background!=='rgba(0, 0, 0, 0)')throw Error('Editor geometry/style '+JSON.stringify(result));
 }
 try{
- await page.goto(base+greeting);await root.locator('.assembly-editor-colours span').first().waitFor();
+ await page.goto(base+greeting);await openDrawers(page);await root.locator('.assembly-editor-colours span').first().waitFor();
  const original=await source.inputValue();
  await alignment(1280);
  await page.evaluate(()=>{window.trialFrames=0;window.trialActive=true;const tick=()=>{if(window.trialActive){window.trialFrames++;requestAnimationFrame(tick)}};requestAnimationFrame(tick)});
@@ -55,7 +58,7 @@ try{
  await source.fill('10 PRONT 2\n');await button('run');await screen('Nonsense');
  reports.push({check:'ROM reports syntax mistake without silent source repair',passed:true});
  await button('restore');await button('run');await screen('Welcome');await loaded();
- await page.goto(base+sonar);await root.locator('.assembly-editor-colours span').first().waitFor();
+ await page.goto(base+sonar);await openDrawers(page);await root.locator('.assembly-editor-colours span').first().waitFor();
  await button('run');await screen('Row (1-8, Q)');await loaded();
  await tap('Digit3');await tap('Enter');await screen('Column (1-8, Q)');
  await tap('Digit5');await tap('Enter');await screen('Near: 1 or 2');
@@ -70,7 +73,9 @@ try{
  await page.keyboard.type('q');await page.waitForTimeout(200);
  if((await root.locator('.basic-transcript pre').textContent()).includes('Finished.'))throw Error('Editor sent Q to Spectrum');
  // New source moves the target, and replacement during boot must win.
- const changed=(await source.inputValue()).replace('LET tr = 3: LET tc = 6','LET tr = 1: LET tc = 1').replace(/ q/,' ');
+ const current=await source.inputValue();
+ const changed=current.replace(/LET tr ?= ?3: LET tc ?= ?6/,'LET tr=1: LET tc=1').replace(/ q/,' ');
+ if(changed===current.replace(/ q/,' '))throw Error('Sonar target line not found');
  await source.fill(changed);await button('run');await button('run');await screen('Row (1-8, Q)');await loaded();
  await tap('Digit1');await tap('Enter');await screen('Column (1-8, Q)');await tap('Digit1');await tap('Enter');await screen('Found!');
  await tap('KeyQ');await tap('Enter');await screen('Finished.');
