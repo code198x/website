@@ -32,17 +32,21 @@ export function initialiseLessonMachines() {
     for (const button of document.querySelectorAll<HTMLButtonElement>('[data-lesson-machine]')) {
       if (button.dataset.lessonMachine !== machine.id) continue;
       button.addEventListener('click', () => {
-        const choice = choices.find(choice => choice.id === button.dataset.sourceChoice);
-        if (choice && editor) {
-          if (active) saved.set(active, editor.value);
-          active = choice.id; editor.value = saved.get(active)!;
-          editor.dispatchEvent(new Event('input', { bubbles: true }));
-          title.textContent = choice.title;
-          const status = machine.querySelector<HTMLElement>('.sandbox-status');
-          if (status) status.textContent = `Selected ${choice.title}. Press Assemble and run to apply this source.`;
-        }
-        opener?.setAttribute('aria-expanded', 'false'); opener = button;
-        preserve(button, () => { button.parentElement!.after(machine); machine.classList.add('is-away'); document.body.classList.add('machine-docked'); away.hidden = false; close.hidden = false; button.setAttribute('aria-expanded', 'true'); });
+        // Swapping the source resizes the editor, which may sit above the
+        // button, so measure before it: Safari has no scroll anchoring to hide the shift.
+        preserve(button, () => {
+          const choice = choices.find(choice => choice.id === button.dataset.sourceChoice);
+          if (choice && editor) {
+            if (active) saved.set(active, editor.value);
+            active = choice.id; editor.value = saved.get(active)!;
+            editor.dispatchEvent(new Event('input', { bubbles: true }));
+            title.textContent = choice.title;
+            const status = machine.querySelector<HTMLElement>('.sandbox-status');
+            if (status) status.textContent = `Selected ${choice.title}. Press Assemble and run to apply this source.`;
+          }
+          opener?.setAttribute('aria-expanded', 'false'); opener = button;
+          button.parentElement!.after(machine); machine.classList.add('is-away'); document.body.classList.add('machine-docked'); away.hidden = false; close.hidden = false; button.setAttribute('aria-expanded', 'true');
+        });
         close.focus({ preventScroll: true });
       }, { signal });
     }
