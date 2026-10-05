@@ -1,0 +1,110 @@
+---
+title: "Redraw only what changed"
+description: "Stop the still ship flickering by drawing it only when its picture changes."
+game: 8
+unit: 9
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+import Figure from '@components/Figure.astro';
+
+Load the game you saved, press S and touch nothing. The ship is not moving, yet it shimmers and breaks up. In this lesson we find out why, then change the main loop so it leaves the ship alone until its picture really changes.
+
+## Watch a still ship
+
+Before changing anything, read the main loop from line 200 to line 370. With no key pressed, x, y and h keep the same values on every pass. Two lines still touch the ship: line 230 calls the ship routine at 3000, and line 350 calls it again.
+
+<Question prompt="With the ship sitting still, what is on the screen between line 230 and line 350, and why could that look like flicker?">
+
+The routine draws with OVER 1, so line 230 toggles the ship off. Lines 240 to 340 then run with no ship on the screen at all, and line 350 toggles it back on. The Spectrum shows its screen memory as a new television picture 50 times a second. Every picture made while the loop is between those two lines shows the ship missing or half-drawn.
+
+</Question>
+
+We measured it. With the ship still, one pass of the loop takes about 20 television frames, and drawing a triangle in BASIC takes several of those frames on its own. We sampled the screen memory at 300 frame boundaries: the whole ship was there in only 81. In 100 it was missing completely, and in the other 119 it was partly drawn or partly erased.
+
+<Figure src="/images/sinclair-zx-spectrum/basic/drift/teaching/still-missing.png" width={352} alt="The Drift arena with the dock and readouts but no ship. The speed reads 0 and the cue says DOCK OK." caption="A frame from the lesson 7 program with the ship sitting still at its starting position. Line 230 has erased it and line 350 has not yet drawn it again." />
+
+The Spectrum has no hardware that moves a shape for us. The picture is whatever is in screen memory, so a program that moves something must erase and redraw it itself. The trick is to do that only when the picture would come out different.
+
+## Remember what is on the screen
+
+A still ship needs no drawing, but the loop cannot tell whether it is still unless it remembers what it drew last time. Three new variables do that job: px and py hold the whole-pixel centre that was drawn, and ph holds the heading that was drawn.
+
+Delete line 230. To delete a BASIC line, enter its number on its own.
+
+Replace lines 330, 350, 3000, 3010, 3020, 3030, 3040.
+
+Add lines 3100, 3110.
+
+<CodeFromFile src="sinclair-zx-spectrum/basic/drift/teaching/steady/changes.bas" />
+
+RUN the changed program.
+
+<details>
+<summary>Complete source at this checkpoint</summary>
+
+<CodeFromFile src="sinclair-zx-spectrum/basic/drift/teaching/steady/drift.bas" />
+
+</details>
+
+Press S and leave the keys alone. The ship now stays solid. Turn with O or P and it redraws once for each new heading. Burn gently and watch it step from pixel to pixel as it drifts.
+
+## One routine, two entrances
+
+Line 3000 already worked out px and py from x and y. Now it also copies h into ph. Lines 3010 to 3040 draw using ph, so they always draw the picture that px, py and ph describe.
+
+That gives the routine two ways in:
+
+- **GO SUB 3000** remembers the ship's current position and heading, then draws them.
+- **GO SUB 3010** skips the remembering and toggles the picture already stored in px, py and ph.
+
+Because of OVER 1, toggling the stored picture erases it exactly, even after x, y or h have changed. The erase uses the same numbers the earlier draw used, so the two always match.
+
+Line 3100 makes the decision. If the rounded centre or the heading differs from the stored picture, it erases the old picture with GO SUB 3010, then remembers and draws the new one with GO SUB 3000. If nothing differs, the IF is false, the rest of the line is skipped, and line 3110 returns without touching the screen.
+
+## Compare whole pixels
+
+The ship's x and y keep fractions, so a slow drift changes them on every pass. The picture changes only when a rounded coordinate changes. That is why line 3100 compares INT (x+.5) with px, rather than x with a stored copy of x: we compare the numbers that decide which pixels light up. The heading is already a whole number from 1 to 8, so h can be compared directly.
+
+<Question prompt="The ship is coasting east from x=48 with vx=.2 and vy=0. No keys are pressed. In how many of the next five passes does line 3100 redraw the ship?">
+
+One. Over the five passes x becomes 48.2, 48.4, 48.6, 48.8 and 49. Adding .5 and taking INT gives 48, 48, 49, 49 and 49. Only the third pass changes the rounded centre, so only that pass erases and draws. Comparing the raw x would have redrawn on all five passes.
+
+</Question>
+
+## Keep every path paired
+
+Each place that used to draw the ship now has to leave exactly one ship on the screen.
+
+- **Every pass:** line 350 calls 3100, so the ship is redrawn only when its picture changed.
+- **Hitting a wall:** line 330 leaves x and y at their last safe values, but the heading may have changed on the same pass if you turned while coasting into the wall. Calling 3100 there shows the latest heading before the result appears.
+- **Docking:** line 350 runs before the docking test at 360, so the ship is up to date when the game freezes.
+- **Starting and retrying:** line 110 clears the screen and calls 3000, which records the new flight's ship and draws it.
+
+<Question prompt="Why does line 110 call 3000 instead of 3100?">
+
+CLS has already removed the old ship, so there is nothing to erase. On the first flight px, py and ph do not exist yet, so 3100 would stop with a Variable not found report. After R, the ship restarts at 48, 56 facing heading 2. If the last flight ended in that same state, 3100 would see no difference and draw nothing, leaving the new flight with no ship. If it ended anywhere else, the erase at 3010 would draw an extra triangle on the clean screen instead of removing one.
+
+</Question>
+
+## A quicker loop at rest
+
+Skipping the drawing also makes a still pass much shorter. In our measurements a pass with the ship at rest took 9 frames instead of 19. The loop now checks the keyboard about twice as often while the ship is at rest or creeping slowly, so turns and burns start sooner.
+
+A pass that does redraw costs as much as before, plus the comparison: a pass while thrusting took about 45 frames instead of 44. The loop's pace now depends on whether the picture changed. A very slow drift skips most redraws, so it crosses the arena a little sooner than it did before. The rules for speed and docking are unchanged.
+
+## Try it and keep it
+
+Sit still, then turn through all eight headings. Drift slowly in each direction and check that no stray pixels are left behind. Crash into a wall while turning, press R, then fly a full docking.
+
+If turning leaves the old triangle behind, or the ship seems not to turn, check that lines 3010 to 3040 use ph and not h. If the ship is missing after R, check that line 110 still calls 3000. If the program stops with Variable not found at line 3100, line 3100 has run before 3000 ever did.
+
+This is the game to keep. Save it again with `SAVE "drift" LINE 10`, as in [Keep the game](/systems/sinclair-zx-spectrum/basic/drift/unit-08-keep-the-game/), and load it into a fresh machine to check.
+
+<Sources>
+
+Steven Vickers, edited by Robin Bradbeer, *ZX Spectrum BASIC Programming*, second edition (Sinclair Research, 1983), [chapter 17](https://worldofspectrum.org/ZXBasicManual/zxmanchap17.html), [chapter 18](https://worldofspectrum.org/ZXBasicManual/zxmanchap18.html). Chapter 17 describes OVER; chapter 18 gives the television picture rate of 50 frames per second in Europe, in its description of PAUSE. The frame counts and pass rates come from our own runs of both programs on an emulated stock 48K PAL Spectrum.
+
+</Sources>
