@@ -1,0 +1,109 @@
+---
+title: "Update only what changes"
+description: "Draw the fixed frame once, then overprint each turn's changes so the screen stops flashing."
+game: 15
+unit: 11
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+import Figure from '@components/Figure.astro';
+
+The expedition works, but watch the screen as you play. Every move blanks it and builds it again, line by line: the title, the rule and the controls vanish and come back, although none of them has changed. This lesson keeps the screen steady. The game itself stays exactly the same.
+
+## Find the flash
+
+Line 490 ends every turn with `GO TO 270`, and 270 calls the drawing routine at 1000. Its first statement is CLS, which clears the whole screen. Everything after it is printed again from the top.
+
+<Question prompt="Before reading on: which parts of the screen can one move change?">
+
+The treasure and turn counts, the room name and description, the four tunnel rows and their signs, the creature line and the message. The title, the rule under it, the TUNNELS heading and the two lines of controls never change during an expedition.
+
+</Question>
+
+CLS is quick, but the BASIC that follows is not. We stepped the emulator one frame at a time (a fiftieth of a second) through each move of the worked routes. A move took about 45 frames, and for about 30 of them at least one line that was there before the move, and is there after it, was blank. That is more than half a second of an emptied screen on every turn.
+
+<Figure src="/images/sinclair-zx-spectrum/basic/the-caverns/teaching/mid-turn-finished.png" width={352} alt="An almost entirely black Spectrum screen. Only scattered lines of pixels from the title and status rows remain." caption="Frame 15 of a move south from the entrance, in the program from Invite the explorer. CLS is part-way through emptying the screen; nothing has been drawn again yet." />
+
+## Draw the frame once
+
+Split the drawing into two parts. The **frame** holds everything that stays: CLS, the title, the rule, the heading and the controls. The **update** holds everything a turn can change. Put the frame first, so the routine at 1000 draws the frame and then runs straight on into the update at 1020.
+
+`GO SUB 1000` therefore still draws everything. Line 270 uses it when an expedition starts, and again after R, because a new expedition needs a clean screen. `GO SUB 1020` enters the same routine part-way through and draws only the update. It reaches the same RETURN at 1220. A turn uses it at 490, and the result routine uses it at 5030.
+
+## Overprinting leaves old text behind
+
+Without CLS, each turn prints on top of the last one. PRINT AT replaces only the characters it prints. The rest of the line keeps whatever was there.
+
+<Question prompt="The creature line says No creature in this room. The creature arrives, and line 1170 prints IT IS HERE. MOVE NOW. at the same place. What does the line show?">
+
+`IT IS HERE. MOVE NOW.oom.` The new text is four characters shorter, so the last four characters of the old text stay on screen.
+
+</Question>
+
+The cure is **padding**: make each piece of text as long as the longest text that place ever shows, adding spaces after the shorter ones. The spaces print over whatever was left behind. Go through the changing places one at a time:
+
+- **Room name and description.** These are already safe. `DIM a$(12,24)` gave every name exactly 24 characters, padded with spaces when you entered them in Connect the rooms. Each description is 28.
+- **Message.** h$ holds anything from 25 to 29 characters. `DIM h$(29)` with one number makes h$ a single string that is always 29 characters long. `LET h$="Your footsteps fade away."` then stores that text followed by four spaces. This is the same padding the room arrays use. The wall message at 390 was already typed with a space at its end to make 29 characters.
+- **Signs.** `DIM s$(13)` does the same for the sign beside each tunnel. The longest sign, Steps + glint, has 13 characters.
+- **Creature line.** "IT IS HERE. MOVE NOW." gains four spaces at 1170, to match "No creature in this room."
+- **Tunnel state.** `"  --  "` gains two spaces so that it covers `"  Open"`.
+- **Results.** Line 5040 used to blank the creature line before 5050 or 5060 printed the result. The two results are now padded to the same 28 characters, so 5040 is no longer needed.
+
+<Question prompt="The status line, TREASURE 0/3 TURNS 0, is printed at 1020 without any padding. Why can it never leave a stale digit?">
+
+During one expedition both numbers only grow, so each new status line is at least as long as the last. R starts a new expedition through `GO SUB 1000`, whose CLS clears the old line first.
+
+</Question>
+
+## Print each place once
+
+The old tunnel rows printed `--`, then printed `Open` over it, then printed a sign, and sometimes a second and third sign over that. CLS hid those steps, because the whole screen was being rebuilt anyway. Without CLS, a sign that stays the same from one turn to the next would blink off and on.
+
+Instead, decide what each row should say, then print it once. Line 1090 starts each tunnel with no sign: s$ becomes 13 spaces. Lines 1120 to 1150 no longer print anything. They choose the sign text and its colour, in hue. Line 1155 prints the chosen sign, padded to 13 characters, in the chosen colour. `INK` inside PRINT accepts a variable as well as a number. A closed tunnel jumps from 1100 straight to 1155, so its 13 spaces clear any sign that the previous room showed in that row. The jump also skips t(v), which has no element 0.
+
+## Make the changes
+
+Replace lines 200, 490, 1090, 1100, 1120, 1130, 1140, 1150, 1170, 5030, 5050, 5060.
+
+Add lines 1012, 1014, 1016, 1018, 1155.
+
+Delete lines 1030, 1060, 1200, 1210, 5040. To delete a BASIC line, enter its number on its own.
+
+<CodeFromFile src="sinclair-zx-spectrum/basic/the-caverns/teaching/steady/changes.bas" />
+
+The new 1012 to 1018 are the old 1030, 1060, 1200 and 1210, moved up into the frame. RUN the changed program.
+
+<details>
+<summary>Complete source at this checkpoint</summary>
+
+<CodeFromFile src="sinclair-zx-spectrum/basic/the-caverns/teaching/steady/caverns.bas" />
+
+</details>
+
+Play the same moves as before. The title, rule and controls now stay put, and each turn rewrites only its own lines. Walk into a room whose tunnels show signs and then into one without them, so you can see the padding clear the old text. Then reach an ending: it should read exactly as it did before.
+
+<Figure src="/images/sinclair-zx-spectrum/basic/the-caverns/teaching/mid-turn-steady.png" width={352} alt="The full Caverns screen at the entrance. The turn count already reads 1; the room and its tunnels have not yet been replaced." caption="Frame 15 of the same move in the changed program. The turn count has changed; the room lines are next. Nothing that stays has gone." />
+
+We checked the new program the same way, frame by frame through every move of the worked routes, including all three endings. No line that stays was ever blank. After every action, both programs showed the same colour at every pixel, so the padding leaves nothing behind. The changed program is a little quicker too, at about 40 frames a move, because it no longer redraws the lines that never change.
+
+<Question prompt="You are standing next to the creature's room, so one tunnel reads Footsteps. You move to a room where that same direction has no sign. Which line clears the word, and with what?">
+
+1155. Line 1090 set s$ to 13 spaces, and none of 1120 to 1150 chose a sign, so 1155 prints 13 spaces over Footsteps.
+
+</Question>
+
+If letters are left at the end of a message, check `DIM h$(29)` in line 200. If a sign stays beside a tunnel that no longer has one, check `DIM s$(13)` and that 1100 jumps to 1155, not 1160. If the title still blanks on every move, check that 490 calls 1020 rather than 270. If R leaves the result on screen, check that 270 still calls 1000.
+
+## Keep the steadier expedition
+
+Save this version as you did in [Keep the expedition](/systems/sinclair-zx-spectrum/basic/the-caverns/unit-10-keep-the-expedition/): quit with Q, enter `SAVE "caverns" LINE 10` and record the tape, then load it in a fresh session and play a few turns.
+
+The idea outlasts BASIC. Web browsers and desktop window systems also keep track of which parts of a window have changed, and repaint only those.
+
+<Sources>
+
+Steven Vickers, edited by Robin Bradbeer, *ZX Spectrum BASIC Programming*, second edition (Sinclair Research, 1983), [chapter 12](https://worldofspectrum.org/ZXBasicManual/zxmanchap12.html) (string arrays have a fixed length and assignment to them is padded or cut), [chapter 15](https://worldofspectrum.org/ZXBasicManual/zxmanchap15.html), [chapter 16](https://worldofspectrum.org/ZXBasicManual/zxmanchap16.html).
+
+</Sources>
