@@ -24,7 +24,10 @@ import { defineConfig, devices } from '@playwright/test';
  * the wrong thing, with nothing in the output to say so.
  */
 const SWEEP = Boolean(process.env.A11Y_SWEEP);
-const PORT = SWEEP ? 4322 : 4321;
+// PLAYWRIGHT_PORT moves the server when another project already holds the
+// default: the non-sweep run reuses any server it finds on its port, so a
+// foreign site there would be tested in place of this one.
+const PORT = Number(process.env.PLAYWRIGHT_PORT) || (SWEEP ? 4322 : 4321);
 
 export default defineConfig({
   testDir: './tests',
@@ -58,7 +61,7 @@ export default defineConfig({
     // its web server exit immediately, and the whole sweep fails to start.
     command: SWEEP
       ? `ASTRO_PREVIEW_BACKGROUND=0 npm run preview -- --port ${PORT} --ignore-lock`
-      : 'ASTRO_DEV_BACKGROUND=0 npm run dev -- --ignore-lock',
+      : `ASTRO_DEV_BACKGROUND=0 npm run dev -- --port ${PORT} --ignore-lock`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !SWEEP && !process.env.CI,
     timeout: 120_000,
