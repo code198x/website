@@ -1,0 +1,95 @@
+---
+title: "Redraw less, quit cleanly"
+description: "Reprint only the plan figures that change, and send every quit through one closing routine."
+game: 16
+unit: 14
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+import Figure from '@components/Figure.astro';
+
+Two rough edges remain in the finished game. Every plan edit blanks the whole screen and builds it again, so the screen flashes each time you press Enter. And Q stops the program wherever it happens to be, leaving a bare `9 STOP statement` report under whatever was on the screen. This lesson fixes both. The accounts, traveller offers and decade reviews stay exactly as they were.
+
+Replace lines 120, 270, 310, 330, 335, 340, 350, 510, 2138, 2140, 2150, 2160, 2162, 2164, 2166, 2170, 2190, 2200, 2210, 2220, 5150, 7180.
+
+Add lines 280, 1900, 1910, 1920, 1930, 1940, 1950, 1960, 1970, 1980, 2168, 2225, 2245, 9000, 9010, 9020.
+
+Delete lines 2090, 2100, 2110, 2120, 2130, 2180.
+
+To delete a BASIC line, enter its number on its own. Line 1900's string is 31 spaces; count them, because the padding below depends on that length.
+
+<CodeFromFile src="sinclair-zx-spectrum/basic/yearfall/teaching/polished/changes.bas" />
+
+<details>
+<summary>Complete source at this checkpoint</summary>
+
+<CodeFromFile src="sinclair-zx-spectrum/basic/yearfall/teaching/polished/yearfall.bas" />
+
+</details>
+
+RUN and start. Press F, type 5 and press Enter. The heading, the resources and the labels stay still; only the amounts, the messages and the help lines change. Put food back to 180, buy some land, then sell some instead, and watch the money message change from spending to receiving without leaving any letters behind.
+
+## Why the screen flashed
+
+Before this lesson, every edit returned to line 270, and the plan routine began with `CLS`. CLS clears the whole screen. BASIC then printed the plan again, one PRINT at a time, from the top row down. In Emu198x's 48K PAL machine the old plan takes about 39 frames, a little under four-fifths of a second, from Enter to the next keypress; for that whole time you watch the screen empty and refill.
+
+The new version is barely faster: about 33 frames. The difference is what you see while BASIC works. Nothing that is still correct is wiped.
+
+## Draw the frame once
+
+Most of the plan screen cannot change while you edit. The year, people, grain, land and price are fixed until you commit the harvest, and so are the labels and the food needed (three grain for each person). Lines 1900 to 1980 draw those parts, after one CLS. They run once per year: line 270 calls them, and line 280 then calls the routine at 2000 for the figures.
+
+Each editing branch (330 to 350) now returns to line 280 instead of 270. An edit recalculates the plan and reprints the figures, but it never reaches the CLS. A new year, a reset or a traveller decision still passes through 270, because those really do change the frame.
+
+## Cover the old value
+
+PRINT AT only replaces the character cells it prints. Write 5 over 180 and the screen shows `580`: the 5 replaced the 1, and the 80 stayed. A full CLS used to hide that problem. Without it, each figure must cover whatever was there before.
+
+Numbers get four spaces after them (lines 2138 to 2200). A value can shrink by up to four digits, from a five-digit starting amount in a very large settlement down to one digit, and the spaces still blank every old digit.
+
+The messages vary much more in length, so they are padded to the end of the row instead. b$ holds 31 spaces, enough to fill a row from column 1. `b$( TO 31-LEN t$)` slices off just enough of them: a 23-character message gets 8 spaces, a 31-character message gets none. A slice that ends before it starts, such as `b$( TO 0)`, is the empty string, so the longest message is still safe.
+
+To pad a message, the program needs its length before printing it. That is why lines 2162 to 2166 now build the land message in t$, using STR$ to turn the cost into text, and line 2168 prints it once. Line 2220 does the same for the harvest forecast. When the plan is invalid, t$ stays empty and line 2225 prints a row of spaces, removing any forecast left by an earlier valid plan.
+
+The number editor borrows rows 19 to 21 for its prompt. Lines 2230 and 2240 already reprint the help on rows 19 and 20, and those help lines are longer than the editor's prompt, so they cover it. Line 2245 blanks row 21, where the editor's last hint used to stay until CLS removed it.
+
+<Question prompt="Suppose line 2150 printed feed with no spaces after it. You change food from 180 to 5. What does row 8 show?">
+
+`F  Feed grain   580     580`. Both the amount and the cost columns keep the old 80. The emulator check for this lesson compares every row of the plan with the layout the original game draws on a cleared screen. A copy of the program without the padding fails it with exactly that row, and with `No land bought or sold.nd.` once a longer land message has been replaced by a shorter one.
+
+</Question>
+
+## One way out
+
+When a BASIC program stops, the ROM prints a report on the bottom line. It has three parts: a code, a message and where it stopped. `9 STOP statement, 310:2` means code 9, a STOP statement, in the second statement of line 310 (the part after THEN). That is useful to the programmer. To a player it looks like an error. The old game left it under whichever plan, report or title was on the screen, and it could come from five different lines.
+
+Now lines 120, 310, 510, 5150 and 7180 all go to line 9000. That routine clears the screen, thanks the player and says how to play again, then stops at line 9020. Every quit ends the same way, with the same report: `9 STOP statement, 9020:1`. The report is still there because the ROM always reports when a program stops; the closing screen tells the player what happened first.
+
+<Figure src="/images/sinclair-zx-spectrum/basic/yearfall/teaching/farewell.png" width={352} alt="A black screen reads YEARFALL in yellow, then Thanks for playing and RUN plays again. The ROM's report 9 STOP statement, 9020:1 is on the bottom line." caption="Quitting from a traveller offer. Every Q now reaches the same closing screen and the same stopping point, line 9020." />
+
+Having one exit also gives you one place to change it. A closing sound, or a final summary, would go in this routine once rather than being copied to five lines.
+
+<Question prompt="After quitting, you type RUN. Why does the game start at its title, not at the year you left?">
+
+RUN clears all the variables and starts from the first line, so line 10 draws the title again. Quitting kept nothing for the program to return to. Restarting a saved year would need a different, deliberately designed entry point.
+
+</Question>
+
+## Check it, then save it again
+
+1. Make several edits in a row, including a cancel with X and a blank Enter. Only figures and messages should change.
+2. Enter 9999 for food. The message should say the grain is short, and the forecast row below it should go blank.
+3. Commit a harvest and continue. The next year's plan should show the new year and resources.
+4. Quit from the title, the plan, a harvest report, a ten-year review and a traveller offer. Each should end on the closing screen with the report naming line 9020.
+
+The emulator checks for this lesson play through those cases, watch the title row's screen memory for writes during edits, and run the earlier full checks, including a thirty-year seeded game. The same checks run against the previous program fail on the redraws and on every quit, so they test what this lesson changes.
+
+Your saved tape from the previous lesson still holds the older program. Save this version with `SAVE "yearfall" LINE 10` and check it in a fresh session, as in [Keep the settlement](/systems/sinclair-zx-spectrum/basic/yearfall/unit-13-keep-the-settlement/).
+
+<Sources>
+
+Steven Vickers, edited by Robin Bradbeer, *ZX Spectrum BASIC Programming*, second edition (Sinclair Research, 1983), [chapter 8](https://worldofspectrum.org/ZXBasicManual/zxmanchap8.html) (string slicing, including empty slices), [chapter 15](https://worldofspectrum.org/ZXBasicManual/zxmanchap15.html) (PRINT AT and CLS), [appendix B](https://worldofspectrum.org/ZXBasicManual/zxmanappb.html) (reports and their line and statement numbers).
+
+</Sources>
