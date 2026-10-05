@@ -1,6 +1,6 @@
 ---
 title: "Playing a Sample"
-summary: "Point one of Paula's four audio channels at an 8-bit sample in chip RAM, set its pitch and volume, and let DMA play it — the foundation of all Amiga sound."
+summary: "Point Paula's audio channel 0 at a waveform in chip RAM, choose a period and volume, and let DMA repeat it — then predict the pitch you will hear."
 platform: "commodore-amiga"
 category: "audio"
 difficulty: "beginner"
@@ -9,102 +9,122 @@ evolution:
   previous: null
   next: "one-shot-samples"
 related:
-  patterns: ["vblank-game-loop"]
+  patterns: ["one-shot-samples", "four-channel-music", "vblank-game-loop"]
   vault: ["paula", "commodore-amiga"]
 ---
 
-## Overview
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
 
-Paula, the Amiga's sound chip, has **four audio channels**, and each plays a stream of **8-bit signed samples straight from chip RAM by DMA** — no CPU involvement once it's running. That's what made Amiga audio feel a generation ahead: real recorded sound, four voices, for free. Getting one channel going is four steps: point it at the sample, tell it how long, set the pitch and the volume, then switch its DMA on.
+## Four registers and a switch
 
-## Code
+The Amiga has four audio channels. Each one has an 8-bit digital-to-analogue converter fed by DMA: the custom chips fetch sample words from chip RAM by themselves. To start a channel, we tell it where the sample is, how long it is, how fast to play it and how loud. Then we switch its DMA on. The channel then repeats the sample until we switch it off.
 
-```m68k
-; =============================================================================
-; PLAYING A SAMPLE - AMIGA (Paula)
-; Channel 0 loops an 8-bit sample from chip RAM via DMA
-; CPU: None (DMA plays it) | Memory: the sample, which MUST be in chip RAM
-; =============================================================================
+This example targets a **PAL Amiga 500 with Kickstart 1.3**, started from its own boot disk. It uses channel 0. To change that channel safely, the program has to own it. Here, it takes over the whole machine.
 
-CUSTOM   equ $dff000
-DMACON   equ $096            ; DMA control
-AUD0LC   equ $0a0            ; Channel 0 sample pointer (longword)
-AUD0LEN  equ $0a4            ; Channel 0 length, in WORDS (bytes / 2)
-AUD0PER  equ $0a6            ; Channel 0 period (pitch)
-AUD0VOL  equ $0a8            ; Channel 0 volume (0-64)
+## The routine's contract
 
-            section code,code_c
+Before calling `play_sample`, put the custom-chip base `$DFF000` in **A5** and the sample's address in **A0**. Put its length **in words** in **D0**, the period in **D1** and the volume in **D2**. The routine writes the four channel registers, then sets the master and channel-0 bits in `DMACON`. It changes no registers.
 
-start:
-            lea     CUSTOM,a5
+<CodeFromFile src="commodore-amiga/patterns/assembly/audio/playing-a-sample/paula-sample.inc" lang="m68k" />
 
-            ; --- 1. Point channel 0 at the sample, and give its length ---
-            move.l  #sample,AUD0LC(a5)
-            move.w  #(sample_end-sample)/2,AUD0LEN(a5)   ; length in words
+The sample must be in **chip RAM**, starting on an even address. Audio DMA reads only chip RAM, and it fetches one word, two 8-bit signed samples, at a time. So the length is the number of bytes divided by two. Volume runs from 0 to 64: 64 is full level, and 32 is 6 dB quieter.
 
-            ; --- 2. Pitch, then 3. volume ---
-            move.w  #428,AUD0PER(a5)     ; period 428 = the note C-2 (~8.3 kHz PAL)
-            move.w  #64,AUD0VOL(a5)      ; 64 = full volume
+`AUD0LC` and `AUD0LEN` are read once at the start of each pass. When the length runs out, the channel goes back to the same location and plays the sample again. That repeat is the normal behaviour, not something we set up.
 
-            ; --- 4. Enable channel 0's DMA — Paula begins, and loops, at once ---
-            move.w  #$8201,DMACON(a5)    ; SET | DMAEN | AUD0
+Channel 0 must be off when we call `play_sample`. A channel that is switched off for less than two sample periods may carry on where it stopped instead of starting again. The demo waits a whole frame between tones.
 
-mainloop:
-            bra.s   mainloop
+## Period is not pitch
 
-; --- 8-bit SIGNED sample, in CHIP RAM (one cycle of a sine; Paula loops it) ---
-            section data,data_c
-            even
-sample:
-            dc.b    0,48,90,117,127,117,90,48,0,-48,-90,-117,-127,-117,-90,-48
-sample_end:
-```
-
-## Trade-offs
-
-| Aspect | Cost |
-|--------|------|
-| CPU | None — DMA streams the sample by itself |
-| Memory | The sample, in **chip** RAM (Paula can't see fast RAM) |
-| Limitation | 8-bit samples; Paula **loops** by default — a one-shot needs a little more |
-
-**When to use:** Every Amiga sound — music, effects, speech. This is the base case.
-
-**When to avoid:** Never for sound; it's the only way in. (For a single beep you could poke `AUDxDAT` by hand, but DMA is how real audio is done.)
-
-## Paula's four channels
-
-Each channel is a 16-byte block of registers; channel *n* is at `$DFF0A0 + n*$10`:
-
-| Offset | Register | Purpose |
-|--------|----------|---------|
-| `+$0` | AUDxLC | Sample start (longword pointer) |
-| `+$4` | AUDxLEN | Length, in words |
-| `+$6` | AUDxPER | Period (pitch) |
-| `+$8` | AUDxVOL | Volume, 0–64 |
-
-And the channels are wired to the stereo outputs: **0 and 3 go left, 1 and 2 go right.** Music that wants a channel each side pairs (0,3) against (1,2).
-
-## Period and pitch
-
-Pitch is set by the **period** — the number of bus cycles between output samples — so *lower period means higher pitch*. On PAL the playback rate is:
+`AUDxPER` is the number of colour clocks between output **samples**. It is not a note. On a PAL machine the colour clock runs at 3,546,895 Hz, so the period sets the sample rate:
 
 ```
 sample rate (Hz) = 3546895 / period
+tone (Hz)        = 3546895 / (period × samples per cycle)
 ```
 
-Trackers pick periods from a fixed table where each entry is a semitone; period **428 is C-2**, halve it (214) and you're an octave up at C-3. To play a recorded sample at the right pitch you set the period to match how it was sampled.
+The pitch we hear depends on how many samples make up one cycle of the waveform. Our 16-byte sine at period 424 plays 8,365 samples a second, which is 523 Hz. The demo plays three tones a second apart:
 
-## Chip RAM, always
+| Waveform | Period | Sample rate | Tone |
+|---|---|---|---|
+| 16 bytes per cycle | 424 | 8,365 Hz | 522.8 Hz |
+| 16 bytes per cycle | 212 | 16,731 Hz | 1,045.7 Hz |
+| 32 bytes per cycle | 212 | 16,731 Hz | 522.8 Hz |
 
-The single most common Amiga audio bug: **Paula's DMA reads only chip RAM.** A sample left in fast RAM produces silence or noise. Put sample data in a `_c` (chip) section, or copy it to chip RAM before playing — hence `section data,data_c` above.
+Halving the period raises the tone by an octave. Doubling the samples per cycle at the same period brings it back down. The Hardware Reference Manual's note table uses the same arrangement: with a 16-byte cycle, PAL period 212 gives a C at 1,045.7 Hz.
 
-## Looping vs one-shot
+A recorded sound works the same way. Play it at the rate it was recorded and it sounds at its original pitch. A tracker's note names are a separate convention: they depend on how each instrument sample was tuned.
 
-Enable a channel and Paula plays `AUD0LC`/`AUD0LEN` and then **loops it forever** — perfect for a sustained instrument. To play a sound *once*, you use Paula's channel interrupt, which fires as the channel loads the sample at the start of each pass: stop the channel on the second one, or queue a silent word on the first; see [One-Shot Samples](/patterns/commodore-amiga/assembly/audio/one-shot-samples).
+The period has limits. Below 123 on PAL (124 on NTSC), DMA cannot fetch the next word in time, and the channel reuses old samples. The manual recommends 124–256 for single-cycle waveforms like these, using a different sample for each octave, to keep aliasing noise down.
+
+<Question prompt="A 32-byte single-cycle waveform plays at period 424. What tone should we hear?">
+
+3546895 / (424 × 32) is about 261.4 Hz, an octave below the demo's first tone. Doubling the samples per cycle halves the tone, just as doubling the period does.
+
+</Question>
+
+## What it costs
+
+Each channel fetches at most **one word per scan line**, in one of four time slots set aside for audio in every line. That word holds two samples, so a channel can output at most two samples per line. The 68000 uses only the even-numbered bus cycles, and Abacus's *System Programmer's Guide* places the audio slots among the odd cycles reserved for DMA. So audio DMA does not take the processor's time.
+
+The verification check measures this in Emu198x. A polling loop running from chip RAM completed the same number of passes in ten frames with no DMA as with all four channels fetching at period 124. As a control, six low-resolution bitplanes cut the count by about a quarter. That is an emulator observation, not a measurement on hardware.
+
+The CPU still does some work. It writes the registers to start each sound. Anything beyond a steady repeat needs more: changing sounds, stopping after one pass, or joining waveforms. That means responding to the channel's interrupt. Paula can also be fed a word at a time without DMA, but the manual describes that as processor-intensive and does not recommend it.
+
+## Who owns channel 0
+
+The demo begins like this:
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/audio/playing-a-sample/demo.asm" from="            ; --- Take over" to="            ; --- 1." lang="m68k" />
+
+With every interrupt and DMA channel off, nothing else can change channel 0, its `DMACON` bit or its interrupt. The demo never returns to AmigaDOS. The manual's own audio example makes the same assumption of exclusive access. It says that example will not work directly in a multitasking system.
+
+A program that keeps the operating system running should instead allocate channels through `audio.device`, which shares them between programs, and use only the ones it is given.
+
+## Looping, and playing once
+
+Each time the channel copies `AUD0LC` and `AUD0LEN` into its working registers, it requests the channel-0 audio interrupt (`INTREQ` bit 7). The first request comes as soon as DMA starts, before the first sample is heard. After that, a request comes as **the last word of each pass starts playing**, not at the start of the next pass. At each request, the values just copied are in use, so we can write the next location and length without disturbing the current pass.
+
+The check measures this with the demo's 16-byte sample at period 424. One pass is 8 words × 2 samples × 424 = 6,784 colour clocks. The first request arrived 164 colour clocks after the `DMACON` write. The second arrived 5,908 later, close to the 5,936 that seven words take. Later requests came about 6,784 apart, within one scan line.
+
+To play a sound once, write a silent one-word sample's location and a length of 1 when the **first** request arrives. The sample plays through, then the channel repeats silence. In the check, an eight-cycle burst played exactly eight cycles this way. [One-Shot Samples](/patterns/commodore-amiga/assembly/audio/one-shot-samples) builds this into an interrupt handler.
+
+## Left and right
+
+Paula's four channels are mixed onto two stereo outputs, two channels each. Primary sources disagree about which pair reaches which jack. The Hardware Reference Manual's audio chapter gives one assignment, while its own connector description and Abacus's guide give the reverse. Until a recording from a real machine settles it, this pattern makes no left/right claim.
+
+## Run the complete example
+
+Assemble and master a boot disk with the maintained files side by side:
+
+```sh
+asm198x --dialect vasm --exe demo.asm -o demo
+build198x adf demo -o demo.adf --volume Sample --name demo
+```
+
+Boot `demo.adf` on a PAL A500 configuration with Kickstart 1.3. After AmigaDOS starts the program, the screen turns blue and the three tones play for about a second each. The screen turns green when they finish. Amiga emulators take a few seconds to boot from disk.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/audio/playing-a-sample/demo.asm" lang="m68k" />
+
+Change the first tone's `424` to `428` and it drops to about 518 Hz. Change any `moveq #64,d2` to `moveq #32,d2` and that tone plays 6 dB quieter.
+
+The sample's [source and verification recipe](https://github.com/code198x/code-samples/tree/main/commodore-amiga/patterns/assembly/audio/playing-a-sample) include a Makefile and an executable check. It cold-boots the demo and a probe in Emu198x and checks:
+
+- each register write;
+- each tone's frequency against the formula above;
+- the CPU-cost comparison;
+- the interrupt timing;
+- the one-shot.
+
+These establish emulator behaviour. Listening and original-hardware checks are separate.
 
 ## Related
 
-**Patterns:** [VBlank Game Loop](/patterns/commodore-amiga/assembly/framework/vblank-game-loop)
+[One-Shot Samples](/patterns/commodore-amiga/assembly/audio/one-shot-samples) stops a sample after one pass. [Four-Channel Music](/patterns/commodore-amiga/assembly/audio/four-channel-music) drives all four channels. The [VBlank Game Loop](/patterns/commodore-amiga/assembly/framework/vblank-game-loop) shows where sound triggers sit in a frame. See also [Paula](/vault/hardware/paula) and the [Commodore Amiga](/vault/systems/commodore-amiga).
 
-**Vault:** [Paula](/vault/hardware/paula) | [Commodore Amiga](/vault/systems/commodore-amiga)
+<Sources>
+
+Commodore-Amiga, *Amiga Hardware Reference Manual*, third edition (Addison-Wesley). Chapter 5, Audio Hardware: forming and playing a sound, the location, length, volume and period registers, period limits, stopping audio DMA, the audio example's exclusive-access note, joining tones, direct output, the equal-tempered table and the audio state machine. Chapter 6, Blitter Hardware: DMA time-slot allocation and 68000 bus sharing. *Amiga ROM Kernel Reference Manual: Devices*, third edition, Audio Device: channel allocation. Abacus, *Amiga System Programmer's Guide*, chapter 1: even bus cycles for the processor, odd cycles for DMA including audio. The frequencies and timings in the tables are calculated from the routine. The measured values are Emu198x observations recorded in the sample's verification results.
+
+</Sources>
