@@ -6,7 +6,7 @@ try {
  const page=await browser.newPage();
  await page.goto(base);
  const result=await page.evaluate(async()=>{
-  const api=await import('/emu198x_spectrum_web.js');await api.default();
+  const api=await import('/emulators/modules/spectrum/emu198x_spectrum_web.js');await api.default();
   const checks=[];
   const test=(label,run,expected)=>{
    const m=api.Spectrum.createHeadlessBundled();

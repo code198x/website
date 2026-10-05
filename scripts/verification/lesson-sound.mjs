@@ -12,6 +12,9 @@
  */
 import {chromium} from '@playwright/test';
 import fs from 'node:fs/promises';
+// Lesson editors sit in source drawers that start closed; open them as a
+// reader would before touching the source.
+const openDrawers=async page=>{for(const s of await page.locator('details.source-drawer:not([open]) > summary').all())await s.click();};
 const base=process.argv[2]||'http://127.0.0.1:1986',out=process.argv[3]||'/tmp/lesson-sound';
 await fs.mkdir(out,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
@@ -61,7 +64,7 @@ function measure(left,rate){
 
 try{
  // Assembly: Meteor Storm unit 24, the impact tone. 26n+57 T-states a cycle, n=255.
- await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-24/');
+ await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-24/');await openDrawers(page);
  await page.waitForFunction(()=>document.querySelector('.sandbox')?.dataset.sandboxReady==='true');
  const toggle=page.getByRole('checkbox',{name:'Sound'});
  assert(!(await toggle.isChecked()),'Sound starts unticked');
@@ -85,14 +88,14 @@ try{
  assert(Math.abs(tone.hz-523.4)<10,`Impact pitch ${tone.hz} Hz`);
 
  // Unticking closes the output; the choice carries to the next lesson.
- await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-25/');
+ await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-25/');await openDrawers(page);
  await page.waitForFunction(()=>document.querySelector('.sandbox')?.dataset.sandboxReady==='true');
  assert(await page.getByRole('checkbox',{name:'Sound'}).isChecked(),'Choice carried to unit 25');
  results.carried=true;
 
  // Meteor Storm unit 26: boost plays during the frame waits. One 30-cycle note of
  // n=100 (26n+49 T-states a cycle) fits inside a single wait, so it is heard whole.
- await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-26/');
+ await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-26/');await openDrawers(page);
  await page.waitForFunction(()=>document.querySelector('.sandbox')?.dataset.sandboxReady==='true'&&document.querySelector('.meteor-experiment')?.dataset.ready==='true');
  assert(await page.getByRole('checkbox',{name:'Sound'}).isChecked(),'Choice carried to unit 26');
  await page.locator('.sandbox-source').evaluate(editor=>{editor.value=editor.value.replace('boost_sound: defb 100,4, 70,6, 0','boost_sound: defb 100,30, 0');editor.dispatchEvent(new Event('input',{bubbles:true}));});
@@ -113,7 +116,7 @@ try{
 
  // BASIC: Bright Spark's highest signal, BEEP ...,12, held for a second to measure.
  // The PAUSE outlasts the start-up that runBasic runs before the first frame.
- await page.goto(base+'/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer/');
+ await page.goto(base+'/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer/');await openDrawers(page);
  const root=page.locator('.basic-playground');
  assert(await root.getByRole('checkbox',{name:'Sound'}).isChecked(),'Choice carried to BASIC');
  await root.locator('textarea').fill('10 PAUSE 50\n20 BEEP 1,12\n');
