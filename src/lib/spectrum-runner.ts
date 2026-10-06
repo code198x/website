@@ -11,12 +11,17 @@
 import init, { Spectrum } from '@emu198x/zx-spectrum';
 import { classify, type ProgramExtent, type Verdict } from './verdict';
 import type { AudioSink } from './lesson-audio';
+import { SpectrumKeyboard } from './spectrum-keyboard';
 
 export type { ProgramExtent, Verdict } from './verdict';
 
 /** One wasm instantiation per page, however many machines are on it. */
 let ready: Promise<unknown> | null = null;
-const wasmReady = () => (ready ??= init());
+const wasmReady = () => (ready ??= init().catch(error => {
+  // A failed download must not poison every subsequent Restart attempt.
+  ready = null;
+  throw error;
+}));
 
 /**
  * Frames to wait for the boot prompt before giving up on a tape.
@@ -35,7 +40,7 @@ const WATCH_INTERVAL_FRAMES = 25;
 export class SpectrumRunner {
   #spectrum: Spectrum;
   #canvas: HTMLCanvasElement;
-  #keys = new Set<string>();
+  #keyboard: SpectrumKeyboard;
   #keyListeners = new AbortController();
   #frame = 0;
   #last = 0;
@@ -73,6 +78,9 @@ export class SpectrumRunner {
     onError: (message: string) => void,
   ) {
     this.#spectrum = spectrum;
+    this.#keyboard = new SpectrumKeyboard((code, down) => {
+      if (down) spectrum.keyDown(code); else spectrum.keyUp(code);
+    });
     this.#canvas = canvas;
     this.#onError = onError;
     this.#attachKeys();
@@ -167,6 +175,8 @@ export class SpectrumRunner {
     };
     return machine.readMemory?.(address, length) ?? null;
   }
+
+  screenText(): string[] { return JSON.parse(this.#spectrum.query('screen.text.lines')); }
 
   observeFrame(callback: () => void) { this.#onFrame = callback; }
 
@@ -339,19 +349,11 @@ export class SpectrumRunner {
   // scrolling with the arrow keys does not drive the Spectrum.
   setKey(code: string, down: boolean): boolean {
     if (this.#disposed) return false;
-    if (down) {
-      if (this.#keys.has(code)) return true;
-      const handled = this.#spectrum.keyDown(code);
-      if (handled) this.#keys.add(code);
-      return handled;
-    }
-    this.#keys.delete(code);
-    return this.#spectrum.keyUp(code);
+    return down ? this.#keyboard.press(code) : this.#keyboard.release(code);
   }
 
   releaseKeys() {
-    for (const code of this.#keys) this.#spectrum.keyUp(code);
-    this.#keys.clear();
+    this.#keyboard.releaseAll();
   }
 
   #attachKeys() {

@@ -12,14 +12,13 @@ for(const family of build.families) {
   }
 }
 
-// The stage (PlayerStage.astro) renders `<div class="stage" data-system="…"
-// data-variant="…" …>` and creates `<emu198x-player>` client-side only, on
-// Play (spec §4.1) — it never appears in the built HTML. `hasStage` checks
-// the stage's own attributes instead, matching each independently so
-// attribute order in the markup can't break this check.
+// Older system pages use a stage; the approved core pages launch the same
+// shared player from a native modal. Verify either complete launch contract.
 function hasStage(html,attrs) {
-  const tags=html.match(/<div class="stage"[^>]*>/g) || [];
-  return tags.some((tag)=>Object.entries(attrs).every(([name,value])=>tag.includes(`${name}="${value}"`)));
+  const stages=html.match(/<div class="stage"[^>]*>/g) || [];
+  if(stages.some(tag=>Object.entries(attrs).every(([name,value])=>tag.includes(`${name}="${value}"`))))return true;
+  const launchers=html.match(/<button[^>]*data-run-system="[^>]*>/g) || [];
+  return html.includes('class="rp-dialog"') && launchers.some(tag=>Object.entries(attrs).every(([name,value])=>tag.includes(`${name.replace('data-','data-run-')}="${value}"`)));
 }
 
 if(process.argv.includes('--built')) {
