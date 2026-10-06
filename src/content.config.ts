@@ -591,6 +591,8 @@ const modulePages = defineCollection({
     game: z.number().optional(),
     heroImage: z.string().optional(),
     heroAlt: z.string().optional(),
+    heroCaption: z.string().optional(),
+    estimatedTime: z.string().optional(),
     units: z.array(z.object({
       number: z.number(),
       title: z.string(),
@@ -664,6 +666,8 @@ const updates = defineCollection({
     linkText: z.string().default('See it'),
     heroImage: z.string().optional(),  // /images/… screenshot shown at the top
     heroAlt: z.string().optional(),
+    heroCaption: z.string().optional(),
+    estimatedTime: z.string().optional(),
     // Structured tags for filtering when the changelog grows. No UI yet — this
     // is just the metadata, recorded per entry now so it never has to be
     // back-filled across dozens of old posts. `platform` holds the canonical

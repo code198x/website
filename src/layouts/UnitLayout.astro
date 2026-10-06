@@ -1,30 +1,8 @@
 ---
-/**
- * A lesson: the unit page.
- *
- * Ported from the approved concept (Code198x/website-preview/public/concepts/
- * lesson.html): a header with the eyebrow, the title and the premise; the
- * prose in Literata at a reading measure, with listings, captures and the
- * run panels breaking out to the full column; an "In this lesson" rail beside
- * it; and a pager of square panels. Governed by family-visual-identity.md
- * (§4 type, §6 scale and motion, §7 objects round and interface square).
- *
- * Where it departs from the concept, deliberately:
- *
- * - The nav and the breadcrumb bar stay docked, as merged (owner decision
- *   2026-10-01). The concept's crumbs inside the header are the breadcrumb
- *   bar's job here.
- * - No reading-progress bar and no entrance animations in the header. Neither
- *   is on §6's list of allowed motion, and the header is above the fold.
- * - No "Stored program" panel in the rail. It follows `data-program` on the
- *   concept's paired steps, which lessons do not carry; inventing them would
- *   mean editing every MDX file.
- * - Sizes are the kit's steps (§6), where the concept used in-between values.
- *
- * Class names the run panel, the verification scripts and the Playwright
- * specs rely on are kept: .unit-layout, .unit-content, .unit-sidebar,
- * .unit-navigation, a.nav-prev, a.nav-next, .nav-index.
- */
+/** Accepted reading layout: a quiet lesson body, optional lesson navigation,
+ * intact captures and native modal players. Existing author props and progress
+ * hooks remain compatible with published lessons. */
+import {getCollection} from 'astro:content';
 import RunIt from '../components/RunIt.astro';
 import RunPanel from '../components/RunPanel.astro';
 import Layout from './Layout.astro';
@@ -121,6 +99,13 @@ const chips = section
   ? [section.name]
   : [platform?.data.name ?? platformName, TRACKS[languagePath] ?? formatModuleName(languagePath)];
 const overviewText = overviewLabel ?? (section ? 'Primer overview' : 'Game overview');
+const authoredUnits = await getCollection('unit-pages');
+const rosterPaths = catalogueUnitPaths ?? authoredUnits.filter(item=>item.id.startsWith(`${platformSlug}/${languagePath}/${moduleSlug}/`)).sort((a,b)=>a.id.localeCompare(b.id)).map(item=>`/systems/${item.id}/`);
+const lessonRoster = rosterPaths.map((href: string) => {
+ const id=href.replace(/^\/systems\//,'').replace(/^\//,'').replace(/\/$/,'');
+ const entry=authoredUnits.find(item=>item.id===id);
+ return {href,title:entry?.data.title};
+}).filter((item:{title?:string})=>item.title);
 ---
 
 <Layout masthead={false}
@@ -145,11 +130,6 @@ const overviewText = overviewLabel ?? (section ? 'Primer overview' : 'Game overv
 
   <div class="unit-container">
     <header class="lesson-head unit-header">
-      <div class="lesson-mast" aria-hidden="true">
-        <span class="lesson-mast-game">{displayGameName}</span>
-        <span class="lesson-mast-num">{unit}<span>/{totalUnits}</span></span>
-      </div>
-      <Eyebrow as="p" class="lesson-eyebrow">{displayGameName}, unit {unit}</Eyebrow>
       <h1 class="unit-title">{title}</h1>
       {description && <p class="unit-description">{description}</p>}
       <ul class="lesson-chips" aria-label="About this lesson">
@@ -163,6 +143,8 @@ const overviewText = overviewLabel ?? (section ? 'Primer overview' : 'Game overv
         {!section && !frontmatter.inlinePlayer && !frontmatter.runItPlaced && <RunIt />}
       </article>
       <aside class="unit-sidebar">
+        {lessonRoster.length>0 && <details class="lesson-roster"><summary>{displayGameName} · {lessonRoster.length} lessons</summary><ol>{lessonRoster.map((item:{href:string;title:string},index:number)=><li><a href={item.href} aria-current={item.href.replace(/\/$/,'')===currentPath.replace(/\/$/,'')?'page':undefined}><span>{index+1}</span>{item.title}</a></li>)}</ol></details>}
+
         <LessonContents headings={headings} />
       </aside>
       {!section && !frontmatter.inlinePlayer && <RunPanel rule={systemFill} />}
@@ -204,10 +186,14 @@ const overviewText = overviewLabel ?? (section ? 'Primer overview' : 'Game overv
       for (const img of document.querySelectorAll<HTMLImageElement>('.unit-content p > img')) {
         const fit = () => {
           if (!img.naturalWidth) return;
-          const avail = img.parentElement!.clientWidth - 2 * 10;
+          const avail = window.innerWidth;
           const k = Math.floor(avail / img.naturalWidth);
-          img.style.width = k >= 1 ? `${img.naturalWidth * Math.min(k, 2)}px` : '';
-          img.dataset.scale = String(k >= 1 ? Math.min(k, 2) : avail / img.naturalWidth);
+          img.style.width = `${Math.min(img.naturalWidth, avail)}px`;
+          img.style.maxWidth='none';
+          img.style.position='relative';
+          img.style.left='50%';
+          img.style.transform='translateX(-50%)';
+          img.dataset.scale = String(Math.min(1,avail/img.naturalWidth));
         };
         if (img.complete) fit(); else img.addEventListener('load', fit, { once: true });
       }

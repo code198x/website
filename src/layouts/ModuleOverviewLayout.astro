@@ -1,4 +1,7 @@
 ---
+import Figure from '../components/Figure.astro';
+import {getModules} from '../lib/modules';
+import {getCollection} from 'astro:content';
 import PageMasthead from '../components/PageMasthead.astro';
 import Layout from './Layout.astro';
 import { getPlatformBySlug, getSpotColour } from '../lib/platforms';
@@ -6,16 +9,21 @@ import { getUnitsEntry, unitSlug } from '../lib/units';
 
 interface Props {
   title: string;
+  heroImage?:string;
+  heroAlt?:string;
+  heroCaption?:string;
+  estimatedTime?:string;
   description?: string;
   entryAdvice?: { message: string; label: string; href: string; };
   platformSlug: string;
   track: 'assembly' | 'basic' | 'amos' | 'blitz' | 'machine';
   moduleSlug: string;
 }
-const { title, description, platformSlug, track, moduleSlug, entryAdvice } = Astro.props;
+const { title, description, platformSlug, track, moduleSlug, entryAdvice, heroImage, heroAlt, heroCaption, estimatedTime } = Astro.props;
 const platform = await getPlatformBySlug(platformSlug);
 const entry = await getUnitsEntry(platformSlug, track, moduleSlug);
-const units = entry?.data.units ?? [];
+const authored=(await getCollection('unit-pages')).filter(unit=>unit.id.startsWith(`${platformSlug}/${track}/${moduleSlug}/`)).sort((a,b)=>(a.data.unit??0)-(b.data.unit??0));
+const units = entry?.data.units ?? authored.map((unit,index)=>({number:unit.data.unit??index+1,title:unit.data.title,slug:unit.id.split('/').at(-1)!,available:true}));
 const phases = entry?.data.phases ?? [];
 const base = `/systems/${platformSlug}/${track}/${moduleSlug}`;
 const hrefFor = (unit: { number: number; slug?: string }) => `${base}/${unitSlug(unit)}`;
@@ -24,20 +32,22 @@ const groups = phases.length
   ? phases.map(phase => ({ name: phase.name, units: units.filter(unit => unit.number >= phase.start && unit.number <= phase.end) }))
   : [{ name: '', units }];
 const trackName = { assembly: 'Assembly', basic: 'BASIC', amos: 'AMOS', blitz: 'Blitz BASIC', machine: 'Machine' }[track];
+const module=(await getModules(platformSlug,track)).find(item=>item.slug===moduleSlug);
+const image=heroImage || module?.thumbnail;
 ---
 <Layout masthead={false} title={`${title} · ${platform?.data.shortName ?? platformSlug} ${trackName}`} description={description} platformColor={platform?.data.color} spotColor={getSpotColour(platform)}>
   <article class="page module-overview">
-    <PageMasthead class="module-magazine-mast" label={title} note={`${units.length} ${units.length === 1 ? 'lesson' : 'lessons'}`} />
-    <header>
-      <p class="eyebrow">{platform?.data.shortName ?? platformSlug} · {trackName}</p>
+    <header class="overview-opening"><div>
       <h1>{title}</h1>
-      {description && <p class="lead">{description}</p>}
+      <p class="module-facts">{platform?.data.shortName ?? platformSlug} · {trackName}</p>
+      {(module?.tagline || description) && <p class="lead">{module?.tagline || description}</p>}
+      <p class="module-facts">{units.length} units{estimatedTime && ` · ${estimatedTime}`}</p>
       <div class="entry-links">
       {firstUnit && <a class="start-link" href={hrefFor(firstUnit)}>Start with {firstUnit.title} <span aria-hidden="true">→</span></a>}
       {units.length > 0 && <a class="start-link" href="#lessons-title">Browse lessons</a>}
       </div>
       {entryAdvice && <p class="entry-advice">{entryAdvice.message} <a href={entryAdvice.href}>{entryAdvice.label} →</a></p>}
-    </header>
+    </div>{image&&<div class="overview-evidence"><Figure src={image} alt={heroAlt || `${title} course capture`} caption={heroCaption || `${title} · ${platform?.data.shortName ?? platformSlug}`} /></div>}</header>
     <div class="overview">
       <div class="prose"><slot /></div>
       {units.length > 0 && <nav class="lessons" aria-labelledby="lessons-title">
@@ -54,7 +64,7 @@ const trackName = { assembly: 'Assembly', basic: 'BASIC', amos: 'AMOS', blitz: '
         </section>)}
       </nav>}
     </div>
-    <footer><a href={`/systems/${platformSlug}/${track}`}>Explore the {trackName} track <span aria-hidden="true">→</span></a></footer>
+    <footer><a href={`/systems/${platformSlug}/${track}`}>Explore the {trackName} track <span aria-hidden="true">→</span></a> <a href={`/systems/${platformSlug}/getting-started`}>Setup guide →</a></footer>
   </article>
 </Layout>
 <style>

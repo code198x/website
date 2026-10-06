@@ -15,46 +15,27 @@ async function softNavigate(page: Page, linkName: string) {
   await page.waitForFunction(() => document.documentElement.dataset.softLoaded === 'true');
 }
 
-test.describe('system page stage', () => {
-  test('loads no player script before Play, then swaps in the player', async ({ page }) => {
-    const requests: string[] = [];
-    page.on('request', r => requests.push(r.url()));
-    await page.setViewportSize({ width: 1440, height: 900 });
+test.describe('system page modal', () => {
+  test('loads the shared player only when requested and preserves the session on return', async ({page}) => {
+    const requests:string[]=[];page.on('request',r=>requests.push(r.url()));
     await page.goto('/systems/sinclair-zx-spectrum/');
-    await expect(page.locator('.stage .h-screen-img')).toBeVisible();
-    expect(requests.some(u => u.includes('/emulators/embed.js'))).toBe(false);
-    const width = await page.locator('.stage .h-screen-img').evaluate(i => i.getBoundingClientRect().width);
-    expect(width % 352).toBe(0);
-    await page.getByRole('button', { name: /Play the/ }).click();
-    await expect(page.locator('.stage emu198x-player')).toBeAttached();
-    expect(requests.some(u => u.includes('/emulators/embed.js'))).toBe(true);
+    expect(requests.some(url=>url.includes('/emulators/embed.js'))).toBe(false);
+    const play=page.getByRole('button',{name:/Play the/});await play.click();
+    const dialog=page.getByRole('dialog');await expect(dialog).toBeVisible();
+    await expect(dialog.locator('emu198x-player')).toHaveAttribute('system','sinclair-zx-spectrum');
+    expect(requests.some(url=>url.includes('/emulators/embed.js'))).toBe(true);
+    await dialog.locator('emu198x-player').evaluate(el=>(el as HTMLElement).dataset.mark='same-session');
+    await page.locator('.rp-close').click();await expect(dialog).toBeHidden();await expect(play).toBeFocused();
+    await play.click();await expect(dialog.locator('emu198x-player')).toHaveAttribute('data-mark','same-session');
   });
-
-  test('keeps route choice above the fold at 1440×900', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
+  test('keeps language choices linked to their own routes',async({page})=>{
     await page.goto('/systems/sinclair-zx-spectrum/');
-    const bottom = await page.getByLabel('Language routes').evaluate(l => l.getBoundingClientRect().bottom);
-    expect(bottom).toBeLessThanOrEqual(900);
+    const routes=page.getByLabel('Language routes');await expect(routes).toBeVisible();
+    for(const link of await routes.locator('a').all())expect(await link.getAttribute('href')).toMatch(/^\/systems\/sinclair-zx-spectrum\//);
   });
-
-  test('Play swaps in a player the same width as the poster', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto('/systems/sinclair-zx-spectrum/');
-    const before = await page.locator('.stage .h-screen-img').evaluate(i => i.getBoundingClientRect().width);
-    await page.getByRole('button', { name: /Play the/ }).click();
-    const player = page.locator('.stage emu198x-player');
-    await expect(player).toBeAttached();
-    // The player's own stylesheet makes it a block; until that applies it has no width.
-    await expect.poll(() => player.evaluate((p, w) => Math.abs(p.getBoundingClientRect().width - w), before)).toBeLessThanOrEqual(1);
-  });
-
-  test('has no Play button without JavaScript', async ({ browser }) => {
-    const context = await browser.newContext({ javaScriptEnabled: false });
-    const page = await context.newPage();
-    await page.goto('/systems/sinclair-zx-spectrum/');
-    await expect(page.locator('.stage .h-screen-img')).toBeVisible();
-    await expect(page.getByRole('button', { name: /Play the/ })).toBeHidden();
-    await context.close();
+  test('does not offer an inert Play button without JavaScript',async({browser})=>{
+    const context=await browser.newContext({javaScriptEnabled:false});const page=await context.newPage();
+    await page.goto('/systems/sinclair-zx-spectrum/');await expect(page.getByRole('button',{name:/Play the/})).toBeHidden();await context.close();
   });
 });
 
@@ -62,19 +43,19 @@ test.describe('lesson run panel', () => {
   const c64 = '/systems/commodore-64/assembly/starfield/unit-03/';
   const amiga = '/systems/commodore-amiga/assembly/meet-the-machine/unit-02/';
 
-  test('docks a narrow machine at 1440 and hides the contents list', async ({ page }) => {
+  test('opens a narrow machine in a modal without rearranging the lesson', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(c64);
     await page.getByRole('button', { name: 'Run it here' }).click();
-    await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'docked');
-    await expect(page.locator('.unit-sidebar')).toBeHidden();
+    await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'modal');
+    await expect(page.locator('.unit-layout')).not.toHaveClass(/is-docked/);
   });
 
-  test('overlays a wide machine at 1440, with its screen at 1×', async ({ page }) => {
+  test('opens a wide machine in a modal, with its screen at 1×', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(amiga);
     await page.getByRole('button', { name: 'Run it here' }).click();
-    await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'overlay');
+    await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'modal');
     const canvas = await page.locator('run-panel emu198x-player').evaluate(async p => {
       for (let i = 0; i < 100 && !p.shadowRoot?.querySelector('canvas'); i++) await new Promise(r => setTimeout(r, 50));
       return p.shadowRoot?.querySelector('canvas')?.getBoundingClientRect().width;
@@ -98,7 +79,7 @@ test.describe('lesson run panel', () => {
     // Esc while the player is still loading has nothing to close yet.
     await expect(page.locator('.rp-close')).toBeFocused();
     await page.keyboard.press('Escape');
-    await expect(page.locator('run-panel')).toBeHidden();
+    await expect(page.locator('.rp-dialog')).toBeHidden();
     await expect(run).toBeFocused();
     await expect(page.locator('.unit-sidebar')).toBeVisible();
   });
@@ -167,68 +148,22 @@ test.describe('lesson run panel', () => {
     await expect(page.locator('run-panel emu198x-player')).toHaveAttribute('data-mark', '1');
   });
 
-  test('docks a C64 panel at 1150px, hiding the sidebar and keeping prose in the first column', async ({ page }) => {
-    await page.setViewportSize({ width: 1150, height: 900 });
-    await page.goto(c64);
-    await page.getByRole('button', { name: 'Run it here' }).click();
-    await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'docked');
-    await expect(page.locator('.unit-sidebar')).toBeHidden();
-    const proseLeft = await page.locator('.unit-content').evaluate(el => el.getBoundingClientRect().left);
-    const panelLeft = await page.locator('run-panel').evaluate(el => el.getBoundingClientRect().left);
-    expect(proseLeft).toBeLessThan(panelLeft);
+  for(const width of [1440,1150,390])test(`protects focus in a native modal at ${width}px`,async({page})=>{
+    await page.setViewportSize({width,height:900});await page.goto(c64);
+    const run=page.getByRole('button',{name:'Run it here'});await run.click();
+    const dialog=page.getByRole('dialog',{name:/Run /});await expect(dialog).toBeVisible();
+    expect(await dialog.evaluate(el=>el.matches(':modal'))).toBe(true);
+    for(let i=0;i<16;i++){
+      await page.keyboard.press('Tab');
+      // Native dialogs may hand Tab to browser chrome. That is different
+      // from focusing the inert lesson underneath the modal.
+      expect(await page.evaluate(()=>!document.hasFocus() || document.activeElement?.closest('dialog')!==null)).toBe(true);
+    }
+    await run.evaluate(element=>element.focus());
+    await expect(run).not.toBeFocused();
+    await page.locator('.rp-close').click();await expect(dialog).toBeHidden();await expect(run).toBeFocused();
   });
 
-  test.describe('ARIA roles', () => {
-    test('a docked panel is a labelled region, not a dialog', async ({ page }) => {
-      await page.setViewportSize({ width: 1440, height: 900 });
-      await page.goto(c64);
-      await page.getByRole('button', { name: 'Run it here' }).click();
-      const panel = page.locator('run-panel');
-      await expect(panel).toHaveAttribute('data-mode', 'docked');
-      await expect(panel).toHaveAttribute('role', 'region');
-      await expect(panel).not.toHaveAttribute('aria-modal', 'true');
-      await expect(panel).toHaveAttribute('aria-label', /^Run /);
-    });
-
-    test('an overlay panel is a modal dialog', async ({ page }) => {
-      await page.setViewportSize({ width: 1440, height: 900 });
-      await page.goto(amiga);
-      await page.getByRole('button', { name: 'Run it here' }).click();
-      const panel = page.locator('run-panel');
-      await expect(panel).toHaveAttribute('data-mode', 'overlay');
-      await expect(panel).toHaveAttribute('role', 'dialog');
-      await expect(panel).toHaveAttribute('aria-modal', 'true');
-      await expect(panel).toHaveAttribute('aria-label', /^Run /);
-    });
-
-    test('an overlay panel makes the page it covers inert, and closing restores it', async ({ page }) => {
-      await page.setViewportSize({ width: 1440, height: 900 });
-      await page.goto(amiga);
-      await page.getByRole('button', { name: 'Run it here' }).click();
-      await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'overlay');
-      for (const selector of ['.unit-content', '.unit-sidebar', '.unit-navigation', 'footer.footer']) {
-        await expect(page.locator(selector), selector).toHaveJSProperty('inert', true);
-      }
-      await expect(page.getByRole('navigation', { name: 'Primary' })).toHaveJSProperty('inert', false);
-      await expect(page.locator('nav.breadcrumbs')).toHaveJSProperty('inert', false);
-      for (let i = 0; i < 8; i++) {
-        await page.keyboard.press('Tab');
-        const inProse = await page.evaluate(() => document.activeElement?.closest('.unit-content, .unit-sidebar, footer') != null);
-        expect(inProse).toBe(false);
-      }
-      await page.locator('.rp-close').click();
-      await expect(page.locator('[inert]')).toHaveCount(0);
-      await expect(page.getByRole('button', { name: 'Run it here' })).toBeFocused();
-    });
-
-    test('a docked panel leaves the page usable', async ({ page }) => {
-      await page.setViewportSize({ width: 1440, height: 900 });
-      await page.goto(c64);
-      await page.getByRole('button', { name: 'Run it here' }).click();
-      await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'docked');
-      await expect(page.locator('[inert]')).toHaveCount(0);
-    });
-  });
 });
 
 test.describe('the Amiga capture renders at 1x', () => {
@@ -241,11 +176,11 @@ test.describe('the Amiga capture renders at 1x', () => {
     expect(width).toBe(768);
   });
 
-  test('still 768px wide at 390, without page overflow', async ({ page }) => {
+  test('shrinks the entire capture only when the viewport is narrower', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(amiga);
     const width = await page.locator('.runit-capture').evaluate(img => img.getBoundingClientRect().width);
-    expect(width).toBe(768);
+    expect(width).toBe(390);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     expect(overflow).toBeLessThanOrEqual(0);
   });
@@ -260,7 +195,7 @@ test.describe('a failed embed.js load', () => {
     const status = page.locator('.runit-status');
     await expect(status).toBeVisible();
     await expect(status).not.toBeEmpty();
-    await expect(page.locator('run-panel')).toBeHidden();
+    await expect(page.locator('.rp-dialog')).toBeHidden();
   });
 
   test('shows a status message on the stage and re-enables Play', async ({ page }) => {
@@ -268,9 +203,9 @@ test.describe('a failed embed.js load', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('/systems/sinclair-zx-spectrum/');
     const play = page.getByRole('button', { name: /Play the/ });
-    await expect(page.locator('.stage-status')).toHaveAttribute('role', 'status');
+    await expect(page.locator('.system-launcher .runit-status')).toHaveAttribute('role', 'status');
     await play.click();
-    await expect(page.locator('.stage-status')).toHaveText(/couldn't load/);
+    await expect(page.locator('.system-launcher .runit-status')).toHaveText(/couldn't load/);
     await expect(play).toBeEnabled();
     await expect(play).not.toHaveAttribute('aria-busy', 'true');
   });
@@ -288,7 +223,7 @@ test.describe('a failed embed.js load', () => {
     await run.click();
     await expect(page.locator('.runit-status')).toBeVisible();
     await run.click();
-    await expect(page.locator('run-panel')).toBeVisible();
+    await expect(page.locator('.rp-dialog')).toBeVisible();
     await expect(page.locator('run-panel emu198x-player')).toHaveCount(1);
   });
 
@@ -303,9 +238,9 @@ test.describe('a failed embed.js load', () => {
     await page.goto('/systems/sinclair-zx-spectrum/');
     const play = page.getByRole('button', { name: /Play the/ });
     await play.click();
-    await expect(page.locator('.stage-status')).toHaveText(/couldn't load/);
+    await expect(page.locator('.system-launcher .runit-status')).toHaveText(/couldn't load/);
     await play.click();
-    await expect(page.locator('.stage emu198x-player')).toBeAttached();
+    await expect(page.locator('run-panel emu198x-player')).toBeAttached();
   });
 });
 
@@ -319,7 +254,7 @@ test.describe('soft navigation (Astro ClientRouter)', () => {
     const run = page.getByRole('button', { name: 'Run it here' });
     await expect(run).toBeVisible();
     await run.click();
-    await expect(page.locator('run-panel')).toBeVisible();
+    await expect(page.locator('.rp-dialog')).toBeVisible();
   });
 
   test('re-measures the breadcrumb bar after Next Unit, so it never covers Close', async ({ page }) => {
@@ -332,7 +267,7 @@ test.describe('soft navigation (Astro ClientRouter)', () => {
     const crumbs = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--crumbs-height'));
     expect(crumbs).toBe(`${bar}px`);
     await run.click();
-    await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'docked');
+    await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'modal');
     await page.evaluate(() => scrollTo(0, 3000));
     const close = page.locator('.rp-close');
     await expect(close).toBeVisible();
@@ -356,5 +291,43 @@ test.describe('soft navigation (Astro ClientRouter)', () => {
     await softNavigate(page, 'Next Unit');
     await page.getByRole('button', { name: 'Run it here' }).click();
     await expect(page.locator('emu198x-player')).toHaveCount(1);
+  });
+});
+
+test.describe('editable BASIC in the lesson', () => {
+  const lesson='/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer/';
+  test('runs the edited listing and preserves that session when a later edit is invalid',async({page})=>{
+    await page.goto(lesson);
+    const source=page.getByRole('textbox',{name:'Your BASIC listing'});
+    await source.fill('10 PRINT "Hello, world."\n20 PRINT 1.5');
+    await expect(page.locator('.listing-changes')).not.toHaveText('Original code');
+    await expect(page.locator('.listing-editor')).toHaveClass(/highlighted/);
+    await page.getByRole('button',{name:'Run this code',exact:true}).click();
+    const dialog=page.getByRole('dialog',{name:'Your Spectrum'});
+    await expect(dialog).toBeVisible();
+    await expect(dialog.locator('.machine-transcript pre')).toContainText('Hello, world.');
+    await expect(dialog.locator('.machine-transcript pre')).toContainText('1.5');
+    await dialog.locator('canvas').press('Escape');
+    await expect(dialog).toBeVisible();
+    await page.getByRole('button',{name:'Back to the listing'}).click();
+    await expect(source).toHaveValue('10 PRINT "Hello, world."\n20 PRINT 1.5');
+    await source.fill('NOT BASIC');
+    await page.getByRole('button',{name:'Run this code',exact:true}).click();
+    await expect(page.getByRole('alert')).toContainText('line number');
+    await expect(dialog).toBeHidden();
+    await page.getByRole('button',{name:'Return to your Spectrum'}).click();
+    await expect(dialog.locator('.machine-transcript pre')).toContainText('Hello, world.');
+    await expect(dialog.locator('.machine-status')).toContainText('Paused');
+  });
+  test('resets the draft without reopening the machine',async({page})=>{
+    await page.goto(lesson);
+    const source=page.getByRole('textbox',{name:'Your BASIC listing'});
+    const original=await source.inputValue();
+    await source.fill('10 PRINT "CHANGED"');
+    await page.getByText('Listing options',{exact:true}).click();
+    await page.getByRole('button',{name:'Reset to original'}).click();
+    await expect(source).toHaveValue(original);
+    await expect(page.locator('.listing-changes')).toHaveText('Original code');
+    await expect(page.getByRole('dialog',{name:'Your Spectrum'})).toBeHidden();
   });
 });

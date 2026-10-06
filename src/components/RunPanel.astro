@@ -1,25 +1,21 @@
 ---
-/**
- * The lesson's single run panel (spec §5.2). Docks in the right column when
- * the prose keeps 600px, overlays otherwise, fullscreen below 768px. Closing
- * pauses the machine: the player has no public resume, so the reader resumes
- * with its own Resume button. A new program replaces the element; the same
- * program reuses the one already loaded rather than rebooting the machine.
- */
+/** A native modal owns focus while the shared machine runs. Close pauses it;
+ * reopening preserves the player. Its own Resume control continues execution. */
 interface Props { rule?: string }
 const { rule } = Astro.props;
 ---
-<run-panel hidden style={rule ? `--runit-rule: ${rule}` : undefined}>
+<run-panel style={rule ? `--runit-rule: ${rule}` : undefined}>
+  <dialog class="rp-dialog" aria-label="Run this program">
   <div class="rp-head">
     <div><strong class="rp-title"></strong><br><span class="rp-model"></span></div>
     <button type="button" class="rp-close">Close <span aria-hidden="true">✕</span></button>
   </div>
   <div class="rp-screen"></div>
   <div class="rp-inspector" hidden></div>
+  </dialog>
 </run-panel>
 
 <script>
-  import { panelMode } from '../lib/player-layout';
   import { loadPlayer } from '../lib/load-player';
 
   class RunPanel extends HTMLElement {
@@ -28,8 +24,8 @@ const { rule } = Astro.props;
     controller?: AbortController;
     /** True from the start of a load until it settles; further opens wait. */
     loading = false;
-    /** Page content this panel made inert while it covers the page. */
-    covered: HTMLElement[] = [];
+
+    get dialog() { return this.querySelector<HTMLDialogElement>('.rp-dialog')!; }
 
     connectedCallback() {
       // Fresh listeners per connection, torn down in disconnectedCallback —
@@ -39,17 +35,22 @@ const { rule } = Astro.props;
       const { signal } = this.controller;
       document.addEventListener('runit:open', e => this.open((e as CustomEvent).detail.button), { signal });
       this.querySelector('.rp-close')!.addEventListener('click', () => this.close(), { signal });
-      document.addEventListener('keydown', e => {
-        if (e.key !== 'Escape' || this.hidden) return;
+      this.dialog.addEventListener('cancel', e => {
+        if(document.activeElement?.tagName === 'EMU198X-PLAYER') e.preventDefault();
+      },{signal});
+      this.dialog.addEventListener('close',()=>this.finishClose(),{signal});
+      this.dialog.addEventListener('keydown', e => {
+        if (e.key !== 'Escape' || !this.dialog.open) return;
         if (document.activeElement?.tagName === 'EMU198X-PLAYER') return; // Esc is a machine key there
-        this.close();
+        e.preventDefault();this.close();
       }, { signal });
-      addEventListener('resize', () => { if (!this.hidden) this.place(); }, { signal });
+      addEventListener('resize', () => { if (this.dialog.open) this.place(); }, { signal });
     }
 
     disconnectedCallback() {
       this.controller?.abort();
-      this.uncover();
+      this.querySelector<any>('emu198x-player')?.pause?.();
+      document.body.classList.remove('machine-active');
     }
 
     async open(button: HTMLElement) {
@@ -57,10 +58,10 @@ const { rule } = Astro.props;
       this.opener = button;
       const d = button.dataset;
       this.width = Number(d.runWidth) || 416;
-      const status = button.closest('.runit')?.querySelector<HTMLElement>('.runit-status');
+      const status = button.closest('.runit, .system-launcher')?.querySelector<HTMLElement>('.runit-status');
 
       const existing = this.querySelector('emu198x-player');
-      if (existing && existing.getAttribute('src') === d.runSrc) {
+      if (existing && existing.getAttribute('src') === (d.runSrc ?? null)) {
         // Same program already loaded: reuse it instead of rebooting the
         // machine. The player has no public resume, so the reader presses
         // its own Resume once the panel is visible again.
@@ -86,10 +87,11 @@ const { rule } = Astro.props;
         button.removeAttribute('aria-busy');
       }
 
+      if(!this.isConnected || this.controller?.signal.aborted)return;
       const player = document.createElement('emu198x-player');
       player.setAttribute('system', d.runSystem!);
       if (d.runVariant) player.setAttribute('variant', d.runVariant);
-      player.setAttribute('src', d.runSrc!);
+      if(d.runSrc)player.setAttribute('src', d.runSrc);
       player.setAttribute('example-title', d.runTitle!);
       // The player's own stylesheet caps it at 760px; lift that to the
       // machine's frame width so the screen renders at 1×.
@@ -101,71 +103,22 @@ const { rule } = Astro.props;
     reveal(d: DOMStringMap) {
       this.querySelector('.rp-title')!.textContent = d.runTitle!;
       this.querySelector('.rp-model')!.textContent = d.runModel ?? '';
-      this.hidden = false;
+      this.dialog.showModal();
+      document.body.classList.add('machine-active');
       this.place();
       (this.querySelector('.rp-close') as HTMLElement).focus();
     }
 
     place() {
-      const layout = this.closest('.unit-layout') as HTMLElement;
-      // columnGap only resolves to the real grid gap once the layout is
-      // actually a grid — before the first placement it's still the block
-      // layout, so `columnGap` reads 'normal'. Measure as if docked (it
-      // doesn't change the layout's own outer width) so the gap used in the
-      // decision matches the gap the docked grid will actually use.
-      layout.classList.add('is-docked');
-      const gap = parseFloat(getComputedStyle(layout).columnGap) || 40;
-      const containerWidth = layout.clientWidth;
-      const mode = panelMode({ viewportWidth: innerWidth, containerWidth, panelWidth: this.width, gap });
-      this.dataset.mode = mode;
-      layout.classList.toggle('is-docked', mode === 'docked');
-      layout.style.setProperty('--panel-width', `${this.width}px`);
-
-      // Docked, the panel sits in its own labelled region of the page.
-      // Overlaid or fullscreen it covers the prose, so it's a dialog.
-      const program = this.querySelector('.rp-title')!.textContent || '';
-      this.setAttribute('aria-label', `Run ${program}`);
-      if (mode === 'docked') {
-        this.setAttribute('role', 'region');
-        this.removeAttribute('aria-modal');
-        this.uncover();
-      } else {
-        this.setAttribute('role', 'dialog');
-        this.setAttribute('aria-modal', 'true');
-        this.cover();
-      }
+      this.dataset.mode = innerWidth < 768 ? 'fullscreen' : 'modal';
+      this.dialog.style.setProperty('--panel-width', `${this.width}px`);
+      this.dialog.setAttribute('aria-label', `Run ${this.querySelector('.rp-title')!.textContent}`);
     }
 
-    /**
-     * Makes everything the overlay or fullscreen panel covers inert, so Tab
-     * and screen readers stay inside it. Walks up from the panel, taking each
-     * ancestor's other children. The site nav and breadcrumb bar stay usable:
-     * the panel starts below them.
-     */
-    cover() {
-      if (this.covered.length) return;
-      let node: HTMLElement = this;
-      while (node !== document.body && node.parentElement) {
-        for (const sibling of node.parentElement.children) {
-          if (sibling === node || !(sibling instanceof HTMLElement) || sibling.inert) continue;
-          if (sibling.matches('.nav, .breadcrumbs, script, style')) continue;
-          sibling.inert = true;
-          this.covered.push(sibling);
-        }
-        node = node.parentElement;
-      }
-    }
-
-    uncover() {
-      for (const element of this.covered) element.inert = false;
-      this.covered = [];
-    }
-
-    close() {
-      (this.querySelector('emu198x-player') as (HTMLElement & { pause?: () => void }) | null)?.pause?.();
-      this.uncover();
-      this.hidden = true;
-      (this.closest('.unit-layout') as HTMLElement).classList.remove('is-docked');
+    close() { this.dialog.close(); }
+    finishClose() {
+      (this.querySelector('emu198x-player') as (HTMLElement & {pause?:()=>void}) | null)?.pause?.();
+      document.body.classList.remove('machine-active');
       this.opener?.focus();
     }
   }
@@ -173,58 +126,16 @@ const { rule } = Astro.props;
 </script>
 
 <style is:global>
-  run-panel {
-    display: block; background: var(--h-ground); font-family: var(--font-family-sans);
-    /* The player's own stylesheet reads these; unset, it falls back to system
-       colours and a blue focus ring. */
-    --player-ink: var(--h-ink); --player-muted: var(--h-ink-body); --player-line: var(--color-border); --player-surface: var(--color-surface); --player-focus: var(--h-ink);
-  }
-  run-panel[hidden] { display: none; }
-  run-panel .rp-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4); border-top: 4px solid var(--runit-rule, var(--h-ink)); padding: var(--space-3) 0; }
-  run-panel .rp-model { font-family: var(--font-family-mono); font-size: var(--h-text-small); color: var(--h-ink-muted); }
-  run-panel .rp-close { font: var(--h-text-small) var(--font-family-sans); background: none; border: 1px solid var(--color-border); border-radius: 4px; padding: .4rem .7rem; min-height: 44px; color: var(--h-ink); cursor: pointer; }
-
-  /* The docked panel sticks below the site nav and the breadcrumb bar
-     (TableOfContents.astro uses the same offset) and scrolls internally once
-     it's taller than the space left under them. */
-  run-panel[data-mode='docked'] {
-    position: sticky;
-    top: calc(var(--nav-height) + var(--crumbs-height, 0px) + var(--space-4));
-    max-height: calc(100vh - (var(--nav-height) + var(--crumbs-height, 0px) + var(--space-4)) - var(--space-4));
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    align-self: start;
-    order: 3;
-  }
-
-  /* Overlay and fullscreen start below the sticky nav (z-index 100) and
-     breadcrumb bar (z-index 60), so the header stays usable and the panel's
-     own Close button is never covered by them. */
-  run-panel[data-mode='overlay'] {
-    position: fixed;
-    top: calc(var(--nav-height) + var(--crumbs-height, 0px));
-    right: 0;
-    bottom: 0;
-    width: min(100vw, calc(var(--panel-width) + 2 * var(--space-5)));
-    padding: 0 var(--space-5);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    box-shadow: -12px 0 32px -16px rgb(0 0 0 / .45);
-    z-index: 70;
-  }
-  run-panel[data-mode='fullscreen'] {
-    position: fixed;
-    top: calc(var(--nav-height) + var(--crumbs-height, 0px));
-    right: 0;
-    bottom: 0;
-    left: 0;
-    padding: 0 var(--space-4);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    z-index: 70;
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    run-panel[data-mode='overlay'] { animation: rp-in var(--h-rise) var(--h-ease); }
-    @keyframes rp-in { from { transform: translateX(24px); opacity: 0; } }
-  }
+body.machine-active{overflow:hidden}
+run-panel{--player-ink:var(--h-ink);--player-muted:var(--h-ink-body);--player-line:var(--h-line);--player-surface:var(--h-ground);--player-focus:var(--h-spot)}
+.rp-dialog{box-sizing:border-box;position:fixed;inset:0;margin:auto;width:max(608px,calc(var(--panel-width,416px) + 64px));max-width:100vw;max-height:calc(100dvh - 48px);padding:32px 0;border:0;border-radius:0;background:var(--h-page);color:var(--h-ink);overflow:auto;overscroll-behavior:contain;box-shadow:0 16px 48px -12px #1b1a1780}
+.rp-dialog:not([open]){display:none}.rp-dialog::backdrop{background:#1b1a17b3}
+.rp-dialog .rp-head{display:flex;align-items:start;justify-content:space-between;gap:24px;margin-bottom:24px;padding-inline:24px;font:600 1.25rem/1.5 var(--h-font-ui)}
+.rp-dialog .rp-model{font:1rem/1.5 var(--h-font-mono);color:var(--h-ink-muted)}
+.rp-dialog .rp-close{font:1rem/1.5 var(--h-font-ui);min-height:48px;padding:10px 16px;border:1px solid var(--h-line);background:var(--h-ground);color:var(--h-ink);border-radius:0;cursor:pointer}
+.rp-screen{width:var(--panel-width,416px);max-width:100%;margin:auto}
+.rp-dialog :focus-visible{outline:2px solid var(--h-spot);outline-offset:4px}
+@media(max-width:767px){.rp-dialog{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;padding:16px 0}.rp-dialog .rp-head{flex-wrap:wrap}}
+@media(max-width:440px){.rp-dialog{padding-inline:0}.rp-dialog .rp-head{padding-inline:12px}}
+@media(prefers-reduced-motion:no-preference){.rp-dialog[open]{animation:rp-arrive 180ms ease-out}@keyframes rp-arrive{from{box-shadow:0 4px 16px -8px #1b1a1740}to{box-shadow:0 16px 48px -12px #1b1a1780}}}
 </style>
