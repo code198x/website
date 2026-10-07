@@ -113,6 +113,12 @@ if(process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.
   } else {
     assert(['seal','verify'].includes(operation),'Use identity, clean, seal or verify');
     const identity=JSON.parse(readFileSync(inputFile,'utf8'));
+    if(operation==='seal') {
+      // A builder must not silently update a tracked lockfile, or otherwise
+      // produce bytes from inputs different from those used for the key.
+      const afterBuild=await identify(kind,path.join(site,bundles[kind].source));
+      assert.equal(afterBuild.key,identity.key,'Bundle inputs changed during the build');
+    }
     const count=(operation==='seal'?sealBundle:verifyBundle)(output,identity);
     console.log(`${kind}: ${operation} checked ${count} files`);
   }
