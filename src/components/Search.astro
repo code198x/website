@@ -17,7 +17,7 @@
   </svg>
 </button>
 
-<dialog class="search-modal">
+<dialog class="search-modal" aria-label="Search the site">
   <div class="search-container">
     <div id="search"></div>
     <button class="search-close" aria-label="Close search">
@@ -82,8 +82,9 @@
     width: 90%;
     max-width: 600px;
     max-height: 70vh;
-    overflow: hidden;
+    overflow: auto;
     position: relative;
+    padding: 56px 20px 20px;
   }
 
   .search-close {
@@ -144,30 +145,47 @@
     async function loadPagefind() {
       const mount = document.getElementById('search');
       if (!mount || mount.dataset.mounted) return;
-      mount.dataset.mounted = 'true';
+      if (mount.dataset.loading) return;
+      mount.dataset.loading = 'true';
+      mount.setAttribute('aria-busy', 'true');
+      mount.textContent = 'Loading search…';
       try {
-        // Dynamic import at runtime only
-        const pagefind = await import('/pagefind/pagefind-ui.js');
-        new pagefind.PagefindUI({
+        // The distributed UI is an IIFE which installs window.PagefindUI.
+        await import('/pagefind/pagefind-ui.js');
+        if (!mount.isConnected) return;
+        mount.textContent = '';
+        new window.PagefindUI({
           element: '#search',
           showSubResults: true,
           showImages: false,
         });
-      } catch (e) {
-        console.warn('Pagefind not available - run npm run build to generate search index');
-        mount.textContent = 'Search is only available in production builds. Run npm run build to enable search.';
-        mount.style.cssText = 'padding: 2rem; text-align: center; color: var(--color-text-secondary);';
+        mount.dataset.mounted = 'true';
+      } catch (error) {
+        console.warn('Search could not load', error);
+        mount.textContent = 'Search could not load. Check your connection and try again. ';
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.textContent = 'Try again';
+        retry.addEventListener('click', openSearch);
+        mount.append(retry);
+      } finally {
+        delete mount.dataset.loading;
+        mount.removeAttribute('aria-busy');
       }
     }
 
-    function openSearch() {
-      loadPagefind();
-      modal()?.showModal();
-      // Focus the search input after modal opens
-      setTimeout(() => {
-        const input = modal()?.querySelector('input');
-        input?.focus();
-      }, 100);
+    async function openSearch() {
+      const dialog = modal();
+      if (!dialog) return;
+      if (!dialog.open) {
+        // A keyboard shortcut has no trigger click to restore focus to.
+        document.querySelector('.search-trigger')?.focus();
+        dialog.showModal();
+      }
+      await loadPagefind();
+      if (dialog.isConnected && dialog.open) {
+        dialog.querySelector('input')?.focus();
+      }
     }
 
     function closeSearch() {
