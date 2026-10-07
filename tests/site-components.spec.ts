@@ -59,3 +59,38 @@ for (const route of ['from-the-metal/unroll-your-loops', 'field-notes/the-sheep-
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
   });
 }
+
+test('component previews keep instances independent and expose their real controls', async ({ page, isMobile }) => {
+  await page.goto('/catalogue/site-components/');
+  await expect(page.getByRole('heading', { name: 'Site components', exact: true })).toBeVisible();
+  const controls = page.locator('[data-directory-preview]');
+  await expect(controls).toHaveCount(2);
+  const first = controls.nth(0);
+  const second = controls.nth(1);
+  await first.getByRole('searchbox').fill('Vault');
+  await expect(first.locator('[data-result]:visible')).toHaveCount(1);
+  await expect(first.getByRole('status')).toHaveText('1 destination');
+  await expect(second.locator('[data-result]:visible')).toHaveCount(3);
+  await first.getByRole('searchbox').fill('unmatched-873521');
+  await expect(first.locator('[data-empty]')).toBeVisible();
+  await expect(first.getByRole('status')).toHaveText('0 destinations');
+  await first.getByRole('button', { name: 'Clear filters' }).click();
+  await expect(first.getByRole('searchbox')).toBeFocused();
+  await expect(first.locator('[data-result]:visible')).toHaveCount(3);
+  await second.getByRole('searchbox').fill('Vault');
+  await second.getByRole('searchbox').press('Escape');
+  await expect(second.getByRole('searchbox')).toHaveValue('');
+  await expect(second.locator('[data-result]:visible')).toHaveCount(3);
+  await expect(first.getByRole('status')).toHaveAttribute('aria-atomic', 'true');
+  const rail = page.locator('.reading-toc');
+  if (!isMobile) {
+    await expect(rail.getByRole('link')).toHaveCount(2);
+    await expect(rail.getByRole('link', { name: /Observe the result/ })).toHaveAttribute('href', '#preview-observe');
+  }
+  await expect(page.locator('.editorial-article')).toHaveCount(3);
+  const heading = page.locator('#preview-long-heading');
+  const bounds = await heading.boundingBox();
+  expect(bounds!.x).toBeGreaterThanOrEqual(0);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1);
+});
