@@ -90,6 +90,13 @@ export function sealBundle(root,identity) {
   writeFileSync(path.join(root,receipt),JSON.stringify({schema:1,key:identity.key,files},null,2)+'\n');
   return Object.keys(files).length;
 }
+export async function sealCurrentBundle(root,identity,source,env=process.env) {
+  // A builder must not silently update a tracked lockfile, or otherwise
+  // produce bytes from inputs different from those used for the key.
+  const afterBuild=await identify(identity.kind,source,env);
+  assert.equal(afterBuild.key,identity.key,'Bundle inputs changed during the build');
+  return sealBundle(root,identity);
+}
 export function verifyBundle(root,identity) {
   const manifest=JSON.parse(readFileSync(path.join(root,receipt),'utf8'));
   assert.equal(manifest.schema,1,'Unsupported bundle manifest');
@@ -113,13 +120,9 @@ if(process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.
   } else {
     assert(['seal','verify'].includes(operation),'Use identity, clean, seal or verify');
     const identity=JSON.parse(readFileSync(inputFile,'utf8'));
-    if(operation==='seal') {
-      // A builder must not silently update a tracked lockfile, or otherwise
-      // produce bytes from inputs different from those used for the key.
-      const afterBuild=await identify(kind,path.join(site,bundles[kind].source));
-      assert.equal(afterBuild.key,identity.key,'Bundle inputs changed during the build');
-    }
-    const count=(operation==='seal'?sealBundle:verifyBundle)(output,identity);
+    const count=operation==='seal'
+      ?await sealCurrentBundle(output,identity,path.join(site,bundles[kind].source))
+      :verifyBundle(output,identity);
     console.log(`${kind}: ${operation} checked ${count} files`);
   }
 }
