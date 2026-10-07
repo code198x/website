@@ -224,3 +224,42 @@ checks the live lesson in Chrome and WebKit against the local preview. `SITE_URL
 The worker loads only when assembling or downloading a cartridge; source edits
 stay local. Downloads always assemble the current editor contents. Failed builds
 leave the running machine intact and report source-line diagnostics.
+
+## Shared site components
+
+Preview the actual components at `/catalogue/site-components/` under `npm run dev`.
+The preview uses the site layout; resize the browser to check narrow and wide
+variants. Like the family catalogue, it emits no production page.
+
+These components belong to Code198x. The pinned `198x-ui` kit owns family primitives;
+page composition stays here. Keep approved page geometry when adopting a component.
+
+| Component | Responsibility and deliberate variants |
+| --- | --- |
+| `PageFrame` | Outer width, gutter and opening/ending space. Default: centred 1264px frame with responsive gutters. `width="full"` preserves browsing surfaces. `opening="compact"` is the existing 24px index opening. `inset="editorial"` preserves Standards’ 32/20/12px gutters; it is not the default for new pages. |
+| `ReadingLayout` | Reading column and sticky contents rail, hidden below 1101px. Give each instance a unique `id`; its contents links scan only that instance. Page typography and sections remain in its slot. |
+| `MagazineSectionHeading` | Paired magazine title and introduction. Named `title` slot accepts authored line breaks/emphasis; the default slot is introduction text. `ending="none"` supports the closing invitation. |
+| `DirectorySearch` / `DirectoryStatus` | Labelled field and atomic live result summary. Search is a field, not a nested form. `filter` belongs inside the owner’s facet form; `inline` includes the search icon and clear button. Require a unique field `id`; pass `controls` when the results container has an ID. Owners supply surrounding layout and filtering rules. |
+| `EditorialArticleLayout` | Site metadata, breadcrumbs and common article composition. Explicit `series` values preserve essay/Field Notes measures (65ch) and Updates (72ch); the header retains its separate measure. `metadata`, `hero` and `ending` slots preserve series content. `EditorialArticle` is the same inner composition used in previews. |
+
+Directory owners call `bindDirectoryReset(root, input, resetFilters)` once during
+initialisation. It clears the query, lets the owner reset facets and results, then
+returns focus. `{ escape: true }` preserves Vault’s Escape shortcut. URL handling,
+matching, alphabet controls and year grouping remain with their directories.
+
+For a reading page:
+
+```astro
+<PageFrame as="article">
+  <PageHeader title="Page title" />
+  <ReadingLayout id="page-reading">
+    <section><h2 id="first-section">First section</h2><!-- content --></section>
+  </ReadingLayout>
+</PageFrame>
+```
+
+Run `npx playwright test tests/site-components.spec.ts tests/page-frame.spec.ts`
+for component behaviour and frame checks. Directory regressions live in
+`pattern-library.spec.ts`, `timeline.spec.ts` and `vault-reading.spec.ts`.
+For spacing changes, compare the affected approved pages before and after; a
+component preview alone cannot establish that the consuming pages stayed intact.

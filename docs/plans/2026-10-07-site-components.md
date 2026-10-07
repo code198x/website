@@ -52,3 +52,34 @@ suggested. Baseline captures and measurements are in `/tmp/198x-components-befor
 The production build, eight reading/navigation checks and seven existing frame
 checks pass. The new test initially assumed heading margins could not collapse
 inside a section; its corrected invariant checks column bounds and rail alignment.
+
+## Component and browser checks
+
+- Shared magazine headings, directory controls and editorial articles are extracted.
+  Directory matching and URL rules remain with each owner. Series metadata and
+  endings remain in their existing layouts.
+- `/catalogue/site-components/` renders the actual components in the real site
+  layout. The built `dist/` contains no catalogue routes.
+- `npm run check`: 218 unit tests passed, 9 skipped; content, sample assembler
+  and browser-player checks passed. Existing Vault balance advisories remain.
+- Production build passed. Focused production Playwright run: 64 passed on an
+  isolated Astro preview. Component-preview checks: 2 passed. The initial run
+  against a reused static server had two failures (Systems font style and a
+  Pattern Library control timeout); neither reproduced in the isolated run.
+- The catalogue had no axe WCAG A/AA violations at 390px or 1440px. The current
+  site exposes one palette, so changing an old localStorage theme preference is
+  not evidence of dark-theme coverage.
+- The detector found only the existing blockquote border moved into
+  `editorial-article.css`. A file-scoped `side-tab` exception records why that
+  approved quotation treatment stays.
+
+The development comparison covers 28 captures and 3,977 elements. All measured
+rectangles and full-page heights match; eight homepage headings differ only by
+at most 0.0002px of computed line-height rounding. See the JSON report and selected
+screenshots in `2026-10-07-site-components/`.
+
+A separate build of the starting revision exposed existing development/production
+frame differences. Standards was bounded in development but full-width in
+production; Vault categories were the reverse. The refactor currently matches
+the development appearance. A width decision is pending before final delivery;
+these differences must not be hidden by a passing development comparison.
