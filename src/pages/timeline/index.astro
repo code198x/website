@@ -1,160 +1,28 @@
 ---
 import { getCollection } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
-import PageHeader from '../../components/PageHeader.astro';
-import { ArrowRight } from '@lucide/astro';
-
-// Get vault entries and extract year based on category
-const vaultEntries = await getCollection('vault');
-
-// Helper to get the primary year for a vault entry based on category
-function getStartYear(e: typeof vaultEntries[0]): number | null {
-  const d = e.data;
-  switch (d.category) {
-    case 'people': return d.born ?? null;
-    case 'companies': return d.founded ?? null;
-    case 'games': return d.released ?? null;
-    case 'techniques': return d.originated ?? null;
-    case 'culture': return d.emerged ?? null;
-    case 'hardware':
-    case 'systems': return d.introduced ?? null;
-    default: return null;
-  }
-}
-
-// Get vault events (excluding people - they get birth/death events instead)
-const vaultEvents = vaultEntries
-  .filter(e => e.data.category !== 'people' && getStartYear(e) !== null)
-  .map(e => ({
-    year: getStartYear(e) as number,
-    category: e.data.category,
-    type: 'vault' as const,
-  }));
-
-// Generate birth events for people
-const birthEvents = vaultEntries
-  .filter(e => e.data.category === 'people' && e.data.born !== null && e.data.born !== undefined)
-  .map(e => ({
-    year: e.data.born as number,
-    category: 'people' as const,
-    type: 'birth' as const,
-  }));
-
-// Generate death events
-const deathEvents = vaultEntries
-  .filter(e => e.data.category === 'people' && e.data.died !== null && e.data.died !== undefined)
-  .map(e => ({
-    year: e.data.died as number,
-    category: 'people' as const,
-    type: 'death' as const,
-  }));
-
-// Generate company closure events
-const companyClosureEvents = vaultEntries
-  .filter(e => e.data.category === 'companies' && e.data.ended !== null && e.data.ended !== undefined)
-  .map(e => ({
-    year: e.data.ended as number,
-    category: 'companies' as const,
-    type: 'closure' as const,
-  }));
-
-// Get global timeline events
-const timelineEntries = await getCollection('timeline');
-const globalEvents = timelineEntries.map(e => ({
-  year: e.data.year,
-  category: e.data.category,
-  type: 'global' as const,
-}));
-
-// Merge all events
-const allEvents = [...vaultEvents, ...birthEvents, ...deathEvents, ...companyClosureEvents, ...globalEvents];
-
-// Group events by decade
-const decades = [1920, 1930, 1940, 1950, 1960, 1970, 1980, 1990, 2000, 2010, 2020];
-const eventsByDecade = decades.map(decade => {
-  const events = allEvents.filter(e => e.year >= decade && e.year < decade + 10);
-  return {
-    decade,
-    total: events.length,
-    systems: events.filter(e => e.category === 'systems').length,
-    games: events.filter(e => e.category === 'games').length,
-    people: events.filter(e => e.category === 'people').length,
-    global: events.filter(e => e.type === 'global').length,
-  };
-});
-
-// Decade descriptions
-const decadeDescriptions: Record<number, string> = {
-  1920: "The birth of computing pioneers",
-  1930: "Turing machines and early theory",
-  1940: "WWII, ENIAC, and the computer age begins",
-  1950: "Transistors and the first video games",
-  1960: "Mainframes, space race, and semiconductors",
-  1970: "Microprocessors, arcades, and home computing",
-  1980: "The golden age of 8-bit and 16-bit",
-  1990: "3D graphics, CD-ROMs, and the web",
-  2000: "Mobile gaming and the indie revolution",
-  2010: "Retro revival and crowdfunding",
-  2020: "Nostalgia, preservation, and new frontiers",
-};
+import TimelineStories from '../../components/TimelineStories.astro';
+import { timelineStories } from '../../data/timeline-stories';
+import { timelineEvents, timelineDecades, decadeEvents, eventTotals, resolveStories } from '../../lib/timeline';
+import '../../styles/timeline.css';
+const [vault, world] = await Promise.all([getCollection('vault'), getCollection('timeline')]);
+const events = timelineEvents(vault, world);
+const decades = timelineDecades(events);
+const stories = resolveStories(timelineStories, vault);
+const totals = eventTotals(events);
 ---
-
-<Layout title="Timeline" description="A visual timeline of computing history from the 1920s to present, organised by decade.">
-  <div class="wrap">
-    <PageHeader title="The Timeline." eyebrow="Computing history · 1920s → present">
-
-      <p class="lede">Computing history in context, decade by decade — from the theoretical foundations
-        of the 1930s through the golden age of home computing in the 1980s to the retro revival of
-        today. Each decade shows systems, games, people, and world events side by side.</p>
-      <p class="summary"><b>{allEvents.length}</b> events · <b>{decades.length}</b> decades · <b>{globalEvents.length}</b> world events</p>
-    </PageHeader>
-
-    <div class="decades-grid">
-      {eventsByDecade.map(({ decade, total, systems, games, people, global }) => (
-        <a href={`/timeline/${decade}s`} class="decade-card">
-          <span class="total-badge">{total}</span>
-          <div class="decade-header">
-            <span class="decade-year">{decade}s</span>
-            <span class="decade-arrow"><ArrowRight size={22} /></span>
-          </div>
-          <p class="decade-description">{decadeDescriptions[decade]}</p>
-          <div class="decade-stats">
-            <div class="stat"><span class="n">{systems}</span><span class="l">Systems</span></div>
-            <div class="stat"><span class="n">{games}</span><span class="l">Games</span></div>
-            <div class="stat"><span class="n">{people}</span><span class="l">People</span></div>
-            <div class="stat"><span class="n">{global}</span><span class="l">World</span></div>
-          </div>
-        </a>
-      ))}
-    </div>
+<Layout title="Timeline" description="Follow connected stories through computing history, then explore the machines, games, people and world events in each decade." masthead={false}>
+  <div class="timeline-page">
+    <header class="timeline-heading"><h1>Nothing happened<br /><em>in isolation.</em></h1><div><p>A computer leads to a game. A game needs a new technique. A tool lets someone else begin. Follow those connections through time.</p><a href="#chronology">Browse the full chronology</a></div></header>
+    <TimelineStories stories={stories}/>
+    <section class="timeline-chronology" id="chronology" aria-labelledby="chronology-title">
+      <header><h2 id="chronology-title">Find your decade.</h2><p>{totals.total.toLocaleString('en-GB')} events: {totals.vault.toLocaleString('en-GB')} from the Vault and {totals.world} world events. Choose a decade to explore.</p></header>
+      <ol class="timeline-decades">{decades.map(decade=>{
+        const entries=decadeEvents(events,decade);const counts=eventTotals(entries);
+        const examples=entries.filter(event=>event.reviewed && event.type==='subject').slice(0,3);
+        return <li><a href={`/timeline/${decade}s/`}><h3>{decade}s</h3><p>{examples.length ? examples.map(event=>event.title).join(' · ') : 'People and events recorded in this decade'}</p><span><strong>{counts.total} {counts.total === 1 ? 'event' : 'events'}</strong> · {counts.vault} Vault · {counts.world} world</span></a></li>;
+      })}</ol>
+    </section>
+    <section class="timeline-coverage" aria-labelledby="coverage-title"><h2 id="coverage-title">What’s in the chronology?</h2><p>Dates recorded in Vault articles, alongside our world-event entries. We include subject beginnings, births, deaths and company endings; an article can appear more than once. Unknown dates stay out. This is a route through the collection, not a complete history of computing.</p><p>The stories above use reviewed articles. The full chronology also labels entries that have not yet been fact-checked; follow each article for its sources and review status.</p><a href="/vault/">Explore the Vault by subject</a></section>
   </div>
 </Layout>
-
-<style>
-  .wrap { max-width: var(--container-max-width); margin: 0 auto; padding: var(--space-5) var(--space-6) var(--space-16); }
-  .eyebrow { font-family: var(--font-family-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-text-secondary); }
-
-  .vhead { margin-bottom: var(--space-10); }
-  .vhead h1 { font-family: var(--font-family-read); font-weight: 700; font-size: clamp(3.4rem, 8vw, 5.25rem); line-height: 0.84;
-      /* Reserve the descender the tight line-height does not: Literata's ink
-         drops ~0.33em past the box, which collided with the strapline. */
-      padding-bottom: 0.25em; margin: var(--space-1) 0 0; color: var(--color-text); }
-  .herorule { height: 9px; width: 260px; max-width: 80%; background: var(--color-house); position: relative; margin: var(--space-3) 0 0; }
-  .herorule::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 24%; background: var(--color-house-2); }
-  .lede { font-size: 1.05rem; max-width: 72ch; margin: var(--space-4) 0 0; color: var(--color-text); }
-  .summary { font-family: var(--font-family-mono); font-size: 0.75rem; color: var(--color-text-secondary); margin-top: var(--space-3); }
-  .summary b { color: var(--color-text); }
-
-  .decades-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-4); }
-  .decade-card { position: relative; display: block; padding: var(--space-5); background: var(--color-surface); border: 3px solid var(--color-border); text-decoration: none; color: var(--color-text); transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base); }
-  .decade-card:hover, .decade-card:focus-visible { transform: translate(-4px, -4px); box-shadow: 8px 8px 0 var(--color-house-2); border-color: var(--color-house-2); }
-  .total-badge { position: absolute; top: -10px; right: -6px; font-family: var(--font-family-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em; padding: 2px 7px; border: 2px solid var(--color-text); background: var(--color-surface); transform: rotate(4deg); }
-  .decade-header { display: flex; align-items: baseline; justify-content: space-between; }
-  .decade-year { font-family: var(--font-family-read); font-weight: 700; font-size: 2.4rem; line-height: 1; }
-  .decade-arrow { display: inline-flex; color: var(--color-house-2); }
-  .decade-description { color: var(--color-text-secondary); font-size: 0.85rem; line-height: 1.45; margin: var(--space-2) 0 var(--space-4); }
-  .decade-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); border-top: 2px solid var(--color-border); padding-top: var(--space-3); }
-  .decade-stats .stat { display: flex; flex-direction: column; gap: 1px; }
-  .decade-stats .n { font-family: var(--font-family-mono); font-weight: 700; font-size: 1.1rem; color: var(--color-house-2); }
-  .decade-stats .l { font-family: var(--font-family-mono); font-size: 0.55rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-text-secondary); }
-</style>

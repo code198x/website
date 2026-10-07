@@ -1,0 +1,66 @@
+---
+import type { TimelineEvent } from '../lib/timeline';
+interface Props { events: TimelineEvent[]; labels: Record<string,string> }
+const { events, labels } = Astro.props;
+const years = [...new Set(events.map(event => event.year))];
+const categories = [...new Set(events.map(event => event.category))].sort((a,b)=>(labels[a]??a).localeCompare(labels[b]??b));
+---
+<div class="timeline-browser" data-timeline-browser>
+  <form class="timeline-filters" role="search" aria-label="Events in this decade" hidden>
+    <label>Search this decade<input name="q" type="search" placeholder="A machine, person, game or idea" autocomplete="off" /></label>
+    <label>Subject<select name="subject"><option value="">All subjects</option>{categories.map(category=><option value={category}>{labels[category]??category}</option>)}</select></label>
+    <label>Sources<select name="source"><option value="">Vault and world context</option><option value="vault">Vault articles</option><option value="world">World context</option></select></label>
+    <button type="button" data-clear>Clear filters</button>
+  </form>
+  <p class="timeline-result-count" role="status" aria-live="polite"><span data-count>{events.length}</span> <span data-count-label>{events.length === 1 ? 'event' : 'events'}</span></p>
+  <p data-empty hidden>No events match. Try another subject or clear the filters.</p>
+  <nav class="timeline-years" aria-label="Jump to a year">{years.map(year => <a href={`#year-${year}`} data-year-link={year}>{year}</a>)}</nav>
+  {years.map(year => <section id={`year-${year}`} class="timeline-year" data-year={year}>
+    <header><h2>{year}</h2><span><span data-year-count>{events.filter(event=>event.year===year).length}</span> <span data-year-label>{events.filter(event=>event.year===year).length === 1 ? 'event' : 'events'}</span></span></header>
+    <ul>
+      {events.filter(event=>event.year===year).map(event => <li id={event.id.replaceAll('/','-')} data-event data-subject={event.category} data-source={event.type==='world'?'world':'vault'} data-search={`${event.title} ${event.summary}`} data-pagefind-ignore={!event.reviewed ? '' : undefined}>
+        <div class="timeline-event-kind"><span>{labels[event.category]??event.category}</span>{event.type==='world' && <span>World context</span>}{!event.reviewed && <span>Not yet fact-checked</span>}</div>
+        <div><h3>{event.url ? <a href={event.url}>{event.title}</a> : event.title}</h3><p>{event.summary}</p></div>
+      </li>)}
+    </ul>
+  </section>)}
+</div>
+<script>
+function initTimelineEvents() {
+ document.querySelectorAll<HTMLElement>('[data-timeline-browser]').forEach(root => {
+  if (root.dataset.ready) return;
+  root.dataset.ready='true';
+  const form=root.querySelector<HTMLFormElement>('form')!;
+  const query=form.querySelector<HTMLInputElement>('[name=q]')!;
+  const subject=form.querySelector<HTMLSelectElement>('[name=subject]')!;
+  const source=form.querySelector<HTMLSelectElement>('[name=source]')!;
+  const params=new URLSearchParams(location.search);
+  query.value=params.get('q')??'';
+  for(const select of [subject,source]) { const value=params.get(select.name)??''; if([...select.options].some(option=>option.value===value)) select.value=value; }
+  const normalise=(value:string)=>value.normalize('NFKD').replace(/\p{Diacritic}/gu,'').toLocaleLowerCase();
+  const rows=[...root.querySelectorAll<HTMLElement>('[data-event]')];
+  const apply=(update=true)=>{
+   const terms=normalise(query.value.trim()).split(/\s+/).filter(Boolean);
+   for(const row of rows) row.hidden=Boolean((subject.value&&row.dataset.subject!==subject.value)||(source.value&&row.dataset.source!==source.value)||!terms.every(term=>normalise(row.dataset.search??'').includes(term)));
+   const count=rows.filter(row=>!row.hidden).length;
+   root.querySelector('[data-count]')!.textContent=String(count);
+   root.querySelector('[data-count-label]')!.textContent=count===1?'event':'events';
+   root.querySelector<HTMLElement>('[data-empty]')!.hidden=count>0;
+   for(const year of root.querySelectorAll<HTMLElement>('[data-year]')) {
+    const count=year.querySelectorAll('[data-event]:not([hidden])').length;
+    year.hidden=count===0;year.querySelector('[data-year-count]')!.textContent=String(count);
+    year.querySelector('[data-year-label]')!.textContent=count===1?'event':'events';
+    root.querySelector<HTMLElement>(`[data-year-link="${year.dataset.year}"]`)!.hidden=count===0;
+   }
+   if(update) { const url=new URL(location.href); for(const input of [query,subject,source]) { if(input.value) url.searchParams.set(input.name,input.value);else url.searchParams.delete(input.name); } history.replaceState(null,'',url); }
+  };
+  form.addEventListener('submit',event=>event.preventDefault());
+  form.addEventListener('input',()=>apply());
+  form.addEventListener('change',()=>apply());
+  form.querySelector('[data-clear]')!.addEventListener('click',()=>{query.value='';subject.value='';source.value='';apply();query.focus();});
+  apply(false);form.hidden=false;
+ });
+}
+initTimelineEvents();
+document.addEventListener('astro:page-load',initTimelineEvents);
+</script>
