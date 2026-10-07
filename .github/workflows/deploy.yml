@@ -71,22 +71,44 @@ jobs:
           toolchain: ${{ steps.toolchain.outputs.channel }}
           targets: wasm32-unknown-unknown
 
-      - name: Cache Rust build artifacts
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: play198x/crates/play198x-web
-
       - name: Install wasm-pack
         uses: taiki-e/install-action@v2
         with:
           tool: wasm-pack
 
-      # Before npm run build, which both compiles any page importing
-      # <NativeImage> and runs the unit tests that load this wasm directly.
+      - name: Identify decoder bundle inputs
+        id: decoder_key
+        run: node scripts/wasm-bundle.mjs identity decoder
+
+      # No restore-keys: a different source or build input must rebuild.
+      - name: Restore decoder bundle
+        id: decoder_bundle
+        uses: actions/cache/restore@v6
+        with:
+          path: play198x/crates/play198x-web/pkg-node
+          key: ${{ steps.decoder_key.outputs.key }}
+
+      - name: Cache Rust build artifacts
+        if: steps.decoder_bundle.outputs.cache-hit != 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: play198x/crates/play198x-web
+
+      # NativeImage consumes this bundle while Astro renders the site.
       - name: Build the decoder
-        run: node scripts/build-wasm.mjs
+        if: steps.decoder_bundle.outputs.cache-hit != 'true'
+        run: |
+          node scripts/wasm-bundle.mjs clean decoder
+          node scripts/build-wasm.mjs
         env:
           PLAY198X_PATH: ${{ github.workspace }}/play198x
+
+      - name: Seal decoder bundle
+        if: steps.decoder_bundle.outputs.cache-hit != 'true'
+        run: node scripts/wasm-bundle.mjs seal decoder
+
+      - name: Verify decoder bundle
+        run: node scripts/wasm-bundle.mjs verify decoder
 
       - name: Checkout Asm198x assembler source
         uses: actions/checkout@v7
@@ -98,7 +120,20 @@ jobs:
         working-directory: asm198x-source
         run: rustup show active-toolchain && rustup target add wasm32-unknown-unknown
 
+      - name: Identify assembler bundle inputs
+        id: assembler_key
+        run: node scripts/wasm-bundle.mjs identity assembler
+
+      # No restore-keys: a different source or build input must rebuild.
+      - name: Restore assembler bundle
+        id: assembler_bundle
+        uses: actions/cache/restore@v6
+        with:
+          path: public/wasm/asm198x-mos6502
+          key: ${{ steps.assembler_key.outputs.key }}
+
       - name: Cache Asm198x Rust build artifacts
+        if: steps.assembler_bundle.outputs.cache-hit != 'true'
         uses: Swatinem/rust-cache@v2
         with:
           key: asm198x-web
@@ -107,9 +142,22 @@ jobs:
           cache-bin: false
 
       - name: Build NES browser assembler
-        run: npm run build:nes-assembler
+        if: steps.assembler_bundle.outputs.cache-hit != 'true'
+        run: |
+          node scripts/wasm-bundle.mjs clean assembler
+          npm run build:nes-assembler
         env:
           ASM198X_SOURCE_ROOT: ${{ github.workspace }}/asm198x-source
+
+      - name: Seal assembler bundle
+        if: steps.assembler_bundle.outputs.cache-hit != 'true'
+        run: node scripts/wasm-bundle.mjs seal assembler
+
+      - name: Verify assembler bundle
+        run: node scripts/wasm-bundle.mjs verify assembler
+
+      - name: Check restored assembler against the lesson cartridge
+        run: node scripts/check-nes-assembler.mjs
 
       - name: Checkout Emu198x player source
         uses: actions/checkout@v7
@@ -120,19 +168,6 @@ jobs:
       - name: Install Emu198x toolchain
         working-directory: emu198x-source
         run: rustup show active-toolchain && rustup target add wasm32-unknown-unknown
-
-      - name: Cache Emu198x Rust build artifacts
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: emu198x-browser-player
-          # All player families and the native catalogue share this target.
-          workspaces: emu198x-source
-          cache-bin: false
-
-      - name: Install native libraries for the player catalogue tool
-        # build-browser-player runs Emu198x's native fleet-catalogue, whose
-        # dependencies link ALSA (audio) and udev (gamepads), as in Emu198x CI.
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libasound2-dev libudev-dev
 
       # The Spectrum 48K ROM reaches the player build only through an encrypted
       # secret and a runner temp file: it is embedded in the Spectrum wasm under
@@ -148,16 +183,81 @@ jobs:
         env:
           ROM_B64: ${{ secrets.EMU198X_SPECTRUM_48K_ROM_B64 }}
 
+      - name: Identify player bundle inputs
+        id: player_key
+        run: node scripts/wasm-bundle.mjs identity player
+
+      # No restore-keys: a different source or build input must rebuild.
+      - name: Restore player bundle
+        id: player_bundle
+        uses: actions/cache/restore@v6
+        with:
+          path: public/emulators
+          key: ${{ steps.player_key.outputs.key }}
+
+      - name: Cache Emu198x Rust build artifacts
+        if: steps.player_bundle.outputs.cache-hit != 'true'
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: emu198x-browser-player
+          # All player families and the native catalogue share this target.
+          workspaces: emu198x-source
+          cache-bin: false
+
+      - name: Install native libraries for the player catalogue tool
+        if: steps.player_bundle.outputs.cache-hit != 'true'
+        # build-browser-player runs Emu198x's native fleet-catalogue, whose
+        # dependencies link ALSA (audio) and udev (gamepads), as in Emu198x CI.
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends pkg-config libasound2-dev libudev-dev
+
       - name: Build browser players
-        run: npm run build:player
+        if: steps.player_bundle.outputs.cache-hit != 'true'
+        run: |
+          node scripts/wasm-bundle.mjs clean player
+          npm run build:player
         env:
           EMU198X_SOURCE_ROOT: ${{ github.workspace }}/emu198x-source
+
+      - name: Seal player bundle
+        if: steps.player_bundle.outputs.cache-hit != 'true'
+        run: node scripts/wasm-bundle.mjs seal player
+
+      - name: Verify player bundle
+        run: node scripts/wasm-bundle.mjs verify player
+
+      - name: Check restored player distribution and firmware policy
+        run: |
+          node scripts/check-browser-player.mjs
+          node emu198x-source/web-player/check-bundled-firmware.mjs public/emulators
+          node emu198x-source/web-player/check-save-file.mjs
 
       - name: Build site
         run: npm run build
         env:
           CODE_SAMPLES_PATH: ${{ github.workspace }}/code-samples
           PLAY198X_WASM_PATH: ${{ github.workspace }}/play198x/crates/play198x-web/pkg-node
+
+      # Save only after Astro has also consumed the prepared bundles.
+      - name: Save decoder bundle
+        if: steps.decoder_bundle.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: play198x/crates/play198x-web/pkg-node
+          key: ${{ steps.decoder_key.outputs.key }}
+
+      - name: Save assembler bundle
+        if: steps.assembler_bundle.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: public/wasm/asm198x-mos6502
+          key: ${{ steps.assembler_key.outputs.key }}
+
+      - name: Save player bundle
+        if: steps.player_bundle.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: public/emulators
+          key: ${{ steps.player_key.outputs.key }}
 
       - name: Work out what became newly live
         run: |
