@@ -3,6 +3,19 @@ import { test, expect } from '@playwright/test';
 for (const route of ['about', 'standards', 'press', 'teaching']) {
   test(`${route} keeps its reading column and contents rail aligned`, async ({ page, isMobile }) => {
     await page.goto(`/${route}/`);
+    const frame = page.locator('main > [data-page-frame]:not(.masthead-frame)');
+    await expect(frame).toHaveCount(1);
+    const spacing = await frame.evaluate(element => {
+      const style = getComputedStyle(element);
+      const box = element.getBoundingClientRect();
+      const heading = element.querySelector('h1')!.getBoundingClientRect();
+      return { left: box.x, right: innerWidth - box.right, gutter: parseFloat(style.paddingLeft), opening: parseFloat(style.paddingTop), ending: parseFloat(style.paddingBottom), headingInset: heading.x - box.x };
+    });
+    expect(spacing.left).toBeCloseTo(spacing.right, 0);
+    expect(spacing.gutter).toBeGreaterThanOrEqual(16);
+    expect(spacing.headingInset).toBeCloseTo(spacing.gutter, 0);
+    expect(spacing.opening).toBe(route === 'press' ? 0 : 40);
+    expect(spacing.ending).toBeGreaterThanOrEqual(64);
     const body = page.locator('.reading-body');
     const rail = page.locator('.reading-toc');
     const firstSection = body.locator(':scope > section').first();
