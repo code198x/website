@@ -1,0 +1,131 @@
+---
+title: "Profile a Routine"
+summary: "Find where a Spectrum routine spends its time, change one thing, and measure the saving against the extra code."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["profiling", "timing", "loops", "measurement", "optimisation"]
+related:
+  patterns: ["attribute-writing", "sound-beep"]
+  vault: ["sinclair-zx-spectrum"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Question from '@components/Question.astro';
+import Sources from '@components/Sources.astro';
+
+## Where did the time go?
+
+A routine can be short on the page and expensive when it runs. A loop makes this easy to miss: one instruction in the listing might execute thirty-two times.
+
+We will prepare a 32-byte row of data, find its most expensive source line, then change the routine while keeping its result the same. The reusable technique is the investigation: **check the result, measure, change one thing, check and measure again**. Unrolling a loop is one possible outcome, not a rule that every loop should grow.
+
+This experiment uses a **48K PAL Spectrum**, with code at `$C000`, a buffer at `$9000` and a stack at `$FF00`. These locations avoid display-memory contention. Interrupts are disabled during the experiment. We are measuring a small routine in controlled conditions, not the cost of drawing an entire game frame.
+
+## Start with a known result
+
+The buffer is a reserved stretch of memory. We want its 32 bytes to contain `$47`. Nothing is drawn on screen yet: preparing data and displaying it are different jobs.
+
+HL holds the destination address. A holds the byte to write. `ld (hl),a` stores that byte, and `inc hl` moves to the next address. `djnz` reduces B and jumps back while B is non-zero. After the last write, `ret` returns to the caller.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/profile-a-routine/loop.asm" lang="z80" />
+
+The caller supplies a working stack for CALL and RET. The routine writes exactly 32 bytes, advances HL by 32 and leaves B at zero. It preserves A, flags, C, DE, IX, IY and the interrupt state. Its destination must be writable and must not overlap the routine or the stack. The caller's `di` disables maskable interrupts; its final `halt` waits indefinitely in this experiment.
+
+`end_main` and `end_fill_row` mark where the two measured ranges end. Labels do not take execution time. We declare the whole routine explicitly because the internal `fill_loop` label does not start a different routine.
+
+<Question prompt="Which line do you expect to cost the most over the whole call: the store, the address increment, or DJNZ?">
+
+DJNZ. All three execute 32 times, but the taken branch costs more than either of the other instructions. We will check that prediction in the source-line report.
+
+</Question>
+
+## Measure it with the family tools
+
+Use the native tools from the [setup guide](/setup/) and Python 3. Download or clone the [maintained example](https://github.com/code198x/code-samples/tree/main/sinclair-zx-spectrum/patterns/assembly/framework/profile-a-routine), then run this command in its directory:
+
+```sh
+python3 verify.py --assembler /path/to/asm198x --emulator /path/to/emu198x-spectrum
+```
+
+If both tools are on PATH, use `python3 verify.py`. The recorded run used Asm198x 0.0.59 and the Emu198x 0.31.0 build. The script needs no additional Python packages or firmware download. It creates an unused, zero-filled ROM and starts an assembled snapshot directly in RAM. This does not test a ROM boot or a tape load.
+
+Three pieces do different jobs:
+
+| Tool or format | Its job in the experiment |
+|---|---|
+| Asm198x | Build the program and emit a static instruction-cost listing. |
+| Debug198x | Carry the matching address-to-source-line map from that build. |
+| Emu198x | Execute the program, measure costs and join them to the source lines. |
+
+The script rebuilds both examples, checks their output and prints measured costs beside the source. Full JSON reports, listings and sidecars remain under `build/`. It also checks the adjacent buffer bytes, the return state and that every measured instruction has a matching source line. A faster wrong answer must fail.
+
+For the first routine, the report gives:
+
+| Instruction | Executions | Total T-states |
+|---|---:|---:|
+| `ld b,32` | 1 | 7 |
+| `ld (hl),a` | 32 | 224 |
+| `inc hl` | 32 | 192 |
+| `djnz fill_loop` | 32 | 411 |
+| `ret` | 1 | 10 |
+| **Routine total** | **98** | **844** |
+
+A **T-state** is one CPU clock period. DJNZ costs 13 when the branch is taken and 8 when it finishes. Here it jumps 31 times and finishes once: `31 × 13 + 8 = 411`. The stores and address increments together cost 416. Almost as much time goes into maintaining the loop as into its writes and address changes.
+
+## Do four writes before deciding to repeat
+
+We can keep four store-and-increment pairs inside the loop and reduce B from 32 to 8. Eight groups of four still produce 32 writes. This is **partial loop unrolling**: some repetition moves from execution into the program's bytes.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/profile-a-routine/unrolled.asm" lang="z80" from="fill_row:" to="end_fill_row:" />
+
+The caller is unchanged. The second complete source is kept beside the first so we can compare them without losing the baseline.
+
+<Question prompt="Will four writes per loop make this routine four times faster?">
+
+No. We still perform all 32 stores and all 32 address increments. We save loop-control work: DJNZ now executes eight times instead of 32.
+
+</Question>
+
+The measured comparison is:
+
+| Version | Routine bytes | Routine T-states | DJNZ T-states |
+|---|---:|---:|---:|
+| One write per loop | 7 | 844 | 411 |
+| Four writes per loop | 13 | 532 | 99 |
+
+We save **312 T-states, about 37% of the routine's time, for six extra bytes**. The saving is exactly the 24 taken branches we removed: `24 × 13`. This might make room for another update in a busy game. Whether six bytes are worth that saving depends on how often the routine runs and which resource is scarce.
+
+This routine always writes 32 bytes. A variable-length version would need to handle any remainder after its groups of four. Changing B alone does not make this version suitable for arbitrary lengths.
+
+## Keep the different clocks and totals separate
+
+Emu198x's 48K profile uses 14 MHz master ticks: **four ticks per CPU T-state**. The two routines take 3,376 and 2,128 master ticks. The tool reports the clock unit and frequency; do not assume every machine uses the same conversion.
+
+Both captures last exactly **4,096 ticks**. The caller's own instructions cost 208 ticks in each. The rest is the routine plus HALT waiting: 512 waiting ticks in the first version and 1,760 in the second. A faster routine leaves more of the same window idle. Timing how long the command takes on our modern computer would answer a different question.
+
+The routine's **exclusive** cost includes its own instructions, including RET. The caller owns CALL. Its **inclusive** cost also includes the routine it called. Do not add those inclusive totals together: the same work would be counted twice. Interrupt entry and incomplete instructions have separate report buckets; they are zero in these baseline runs.
+
+Asm198x's static listing and the measured report also answer different questions. The listing assigns DJNZ an 8–13 T-state range. Weighting each instruction's range by its observed execution count gives 689–849 T-states for the original routine and 497–537 for the changed one. The measured 844 and 532 fit those ranges. The known loop paths let us explain the exact totals afterwards.
+
+If a measurement falls outside a static range, investigate the build, memory placement, machine configuration and tools. An excess does not automatically prove contention. Here code, data and stack are deliberately outside contended memory; moving the buffer to screen memory changes that experiment.
+
+## Try two writes, then a controlled mistake
+
+Copy `loop.asm` to `two-at-a-time.asm`. Change `ld b,32` to `ld b,16`. Add one more `ld (hl),a` / `inc hl` pair immediately before DJNZ. Predict the saving, then run:
+
+```sh
+python3 verify.py --source two-at-a-time.asm --output build/two-at-a-time
+```
+
+This mode keeps the output and accounting checks but measures the edited copy without requiring the maintained baseline's exact timing. The expected result is nine bytes and 636 T-states. The source-line report should show sixteen executions of DJNZ.
+
+For a controlled mistake, copy `unrolled.asm` to `too-many.asm` and change B back to 32. Each iteration still writes four bytes, so it writes past the buffer. Run `python3 verify.py --source too-many.asm --ticks 16384 --output build/too-many`: this longer window lets the faulty call finish so the checker can reject its output. Restore B to 8 to recover. Similarly, `--ticks 256` must fail because the routine has not completed: a shorter capture is not faster code.
+
+Keep this process when returning to a game: preserve the working result, name the configuration, measure the expensive work, then compare a bounded change. The [attribute-writing pattern](/patterns/sinclair-zx-spectrum/assembly/rendering/attribute-writing/) gives the row a possible destination; [Sound Beep](/patterns/sinclair-zx-spectrum/assembly/audio/sound-beep/) shows why a routine's CPU cost can matter to other parts of a game.
+
+<Sources>
+
+Zilog, [*Z80 CPU User Manual*, UM008011-0816](https://www.zilog.com/docs/z80/um0080.pdf), LD (HL),r (printed p. 79), INC ss (p. 198), DJNZ (pp. 278–279), LD r,n and RET: instruction behaviour and nominal costs. Emu198x's [cycle-profile accounting contract](https://github.com/emu198x/emu198x/blob/main/knowledge/decisions/cycle-profile-accounting.md) defines source joins and measured-time buckets. The sample's [retained execution evidence](https://github.com/code198x/code-samples/tree/main/sinclair-zx-spectrum/patterns/assembly/framework/profile-a-routine/verification) records tool identities, output checks and per-line observations. These are emulator measurements for the stated configuration; no original-hardware validation is claimed.
+
+</Sources>
