@@ -9,7 +9,7 @@ the page's reading columns, section spacing and editorial composition inside it.
 import Layout from '../layouts/Layout.astro';
 import PageFrame from '../components/PageFrame.astro';
 ---
-<Layout title="Page title">
+<Layout title="Page title" mastheadFrame="content">
   <PageFrame as="article">
     <h1>Page title</h1>
     <!-- Page content -->
@@ -22,6 +22,13 @@ The default provides a 1264px maximum outer width, the shared responsive gutter,
 own masthead supplies its opening space; `ending="large"` supplies 96px.
 `width="full"` is an explicit full-width variant. Document why a page needs it.
 Do not override the frame's width, margin or padding through global page classes.
+
+The shared page-title band in `Layout.astro` also uses this frame. It opts into
+`inset="none" opening="none" ending="none"` because `PageMasthead` supplies its
+own label padding. This aligns both the band edges and its label with the page
+without doubling the gutter. Set `mastheadFrame="content"` on `Layout` when its
+page uses the bounded frame. Legacy full-width compositions retain their band
+width until deliberately migrated. Include the band when comparing alignment.
 
 The component forwards HTML attributes, including Astro's scope attributes, so
 page-specific styles continue to match. Preserve this when changing its markup.

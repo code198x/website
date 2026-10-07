@@ -53,3 +53,26 @@ Alternative: restore three isolated page styles. Smaller immediately, but leaves
   two native-image cases reported `TypeError: The "paths[0]" argument must be of
   type string. Received undefined` because the isolated command omitted the
   release script's environment paths. Both passed when rerun with those paths.
+
+## Follow-up: include the shared page-title band
+
+The owner identified that the coloured page-title band was omitted. `Layout.astro`
+renders its `PageMasthead` before the framed content, so the band remains at the
+viewport edges. The original tests measured the body and breadcrumb only.
+
+1. Extend `tests/page-frame.spec.ts` to compare the About band edges and label
+   inset with the content frame; confirm failure against the shipped build.
+2. Give `PageFrame.astro` explicit zero-inset and zero-ending variants for a band
+   whose own children supply padding. Wrap the shared masthead in `Layout.astro`
+   with that frame. About opts into its bounded width; existing full-width pages
+   retain their band width. Specialised Vault mastheads remain owned by their pages.
+3. Add the actual band/frame combination to the specimen and authoring guide.
+4. Build and check production at 390, 1440 and 1920px in both themes; inspect
+   mobile/desktop About plus another shared band and verify publication.
+
+Follow-up verification: the added assertion failed before the correction with
+`Received difference: 88` at 1440px. The production build and normal checks pass;
+214 production browser cases passed, followed by 21 final Chrome/WebKit frame
+cases after the explicit legacy-width option. Mobile/desktop About, Teaching and
+the specimen were inspected. About's band now shares the 1264px outer frame and
+its label aligns with the body; Teaching retains its existing full-width band.
