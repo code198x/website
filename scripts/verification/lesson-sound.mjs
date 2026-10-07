@@ -115,15 +115,19 @@ try{
  assert(Math.abs(boost.hz-1321.2)<15,`Unit 26 boost pitch ${boost.hz} Hz`);
 
  // BASIC: Bright Spark's highest signal, BEEP ...,12, held for a second to measure.
- // The PAUSE outlasts the start-up that runBasic runs before the first frame.
+ // PAUSE leaves a gap after loading before the measured tone.
  await page.goto(base+'/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer/');await openDrawers(page);
  const root=page.locator('.basic-playground');
- assert(await root.getByRole('checkbox',{name:'Sound'}).isChecked(),'Choice carried to BASIC');
- await root.locator('textarea').fill('10 PAUSE 50\n20 BEEP 1,12\n');
+ await root.getByRole('textbox',{name:'Your BASIC listing'}).fill('10 PRINT "TONE READY"\n20 PAUSE 100\n30 BEEP 1,12\n');
+ await root.getByRole('button',{name:'Run this code',exact:true}).click();
+ const machine=root.getByRole('dialog',{name:'Your Spectrum'});
+ await machine.waitFor({state:'visible'});
+ assert(await machine.getByRole('checkbox',{name:'Sound'}).isChecked(),'Choice carried to BASIC');
+ // The current runner loads a real tape. Start measuring after the program
+ // prints its marker so the tape leader/data cannot be mistaken for BEEP.
+ await page.waitForFunction(()=>document.querySelector('.machine-transcript pre').textContent.includes('TONE READY'),{},{timeout:60000});
  const started=await page.evaluate(()=>performance.now());
- await root.locator('[data-action=run]').click();
- await page.waitForFunction(()=>document.querySelector('.basic-status').textContent.startsWith('Program loaded'),{},{timeout:60000});
- await page.waitForTimeout(2500);
+ await page.waitForFunction(()=>document.querySelector('.machine-transcript pre').textContent.includes('0 OK'),{},{timeout:60000});
  const beep=await captured(started);
  assert(beep.state==='running',`BASIC AudioContext ${beep.state}`);
  const note=measure(beep.left,beep.rate);
@@ -132,15 +136,33 @@ try{
  assert(Math.abs(note.hz-523.25)<10,`BEEP pitch ${note.hz} Hz`);
  assert(note.cycles>480,`BEEP 1 should last about 523 cycles, heard ${note.cycles}`);
 
- // Stop suspends the output.
- await root.locator('[data-action=stop]').click();
+ // Pause suspends the output without discarding the machine.
+ await machine.getByRole('button',{name:'Pause',exact:true}).click();
  await page.waitForFunction(()=>window.soundContexts.at(-1).state!=='running',{},{timeout:5000});
- results.stopped=await page.evaluate(()=>window.soundContexts.at(-1).state);
+ results.paused=await page.evaluate(()=>window.soundContexts.at(-1).state);
  // Unticking closes it.
- await root.getByRole('checkbox',{name:'Sound'}).uncheck();
+ await machine.getByRole('checkbox',{name:'Sound'}).uncheck();
  await page.waitForFunction(()=>window.soundContexts.at(-1).state==='closed',{},{timeout:5000});
  assert(await page.evaluate(()=>localStorage.getItem('code198x-lesson-sound'))==='off','Off stored');
  results.unticked='closed';
+
+ // Closing the modal pauses audio; returning keeps it paused until Resume.
+ await machine.getByRole('checkbox',{name:'Sound'}).check();
+ await machine.getByRole('button',{name:'Resume',exact:true}).click();
+ await page.waitForFunction(()=>window.soundContexts.at(-1).state==='running');
+ await machine.getByRole('button',{name:'Back to the listing'}).click();
+ await page.waitForFunction(()=>window.soundContexts.at(-1).state==='suspended');
+ await root.getByRole('button',{name:'Return to your Spectrum'}).click();
+ assert(await machine.getByRole('button',{name:'Resume',exact:true}).isVisible(),'Reopened machine remains paused');
+ results.modalReturn='suspended';
+ await machine.getByRole('button',{name:'Resume',exact:true}).click();
+ await page.waitForFunction(()=>window.soundContexts.at(-1).state==='running');
+ await machine.getByRole('button',{name:'Back to the listing'}).click();
+ // Client-side navigation must release the existing context, not merely rely
+ // on a full document load to tear it down.
+ await page.getByRole('link',{name:/next unit/i}).click();
+ await page.waitForFunction(()=>window.soundContexts.length>0 && window.soundContexts.every(context=>context.state==='closed'));
+ results.navigation='closed';
 
  assert(!errors.length,errors.join('\n'));
  await fs.writeFile(out+'/results.json',JSON.stringify({base,results,errors},null,2)+'\n');
