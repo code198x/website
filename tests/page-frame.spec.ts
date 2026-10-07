@@ -1,9 +1,8 @@
 import {test, expect} from '@playwright/test';
 
-for (const width of [390, 1440, 1920]) for (const theme of ['light', 'dark']) {
-  test(`shared page frames preserve spacing at ${width}px in ${theme}`, async ({page}) => {
+for (const width of [390, 1440, 1920]) {
+  test(`shared page frames preserve spacing at ${width}px`, async ({page}) => {
     await page.setViewportSize({width,height:900});
-    await page.addInitScript(theme => localStorage.setItem('theme', theme), theme);
     const measure = async () => page.evaluate(() => {
       const frame=document.querySelector<HTMLElement>('[data-page-frame]:not(.masthead-frame)')!;
       const heading=frame.querySelector('h1')!.getBoundingClientRect();
@@ -53,12 +52,59 @@ for (const width of [390, 1440, 1920]) for (const theme of ['light', 'dark']) {
   });
 }
 
-// Full-width page families retain their approved band until their body migrates.
-test('legacy full-width bands retain their frame', async ({page}) => {
-  await page.setViewportSize({width:1440,height:900});
-  await page.goto('/teaching/');
-  const band=await page.locator('.site-mast').boundingBox();
-  expect(band).not.toBeNull();
-  expect(band!.x).toBe(0);
-  expect(band!.width).toBe(1440);
+
+// Inventory the built result, rather than guessing which route patterns exist.
+// Unknown unframed documents fail here and during npm run build.
+import {execFileSync} from 'node:child_process';
+const families: Record<string, string[]> = JSON.parse(execFileSync('python3', ['scripts/check-page-frames.py', '--json'], {encoding: 'utf8'}));
+for (const routes of Object.values(families)) for (const width of [390, 1440, 1920]) {
+  const route = routes[0] === '/404.html' ? '/not-a-real-page/' : routes[0];
+  test(`one outer frame: ${route} at ${width}px`, async ({page}) => {
+    await page.setViewportSize({width, height: 950});
+    await page.goto(route);
+    await page.evaluate(() => document.fonts.ready);
+    const geometry = await page.evaluate(() => {
+      const box = (element: Element) => {
+        const bounds = element.getBoundingClientRect();
+        return {name: element.className || element.tagName, x: bounds.x, width: bounds.width, inset: parseFloat(getComputedStyle(element).paddingLeft)};
+      };
+      const main = document.querySelector('main#main-content')!;
+      return {
+        frames: [...document.querySelectorAll('[data-site-frame]')].filter(element => element.getBoundingClientRect().width).map(box),
+        roots: [...main.children].filter(element => element.getBoundingClientRect().width && !['STYLE', 'SCRIPT'].includes(element.tagName)).map(box),
+        bands: [...main.querySelectorAll('.page-masthead,.system-magazine-mast,.module-magazine-mast,.article-context-band,.lesson-mast')].map(box),
+        overflow: document.documentElement.scrollWidth - innerWidth,
+      };
+    });
+    expect(geometry.frames.length).toBeGreaterThanOrEqual(3);
+    expect(geometry.roots.length).toBeGreaterThan(0);
+    const frameWidth = Math.min(width, 1264);
+    const left = (width - frameWidth) / 2;
+    for (const frame of [...geometry.frames, ...geometry.roots, ...geometry.bands]) {
+      expect(frame.width, `${route}: ${frame.name} width`).toBeCloseTo(frameWidth, 0);
+      expect(frame.x, `${route}: ${frame.name} left edge`).toBeCloseTo(left, 0);
+    }
+    const gutter = geometry.frames.find(frame => frame.name.includes('site-bar'))!.inset;
+    for (const root of geometry.roots.filter(root => !root.name.includes('masthead-frame'))) {
+      expect(root.inset, `${route}: ${root.name} gutter`).toBeCloseTo(gutter, 1);
+    }
+    for (const frame of geometry.frames.filter(frame => /breadcrumbs-inner|footer-container/.test(frame.name))) {
+      expect(frame.inset, `${route}: ${frame.name} gutter`).toBeCloseTo(gutter, 1);
+    }
+    expect(geometry.overflow, route).toBeLessThanOrEqual(1);
+  });
+}
+
+test('movement playground remains interactive inside the shared frame', async ({page}) => {
+  await page.goto('/experiments/game-feel/');
+  const frame = page.frameLocator('[data-playground]');
+  await expect(frame.locator('#status')).toContainText('Ready');
+  await frame.getByRole('button', {name: 'Run comparison'}).click();
+  await expect(frame.locator('#status')).not.toContainText('Ready');
+  await frame.getByRole('button', {name: 'Reset', exact: true}).click();
+  const before = (await page.locator('[data-playground]').boundingBox())!.height;
+  await frame.getByText('Inspect one update', {exact: true}).click();
+  await expect.poll(async () => (await page.locator('[data-playground]').boundingBox())!.height).toBeGreaterThan(before);
+  await frame.getByRole('link', {name: 'Explore Game Feel'}).click();
+  await expect(page).toHaveURL(/\/craft\/game-feel\/$/);
 });

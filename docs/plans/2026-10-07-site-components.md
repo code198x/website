@@ -80,6 +80,6 @@ screenshots in `2026-10-07-site-components/`.
 
 A separate build of the starting revision exposed existing development/production
 frame differences. Standards was bounded in development but full-width in
-production; Vault categories were the reverse. The refactor currently matches
-the development appearance. A width decision is pending before final delivery;
-these differences must not be hidden by a passing development comparison.
+production; Vault categories were the reverse. The approved follow-up is one centred 1264px frame on every public page, in
+both development and production. See `2026-10-07-one-page-frame.md`; this
+supersedes the earlier preservation of per-page width variants.

@@ -99,7 +99,7 @@ the site before changing the default.
 
 ### Magazine presentation
 
-`Layout.astro` supplies the shared navigation, full-width section mast and page frame.
+`Layout.astro` supplies the shared navigation, section mast and centred 1264px page frame.
 `PageMasthead` and `PageHeader` serve system gateways, directories and editorial pages;
 reading text keeps a bounded measure while browsing grids use the available width.
 Site additions to the family palette live in `src/styles/site-tokens.css`; component
@@ -236,11 +236,16 @@ page composition stays here. Keep approved page geometry when adopting a compone
 
 | Component | Responsibility and deliberate variants |
 | --- | --- |
-| `PageFrame` | Outer width, gutter and opening/ending space. Default: centred 1264px frame with responsive gutters. `width="full"` preserves browsing surfaces. `opening="compact"` is the existing 24px index opening. `inset="editorial"` preserves Standards’ 32/20/12px gutters; it is not the default for new pages. |
+| `PageFrame` | One centred 1264px outer frame with responsive gutters, enforced by `Layout` on every public page. Header, breadcrumbs, title bands and footer align. Narrower reading columns sit inside it; pages cannot select another outer width or gutter. `opening="compact"` supplies the 24px index opening. |
 | `ReadingLayout` | Reading column and sticky contents rail, hidden below 1101px. Give each instance a unique `id`; its contents links scan only that instance. Page typography and sections remain in its slot. |
 | `MagazineSectionHeading` | Paired magazine title and introduction. Named `title` slot accepts authored line breaks/emphasis; the default slot is introduction text. `ending="none"` supports the closing invitation. |
 | `DirectorySearch` / `DirectoryStatus` | Labelled field and atomic live result summary. Search is a field, not a nested form. `filter` belongs inside the owner’s facet form; `inline` includes the search icon and clear button. Require a unique field `id`; pass `controls` when the results container has an ID. Owners supply surrounding layout and filtering rules. |
 | `EditorialArticleLayout` | Site metadata, breadcrumbs and common article composition. Explicit `series` values preserve essay/Field Notes measures (65ch) and Updates (72ch); the header retains its separate measure. `metadata`, `hero` and `ending` slots preserve series content. `EditorialArticle` is the same inner composition used in previews. |
+
+`npm run build` verifies that every authored public page uses the shared shell.
+Build before running `tests/page-frame.spec.ts`: the browser checks choose a
+representative from every rendering family in `dist/`, then test the frame at
+390px, 1440px and 1920px.
 
 Directory owners call `bindDirectoryReset(root, input, resetFilters)` once during
 initialisation. It clears the query, lets the owner reset facets and results, then
