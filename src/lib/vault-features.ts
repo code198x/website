@@ -14,6 +14,46 @@ interface Article {
   data: { title: string; category: string; reviewed: boolean; subtitle?: string };
 }
 
+export interface VaultExplorationSelection {
+  article: string;
+  headline: string;
+  deck: string;
+  connections: Array<{ from: string; to: string; label: string; explanation: string }>;
+}
+
+/** Curated introductions only use reviewed entries; no inferred relationships. */
+export function resolveVaultDiscoveries<T extends Article>(ids: string[], entries: T[]) {
+  const byId = new Map(entries.map(entry => [entry.id, entry]));
+  if (new Set(ids).size !== ids.length) throw new Error('Duplicate Vault discovery');
+  return ids.map(id => {
+    const entry = byId.get(id);
+    if (!entry) throw new Error(`Vault discovery does not exist: ${id}`);
+    if (!entry.data.reviewed) throw new Error(`Vault discovery must be reviewed: ${id}`);
+    return entry;
+  });
+}
+
+export function resolveVaultExploration<T extends Article>(selection: VaultExplorationSelection, entries: T[]) {
+  const [entry] = resolveVaultDiscoveries([selection.article], entries);
+  if (!selection.headline.trim() || !selection.deck.trim() || !selection.connections.length) {
+    throw new Error('Vault exploration needs a headline, deck and connections');
+  }
+  const reached = new Set([entry.id]);
+  const connections = selection.connections.map(connection => {
+    const [from, to] = resolveVaultDiscoveries([connection.from, connection.to], entries);
+    if (!reached.has(from.id) || reached.has(to.id)) throw new Error(`Disconnected or repeated Vault connection: ${to.id}`);
+    // An authored explanation still needs editorial checking. This check only
+    // confirms that its source entry actually links to the selected destination.
+    const links = [...(from.body ?? '').matchAll(/\]\(\/vault\/([^\s)#]+)(?:#[^\s)]*)?\)/g)]
+      .map(match => match[1].replace(/\/$/, ''));
+    if (!links.includes(to.id)) throw new Error(`Vault connection needs an article link: ${from.id} -> ${to.id}`);
+    if (!connection.label.trim() || !connection.explanation.trim()) throw new Error(`Vault connection needs an explanation: ${to.id}`);
+    reached.add(to.id);
+    return { ...connection, from, to, colour: vaultColourGroup(to.data.category) };
+  });
+  return { ...selection, entry, connections, colour: vaultColourGroup(entry.data.category) };
+}
+
 /** Fail the build for stale selections, unreviewed features or unowned imagery. */
 export function resolveVaultFeatures<T extends Article>(selections: VaultFeatureSelection[], entries: T[]) {
   const byId = new Map(entries.map(entry => [entry.id, entry]));

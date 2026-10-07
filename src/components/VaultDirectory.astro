@@ -1,0 +1,75 @@
+---
+import { ArrowRight, Search } from '@lucide/astro';
+import InlineMarkdown from './InlineMarkdown.astro';
+interface Props {
+  category: string;
+  entries: Array<{ id: string; data: { title: string; subtitle?: string; summary: string } }>;
+}
+const { category, entries } = Astro.props;
+const letters = ['#', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'];
+const initial = (title: string) => /^[a-z]/i.test(title) ? title[0].toUpperCase() : '#';
+---
+<section class="vault-category-directory" data-vault-directory aria-labelledby="directory-title">
+  <div class="vault-directory-heading">
+    <h2 id="directory-title">All {category.toLowerCase()}.</h2>
+    <div class="vault-directory-search">
+      <label for="category-search">Find an article in {category.toLowerCase()}</label>
+      <div class="vault-directory-field">
+        <Search size={20} aria-hidden="true"/>
+        <input id="category-search" type="search" placeholder="Search titles and summaries" autocomplete="off" aria-controls="category-entries"/>
+        <button type="button" data-clear>Clear</button>
+      </div>
+    </div>
+  </div>
+  <div class="vault-directory-letters" role="group" aria-label="Filter by first letter">
+    <button type="button" data-letter="all" aria-pressed="true">All</button>
+    {letters.map(letter => <button type="button" data-letter={letter} aria-pressed="false" disabled={!entries.some(e => initial(e.data.title) === letter)}>{letter}</button>)}
+  </div>
+  <p class="vault-directory-status" aria-live="polite" aria-atomic="true">{entries.length} articles</p>
+  <div id="category-entries" class="vault-directory-entries">
+    {entries.map(entry => <article data-entry data-initial={initial(entry.data.title)} data-search={`${entry.data.title} ${entry.data.subtitle ?? ''} ${entry.data.summary}`}>
+      <h3><a href={`/vault/${entry.id}/`}>{entry.data.title}<ArrowRight size={20} aria-hidden="true"/></a></h3>
+      {entry.data.subtitle && <p>{entry.data.subtitle}</p>}
+      <details><summary>About this article</summary><p><InlineMarkdown text={entry.data.summary}/></p></details>
+    </article>)}
+  </div>
+  <div class="vault-directory-empty" hidden>
+    <h3>No matching articles</h3>
+    <p>Try a different word or <button type="button" data-reset>show all {category.toLowerCase()}</button>.</p>
+  </div>
+</section>
+<script>
+  function initDirectories() {
+    document.querySelectorAll<HTMLElement>('[data-vault-directory]').forEach(directory => {
+      if (directory.dataset.ready) return;
+      directory.dataset.ready = 'true';
+      const input = directory.querySelector<HTMLInputElement>('input')!;
+      const buttons = [...directory.querySelectorAll<HTMLButtonElement>('[data-letter]')];
+      const entries = [...directory.querySelectorAll<HTMLElement>('[data-entry]')];
+      const status = directory.querySelector<HTMLElement>('.vault-directory-status')!;
+      const empty = directory.querySelector<HTMLElement>('.vault-directory-empty')!;
+      let letter = 'all';
+      const normalise = (text: string) => text.toLocaleLowerCase('en-GB').normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+      const update = () => {
+        const words = normalise(input.value).trim().split(/\s+/).filter(Boolean);
+        let count = 0;
+        entries.forEach(entry => {
+          const matches = (letter === 'all' || entry.dataset.initial === letter) && words.every(word => normalise(entry.dataset.search ?? '').includes(word));
+          entry.hidden = !matches;
+          if (matches) count++;
+        });
+        buttons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.letter === letter)));
+        status.textContent = `${count} of ${entries.length} articles${letter !== 'all' ? ` · ${letter}` : ''}${input.value.trim() ? ` matching “${input.value.trim()}”` : ''}`;
+        empty.hidden = count > 0;
+      };
+      const reset = () => { input.value = ''; letter = 'all'; update(); input.focus(); };
+      input.addEventListener('input', update);
+      input.addEventListener('keydown', event => { if (event.key === 'Escape') { event.preventDefault(); reset(); } });
+      buttons.forEach(button => button.addEventListener('click', () => { letter = button.dataset.letter!; update(); }));
+      directory.querySelector('[data-clear]')?.addEventListener('click', reset);
+      directory.querySelector('[data-reset]')?.addEventListener('click', reset);
+    });
+  }
+  initDirectories();
+  document.addEventListener('astro:page-load', initDirectories);
+</script>
