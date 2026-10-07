@@ -46,7 +46,7 @@ package. The workflow action is the only proposed new dependency.
 
 ## Local verification
 
-- 224 unit tests pass, including 37 bundle identity/integrity checks.
+- 227 unit tests pass, including 40 bundle identity/integrity checks.
 - `npm run check` and the production build pass with the real decoder supplied.
 - Built-site verification finds all 30 system stages and checks 90 lesson pages.
 - Copies of the real decoder (7 files) and assembler (4 files) seal and verify;
@@ -55,3 +55,26 @@ package. The workflow action is the only proposed new dependency.
 - Workflow parsing confirms exact restore/save keys, unconditional verification,
   and cache saves only after a successful site build. Hosted population and
   repeat-run timing remain to be checked after merge.
+
+## Hosted verification — pending GitHub recovery
+
+The bundle workflow merged in [PR 650](https://github.com/code198x/website/pull/650).
+The follow-up [PR 651](https://github.com/code198x/website/pull/651) rechecks inputs
+before sealing, including rejecting a lockfile changed during compilation.
+Direct tests prove that changed source cannot produce a receipt.
+
+The initial population run, 37641707449, was cancelled before publication while
+adding that guard. Do not use its partial timings as a cache benchmark. Content
+CI passed; the follow-up CodeQL runs failed during result upload. Both failed-job
+and full rerun requests returned HTTP 500. GitHub also rejected the subsequent
+regression-test commit push with `remote: Internal Server Error` twice, and the
+PR description update failed with a GraphQL server error. The latest regression
+tests are committed locally on `fix/check-bundle-inputs-after-build`.
+
+Resume by pushing that branch, checking the final PR revision, and merging the
+follow-up once checks pass. Let the deployment populate all three caches, then
+run `deploy.yml` again. Inspect exact cache keys and source revisions, confirm
+all three compilation steps and native package setup are skipped, confirm the
+retained validation steps run, and compare published bundle files against their
+receipts. Record complete build-job timings and any upstream revision changes.
+No warm-bundle performance claim has been verified yet.

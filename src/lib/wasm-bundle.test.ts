@@ -1,8 +1,8 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import {mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
+import {existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {bundleKey, identify, sealBundle, verifyBundle} from '../../scripts/wasm-bundle.mjs';
+import {bundleKey, identify, sealBundle, sealCurrentBundle, verifyBundle} from '../../scripts/wasm-bundle.mjs';
 
 const commands=vi.hoisted(()=>({dirty:'',revision:'commit-a',rust:'rustc fixture-a',wasmPack:'wasm-pack fixture-a'}));
 vi.mock('node:child_process',()=>({execFileSync:(file: string,args: string[])=>{
@@ -59,6 +59,24 @@ describe('bundle identity',()=>{
   it.each(['source','rust','wasmPack','node','platform','arch','image','imageVersion','firmware','builder','verifier','workflow','environment'])('invalidates when %s changes',field=>{
     const inputs={kind:'player',[field]:'before'};
     expect(bundleKey({...inputs,[field]:'after'})).not.toBe(bundleKey(inputs));
+  });
+});
+
+describe('sealing after a build',()=>{
+  it('seals unchanged inputs and verifies their output',async()=>{
+    const {root}=fixture();const identity=await identify('decoder',root,{});
+    const count=await sealCurrentBundle(root,identity,root,{});
+    expect(verifyBundle(root,identity)).toBe(count);
+  });
+  it.each(['dirty','new-commit'])('does not write a receipt if source becomes %s during the build',async change=>{
+    const {root}=fixture();const identity=await identify('decoder',root,{});
+    const original=commands.revision;
+    if(change==='dirty')commands.dirty=' M Cargo.lock';
+    else commands.revision='commit-after-build';
+    try {
+      await expect(sealCurrentBundle(root,identity,root,{})).rejects.toThrow(change==='dirty'?/source must be clean/:/inputs changed/);
+      expect(existsSync(path.join(root,'.bundle-manifest.json'))).toBe(false);
+    } finally {commands.dirty='';commands.revision=original;}
   });
 });
 
