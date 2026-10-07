@@ -1,7 +1,7 @@
 # Reuse completed WASM bundles
 
-Status: reuse approved by the owner on 7 October. The owner also approved the official
-GitHub cache action under the dependency rule.
+Status: complete and deployed on 7 October. The owner approved reuse and the
+official GitHub cache action under the dependency rule.
 
 The dependency-cache trial still spent 5m42s building players on its warm run.
 Most of the cost remains when only website content or CSS changes.
@@ -53,28 +53,33 @@ package. The workflow action is the only proposed new dependency.
   deliberately corrupted WASM copies fail. The older local player distribution
   is correctly refused because its build metadata records modified source.
 - Workflow parsing confirms exact restore/save keys, unconditional verification,
-  and cache saves only after a successful site build. Hosted population and
-  repeat-run timing remain to be checked after merge.
+  and cache saves only after a successful site build.
 
-## Hosted verification — pending GitHub recovery
+## Hosted verification
 
-The bundle workflow merged in [PR 650](https://github.com/code198x/website/pull/650).
-The follow-up [PR 651](https://github.com/code198x/website/pull/651) rechecks inputs
-before sealing, including rejecting a lockfile changed during compilation.
-Direct tests prove that changed source cannot produce a receipt.
+Merged in [PR 650](https://github.com/code198x/website/pull/650) and
+[PR 651](https://github.com/code198x/website/pull/651). PR 651 contains the full
+verification record, source revisions and cache evidence.
 
-The initial population run, 37641707449, was cancelled before publication while
-adding that guard. Do not use its partial timings as a cache benchmark. Content
-CI passed; the follow-up CodeQL runs failed during result upload. Both failed-job
-and full rerun requests returned HTTP 500. GitHub also rejected the subsequent
-regression-test commit push with `remote: Internal Server Error` twice, and the
-PR description update failed with a GraphQL server error. The latest regression
-tests are committed locally on `fix/check-bundle-inputs-after-build`.
+| Deployment run | Runner image | Build job | Result |
+| --- | --- | --- | --- |
+| [37644644584](https://github.com/code198x/website/actions/runs/37644644584) | 20261004.327.1 | 6m23s | Built, validated and saved all three bundles. |
+| [37645746608](https://github.com/code198x/website/actions/runs/37645746608) | 20260927.320.1 | 7m31s | Different runner image required different bundles. |
+| [37647457724](https://github.com/code198x/website/actions/runs/37647457724) | 20261004.327.1 | 1m53s | Three exact cache hits; compilation and native package setup skipped. |
 
-Resume by pushing that branch, checking the final PR revision, and merging the
-follow-up once checks pass. Let the deployment populate all three caches, then
-run `deploy.yml` again. Inspect exact cache keys and source revisions, confirm
-all three compilation steps and native package setup are skipped, confirm the
-retained validation steps run, and compare published bundle files against their
-receipts. Record complete build-job timings and any upstream revision changes.
-No warm-bundle performance claim has been verified yet.
+The same-image comparison saved 4m30s (70%) in the build job. Website and tool
+source revisions were identical across these runs. This is one measured pair;
+runner-image, source or build-input changes deliberately cause cache misses.
+The earlier cancelled run is excluded. GitHub's publication delay is also
+excluded from build-job timings.
+
+The warm run checked all 116 cached files: 8 decoder, 6 assembler and 102 player
+files. The assembler executed against the lesson cartridge, and player firmware
+and save-container checks passed. The original build checked native/WASM parity
+for 68 variants; 23 require additional local firmware.
+
+After warm deployment, all 108 published assembler/player files matched the
+original Pages artifact byte for byte, and every WASM module validated. Hidden
+cache receipts are excluded from the Pages artifact, so the publication check
+compared served payloads directly with the archive. Bundled Spectrum 48K firmware
+remained enabled. All three deployment runs completed successfully.
