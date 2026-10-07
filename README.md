@@ -134,9 +134,30 @@ dependency. Building that page locally needs:
    `<checkout>/crates/play198x-web/pkg-node`, the directory `build:wasm`
    writes to).
 
-Tests that do not load the decoder can run without `PLAY198X_WASM_PATH`; decoder-dependent tests then skip. A production build containing native images needs the decoder. CI builds and supplies it before testing and rendering.
+Tests that do not load the decoder can run without `PLAY198X_WASM_PATH`; decoder-dependent tests then skip. A production build containing native images needs the decoder. CI builds it or restores an exactly matching verified bundle before rendering.
 
 House module overviews can supply `entryAdvice: { message, label, href }` in frontmatter to place a useful route beside their start links. Keep it optional advice rather than a completion gate.
+
+## Deployment bundle reuse
+
+The Pages workflow caches the completed Play198x decoder, Asm198x NES assembler
+and Emu198x player distribution independently. Exact keys cover the source commit,
+Rust and wasm-pack versions, Node/runner environment, website builder and verifier,
+workflow, build flags and validated Spectrum firmware configuration. Website
+content or CSS changes reuse bundles; changes to those inputs rebuild them.
+There are no fallback keys. Raw firmware stays outside the cache.
+
+On a miss, the existing source build and its checks run before a file-hash receipt
+is saved with the bundle. On every run, `scripts/wasm-bundle.mjs` checks that receipt,
+required files, valid WASM and source metadata. The NES assembler also executes
+against the current lesson cartridge, and player distribution/firmware checks run.
+Full native/WASM player parity runs when producing the bundle; hits reuse those
+validated bytes without compiling the native tools again. Astro executes the
+decoder while rendering native images.
+
+A failed integrity check stops deployment. Delete that exact cache entry in the
+repository's Actions caches, then rerun to rebuild; do not add a fallback key or
+skip verification. Rust dependency caches remain available on bundle misses.
 
 ## Discord announcements
 
@@ -169,7 +190,7 @@ Run `npm run build:player` before the first development or site build. Set
 `EMU198X_SOURCE_ROOT` to the emulator checkout when it is outside the family
 layout. This needs the checkout's Rust toolchain, `wasm32-unknown-unknown` and
 `wasm-pack` (or a matching `WASM_BINDGEN` CLI). The existing Pages workflow
-builds these assets before Astro; land the Emu198x source changes first.
+prepares these assets before Astro; land the Emu198x source changes first.
 
 `public/emulators/` is generated and ignored. Both sites mount the same inline custom element, inheriting their typography
 and theme colours. Cartridge selection starts play; firmware is disclosed only
@@ -192,7 +213,7 @@ The NES introductory lesson uses `NesAssembleAndRun`: the maintained source is
 assembled in a worker by the existing Asm198x `mos6502` WASM shell, then handed to
 the shared player's `loadMedia()` API. Build it locally with
 `npm run build:nes-assembler` (`ASM198X_SOURCE_ROOT` selects an Asm198x checkout).
-CI and deployment build it from source; no unpublished npm dependency is needed.
+Deployment builds it from source or restores a verified bundle from that source revision; no unpublished npm dependency is needed.
 `npm run build` compares its output with the native-built lesson download.
 `inlinePlayer: true` on a unit means its authored content supplies the player,
 so the layout omits the additional generic launcher.
