@@ -18,7 +18,7 @@ npm run check
 python3 -m unittest discover -s scripts -p 'test_discord_*.py'
 npm run build
 node scripts/check-browser-player.mjs --built
-A11Y_SWEEP=1 npx playwright test tests/native-image.spec.ts tests/player-integration.spec.ts tests/a11y.spec.ts tests/page-frame.spec.ts tests/spectrum-learner-journey.spec.ts
+A11Y_SWEEP=1 npx playwright test tests/native-image.spec.ts tests/player-integration.spec.ts tests/a11y.spec.ts tests/page-frame.spec.ts tests/spectrum-learner-journey.spec.ts tests/assembly-draft.spec.ts
 lychee --root-dir "$PWD/dist" --no-progress \
   --exclude-path "$PWD/dist/assets" --exclude 'mailto:.*' \
   --exclude 'localhost' --exclude '/images/' --offline "$PWD/dist/**/*.html"
