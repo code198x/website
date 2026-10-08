@@ -19,14 +19,22 @@ test.describe('/family', () => {
     expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1);
   });
 
-  test('shows the six sibling cards with correct status badges', async ({ page }) => {
+  test('shows the tools and their shared foundation projects', async ({ page }) => {
     await page.goto('/family');
-    await expect(page.locator('.sibling-card')).toHaveCount(6);
+    await expect(page.locator('.sibling-card')).toHaveCount(9);
     await expect(page.getByRole('heading', { name: 'Emu198x' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Forge198x' })).toBeVisible();
     // Forge198x is planned: no outbound link, just the "in design" note.
     const forgeCard = page.locator('.sibling-card').filter({ hasText: 'Forge198x' });
     await expect(forgeCard.locator('.sibling-link.disabled')).toBeVisible();
+    for (const name of ['Isa198x', 'Format198x', 'Debug198x']) {
+      const card = page.locator('.sibling-card').filter({ has: page.getByRole('heading', { name, exact: true }) });
+      await expect(card.getByRole('link')).toHaveAttribute('href', `https://github.com/${name.toLowerCase()}`);
+      await expect(card.locator('.sibling-badge')).toHaveText('Active');
+    }
+    const player = page.locator('.sibling-card').filter({ has: page.getByRole('heading', { name: 'Play198x', exact: true }) });
+    await expect(player.getByRole('link', { name: 'Open the player' })).toHaveAttribute('href', 'https://play198x.github.io/');
+    await expect(player).not.toContainText('Amiga animations');
   });
 
   test('footer family strip links to the sibling orgs', async ({ page }) => {
