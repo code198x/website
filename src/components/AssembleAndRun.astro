@@ -19,6 +19,7 @@
 import SourceDrawer from './SourceDrawer.astro';
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 
 interface Props {
   system: string;
@@ -67,14 +68,16 @@ const companions = Object.entries(includes).map(([name, sample]) => ({
   name, source: fs.readFileSync(path.join(codeSamplesPath, sample), 'utf-8'),
 }));
 const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
+const draftRevision = createHash('sha256').update(JSON.stringify({ source, companions, dialect })).digest('hex');
 ---
 
-<div class="sandbox" data-inspect-words={JSON.stringify(inspectWords)} data-inspect-ranges={JSON.stringify(inspectRanges)} data-debugger={String(debuggerControls)} data-visibility-scope={visibilityScope} data-inspect-symbols={JSON.stringify(inspectSymbols)} data-trace-routine={String(traceRoutine)} data-trace-writes={String(traceWrites)} data-inspect-bytes={JSON.stringify(inspectBytes)} data-system={system} data-dialect={dialect} data-tape-name={tapeName} data-execution-hints={String(executionHints)}>
+<div class="sandbox" data-draft-id={src} data-draft-revision={draftRevision} data-inspect-words={JSON.stringify(inspectWords)} data-inspect-ranges={JSON.stringify(inspectRanges)} data-debugger={String(debuggerControls)} data-visibility-scope={visibilityScope} data-inspect-symbols={JSON.stringify(inspectSymbols)} data-trace-routine={String(traceRoutine)} data-trace-writes={String(traceWrites)} data-inspect-bytes={JSON.stringify(inspectBytes)} data-system={system} data-dialect={dialect} data-tape-name={tapeName} data-execution-hints={String(executionHints)}>
   <SourceDrawer class="sandbox-editor">
     <label class="sandbox-label" for={`src-${tapeName}`}>Your source</label>
     <textarea
       id={`src-${tapeName}`}
       class="sandbox-source"
+      readonly
       rows={rows}
       spellcheck="false"
       autocomplete="off"
@@ -90,16 +93,25 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
   {companions.length > 0 && <details class="sandbox-companions">
     <summary>Companion file: {companions.map(file => file.name).join(', ')}</summary>
     <p>The include line reads this editable data when you assemble. Keep it beside your source for a local build.</p>
-    {companions.map(file => <label>{file.name}<textarea class="sandbox-companion" data-filename={file.name} rows="12" spellcheck="false" wrap="off">{file.source}</textarea></label>)}
+    {companions.map(file => <label>{file.name}<textarea class="sandbox-companion" readonly data-filename={file.name} rows="12" spellcheck="false" wrap="off">{file.source}</textarea></label>)}
   </details>}
   <div class="sandbox-controls">
-    <button type="button" class="sandbox-run" title="Assemble and run (Ctrl+Enter or Command+Enter)">Assemble and run</button>
-    <button type="button" class="sandbox-revert" title="Put the original source back">Revert</button>
-    {downloads && <><button type="button" class="sandbox-download-source">Download source</button>
+    <button type="button" class="sandbox-run" disabled title="Assemble and run (Ctrl+Enter or Command+Enter)">Assemble and run</button>
+    <button type="button" class="sandbox-revert" disabled title="Put the original source back">Revert</button>
+    <button type="button" class="sandbox-download-source">Download source</button>
     {companions.map(file => <button type="button" data-download-companion={file.name}>Download {file.name}</button>)}
-    <button type="button" class="sandbox-download-tape">Download tape</button></>}
+    {downloads && <button type="button" class="sandbox-download-tape">Download tape</button>}
     <label class="sandbox-sound"><input type="checkbox" class="sandbox-sound-input" /> Sound</label>
     <p class="sandbox-status" role="status">Edit the source, then assemble.</p>
+  </div>
+
+  <div class="sandbox-draft">
+    <p class="sandbox-draft-status" role="status">Edits are saved in this browser. Keep a downloaded copy of work you want to keep.</p>
+    <span class="sandbox-draft-choices" hidden>
+      <button type="button" class="sandbox-draft-restore">Restore draft</button>
+      <button type="button" class="sandbox-draft-discard">Discard saved draft</button>
+    </span>
+    <button type="button" class="sandbox-draft-download">Download draft (.json)</button>
   </div>
 
   <!--
@@ -126,6 +138,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
   import { formatAssemblyDiagnostics, type SourceLocation } from '../lib/assembly-diagnostics';
   import { SpectrumRunner, type Verdict } from '../lib/spectrum-runner';
   import { SoundControl } from '../lib/lesson-audio';
+  import { installAssemblyDraft } from '../lib/assembly-draft';
 
   /**
    * What each verdict means, in the reader's terms rather than the machine's.
@@ -172,9 +185,9 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
 
       const dialect = root.dataset.dialect ?? 'pasmo';
       const tapeName = root.dataset.tapeName ?? 'program.tap';
-      const original = source.value;
+      const original = source.defaultValue;
       const companionEditors = Array.from(root.querySelectorAll<HTMLTextAreaElement>('.sandbox-companion'));
-      const originalFiles = companionEditors.map(editor => editor.value);
+      const originalFiles = companionEditors.map(editor => editor.defaultValue);
       const files = () => Object.fromEntries(companionEditors.map(editor => [editor.dataset.filename!, editor.value]));
       const assembledSource = () => expandAssemblyIncludes(source.value, files());
       function download(bytes: BlobPart, name: string) {
@@ -182,6 +195,7 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
         const link = document.createElement('a'); link.href = url; link.download = name; link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       }
+      cleanups.add(installAssemblyDraft(root, download));
       root.querySelector('.sandbox-download-source')?.addEventListener('click', () => download(source.value, tapeName.replace(/\.tap$/, '.asm')));
       root.querySelectorAll<HTMLButtonElement>('[data-download-companion]').forEach(button => button.addEventListener('click', () => download(files()[button.dataset.downloadCompanion!], button.dataset.downloadCompanion!)));
       root.querySelector<HTMLButtonElement>('.sandbox-download-tape')?.addEventListener('click', async (event) => {
@@ -429,7 +443,8 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
       runButton.addEventListener('click', () => void assembleAndRun());
       revert.addEventListener('click', () => {
         source.value = original;
-        companionEditors.forEach((editor, index) => { editor.value = originalFiles[index]; editor.dispatchEvent(new Event('input')); });
+        companionEditors.forEach((editor, index) => { editor.value = originalFiles[index]; });
+        companionEditors.forEach(editor => editor.dispatchEvent(new Event('input')));
         source.dispatchEvent(new Event('input'));
         clearMessages();
         say('Original source restored.');
@@ -445,6 +460,8 @@ const tapeName = path.basename(src).replace(/\.asm$/, '.tap');
 </script>
 
 <style>
+  .sandbox-draft { grid-column: 1 / -1; }
+  .sandbox-draft-status { margin: 0 0 0.5rem; }
   .sandbox-companions { grid-column: 1 / -1; min-width: 0; }
   .sandbox-companion { display:block; width:100%; box-sizing:border-box; font:16px var(--font-family-mono,monospace); color:var(--color-text-primary); background:var(--color-surface); }
 

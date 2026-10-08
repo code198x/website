@@ -48,7 +48,7 @@ test('first editor exports edits and takes a readable error back to the correct 
   await page.locator('.sandbox-run').click();
   await expect(page.locator('.sandbox-status')).toContainText('Running', { timeout: 30000 });
   await expect(page.locator('.sandbox-message--build')).toBeHidden();
-  await expect(page.locator('main')).toContainText('download them before reloading or leaving');
+  await expect(page.locator('main')).toContainText('Edits are saved in this browser');
 });
 
 test('gateway firmware statement follows this build and prediction answers stay folded', async ({ page }) => {
