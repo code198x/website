@@ -58,3 +58,23 @@ test('facet works with JavaScript disabled',async({browser,baseURL})=>{
  await expect(page.getByRole('combobox',{name:'Machine',exact:true})).toBeHidden();
  await context.close();
 });
+
+test('code status distinguishes execution evidence from maintained and illustrative listings',async({page})=>{
+ for(const [path,status] of [
+  ['commodore-64/assembly/rendering/sprite-multiplexing','assembled and emulator-executed'],
+  ['sinclair-zx-spectrum/basic/rendering/progress-bar','maintained BASIC subroutine'],
+  ['commodore-64/assembly/rendering/hardware-sprites','illustrative code'],
+ ]) {
+  await page.goto(`/patterns/${path}/`);
+  const statement=page.locator('.pattern-prose > p').filter({hasText:'Code status:'});
+  await expect(statement).toHaveCount(1);
+  await expect(statement).toContainText(status);
+  if(status==='assembled and emulator-executed') {
+   await expect(statement.getByRole('link',{name:'recorded checks'})).toHaveAttribute('href',/\/blob\/[0-9a-f]{40}\/.*\/verification\/results\.json$/);
+   await expect(statement).toContainText('PAL and NTSC');
+  } else {
+   await expect(statement.getByRole('link',{name:'recorded checks'})).toHaveCount(0);
+  }
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ }
+});
