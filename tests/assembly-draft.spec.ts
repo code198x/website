@@ -4,6 +4,28 @@ import fs from 'node:fs/promises';
 const lesson = '/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-01/';
 const draftKeys = (page: Page) => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('code198x:assembly-draft:')));
 
+test('late syntax highlighting preserves focus, selection and the next edit', async ({ page }) => {
+  let release!: () => void;
+  const ready = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/_astro/assembly-editor.*.js', async route => { await ready; await route.continue(); });
+  await page.goto(lesson, { waitUntil: 'domcontentloaded' });
+  const source = page.locator('.sandbox-source');
+  await source.locator('xpath=ancestor::details').evaluate((details: HTMLDetailsElement) => { details.open = true; });
+  await expect(source).toBeEditable();
+  await source.focus();
+  const original = await source.inputValue();
+  await source.evaluate((editor: HTMLTextAreaElement) => { editor.setSelectionRange(3, 11); });
+  release();
+  await expect(page.locator('.assembly-editor .sandbox-source')).toHaveCount(1);
+  await expect(source).toBeFocused();
+  expect(await source.evaluate((editor: HTMLTextAreaElement) => [editor.selectionStart, editor.selectionEnd])).toEqual([3, 11]);
+  await page.keyboard.insertText('; saved selection');
+  const expected = `${original.slice(0, 3)}; saved selection${original.slice(11)}`;
+  await expect(source).toHaveValue(expected);
+  const [key] = await draftKeys(page);
+  expect(JSON.parse((await page.evaluate(key => localStorage.getItem(key), key))!).source).toBe(expected);
+});
+
 test('values restored before scripts initialise are saved against the maintained starter', async ({ page }) => {
   let release!: () => void;
   const ready = new Promise<void>(resolve => { release = resolve; });

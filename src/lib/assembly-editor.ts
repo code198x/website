@@ -24,8 +24,18 @@ export async function highlightAssemblyEditor(source: HTMLTextAreaElement, langu
   const mirror = document.createElement('pre');
   mirror.className = 'assembly-editor-colours';
   mirror.setAttribute('aria-hidden', 'true');
+  const focused = document.activeElement === source;
+  const { selectionStart, selectionEnd, selectionDirection, scrollTop, scrollLeft } = source;
   source.before(wrapper);
   wrapper.append(mirror, source);
+  // Moving a focused textarea blurs it. Enhancement can arrive between a
+  // reader selecting text and typing, so restore focus before the next input.
+  if (focused) {
+    source.focus({ preventScroll: true });
+    source.setSelectionRange(selectionStart, selectionEnd, selectionDirection);
+  }
+  source.scrollTop = scrollTop;
+  source.scrollLeft = scrollLeft;
   source.wrap = 'off';
   const syncScroll = () => {
     mirror.scrollTop = source.scrollTop;
