@@ -54,8 +54,9 @@ test('first editor exports edits and takes a readable error back to the correct 
 test('gateway firmware statement follows this build and prediction answers stay folded', async ({ page }) => {
   await page.goto('/systems/sinclair-zx-spectrum/');
   const spectrum = catalogue.find(entry => entry.id === 'sinclair-zx-spectrum')!;
-  await expect(page.locator('.stage-note')).toHaveText(playerFirmwareNote(spectrum, spectrum.defaultVariant));
-  await expect(page.locator('.route-advice')).toContainText('Both welcome beginners');
+  const launcher = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Try the machine', exact: true }) });
+  await expect(launcher.getByText(playerFirmwareNote(spectrum, spectrum.defaultVariant), { exact: true })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Language routes', exact: true }).getByText('Both welcome beginners.', { exact: false })).toBeVisible();
   await page.goto('/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-01/');
   const question = page.locator('.question').filter({ hasText: 'After changing both patterns' });
   await expect(question.locator('.question-answer')).toBeHidden();
