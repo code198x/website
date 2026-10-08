@@ -1,6 +1,6 @@
 ---
 title: "Sprite Multiplexing"
-summary: "Reuse the C64's eight hardware sprites several times down the screen to show sixteen, twenty-four or more — the raster trick behind every busy C64 game."
+summary: "Draw sixteen sprites in two fixed bands, with a complete raster IRQ example verified on PAL and NTSC emulators."
 platform: "commodore-64"
 category: "rendering"
 difficulty: "advanced"
@@ -13,104 +13,104 @@ related:
   vault: ["vic-ii", "commodore-64"]
 ---
 
-## Overview
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Sources from '@components/Sources.astro';
 
-The VIC-II gives you [eight sprites](/patterns/commodore-64/assembly/rendering/hardware-sprites) — but only eight *at once on a given scanline*. The instant the raster beam passes the bottom of a sprite, that hardware sprite is idle and can be sent somewhere lower down the screen to appear as a completely different one. Trigger that with a [raster interrupt](/patterns/commodore-64/assembly/rendering/raster-splits), do it repeatedly, and eight sprites become sixteen, twenty-four, thirty — a *multiplexer*. It's how nearly every crowded C64 game put more than eight things on screen.
+## Sixteen sprites from eight
 
-It rests on three pieces: a list of "virtual" sprites, kept **sorted by Y**; a **raster-interrupt chain** that fires as each one finishes; and the **reprogramming** of a freed hardware sprite to the next virtual one in the list.
+Run this example and you get eight solid sprites near the top of the screen
+and eight outlines further down. The same eight hardware sprites draw both
+bands. Once the VIC-II finishes the upper band, a raster interrupt changes
+their positions, pointers and colours before the lower band starts.
 
-## Code
+This is a complete **two-band multiplexer** for a PAL or NTSC C64. Each band
+holds zero to eight unexpanded, single-colour sprites. The fixed spacing makes
+the timing easy to inspect before attempting a scheduler for freely moving
+sprites.
 
-```asm
-; =============================================================================
-; SPRITE MULTIPLEXING - C64
-; Each raster interrupt hands a freed hardware sprite to the next virtual one
-; Needs: a Y-sorted virtual sprite list, and ideally a stable raster
-; =============================================================================
+## Run it
 
-VIC_IRQ     = $D019
-VIC_RASTER  = $D012
-SCREEN      = $0400
-SPR_PTR     = SCREEN + $3F8
+Save these two files together, assemble `demo.asm`, load the PRG and type `RUN`:
 
-; Virtual sprites, sorted top-to-bottom each frame (more than 8 of them):
-;   vy,x  vx,x  vptr,x  vcol,x     count in NUM
-; msp  = index of the next virtual sprite waiting for a hardware slot
-; slot = which hardware sprite (0..7) to reuse next
-
-mux_irq:
-    lda #$01
-    sta VIC_IRQ                ; acknowledge the raster interrupt
-
-    ldx msp
-    cpx #NUM
-    bcs frame_end              ; all virtual sprites placed — wait for next frame
-
-    ldy slot                   ; the hardware sprite that just came free (0..7)
-
-    ; --- hand virtual sprite X to hardware sprite Y ---
-    ; (register index is Y*2 for X/Y position; Y for colour, pointer, MSB bit)
-    lda vy,x
-    sta hw_y,y                 ; -> $D001 + 2*slot   (see note on indexing)
-    lda vx,x
-    sta hw_x,y                 ; -> $D000 + 2*slot
-    lda vptr,x
-    sta SPR_PTR,y              ; -> pointer for sprite `slot`
-    lda vcol,x
-    sta hw_col,y               ; -> $D027 + slot
-    ; ... set/clear this sprite's X-MSB bit in $D010 too ...
-
-    inc msp                    ; advance the virtual list
-    iny                        ; rotate the hardware slot 0..7
-    tya
-    and #$07
-    sta slot
-
-    ; --- aim the next interrupt just below the NEXT virtual sprite ---
-    ldx msp
-    lda vy,x
-    sec
-    sbc #1                     ; a line or two of margin so we're not too late
-    sta VIC_RASTER
-    jmp $EA81
-
-frame_end:
-    ; reset for the next frame: msp=0, slot=0, IRQ back to the topmost sprite
-    ; (the per-frame Y-sort of the virtual list happens here or in the main loop)
-    lda #0
-    sta msp
-    sta slot
-    lda vy                     ; topmost sprite's line
-    sta VIC_RASTER
-    jmp $EA81
+```sh
+asm198x --dialect acme --prg demo.asm -o demo.prg
 ```
 
-*(The `hw_y,y` / `hw_x,y` writes stand in for the ×2 register indexing — most multiplexers pre-build a small table of the eight `$D000+2n` addresses, or unroll the eight cases, rather than compute it each time.)*
+<CodeFromFile src="commodore-64/patterns/assembly/rendering/sprite-multiplexing/demo.asm" lang="6502" />
 
-## Trade-offs
+The upper band starts at raster Y=64; the lower band starts at Y=176. Each
+sprite is 24 pixels wide and 21 lines high. The two rightmost positions exceed
+255, so both bands exercise the ninth X bit in `$D010`.
 
-| Aspect | Cost |
-|--------|------|
-| CPU | One interrupt per reused sprite — several per frame |
-| Memory | Virtual sprite tables, plus the sort |
-| Limitation | Still only **8 on any one scanline**; total depends on vertical spread |
+## The IRQ and its tables
 
-**When to use:** Any game that needs more than eight sprites — shmups, crowds of enemies, big bosses built from several sprites.
+<CodeFromFile src="commodore-64/patterns/assembly/rendering/sprite-multiplexing/multiplexer.inc" lang="6502" />
 
-**When to avoid:** If eight is genuinely enough. The multiplexer's timing is unforgiving; don't pay for it unless you need it.
+`mux_counts` contains one count for each band. Try changing `8, 8` to `4, 6`.
+The first eight entries of each sprite table belong to the upper band, and the
+next eight belong to the lower band. `mux_xhi` holds zero or one for each X
+coordinate. Each pointer selects a 64-byte sprite block in VIC-II bank 0.
 
-## The sort is the heart of it
+The handler uses two indices: twice the slot number for the interleaved X/Y
+registers, and the slot number for colour and pointer writes. It rebuilds the
+whole `$D010` mask each time, clearing high bits that belonged to the preceding
+band. It also rebuilds `$D015`, so reducing a count disables unused sprites.
 
-Hardware sprites are reused **in Y order**, so the virtual list has to be sorted top-to-bottom every frame. A full sort each frame would be dear — but sprites move only a little between frames, so the list is *almost* sorted already. An **insertion sort** exploits that: it's near-linear on nearly-sorted data, so the per-frame cost stays small. Getting the sort wrong is the classic multiplexer bug — a sprite reused before the beam has passed its old position flickers or tears.
+Zero skips the table loop. A count above eight disables that band and sets
+its `mux_errors` byte; it cannot read beyond the eight entries. The next valid
+count clears the error. Each IRQ saves and restores A, X and Y; `RTI` restores
+the interrupted flags.
 
-## Timing and limits
+## Why the timing fits
 
-- **Never reprogram a sprite the beam is still drawing.** Reposition it only after its line has passed, with a line or two of margin — hence aiming the next interrupt *just below* the current sprite.
-- **Eight per scanline is the hard ceiling.** Multiplexing buys you more *down* the screen, never more *across* one line. Bunch too many at the same height and the ninth vanishes.
-- **Jitter shows.** Because the reprogramming races the beam, an unstable raster makes sprites shimmer. Serious multiplexers run on a [stable raster](/vault/techniques/stable-raster).
+| Band | Setup IRQ | Sprite lines | Observed final write |
+|------|----------:|-------------:|---------------------:|
+| Upper | 32 | 64–84 | 45 |
+| Lower | 144 | 176–196 | 158 |
+
+Those final-write lines were measured with all eight sprites enabled in
+Emu198x and VICE, on both PAL and NTSC configurations with display DMA active.
+The setup finishes 19 or 18 lines before drawing starts. The earlier band has
+also finished before its registers are reused. The IRQ does not need to land
+on one exact CPU cycle for this deliberately generous schedule.
+
+The [maintained source and verification recipe](https://github.com/code198x/code-samples/tree/main/commodore-64/patterns/assembly/rendering/sprite-multiplexing)
+compares Asm198x output with ACME, checks every visible sprite pixel, and tests
+counts 0, 1, 7, 8, 9 and 255, separate empty bands, and an 8→0→8 transition.
+Removing the X-high-bit write makes the picture check fail. These are emulator
+observations, not measurements from an original C64.
+
+## What the example owns
+
+The demo takes over the machine. It selects VIC-II bank 0, screen `$0400`,
+ordinary 40-column text and RAM interrupt vectors, disables CIA interrupts,
+and owns the raster IRQ and all sprite registers. Sprite data occupies
+`$2000` and `$2040`. It does not return to BASIC or share interrupt ownership
+with a cartridge or another raster handler.
+
+A foreground routine may change a count with a single-byte write; the next
+IRQ for that band picks it up. Keep the descriptor tables unchanged while the
+multiplexer runs. Updating a whole moving-sprite list would require a separate
+publication scheme so the IRQ cannot see half an update.
+
+Keep the fixed Y positions, unexpanded sprites and IRQ lines together. This
+example does not handle arbitrary Y positions, more than eight overlapping
+sprites, expansion, or sprites that cross the bottom of the frame. A general
+multiplexer must schedule around those cases; sorting by Y alone does not
+make an impossible overlap fit.
 
 ## Related
 
 **Patterns:** [Hardware Sprites](/patterns/commodore-64/assembly/rendering/hardware-sprites), [Raster Splits](/patterns/commodore-64/assembly/rendering/raster-splits)
 
 **Vault:** [VIC-II](/vault/hardware/vic-ii) | [Commodore 64](/vault/systems/commodore-64)
+
+<Sources>
+
+Commodore, *Commodore 64 Programmer's Reference Guide* (1983), chapter 3,
+pp. 131–140: eight 24×21 sprites, raster-interrupt reuse, pointers, positions
+and the ninth X bit. Its VIC-II register map describes the raster and IRQ
+registers. Timing and execution claims above come from the sample's retained
+Emu198x and VICE checks.
+
+</Sources>
