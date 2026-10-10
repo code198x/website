@@ -63,7 +63,8 @@ test('code status distinguishes execution evidence from maintained and illustrat
  for(const [path,status] of [
   ['commodore-64/assembly/rendering/sprite-multiplexing','assembled and emulator-executed'],
   ['sinclair-zx-spectrum/basic/rendering/progress-bar','maintained BASIC subroutine'],
-  ['commodore-64/assembly/rendering/hardware-sprites','illustrative code'],
+  ['commodore-64/assembly/rendering/hardware-sprites','assembled and emulator-executed'],
+  ['commodore-64/assembly/rendering/raster-splits','illustrative code'],
  ]) {
   await page.goto(`/patterns/${path}/`);
   const statement=page.locator('.pattern-prose > p').filter({hasText:'Code status:'});
