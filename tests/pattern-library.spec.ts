@@ -64,6 +64,7 @@ test('code status distinguishes execution evidence from maintained and illustrat
   ['commodore-64/assembly/rendering/sprite-multiplexing','assembled and emulator-executed'],
   ['sinclair-zx-spectrum/basic/rendering/progress-bar','maintained BASIC subroutine'],
   ['commodore-64/assembly/rendering/hardware-sprites','assembled and emulator-executed'],
+  ['commodore-64/assembly/physics/sprite-movement-bounds','assembled and emulator-executed'],
   ['commodore-64/assembly/rendering/raster-splits','illustrative code'],
  ]) {
   await page.goto(`/patterns/${path}/`);
