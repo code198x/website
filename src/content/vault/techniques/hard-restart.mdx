@@ -1,142 +1,129 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Hard restart"
-subtitle: "Working around the SID's ADSR bug"
-summary: "Every C64 music driver silences and resets a SID voice two frames before each note, because the chip's envelope generator can otherwise stall for 1.7 frames. The workaround is older than the explanation."
+subtitle: "Working around the SID's ADSR delay bug"
+summary: "Many C64 music players silence a SID voice and zero its envelope settings a couple of frames before the next note. The SID's envelope generator can otherwise stall for up to 32,768 cycles, a little over one and a half PAL frames, when its attack, decay or release rate is lowered, so a note starts late by an unpredictable amount. Rob Hubbard's 1985 player already did it; the mechanism was pinned down years later."
 category: "techniques"
 platforms: ['commodore-64']
 tags: ['audio', 'sid', 'music', 'hardware-quirk', 'programming']
 originated: 1985
-
 sources:
+  originated:
+    - ref: magazines/c-hacking
+      kind: magazine
+      issue: "5"
+      date: "1993-03-07"
+      note: "Anthony McSweeney, 'Rob Hubbard's Music: Disassembled, Commented and Explained', the player 'used in Rob's first 20 or 30 musics', ripped from Monty on the Run (1985). Its release routine, when a note's length is exceeded: 'lda voicectrl,x / and #$fe ;start the release / sta $d404,y ;and kill adsr / lda #$00 / sta $d405,y / sta $d406,y'. The next note writes the control register, then $d405, then $d406."
+    - title: "Codebase64 — Building a musicroutine, by Cadaver (Lasse Öörni)"
+      kind: technical-doc
+      note: "Web, secondary. 'Old method — This method is what old players such as Hubbard's use ... clear the waveform register's gate bit and set ADSR registers to 0 a couple of frames before the note's end'"
   what_the_adsr_bug_is:
-    - title: "mixer, 'ADSR Discussion Notes', Codebase64"
+    - title: "mixer and others, 'ADSR Discussion Notes', Codebase64 wiki"
       kind: technical-doc
       page: "base:classic_hard-restart_and_about_adsr_in_generally"
-      note: "'SID volume-envelope aka. ADSR has a 15-bit LFSR that acts as a prescaler to ENV counter... ADSR bug occurs, when A,D or R values are changed when the LFSR has already passed the corresponding new comparison value. The LFSR must then run a full cycle before the new comparison value can be reached. Full cycle takes 32768 cycles. That is 1.7 frames in terms of 1/50 fps frames'"
-  which_writes_are_safe:
-    - title: "mixer, 'ADSR Discussion Notes', Codebase64"
+      note: "Web, secondary. 'ADSR bug occurs, when A,D or R values are changed when the LFSR has already passed the corresponding new comparison value. The LFSR must then run a full cycle before the new comparison value can be reached. Full cycle takes 32768 cycles. That is 1.7 frames in terms of 1/50 fps frames' — 'All cases where one puts lower than previous value to A,D or R registers can cause the bug conditon. Also gate on/gate off can switch between ADSR states ... Equal or larger values for A,D or R are safe.' — 'The HR is started 2 full frames before next note' — Example 1: 'HR ADSR value 00 00 has high chance of triggering the bug, but afterwards one can write any value safely in the beginning of the next note' — 'without hard knowledge this is the level at which hard restart has been previously described'"
+    - title: "reSID 1.0, envelope.cc and envelope.h, by Dag Lem (in the VICE 3.10 source code)"
+      kind: source-code
+      note: "'If the rate counter comparison value is set below the current value of the rate counter, the counter will continue counting up until it wraps around to zero at 2^15 = 0x8000, and then count rate_period - 1 before the envelope can finally be stepped. This has been verified by sampling ENV3.' Rate counter comparison values 8, 31, 62 ... 31250 for settings 0-15. 'The envelope counter can flip from 0xff to 0x00 by changing state to release, then to attack. The envelope counter is then frozen at zero'"
+  two_methods:
+    - title: "Codebase64 — Building a musicroutine, by Cadaver (Lasse Öörni)"
       kind: technical-doc
-      page: "base:classic_hard-restart_and_about_adsr_in_generally"
-      note: "'All cases where one puts lower than previous value to A,D or R registers can cause the bug conditon. Also gate on/gate off can switch between ADSR states A,DS->R or R->A so that the change takes place from larger value to smaller value. Equal or larger values for A,D or R are safe'"
-  why_two_frames:
-    - title: "mixer, 'ADSR Discussion Notes', Codebase64"
+      note: "Web, secondary. 'When starting a new note after a hard restart, the registers should be written to in this order: Waveform - Attack/Decay - Sustain/Release.' — 'Modern, or \"testbit\" method — Used in newer players such as JCH-player and DMC. Works reliably on PAL machines only, but gives a nice sharp sound. 2 or more frames before the next note, the ADSR is set to a preset value, such as $0000, $0f00 or $f800 (the ADSR setting can also be skipped), and the gatebit is cleared. On the first frame of the note, the instrument's Attack/Decay and Sustain/Release values are written first. Then, $09 is written to the Waveform register (testbit + gate). Only on the next (second) frame of the note, its own waveform value is loaded, and the note is actually heard.'"
+    - title: "Codebase64 — A SID player routine, by Linus Wallej (King Fisher/Triad)"
       kind: technical-doc
-      page: "base:classic_hard-restart_and_about_adsr_in_generally"
-      note: "'Classical approach to deal with the bug is to make sure that it does not occur in the beginning of the sound. Sound-routines are often called once per frame... The HR is started 2 full frames before next note to make sure that the 1.7 frames long bug-condition takes place before the next note and to make sure that the bug has been passed before next note starts.' The routine 'stops the oscillator so that no sound is heard, then sets ADSR to some value and gate off in preparation to next note'"
-  the_practice_predates_the_explanation:
-    - title: "mixer, 'ADSR Discussion Notes', Codebase64"
-      kind: technical-doc
-      page: "base:classic_hard-restart_and_about_adsr_in_generally"
-      note: "The article says so directly: 'This is a bit vague, but without hard knowledge this is the level at which hard restart has been previously described.' It is framed as notes on a live argument - 'Few notes about what has been discussed about SID envelopes lately at CSDB and at IRC. Errors are all mine, and this being a Wiki, you can fix them. :)' - and carries a public correction in the body: 'EDITED: it was pointed out to me that the analogue of inner loop is wrong'"
-  the_2011_attempt:
-    - title: "shrydar, with contributions from lft, 'A new kind of hard-restart', Codebase64"
-      kind: technical-doc
-      page: "base:a_new_kind_of_hard-restart"
-      note: "'Back in 2011 I wanted to get the SID envelope generator into a known state to the cycle level, so I could then take some measurements of envelope behaviour. At the time, the best routine I could manage took well over three frames, as I had to twice recapture a potential rate-counter escape'"
+      note: "Web, secondary. 'hard restart, which is to write 0x00 to all registers at $d400–$d406 2/50 second (2 frames) before next attack. (The actual minimum time is 33 ms = 2^15 cycles according to Dag Lem, author of reSID.)' — 'Hard restart only fixes problems with attack, not the ever-present problem with release.'"
+  walker_sustain:
+    - ref: magazines/zzap-64
+      kind: magazine
+      issue: "41"
+      date: "1988-09"
+      page: "101"
+      note: "Martin Walker's diary: 'The envelope controlling the attack, decay, sustain level and release time seems not to like being re-triggered if the sustain level is still maximum. This showed itself when occasionally a sound effect would go completely silent when triggered twice in quick succession ... if you never use the sustain level at maximum (15) but always set it to 14 or lower the problem doesn't arise'"
   the_2015_solution:
     - title: "shrydar, with contributions from lft, 'A new kind of hard-restart', Codebase64"
       kind: technical-doc
       page: "base:a_new_kind_of_hard-restart"
-      note: "'Then in early April 2015, lft had a cunning plan... His innovation was to use the safe transition from a slow attack to a fast decay to perform the recapture; if this is all done up around env=$fe, it can be performed in just a couple of hundred cycles. The envelope overflow bug (where an attack triggered when env=$ff causes env to wrap back to $00) can then be used to bring the envelope back down. The CPU intensive part of the process takes a mere ten raster lines'"
-  what_a_stable_version_demands:
-    - title: "shrydar, with contributions from lft, 'A new kind of hard-restart', Codebase64"
-      kind: technical-doc
-      page: "base:a_new_kind_of_hard-restart"
-      note: "The routine's own header states the goal and the cost: 'place SID in a known state, with quiescent env3 and ADSR=0000'; 'All DMA and interrupts must be disabled for the last 600 cycles'. It sets the rate counter to a known value, not merely zeroing the envelope: it 'not only zeros the envelope and captures the envelope rate counter, but it sets RC to a known value'"
-  two_methods:
-    - title: "Codebase64 — Building a musicroutine, by Cadaver (Lasse Öörni)"
-      kind: technical-doc
-      note: "\"Old method — This method is what old players such as Hubbard's use. It works well on both PAL & NTSC machines and isn't sensitive to timing. To execute the hard restart, clear the waveform register's gate bit and set ADSR registers to 0 a couple of frames before the note's end\" — \"When starting a new note after a hard restart, the registers should be written to in this order: Waveform - Attack/Decay - Sustain/Release.\" — \"Modern, or 'testbit' method — Used in newer players such as JCH-player and DMC. Works reliably on PAL machines only, but gives a nice sharp sound. 2 or more frames before the next note, the ADSR is set to a preset value, such as $0000, $0f00 or $f800 (the ADSR setting can also be skipped), and the gatebit is cleared. On the first frame of the note, the instrument's Attack/Decay and Sustain/Release values are written first. Then, $09 is written to the Waveform register (testbit + gate). Only on the next (second) frame of the note, its own waveform value is loaded, and the note is actually heard.\""
-    - title: "Codebase64 — A SID player routine, by Linus Wallej (King Fisher/Triad)"
-      kind: technical-doc
-      note: "\"The JCH player on C64 is a very good one. What makes this and some other c64 players better than others is that it utilizes something called 'hard restart'. That is: the SID provides quite bad accuracy on attack after releasing a note, and one way to solve this was hard restart, which is to write 0x00 to all registers at $d400–$d406 2/50 second (2 frames) before next attack. (The actual minimum time is 33 ms = 2^15 cycles according to Dag Lem, author of reSID.) Some say setting the test bit by putting 0x08 into the voice control register $d412 (etc) is just as good.\" — \"Hard restart only fixes problems with attack, not the ever-present problem with release.\""
+      note: "Web, secondary. 'Back in 2011 I wanted to get the SID envelope generator into a known state to the cycle level ... the best routine I could manage took well over three frames, as I had to twice recapture a potential rate-counter escape' — 'Then in early April 2015, lft had a cunning plan ... use the safe transition from a slow attack to a fast decay to perform the recapture; if this is all done up around env=$fe, it can be performed in just a couple of hundred cycles. The envelope overflow bug (where an attack triggered when env=$ff causes env to wrap back to $00) can then be used to bring the envelope back down. The CPU intensive part of the process takes a mere ten raster lines' — routine header: 'All DMA and interrupts must be disabled for the last 600 cycles'"
 ---
+import Sources from '@components/Sources.astro';
 
-Every Commodore 64 music driver silences and resets a SID voice a couple of frames
-before it plays the next note. That is a **hard restart**, and it exists to dodge a
-bug in the chip's envelope generator.
+Listen closely to a careless C64 tune and some notes start a fraction late. Not every note and not by the same amount: one attacks crisply, the next stumbles. The cause is a timing fault in the SID's envelope generator, and the standard cure is the **hard restart**: a couple of frames before each new note, the music player cuts the voice's gate and zeroes its envelope settings, so that the fault happens in the gap, where nobody can hear it.
 
-## The bug
+[Rob Hubbard](/vault/people/rob-hubbard)'s 1985 music player already did this. The explanation of why it works came much later, from people measuring the chip cycle by cycle.
 
-SID's ADSR is driven by a 15-bit LFSR acting as a prescaler. Each A, D or R register
-value maps to a comparison value in a table inside the chip; when the LFSR matches it,
-the envelope counter advances.
+## The envelope generator
 
-> ADSR bug occurs, when A, D or R values are changed when the LFSR has already passed
-> the corresponding new comparison value. The LFSR must then run a full cycle before
-> the new comparison value can be reached. Full cycle takes 32768 cycles. That is 1.7
-> frames in terms of 1/50 fps frames.
+Each SID voice has an envelope: a level from 0 to 255 that rises during the attack, falls to the sustain level during the decay, and falls to zero during the release. The attack, decay and release settings, 0 to 15 each, set how fast it moves.
 
-A note that should attack instantly instead sits silent for most of two frames. On a
-tune driven once per frame, that is audible and irregular.
+The speed comes from a counter that runs once every clock cycle. Each setting selects a comparison value, and every time the counter reaches it, the counter starts again from zero and the envelope takes one step. In Dag Lem's reSID emulator, which models the chip from measurements, setting 0 steps the envelope about every 9 cycles and setting 15 about every 31,251. (The Codebase64 notes on the subject call the counter a 15-bit LFSR, a linear-feedback shift register; the effect is the same.)
 
-The rule for avoiding it is one line: **"Equal or larger values for A, D or R are
-safe."** Any write that lowers one can trigger the stall — including gate on and gate
-off, which move between envelope states and can therefore step downward without the
-driver writing a lower number itself.
+## The delay bug
 
-## The classic workaround
+The fault appears when the comparison value drops while the counter is already past it. Suppose a slow release has the counter at 20,000 and the program now writes a fast attack, whose comparison value is 9. The counter does not notice that it has overshot. It keeps counting until it wraps round at 32,768, which reSID's source describes as "2^15 = 0x8000", and only then counts up to 9 and steps the envelope. For all that time the envelope stands still.
 
-Rather than avoid the condition, drivers provoke it early where it does no harm:
+32,768 cycles is about 33 milliseconds on a PAL C64, a little over one and a half 50 Hz frames; the Codebase64 notes round it to "1.7 frames". How long a given note waits depends on where the counter happened to be, anything from nothing to the full 33 ms, which is why the result sounds uneven rather than simply late.
 
-> The HR is started 2 full frames before next note to make sure that the 1.7 frames
-> long bug-condition takes place before the next note and to make sure that the bug
-> has been passed before next note starts.
+The notes give the rule: "Equal or larger values for A, D or R are safe." Any write that lowers one of them can trigger the stall, and so can the gate bit. Setting the gate moves the envelope from release to attack, clearing it moves it to release, and if the new phase has a faster rate than the old one, the comparison value drops just as if the program had written a smaller number.
 
-The routine stops the oscillator so nothing is heard, sets ADSR to a chosen value, and
-gates off. Two frames of budget for 1.7 frames of stall, with the difference as
-margin.
+## The classic hard restart
 
-The choice of ADSR value for those two frames is not arbitrary — it determines what
-the LFSR comparison value will be when the note starts, so it decides whether the note
-begins cleanly.
+The cure is to provoke the stall on purpose, early. Hubbard's player, which Anthony McSweeney disassembled from *Monty on the Run* for *C=Hacking* in 1993 and found in "Rob's first 20 or 30 musics", does it when a note's length runs out:
 
-## Two ways to do it
+```asm
+  lda voicectrl,x  ;length exceeded so
+  and #$fe         ;start the release
+  sta $d404,y      ;and kill adsr
+  lda #$00
+  sta $d405,y
+  sta $d406,y
+```
 
-Cadaver's guide to writing a music routine sorts the players into two camps. The old method, "what old players such as Hubbard's use", clears the gate bit and zeroes the ADSR registers a couple of frames before the note ends, then writes the new note as waveform, attack/decay, sustain/release in that order. It "works well on both PAL & NTSC machines and isn't sensitive to timing". The "testbit" method of newer players such as JCH's and DMC sets ADSR to a preset two or more frames early, writes the instrument's ADSR first on the note's first frame followed by `$09` (test bit plus gate) to the waveform register, and only loads the real waveform on the second frame. It "gives a nice sharp sound" but "works reliably on PAL machines only".
+Clearing bit 0 of the control register ends the note, and writing zero to attack/decay (`$D405`) and sustain/release (`$D406`) makes the release as fast as the chip allows. When the next note starts, the player writes the control register (waveform and gate) first, then attack/decay, then sustain/release, the order that Lasse Öörni (Cadaver) recommends in his guide to writing a music routine because it "ensures the sharpest attack possible".
 
-Linus Wallej (King Fisher/Triad) singles out the JCH player for the same reason — "what makes this and some other c64 players better than others is that it utilizes something called 'hard restart'" — and adds the limit: it "only fixes problems with attack, not the ever-present problem with release".
+Setting everything to zero works for two reasons. The write of zero may well trigger the stall, but the stall now happens during the silence before the next note. Once it has passed, the counter is running against the smallest comparison value of all, so it never climbs above about 9. Every instrument's attack setting has a comparison value at least that large, so the next note's writes can only raise it: in the Codebase64 notes' words, "afterwards one can write any value safely in the beginning of the next note". Meanwhile the fastest release brings the envelope down to zero, so the new note's attack starts from silence.
 
-## The practice came first
+The gap has to be long enough to contain the worst case. A music player usually runs once per frame, and one PAL frame, 20 ms, is shorter than the 33 ms stall, so players start the hard restart two frames before the note: "to make sure that the 1.7 frames long bug-condition takes place before the next note". Linus Wallej (King Fisher of Triad) gives the same figure, "2/50 second (2 frames) before next attack", and quotes Dag Lem for the true minimum, "33 ms = 2^15 cycles".
 
-The article documenting this is candid that the technique was in use long before
-anyone could say precisely why it worked:
+The values matter. The Codebase64 notes show the opposite case: a hard restart that leaves a slow setting such as `$FF` in attack/decay, followed by a note with attack 0, can trigger the stall all over again on the note itself.
 
-> This is a bit vague, but without hard knowledge this is the level at which hard
-> restart has been previously described.
+## The test-bit method
 
-It presents itself as notes on a live argument — "few notes about what has been
-discussed about SID envelopes lately at CSDB and at IRC. Errors are all mine, and this
-being a Wiki, you can fix them. :)" — and carries a correction in its own body where a
-reader disputed an analogy.
+Cadaver sorts players into two families. The old method, "what old players such as Hubbard's use", is the one above. It "works well on both PAL & NTSC machines and isn't sensitive to timing". Newer players such as JCH's and DMC use the test bit, bit 3 of the control register, which holds the oscillator in reset. Two or more frames before the note they set the envelope settings to a preset such as `$0000` and clear the gate. On the note's first frame they write the instrument's attack/decay and sustain/release, then `$09` (test bit and gate) to the control register; only on the second frame do they write the real waveform, and the note is heard. Cadaver says it "gives a nice sharp sound" but "works reliably on PAL machines only".
+
+Neither method touches the release. Wallej puts it plainly: "Hard restart only fixes problems with attack, not the ever-present problem with release."
+
+## A second envelope trap
+
+The SID has another envelope fault that bit sound-effect programmers. Martin Walker described it in his *ZZAP!64* development diary in September 1988: the envelope "seems not to like being re-triggered if the sustain level is still maximum", so "a sound effect would go completely silent when triggered twice in quick succession". It took him hours to find. His fix was never to use sustain level 15, "always set it to 14 or lower".
+
+reSID's source records the same behaviour from measurements: with the envelope at its maximum, 255, a quick release followed by a new attack can flip the level from 255 to 0, where it stays "frozen at zero" until the voice is released and attacked again. A sustain of 15 holds the envelope at exactly 255 (reSID's sustain levels run in steps of 17, from 0 to 255), which would explain why Walker's limit of 14 made the problem go away.
 
 ## Making it cycle-exact
 
-The classic hard restart gets the envelope quiet. It does not get the chip into a
-*known* state, which is what you need in order to measure the envelope's behaviour at
-all.
+A classic hard restart makes the envelope quiet, but it does not put the chip into a *known* state, accurate to the cycle. That matters to anyone who wants to measure the envelope's timing exactly. In 2011 the coder shrydar tried, and "the best routine I could manage took well over three frames, as I had to twice recapture a potential rate-counter escape". In early April 2015 lft found a shortcut using a transition the chip handles safely, a slow attack into a fast decay, near the top of the envelope's range: "if this is all done up around env=$fe, it can be performed in just a couple of hundred cycles". The overflow from 255 to 0 then brings the envelope back down. One bug undoes another, and the processor-heavy part takes "a mere ten raster lines", provided that "all DMA and interrupts" are disabled for the last 600 cycles.
 
-**shrydar** set out to do that in **2011** and got stuck: "the best routine I could
-manage took well over three frames, as I had to twice recapture a potential
-rate-counter escape."
+## The practice came first
 
-**lft** solved it in **early April 2015** by using a transition the chip handles
-safely — a slow attack into a fast decay — to do the recapture near the top of the
-envelope's range:
+Composers used hard restarts for years without a precise account of the counter. The Codebase64 notes, written after discussions on CSDb and IRC, describe the classic recipe as "a bit vague, but without hard knowledge this is the level at which hard restart has been previously described". The comments in reSID, where Dag Lem writes that the wrap-round "has been verified by sampling ENV3", the readable output of voice 3's envelope, supplied the hard knowledge.
 
-> if this is all done up around `env=$fe`, it can be performed in just a couple of
-> hundred cycles. The envelope overflow bug (where an attack triggered when `env=$ff`
-> causes env to wrap back to `$00`) can then be used to bring the envelope back down.
+<Sources>
 
-One bug is used to escape another. The result takes **ten raster lines** of CPU
-against the original's three-plus frames — with the condition that "all DMA and
-interrupts must be disabled for the last 600 cycles."
+- Anthony McSweeney, "Rob Hubbard's Music: Disassembled, Commented and Explained", *C=Hacking*, issue 5, 7 March 1993: the player from *Monty on the Run* and the games using it; the release routine and the order of the register writes for a new note.
+- mixer and others, "ADSR Discussion Notes", Codebase64 wiki (web, secondary): the 32,768-cycle stall, the safe and unsafe writes, the two-frame hard restart and its example settings. https://codebase64.org/doku.php?id=base:classic_hard-restart_and_about_adsr_in_generally
+- Dag Lem, reSID, `envelope.cc` and `envelope.h` (as included in the VICE 3.10 source code): the rate counter and its comparison values, the "ADSR delay bug" wrap at `0x8000`, and the envelope frozen at zero.
+- Lasse Öörni (Cadaver), "Building a musicroutine", Codebase64 wiki (web, secondary): the old and test-bit methods and the register write order. https://codebase64.org/doku.php?id=base:building_a_music_routine
+- Linus Wallej (King Fisher/Triad), "A SID player routine", Codebase64 wiki (web, secondary): two frames before the attack, Dag Lem's 33 ms minimum, and release. https://codebase64.org/doku.php?id=base:sid_player_routine
+- *ZZAP!64*, issue 41, September 1988, p. 101: Martin Walker's diary.
+- shrydar, with contributions from lft, "A new kind of hard-restart", Codebase64 wiki (web, secondary). https://codebase64.org/doku.php?id=base:a_new_kind_of_hard-restart
+
+</Sources>
 
 ## See also
 
-- [SID](/vault/hardware/sid-chip)
+- [SID chip](/vault/hardware/sid-chip)
 - [Sound drivers](/vault/techniques/sound-drivers)
 - [Interrupt-driven music](/vault/techniques/interrupt-driven-music)
+- [Monty on the Run](/vault/games/monty-on-the-run)
+- [Rob Hubbard](/vault/people/rob-hubbard)
 - [Filter sweeps](/vault/techniques/filter-sweeps)
