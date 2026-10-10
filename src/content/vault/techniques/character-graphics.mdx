@@ -1,28 +1,17 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Character Graphics"
 subtitle: "Building worlds from 8×8 blocks"
-summary: "Character graphics used redefined text characters as game graphics, enabling colourful displays with minimal memory on systems designed primarily for text."
+summary: "Redefining a computer's text characters as game graphics, so that a whole screen is a list of a thousand character codes. On machines with a character mode, such as the Commodore 64 and VIC-20, it saved memory and made moving the screen eight times cheaper than a bitmap; on the Spectrum and BBC Micro the same idea was drawn into a bitmap by the operating system."
 category: "techniques"
 platforms: ['commodore-64', 'sinclair-zx-spectrum', 'bbc-micro', 'commodore-vic-20']
 tags: ['graphics', 'memory', 'technique']
-sources:
-  c64_character_memory:
-    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
-      kind: book
-      page: "103"
-      note: "\"A normal character set contains 256 characters in which each character is defined by 8 bytes… 256*8=2K bytes\" — \"Since the VIC-II chip looks at 16K of memory at a time, there are 8 possible locations for a complete character set\" — \"controlled by 3 bits of the VIC-II control register located at 53272 ($D018…). Bits 3, 2, and 1 control where the characters' set is located in 2K blocks. Bit 0 is ignored… the same register that determines where screen memory is located so avoid disturbing the screen memory bits\" — \"POKE 53272, (PEEK(53272) AND 240) OR A\""
-  c64_programmable_characters:
-    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
-      kind: book
-      page: "107-108"
-      note: "\"the memory location that tells the VIC-II chip where to find the characters is a programmable register… By changing the character memory pointer to point to RAM, the character set may be programmed for any need.\" — \"1. It is an all or nothing process… you must copy any letters, numbers, or standard Commodore 64 graphics you intend to use into your own character memory in RAM. You can pick and choose, take only the ones you want, and don't even have to keep them in order!\" — \"the character generator ROM takes up a total of 4K locations\""
 ---
-
 import Figure from '@components/Figure.astro';
+import Sources from '@components/Sources.astro';
 
-Before dedicated graphics hardware, computers displayed text using character sets—grids of 8×8 pixel patterns. Programmers realised they could redefine these characters to create game graphics, building entire worlds from 256 small tiles. The technique was memory-efficient and surprisingly flexible.
+A home computer's text screen is a grid of character codes. On a Commodore 64 the screen holds 1,000 of them, 40 across and 25 down, and the video chip looks up the 8×8 pattern of dots for each code in a character set as it draws the picture. Change the patterns and every letter on the screen changes with them. Programmers found that by replacing the alphabet with pieces of wall, ladder and water, they could build a game's world out of "text" and move it around as cheaply as text.
 
 <Figure
   src="/images/vault/techniques/character-graphics/charset-pointer.png"
@@ -30,133 +19,87 @@ Before dedicated graphics hardware, computers displayed text using character set
   caption="The same screen, twice. Between the two frames the machine wrote one byte: $D018, from $15 to $1C. Screen memory is untouched — row 10 reads back as eight code-32s, eleven code-34s and twenty-one more code-32s in both. The upper frame is what those bytes mean to the ROM character set; the lower is what they mean once the same codes point at definitions in RAM."
 />
 
-That is the whole technique. The tile map is not a picture of a level — it is 1,000 bytes naming 1,000 characters, and the character set decides what a name means.
+That is the whole technique. A level is not stored as a picture but as a list of character codes, and the character set decides what each code looks like.
 
-## How it works
+## Why it paid
 
-### Standard text mode
+**Memory.** A full-screen bitmap on the C64 needs 8,000 bytes for its 320×200 dots, Commodore's *Programmer's Reference Guide* explains, and the colours for each 8×8 square then come from the 1,000 bytes of screen memory. A character screen needs those 1,000 bytes and a character set of 2,048 bytes, "256 characters in which each character is defined by 8 bytes", and the set can be shared by every screen in the game. In character mode each cell's colour comes from colour memory at `$D800`, a separate chip that takes nothing from the 64K.
 
-| Element | Description |
-|---------|-------------|
-| Screen memory | One byte per character position |
-| Character ROM | 256 pre-defined 8×8 patterns |
-| Display | ROM pattern at screen position |
+**Speed.** To scroll a C64 screen by a whole character, a program moves 1,000 bytes of codes, and colours if they change, instead of 8,000 bytes of bitmap. To print an enemy in a new place it writes a few codes, not dozens of bytes of pixels.
 
-### Custom characters
+**Design.** A level designed in characters is small enough to build by rule. Peter Liepa told *Retro Gamer* that he wrote no cave editor for *[Boulder Dash](/vault/games/boulder-dash)*, only "a simple cavern definition language that allowed me to draw points, lines and rectangles consisting of characters, along with specifying random densities". His original caves were 40 by 24 character blocks, before a publisher's complaint that the hero was too small to recognise led him to make everything bigger.
 
-| Change | Result |
-|--------|--------|
-| Point to RAM | Use custom definitions |
-| Define 8 bytes | Create 8×8 tile |
-| Reference by number | Display anywhere |
+## On the Commodore 64
 
-## Memory efficiency
-
-| Display method | Memory for 40×25 screen |
-|----------------|-------------------------|
-| Bitmap (mono) | 8,000 bytes |
-| Bitmap (colour) | 8,000 + 1,000 colour RAM |
-| Character mode | 1,000 (screen) + 1,000 (colour RAM at `$D800-$DBE7`) + 2,048 (charset) = 4,048 bytes |
-
-Character mode uses far less RAM. The C64 has dedicated colour RAM at `$D800-$DBE7` (one nibble per cell, hard-wired and not configurable) that holds the per-character colour for text and multicolour modes.
-
-## C64 implementation
-
-### Pointing to custom charset
+The [VIC-II](/vault/hardware/vic-ii) reads its character patterns from wherever register `$D018` points. Bits 1 to 3 choose one of eight 2K blocks in the 16K of memory the chip can see; bits 4 to 7 choose where screen memory is, in 1K steps. Pointing the character bits at RAM is a single write:
 
 ```asm
-    lda #$1c        ; Bits 1-3 select charset
-    sta $d018       ; Character at $3000
+        lda #$1c        ; screen at $0400 (bits 4-7 = 1), characters at $3000 (bits 1-3 = 6)
+        sta $d018
 ```
 
-This is the write the figure above makes. `$D018` holds two pointers in one byte, which is why the value is `$1C` and not the charset bits alone: bits 1-3 are `%110`, giving 6 × 2,048 = `$3000` for the character set, while bits 4-7 are `%0001`, giving 1 × 1,024 = `$0400` for screen memory. Write the charset bits without preserving the screen bits and the display moves out from under you. Commodore's own manual gives the same warning — `$D018` is "the same register that determines where screen memory is located so avoid disturbing the screen memory bits" — and the BASIC idiom `POKE 53272, (PEEK(53272) AND 240) OR A`.
+This is the write the figure above makes. The value is `$1C`, not the character bits alone, because both pointers share the register: bits 1–3 are `%110`, giving 6 × 2,048 = `$3000`, and bits 4–7 are `%0001`, giving 1 × 1,024 = `$0400`. Commodore's guide warns that `$D018` is "the same register that determines where screen memory is located so avoid disturbing the screen memory bits", and gives the BASIC form `POKE 53272,(PEEK(53272)AND240)OR A`.
 
-The manual also sets out the arithmetic and the catch. A set is "256 characters in which each character is defined by 8 bytes", 2K in all; the VIC-II "looks at 16K of memory at a time", so "there are 8 possible locations for a complete character set", selected by bits 1-3 in 2K steps. And switching is "an all or nothing process": once the pointer leaves ROM, "you must copy any letters, numbers, or standard Commodore 64 graphics you intend to use into your own character memory in RAM. You can pick and choose, take only the ones you want, and don't even have to keep them in order!" Most games do exactly that — a few dozen letters and digits copied in for the score, the rest of the 256 slots given over to tiles.
-
-### Defining a character
+Each character is eight bytes, one per row, with a set bit for each dot drawn in the character's colour. With the set at `$3000`, character 0 is `$3000`–`$3007`:
 
 ```asm
-; Character 0 = solid block
-    lda #$ff
-    sta $3000       ; Row 0
-    sta $3001       ; Row 1
-    ; ... continue for 8 rows
+; Make character 0 a solid block.
+        lda #$ff
+        ldx #7
+fill    sta $3000,x
+        dex
+        bpl fill
 ```
 
-## Building game screens
+The guide also sets out the catch. Switching to RAM is "an all or nothing process": once the pointer leaves ROM, "you must copy any letters, numbers, or standard Commodore 64 graphics you intend to use into your own character memory in RAM. You can pick and choose, take only the ones you want, and don't even have to keep them in order!" Games did exactly that, copying in the digits and a few letters for the score and giving the rest of the 256 codes to scenery.
 
-### Tile-based levels
+### Multicolour characters
 
-| Tile number | Represents |
-|-------------|------------|
-| 0 | Empty space |
-| 1 | Ground |
-| 2 | Brick |
-| 3 | Ladder |
-| 4-7 | Decorations |
+Setting bit 4 of `$D016` turns on multicolour character mode. Each character then decides for itself: if bit 3 of its colour-memory value is set, it is drawn in multicolour. Its dots are read in pairs, twice as wide, giving 160 across the screen instead of 320. Each pair picks one of four colours: the screen background (`$D021`), two more shared background colours (`$D022` and `$D023`), or the character's own colour from colour memory, which in this mode is limited to the first eight colours, since its fourth bit is now the multicolour flag.
 
-### Screen composition
+## On other machines
 
-```
-Level data: 32 × 8 = 256 bytes per screen
-Charset: 64 tiles × 8 = 512 bytes
-Total: 768 bytes vs 8KB bitmap
-```
+| Machine | How the screen is made | How to redefine characters |
+|---|---|---|
+| Commodore 64 | Character mode: the video chip reads codes and patterns as it draws | Point bits 1–3 of `$D018` at a 2K set in RAM |
+| Commodore VIC-20 | Character mode, one colour per character from colour memory | Point register 36869 (`$9005`) at RAM; the set must be in the internal RAM, as the video chip cannot see expansion memory |
+| Sinclair ZX Spectrum | Always a bitmap; the ROM's print routine draws each character's dots into it | 21 user-defined graphics (codes 144–164), or point the `CHARS` system variable at a whole new set |
+| BBC Micro | Modes 0–6 are bitmaps that the operating system prints into; mode 7 is teletext | `VDU 23` defines a character in modes 0–6; mode 7's character set is stored in the teletext chip |
 
-## Multicolour character mode
+**The VIC-20** works like the C64. Its *Programmer's Reference Guide* explains that the standard characters are in ROM, "no way to change them", but that "the memory location that tells the VIC where to find the characters is a RAM location in the VIC chip". Programmed characters "cannot be put into expansion RAM, since the VIC chip doesn't have access to that memory", so they have to sit between 4096 and 7168, where BASIC must be told to leave them alone.
 
-On C64:
-- Each character uses 4 colours
-- Half horizontal resolution
-- Richer graphics
-- 160×200 effective pixels
+**The Spectrum** has no character mode. Its manual describes the display file as a picture in which "each character position on the screen has an 8x8 square of dots", stored as eight bytes spread through the screen; printing a character copies its eight bytes into those places. Redefining characters still works, because the print routine takes its patterns from wherever the system variable `CHARS` (23606) points: "256 less than address of character set", normally in ROM, "but you can set up your own in RAM and make CHARS point to it". The set covers codes 32 to 127. For smaller jobs the 48K machine offers 21 [user-defined graphics](/vault/techniques/udg) at codes 144 to 164; in 128 BASIC, the last two of those codes became the keywords `SPECTRUM` and `PLAY`. Because the picture is a bitmap, a Spectrum game can draw 8×8 blocks of its own wherever it likes, keeping a map of block codes in memory much as a C64 game keeps its screen.
 
-## Animation techniques
+**The BBC Micro** also prints characters into a bitmap in modes 0 to 6. Acorn's operating system lets a program define 32 characters with `VDU 23` by default, codes 128 to 159, and the command `*FX 20` "explodes" the allocation so that every code from 32 to 255 can be redefined, using up to 1,536 more bytes of memory. Mode 7 is different: it is a teletext display, and its character set is stored in the SAA 5050 teletext chip, not in memory.
 
-### Character cycling
+## Animating characters
 
-Animate by changing character definitions:
-- Water ripples
-- Fire flickering
-- Blinking lights
+Two kinds of change bring a character screen to life:
 
-### Character swapping
+- **Change the pattern.** Rewriting the eight bytes of one character changes every copy of it on the screen at once, which is how a whole sea of water tiles can ripple for the cost of a few bytes.
+- **Change the code.** Writing a different code into screen memory replaces the block in one place, which is how an object moves across a character screen a whole character at a time.
 
-Change which character displays:
-- Player animation frames
-- Different tiles same position
+## Limits
 
-## Platform variations
+Characters snap to an 8×8 grid, so objects that need to move smoothly are usually drawn with [sprites](/vault/techniques/sprites) on top. A set holds 256 patterns, so a large level reuses the same blocks; a C64 program can switch to a second set partway down the screen with a [raster interrupt](/vault/techniques/raster-interrupts). And each 8×8 cell has a limited number of colours: on the C64 one colour of its own plus the shared backgrounds, and on the Spectrum the two-colour attribute cell that causes [colour clash](/vault/techniques/colour-clash).
 
-| Platform | Characters | Colours | Custom-character method |
-|----------|------------|---------|-------------------------|
-| C64 | 256 | Per-character (text mode) or per-cell colour RAM | Point `$D018` bits 1-3 to RAM-based charset |
-| Spectrum | 256 | Per-8×8 attribute block | Point `CHARS` to RAM, OR use the 21 UDGs (codes 144-164) — the cleaner approach for small sets |
-| BBC Micro | 256 | Mode-dependent | OSWORD calls or direct VDU 23 redefine commands |
-| VIC-20 | 256 | Per-character | Point character pointer to RAM |
+<Sources>
 
-The Spectrum's UDG (User-Defined Graphics) system gives 21 redefinable characters in the upper printable range — sufficient for small games without disturbing the rest of the character set. Larger graphics need full charset replacement.
+- Commodore, *Commodore 64 Programmer's Reference Guide* (1983): p. 104, the 2K character set, its eight possible locations and the `$D018` warning; p. 108, programmable characters, "an all or nothing process"; pp. 115–116, multicolour character mode and the colour-memory flag; pp. 121–123, bitmap mode, 8,000 bytes and its colours from screen memory.
+- Commodore, *VIC-20 Programmer's Reference Guide* (1983), pp. 82–83: character memory, the pointer at 36869 (`$9005`) and the expansion-RAM limit.
+- Steven Vickers, *ZX Spectrum BASIC Programming* (Sinclair Research, second edition 1983), chapter 24, p. 164: the display file and the 8×8 square of dots for each character position.
+- Sinclair Research / Amstrad, *ZX Spectrum +2 manual* (1986): p. 30, user-defined graphics T and U replaced by `SPECTRUM` and `PLAY` in 128 BASIC; p. 150, the `CHARS` system variable.
+- Andrew C. Bray, Adrian C. Dickens and Mark A. Holmes, *The Advanced User Guide for the BBC Microcomputer* (Cambridge Microcomputer Centre, 1983): pp. 135–136, OSBYTE &14 (`*FX 20`) and the character definitions; p. 20, the SAA 5050's character set in mode 7.
+- Christian Bauer, *The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64* (1996), section 3.7.3.2: multicolour text mode, the multicolour flag and the three-bit colour of "11" pixels.
+- *Retro Gamer* issue 27 (2006), pp. 24–27, "The Making of: Boulder Dash": the cavern definition language and the 40 by 24 character caves.
 
-## Limitations
-
-| Limitation | Workaround |
-|------------|------------|
-| 8×8 grid alignment | Sprite overlay |
-| 256 character max | Bank switching |
-| Colour restrictions | Careful palette |
-
-## Notable uses
-
-| Game | Character graphics use |
-|------|------------------------|
-| Boulder Dash | Entire playfield |
-| Impossible Mission | Backgrounds |
-| Manic Miner | Level tiles |
-| Most platformers | Background scenery |
+</Sources>
 
 ## See also
 
 - [VIC-II](/vault/hardware/vic-ii)
-- [Screen Memory](/vault/techniques/screen-memory)
-- [Sprite Animation](/vault/techniques/sprite-animation)
+- [Screen memory](/vault/techniques/screen-memory)
+- [Tile maps](/vault/techniques/tile-maps)
+- [UDG](/vault/techniques/udg)
+- [Sprite animation](/vault/techniques/sprite-animation)
 - [Commodore 64](/vault/systems/commodore-64)
