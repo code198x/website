@@ -1,86 +1,74 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "AGSP"
 subtitle: "Any Given Screen Position"
-summary: "Putting the C64's whole screen anywhere by combining VSP for the horizontal and a line crunch for the vertical - the trick behind full-screen scrolling games and demos, and identifiable by the blanked lines it leaves at the top."
+summary: "A Commodore 64 trick that puts the whole screen, colours included, at any position without copying it: VSP sets the horizontal offset, linecrunch the vertical one, and the fine-scroll bits finish the job to the pixel. The scene's list of firsts records the combination in the demo Bonanza in November 1988, and its tell-tale sign is a band of blank lines at the top of the screen."
 category: "techniques"
 platforms: ['commodore-64']
 tags: ['graphics', 'scrolling', 'raster', 'vic-ii', 'demoscene', 'advanced']
 originated: 1988
 
 sources:
-  the_composition:
-    - title: "Codebase64, 'Any Given Screen Positioning (AGSP)'"
-      kind: technical-doc
-      page: "base:agsp_any_given_screen_position"
-      note: "The page's own subtitle is the definition - 'Any Given Screen Positioning (AGSP) VSP with a line crunch' - and the body states it plainly: 'A VSP (…/DMA delay) is used for the horizontal position and a line crunch is used for the vertical position'"
-  how_to_spot_it:
-    - title: "Codebase64, 'Any Given Screen Positioning (AGSP)'"
-      kind: technical-doc
-      page: "base:agsp_any_given_screen_position"
-      note: "The demonstration code names the visual signature: 'The top five and a bit lines are \"wasted\" by the line crunch, if you see any demos with the top few lines blanked out and the screen below is moving at a fast rate then you can probably guess it is using a similar method'"
-  it_needs_a_stable_raster:
-    - title: "Codebase64, 'Any Given Screen Positioning (AGSP)'"
-      kind: technical-doc
-      page: "base:agsp_any_given_screen_position"
-      note: "'This uses VSP (Variable Screen Positioning) (DMA delay) with a stable raster plus a line crunch to scroll the screen vertically to any position.' The code is PAL-only: 'To make it work for NTSC you have to do some minor timing modifications for each scan-line'"
-  the_precision_trap:
-    - title: "Codebase64, 'Smooth Linecrunching'"
-      kind: technical-doc
-      page: "base:smooth_linecrunch"
-      note: "The smooth-linecrunch article carries a warning aimed specifically at AGSP builders: 'this article has a slight bug in that each crunched line scrolls the rest of the screen up by 7 pixels, not 8... something to keep in mind if you want to use it as the starting point for an AGSP routine or anything else that requires precise positioning'"
-  first_appearance:
-    - title: "Codebase64, 'Demo records and world firsts' (vic:demo namespace)"
+  originated:
+    - title: "Codebase64 wiki, 'Demo records and world firsts'"
       kind: database
-      page: "First appearance(s) of tricks/effects"
-      note: "Listed under its constituent parts rather than its name: 'LineCrunch + VSP - Exilon/MDT/Horizon: Bonanza', November 1988. The same page cautions that 'it may not be clear whether two effects should be counted as being \"the same\" or not'"
+      page: "First appearance(s) of tricks/effects: LineCrunch + VSP"
+      note: "web, secondary: 'LineCrunch + VSP — Exilon/MDT/Horizon: Bonanza — Release: 1988-11-xx'. The list records the combination under its parts, not under the name AGSP, and its compilers warn that 'some of these issues are subject to dispute'. https://codebase64.org/doku.php?id=vic:demo:demo_world_records_and_world_firsts"
 ---
+import Sources from '@components/Sources.astro';
 
----
+The Commodore 64's [VIC-II](/vault/hardware/vic-ii) can scroll the screen by 0 to 7 pixels in each direction, and no further. Past that, a game has to move the screen itself: 1,000 bytes of character codes and 1,000 bytes of colour for a text screen, or 8,000 bytes of pixels plus the colours for a bitmap, all before the picture is drawn again. **AGSP**, "Any Given Screen Position", avoids the copy altogether. It persuades the chip to start reading the screen from a different place, so the picture can sit at any position, sideways and up and down, while the data stays where it is.
 
-**AGSP** — Any Given Screen Position — is what you get by putting two earlier C64
-tricks at right angles to each other:
+AGSP is two older tricks working at right angles. The Codebase64 wiki's example puts it in one line: "A VSP ... is used for the horizontal position and a line crunch is used for the vertical position." Christian Bauer, whose 1996 description of the VIC-II is the standard reference, had already seen what the combination would allow: "you can scroll complete graphics screens without using much computing time by almost arbitrarily large distances in all directions."
 
-> A VSP (…/DMA delay) is used for the horizontal position and a line crunch is
-> used for the vertical position.
+## How it works
 
-[VSP](/vault/techniques/vsp) shifts the screen sideways.
-[Linecrunch](/vault/techniques/linecrunch) shifts it vertically. Together they place
-the whole display anywhere, at scroll speeds no software copy could reach — which is
-why AGSP underlies full-screen scrolling on a machine with no hardware scroll worth
-the name.
+The VIC-II keeps its place in screen memory with a counter that moves on by 40 for each row of characters. It reads each row's character codes and colours on the first raster line of the row, a **badline**, which happens when the bottom three bits of the raster line number match YSCROLL, bits 0 to 2 of `$D011`. AGSP moves the screen by putting that counter out of step on purpose.
 
-## How to spot it
+- **Across: [VSP](/vault/techniques/vsp).** Writing `$D011` so that a badline starts partway along a raster line, between cycles 15 and 53, makes the chip fetch fewer than 40 characters on that line. Every row after it starts from the misaligned count, so in Bauer's words "the whole screen seems to be scrolled to the right by as much characters as the number of cycles the $d011 access was done after cycle 14". One cycle of delay is one character, eight pixels.
+- **Up: [linecrunch](/vault/techniques/linecrunch).** Starting a badline and then taking the condition away "before cycle 14" makes the chip show only the last raster line of a row and then move on to the next row. Each crunched row takes one raster line instead of eight.
+- **The last few pixels: fine scroll.** The ordinary scroll bits, bits 0 to 2 of `$D016` for X and of `$D011` for Y, cover the distance between whole characters.
 
-The technique leaves a signature at the top of the screen:
+Because the bitmap modes address their pixels through the same counter, the trick moves bitmap pictures as well as text, and because the colour data is read through the counter too, the colours move with the picture. That matters on the C64, whose colour memory at `$D800` is a fixed chip that cannot be switched to a second copy the way screen memory can.
 
-> The top five and a bit lines are "wasted" by the line crunch, if you see any demos
-> with the top few lines blanked out and the screen below is moving at a fast rate
-> then you can probably guess it is using a similar method.
+The screen memory becomes a loop. A row pushed off the right-hand edge by VSP reappears at the start of the row below, and the counter wraps back to the start of screen memory when it passes the end. A scrolling game therefore only has to write the new column or row of its map that is about to come into view, not the whole screen.
 
 ## What it costs
 
-Both halves are timing-critical. VSP needs a [stable
-raster](/vault/techniques/stable-raster), and the reference code is PAL-only — "to
-make it work for NTSC you have to do some minor timing modifications for each
-scan-line."
+Both halves are timing tricks, and both have to land on the right cycle every frame.
 
-Getting the vertical half exactly right matters more here than in a demo effect,
-which is why Codebase64's smooth-linecrunch article warns AGSP builders specifically
-that its example scrolls by 7 pixels rather than 8 — fine for a demonstration,
-wrong for "anything else that requires precise positioning."
+**A stable raster.** The VSP write must happen on an exact cycle chosen by the horizontal position, so it sits on a [stable raster](/vault/techniques/stable-raster) routine that removes the jitter of a raster interrupt. The Codebase64 example then works out how many cycles to wait from the scroll position and branches into a run of `NOP` instructions at the right point, by writing the branch's own offset into the code: a piece of [self-modifying code](/vault/techniques/self-modifying-code). The example is for PAL machines only. For NTSC, its notes say, "you have to do some minor timing modifications for each scan-line".
 
-## Who did it first
+**Lines at the top.** Each crunched row still uses one raster line, and those lines pile up at the top of the picture. Bauer suggested hiding them with "one of the invalid graphics modes", which draw black, and the Codebase64 example does this, switching on extended colour and bitmap mode together while it crunches and switching them off at a fixed raster line below. Its comments describe the result as a way to recognise the technique: "if you see any demos with the top few lines blanked out and the screen below is moving at a fast rate then you can probably guess it is using a similar method."
 
-The firsts list records it under its parts rather than its name: **LineCrunch + VSP**,
-by **Exilon/MDT/Horizon** in *Bonanza*, **November 1988** — thirteen months after
-VSP's own first appearance.
+**Seven, not eight.** A crunched row moves the rest of the screen up by seven raster lines, not eight, because the row still shows one line. The Codebase64 article on smooth linecrunching notes this as "a slight bug" in its own example and warns that it matters "if you want to use it as the starting point for an AGSP routine or anything else that requires precise positioning". The vertical fine scroll has to make up the difference.
+
+**The VSP crash.** On a minority of machines, VSP corrupts memory. Linus Åkesson traced the cause to the DRAM in 2013; the [VSP](/vault/techniques/vsp#the-vsp-crash) entry explains the fault and the workarounds. Kodiak64 lists *Fred's Back*, alongside *Creatures* and *Mayhem in Monsterland*, among the programs the fault makes "dangerous software" on affected machines.
+
+## First appearances and games
+
+The Codebase64 wiki's list of demo firsts records the combination under its parts rather than its name: "LineCrunch + VSP", in the demo *Bonanza*, released in November 1988 and credited there to Exilon of Microsystems Digital Technologies and Horizon. That was a year after the first recorded VSP, in October 1987, and sixteen months after the first recorded linecrunch, in July 1987. The list's compilers warn that "some of these issues are subject to dispute".
+
+In games, the name is linked with one series of platformers. The developer Kodiak64 writes that "it is reported" that VSP, combined with linecrunch, "forms part of the AGSP scrolling ... used in the Fred's Back series of platformers"; the third game was reviewed by *Commodore Format* in October 1994. Kodiak64 names *Creatures* and *Mayhem in Monsterland* as users of VSP for their "full-screen, full-colour scrolling" (see [VSP in games](/vault/techniques/vsp#in-games)), without saying that they used the vertical half as well.
+
+<Sources>
+
+- Christian Bauer, *The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64* (28 August 1996): section 3.14.4, "Linecrunch", including aborting a badline "before cycle 14" and blanking the crunched lines with an invalid mode; section 3.14.6, "DMA delay", the shift of one character per cycle after cycle 14, bitmap screens, and the combination with FLD and linecrunch.
+- Codebase64 wiki, "Any Given Screen Positioning (AGSP)", example code in ACME format (web, secondary): the definition, the PAL-only note, the self-modified branch into `NOP`s, the extended colour and bitmap blanking and the comment on blanked top lines. https://codebase64.org/doku.php?id=base:agsp_any_given_screen_position
+- Codebase64 wiki, "Smooth Linecrunching", by Karmic (web, secondary): the seven-pixel note and its warning for AGSP routines. https://codebase64.org/doku.php?id=base:smooth_linecrunch
+- Codebase64 wiki, "Demo records and world firsts" (web, secondary): *Bonanza* (November 1988), *VSP&IK+* (30 October 1987) and *Game Over* (22 July 1987). https://codebase64.org/doku.php?id=vic:demo:demo_world_records_and_world_firsts
+- Commodore, *Commodore 64 Programmer's Reference Guide* (1983), pp. 128–129: the fine-scroll bits of `$D011` and `$D016`.
+- Kodiak64 (Jon), "The Future of VSP Scrolling on the C64", 20 September 2022 (web, secondary): AGSP in *Fred's Back*, VSP in *Creatures* and *Mayhem in Monsterland*, and the "dangerous software" list. https://kodiak64.co.uk/blog/future-of-VSP-scrolling
+- *Commodore Format* issue 49, October 1994, p. 17: *Fred's Back 3* review.
+
+</Sources>
 
 ## See also
 
-- [VSP](/vault/techniques/vsp) — the horizontal half
-- [Linecrunch](/vault/techniques/linecrunch) — the vertical half
-- [Stable raster](/vault/techniques/stable-raster) — the prerequisite
-- [Hardware scroll](/vault/techniques/hardware-scroll)
-
+- [VSP](/vault/techniques/vsp): the horizontal half
+- [Linecrunch](/vault/techniques/linecrunch): the vertical half
+- [FLD](/vault/techniques/fld): pushing the screen down instead of up
+- [Stable raster](/vault/techniques/stable-raster): the prerequisite
+- [Hardware scrolling](/vault/techniques/hardware-scroll): the 0–7 pixel scroll and the copy AGSP replaces
+- [VIC-II](/vault/hardware/vic-ii)
