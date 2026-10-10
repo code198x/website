@@ -1,6 +1,6 @@
 ---
 title: "Hardware Sprites"
-summary: "Enable, position, and colour one of the C64's eight hardware sprites — moveable objects the VIC-II draws over the background for free."
+summary: "Show a complete 24×21 sprite, set its ninth X bit, and preserve the other sprites’ shared registers. Verified on PAL and NTSC emulators."
 platform: "commodore-64"
 category: "rendering"
 difficulty: "beginner"
@@ -13,78 +13,60 @@ related:
   vault: ["vic-ii", "commodore-64"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Sources from '@components/Sources.astro';
 
-## Overview
+**Code status: assembled and emulator-executed.** PAL and NTSC C64, normal-size single-colour sprite 0, in Emu198x and VICE. The [recorded checks](https://github.com/code198x/code-samples/blob/daacb295441b54fc239b63c6229347308ec18dd2/commodore-64/patterns/assembly/rendering/hardware-sprites/verification/results.json) identify the tested sources and observations. They establish these cases on those configurations; original-hardware checks are separate.
 
-A sprite (the VIC-II calls them *movable object blocks*) is a small bitmap — **24×21 pixels** — that the chip draws over the background entirely in hardware. The C64 has **eight** of them. Each has its own position, colour, and shape, moves with a single register write, and costs the CPU nothing to display. Sprites are how almost every C64 game draws its player, enemies, and bullets.
+## A sprite on screen
 
-Setting one up is four steps: point it at its shape, position it, colour it, switch it on.
+Run this example and a white **24×21-pixel outline with a central cross** appears at VIC-II coordinates X=160, Y=120 on a black screen. The VIC-II draws it from its shape data while the CPU runs an observation loop.
 
-## Code
+The C64 has eight hardware sprites. Each has a position, colour and shape pointer. The CPU does not paint their pixels into the background, but display is not free: **sprite DMA takes bus time from the CPU**. Moving or recolouring a sprite also requires CPU writes.
 
-```asm
-; =============================================================================
-; HARDWARE SPRITES - C64
-; Show sprite 0: point it at data, position it, colour it, enable it
-; CPU: None (the VIC-II draws it) | Memory: 63 bytes of shape data
-; =============================================================================
+## Run it
 
-SPR_ENABLE  = $D015         ; Sprite enable — one bit per sprite
-SPR0_X      = $D000         ; Sprite 0 X position (sprite n X = $D000 + 2*n)
-SPR0_Y      = $D001         ; Sprite 0 Y position (sprite n Y = $D001 + 2*n)
-SPR_X_MSB   = $D010         ; X position bit 8 — one bit per sprite (X >= 256)
-SPR0_COLOR  = $D027         ; Sprite 0 colour ($D027..$D02E for sprites 0..7)
+Save these three files together: `demo.asm`, `sprite.inc` and `shape.inc`. Assemble the demonstration, load the resulting PRG in a PAL or NTSC C64 emulator, and type `RUN`:
 
-SCREEN      = $0400         ; Default screen RAM
-SPR0_PTR    = SCREEN + $3F8 ; Sprite pointers live at the end of screen RAM ($07F8)
-
-SHAPE       = $0340         ; Put the shape in the spare cassette buffer
-SHAPE_BLOCK = SHAPE / 64    ; Pointer value = address / 64  (= 13)
-
-init_sprite:
-    ; --- 1. Point sprite 0 at its shape ---
-    lda #SHAPE_BLOCK        ; The pointer is a 64-byte block number, not an address
-    sta SPR0_PTR
-
-    ; --- 2. Position it (X=160, Y=120 — middle of the screen) ---
-    lda #160
-    sta SPR0_X
-    lda #120
-    sta SPR0_Y
-    lda #0
-    sta SPR_X_MSB           ; X < 256, so its high bit is clear
-
-    ; --- 3. Colour it ---
-    lda #1                  ; 1 = white
-    sta SPR0_COLOR
-
-    ; --- 4. Switch it on ---
-    lda #%00000001          ; Bit 0 = sprite 0
-    sta SPR_ENABLE
-    rts
-
-; --- The shape: 24 wide x 21 tall = 63 bytes (3 bytes per row) ---
-    * = SHAPE
-    !byte %00000000,%01111110,%00000000
-    !byte %00000001,%11111111,%10000000
-    !byte %00000111,%11111111,%11100000
-    !byte %00001111,%11111111,%11110000
-    ; ... 16 more rows make up the 21-row, 63-byte shape ...
-    !byte %00000000,%01111110,%00000000
+```sh
+asm198x --dialect acme --prg demo.asm -o demo.prg
 ```
+
+Reset to leave. This standalone demonstration takes over the screen, VIC bank, sprites and interrupt setup. It maps out BASIC and KERNAL and does not return to BASIC.
+
+<CodeFromFile src="commodore-64/patterns/assembly/rendering/hardware-sprites/demo.asm" lang="6502" />
+
+Try changing `DEMO_X` to 296 and rebuilding. That position needs X bit 8 as well as its low byte. `DEMO_Y` is the raster coordinate, not a row counted from the top of the text area. Leave `SHARED_SEED` at zero for the demonstration; the verifier uses it to check ownership of the shared registers.
+
+## The routine's contract
+
+`sprite0_show` takes the X position's low byte in **A**, its high bit (0 or 1) in **X**, and raster Y (0–255) in **Y**. It changes A and flags and preserves X and Y. It expects I/O visible, VIC bank 0 (`$0000–$3FFF`), screen RAM at `$0400`, and the complete shape at `$2000`.
+
+The routine owns sprite 0. It sets white, normal size, single-colour mode and foreground priority, then enables the sprite. It preserves bits 1–7 of the shared sprite registers, so it does not disable or change the modes of sprites 1–7.
+
+<CodeFromFile src="commodore-64/patterns/assembly/rendering/hardware-sprites/sprite.inc" lang="6502" />
+
+The caller must exclude competing writes while these read/modify/write sequences run. Preserving bits does not make an interrupted update atomic. The demonstration initialises once; calling midway through display can expose a partly updated position or mode. Raster-safe movement is a separate timing problem.
+
+## All 21 rows
+
+Each row uses three bytes: 24 bits, most significant bit first. A set bit draws the sprite's colour; a clear bit leaves the background visible. This shape has a border and a central cross. The loops supply repeated rows, so all 63 bytes are present.
+
+<CodeFromFile src="commodore-64/patterns/assembly/rendering/hardware-sprites/shape.inc" lang="6502" />
+
+The final byte pads the shape to a 64-byte block. It is not a twenty-second row. In the caller, the following blank block supplies transparent shapes for the other sprites during verification.
 
 ## Trade-offs
 
 | Aspect | Cost |
 |--------|------|
-| CPU | None — the VIC-II composites the sprite during display |
-| Memory | 63 bytes of shape data per frame, plus a 1-byte pointer |
-| Limitation | **Eight** sprites only; 24×21 each. More needs multiplexing |
+| CPU | Setup and movement writes; the VIC-II composites pixels, but sprite DMA takes CPU bus time |
+| Memory | 63 shape bytes in a 64-byte-aligned block, plus one screen-relative pointer per sprite |
+| Limitation | Eight hardware sprites, each 24×21 pixels before expansion; more visible objects need reuse or software drawing |
 
-**When to use:** Players, enemies, bullets, the cursor — anything that moves over the background independently.
+**When to use:** Players, enemies, bullets and cursors that move independently of the background.
 
-**When to avoid:** Large or numerous moving areas — past eight objects you must reuse sprites down the screen (see [Sprite Multiplexing](/patterns/commodore-64/assembly/rendering/sprite-multiplexing)), or draw into the bitmap instead.
+**When to avoid:** Large or numerous moving areas. Reusing sprites further down the screen needs a schedule such as the [two-band multiplexer](/patterns/commodore-64/assembly/rendering/sprite-multiplexing); it cannot create unlimited overlapping sprites on one raster line.
 
 ## Sprite registers
 
@@ -103,14 +85,32 @@ All live in the VIC-II at `$D000`. For sprite *n*, replace the index:
 
 ## The pointer is a block number
 
-A sprite pointer isn't an address — it's the address **divided by 64**. So shape data at `$0340` gives a pointer of `$0340 / 64 = 13`. The eight pointers sit at the very end of screen RAM (`$07F8`–`$07FF` for a screen at `$0400`), so moving the screen moves the pointers with it.
+A sprite pointer is a 64-byte block number **relative to the selected 16 KB VIC bank**:
+
+```
+pointer = (shape address − VIC bank base) / 64
+```
+
+Here the bank starts at `$0000` and the shape at `$2000`, so the pointer is `$80` (128). Shape addresses must be aligned to 64 bytes and accessible to the VIC-II in that bank. The CPU's memory map alone does not tell you what the VIC-II will fetch.
+
+The eight pointers occupy screen base + `$3F8` through `$3FF`: `$07F8–$07FF` with the screen at `$0400`. Moving the screen moves its pointer table; changing the VIC bank changes where the same pointer value fetches its shape.
 
 ## Multicolour sprites
 
 Setting a sprite's bit in `$D01C` switches it to **multicolour** mode: pixels are read in pairs, giving four colours (transparent, the two shared colours in `$D025`/`$D026`, and the sprite's own colour) at half the horizontal resolution — 12 fat pixels instead of 24. The trade is colour for detail, and it's how most C64 game characters were drawn.
+
+## What has been checked
+
+The [source and verification recipe](https://github.com/code198x/code-samples/tree/daacb295441b54fc239b63c6229347308ec18dd2/commodore-64/patterns/assembly/rendering/hardware-sprites) compares Asm198x and ACME output, then checks five positions in Emu198x and VICE on PAL and NTSC: **20 captures**. It checks every lit pixel and guest register snapshots, including the X=255/256 boundary, colour, shape and preservation of the other sprites' shared bits. Removing the ninth X-bit update must fail the picture check. These observations do not measure DMA cost or establish multicolour, expansion or original-hardware behaviour.
 
 ## Related
 
 **Patterns:** [Sprite Movement & Bounds](/patterns/commodore-64/assembly/physics/sprite-movement-bounds), [Game Loop (Basic)](/patterns/commodore-64/assembly/framework/game-loop-basic)
 
 **Vault:** [VIC-II](/vault/hardware/vic-ii) | [Commodore 64](/vault/systems/commodore-64)
+
+<Sources>
+
+Commodore, *Commodore 64 Programmer's Reference Guide* (1983), chapter 3, pp. 101–104 (VIC banks and screen memory), 131–144 (sprite data, pointers, modes, positioning and priority). MOS Technology, *6567 Video Interface Chip (VIC-II), Preliminary*, “System Interface / DMA Operation” (sprite fetches and CPU bus access).
+
+</Sources>
