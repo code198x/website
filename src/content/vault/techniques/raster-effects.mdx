@@ -1,117 +1,209 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Raster Effects"
-subtitle: "Per-scanline graphics tricks"
-summary: "Raster effects change graphics parameters during screen drawing, creating colour bars, split screens, and effects beyond normal hardware limits."
+subtitle: "Changing the picture while it is being drawn"
+summary: "A raster effect changes a video register partway down the screen, so the part of the picture below the change looks different. Colour bars, split screens, opened borders and extra sprites all come from it. The Commodore 64 does it with a raster interrupt, the Amiga with its copper, and the Spectrum, which has neither, by counting clock cycles from its one interrupt a frame."
 category: "techniques"
-platforms: ['commodore-64', 'commodore-amiga', 'sinclair-zx-spectrum', 'nintendo-entertainment-system']
-tags: ['graphics', 'effects', 'technical']
+platforms: ['atari-2600', 'atari-8-bit', 'commodore-64', 'commodore-amiga', 'sinclair-zx-spectrum', 'nintendo-entertainment-system', 'super-nintendo']
+tags: ['graphics', 'effects', 'technical', 'raster']
 originated: 1977
 
-
 sources:
+  originated:
+    - title: "Video Games, vol. 1 no. 3, December 1982, Steve Bloom's history of Atari"
+      kind: magazine
+      date: "1982-12"
+      page: "44-45"
+      note: "'After its debut at the summer Consumer Electronics Show in 1977, Atari began mass producing the system'. The VCS has no screen memory, so every picture it shows is built by changing the graphics chip's registers line by line"
+    - title: "Stella Programmer's Guide (Steve Wright, Atari, 1979)"
+      kind: technical-doc
+      date: "1979-12"
+      note: "'The actual TV picture is drawn one line at time by having the microprocessor enter the data for that line into the Television Interface Adapter (TIA) chip ... the microprocessor must be \"one step ahead\" of the electron beam on each line.' 76 machine cycles per line"
   named_c64_effects:
     - title: "Codebase64, 'Demo records and world firsts' (vic:demo namespace)"
       kind: database
       page: "First appearance(s) of tricks/effects"
-      note: "Dated first appearances for the effects tabled below: Border top&bottom - Flash/FCG, 'Intro', 1985-10-11; Sideborder - TSI/1001, 'Border Letter I', April 1986; VSP - JCB/Meanteam, 'VSP&IK+', 1987-10-30; FLI - Solomon/BeyondForce, 'Charlatan', January 1989 (as a moving-colour effect) and ASP/Blackmail, 'So-phisticated III', 1989 (first FLI picture); Sprite stretching - Bob/Triad, 'Cocktail', 1989-02-26"
-  what_fli_actually_does:
-    - title: "Codebase64, 'FLI'"
+      note: "web, secondary. Dated first appearances for the effects tabled in the entry: Border top&bottom - Flash/FCG, 'Intro', 1985-10-11; Sideborder - TSI/1001, 'Border Letter I', April 1986; VSP - JCB/Meanteam, 'VSP&IK+', 1987-10-30; FLI - Solomon/BeyondForce, 'Charlatan', January 1989 (as a moving-colour effect) and ASP/Blackmail, 'So-phisticated III', 1989 (first FLI picture); Sprite stretching - Bob/Triad, 'Cocktail', 1989-02-26. https://codebase64.org/doku.php?id=vic:demo:demo_world_records_and_world_firsts"
+  vic_ii_mechanisms:
+    - title: "Christian Bauer, 'The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64' (1996)"
       kind: technical-doc
-      page: "base:fli"
-      note: "'FLI is short for Flexible Line Interpretation. What it does it bringing more colors to your bitmap pictures by re-reading color info each pixel-line instead of each char-line (every 8 pixels).' Eight pixel lines per character cell, so eight colour rows - not sixteen"
-  vsp_is_a_dma_delay:
-    - title: "Codebase64, 'Horizontal Screen Positioning (HSP) aka … aka DMA-Delay'"
-      kind: technical-doc
-      page: "base:horizontal_screen_positioning_hsp"
-      note: "The mechanism is a delayed DMA fetch, not an x-scroll write: the page equates 'VSP is \"Variable Screen Positioning\" = DMA Delay = horizontal positioning' and points at the VIC-II documentation's section '3.14.6. DMA delay'"
-  badlines_and_the_region_split:
-    - title: "Codebase64, 'STABLE RASTER ROUTINE'"
-      kind: technical-doc
-      page: "base:stable_raster_routine"
-      note: "Both hazards named in the reference routine's own preconditions - 'Sprites, Badline and Badline-1 = fuckup' - and in its three region variants, 'PAL-63 // NTSC-64 // NTSC-65'"
+      page: "sections 3.4, 3.5, 3.12, 3.14"
+      note: "3.4: 6569 (PAL) 312 lines of 63 cycles; 6567R8 (NTSC) 263 lines of 65 cycles; 6567R56A 262 lines of 64 cycles. 3.5: Bad Lines 'stun' the processor 'for 40-43 cycles'. 3.12: the raster line is set in $d012 and bit 7 of $d011; the latch in $d019 must be cleared by writing a 1, 'Otherwise the interrupt will be triggered again immediately'. 3.14.1: opening the upper and lower border by clearing RSEL in lines 248-250; the side border needs CSEL cleared 'exactly in cycle 56'. 3.14.3: FLI makes 'every raster line a Bad Line' and switches the video matrix with $d018. 3.14.6: DMA delay. 3.14.7: sprite stretching by clearing and setting the MxYE bits in $d017"
 ---
+import Sources from '@components/Sources.astro';
 
-The CRT beam draws the screen one scanline at a time, top to bottom. Most game state stays the same throughout that draw — but it doesn't have to. Raster effects exploit timing: change a hardware register *during* the beam's pass, and the screen below that point reflects the new value. Change the background colour at line 100 and you have two coloured regions. Chain dozens of changes for rainbow stripes. Reposition a sprite after it's been drawn to multiplex it. The technique unlocks visuals that the spec sheet says are impossible.
+A television builds its picture one line at a time, top to bottom, fifty or sixty times a second. A home computer's video chip reads the same registers for every line, so a colour or scroll value set once applies to the whole screen. Change a register while the picture is being drawn, though, and everything below that point uses the new value. That is a **raster effect**, and it was the way 1980s programmers got more out of a video chip than its specification promised: more colours than the palette allowed on one screen, more sprites than the hardware had, a scrolling playfield above a score panel that stays still, and pictures in a border that was meant to be blank.
 
-Cycle-accurate timing is critical: the CPU has to write the right register at the right beam position, every frame, without drift. The game-level effort to *get* this stable across PAL/NTSC and across long routines is what made the C64 demoscene the discipline it became.
+Atari's *De Re Atari* explained the idea to programmers in 1982. Drawing the screen "takes about 17,000 microseconds, which looks instantaneous to the human eye, but is a long time in the time scale that the computer works in. The computer has plenty of time to change the parameters of the screen display while it is being drawn." The catch, the guide went on, is that the change must happen "at exactly the same time each time the screen is drawn". Every raster effect is a way of meeting that condition, and each machine offered a different amount of help.
 
-## Common effects
+## Fast facts
 
-| Effect | What it does |
-|--------|--------------|
-| **Colour bars** | Change `$D020` (border) or `$D021` (background) per scanline → coloured stripes |
-| **Split screen** | Change graphics mode partway down → status bar in text mode above gameplay in bitmap mode |
-| **Sprite multiplexing** | Reposition sprite registers after the sprite has drawn → reuse 8 hardware sprites for 16+ on-screen sprites |
-| **Scroll splits** | Change scroll position partway down → static HUD over scrolling playfield |
-| **More colours** | More palette entries by changing palette mid-frame (Amiga Copper rainbows) |
-| **FLI / DYCP / NUFLI** | Demo-scene C64 modes that exploit per-line tricks for colour-per-cell |
-| **Mode-7 effects** | Per-scanline matrix change creates ground-plane perspective on SNES |
+- **Principle:** write to a video register when the beam reaches a chosen line, and again every frame.
+- **Atari VCS (1977):** no screen memory at all; every line is set up by the program as the beam draws it.
+- **Atari 400/800:** a *display list interrupt* from the ANTIC chip at the end of a chosen line.
+- **Commodore 64:** a *raster interrupt* from the VIC-II at any line, set in `$D012` with bit 8 in bit 7 of `$D011`.
+- **Amiga:** the *copper*, a coprocessor that waits for beam positions and writes registers itself.
+- **ZX Spectrum:** no raster interrupt; one interrupt per frame, and the program counts clock cycles from it.
 
-## Implementation
+## Racing the beam
 
-### Raster interrupts
+The idea is older than the machines that made it famous. Atari's Video Computer System, shown at the summer Consumer Electronics Show in 1977, has no memory for a picture. Its graphics chip, the TIA, holds only the line being drawn. The *Stella Programmer's Guide* says the picture "is drawn one line at time by having the microprocessor enter the data for that line", so the processor "must be 'one step ahead' of the electron beam on each line", with 76 machine cycles per line to do it. On the [Atari 2600](/vault/systems/atari-2600), changing a colour halfway down the screen is not a trick. It is how every picture is made.
 
-The C64's VIC-II generates a configurable interrupt at a chosen scanline (`$D012`). The IRQ handler runs at exactly the moment the beam reaches that line — the CPU writes its registers immediately, the screen below reflects the change. Multiple raster IRQs per frame are common; chained handlers can make per-scanline changes.
+Atari's home computers of 1979 gave programmers help. Their display chip, ANTIC, reads a list of instructions describing the screen, and any instruction can carry an interrupt bit. When ANTIC reaches the last line of that part of the screen, it interrupts the 6502, which changes a colour register, a player's position or the character set before the next line is drawn. *De Re Atari* called the display list interrupt "one of the most powerful capabilities built into the ATARI Home Computer" and "one of the least accessible", because it needed assembly language and exact timing. See [Atari 8-bit](/vault/systems/atari-8-bit).
 
-See [Raster Interrupts](/vault/techniques/raster-interrupts) for the C64 specifics.
+## On the Commodore 64
 
-### Copper (Amiga)
+The [VIC-II](/vault/hardware/vic-ii) counts the lines it draws and compares the count with a line number the program has stored. When they match it sets bit 0 of `$D019`, and if bit 0 of `$D01A` is set it interrupts the processor. A PAL screen has 312 lines and an NTSC one 262 or 263, so eight bits cannot name them all: the low eight bits of the line go in `$D012` and the ninth in bit 7 of `$D011`. The flag in `$D019` stays set until the program writes a 1 to it. Christian Bauer's description of the chip spells out what happens to a handler that forgets: "the interrupt will be triggered again immediately".
 
-The Amiga's Copper is a co-processor running its own program in parallel with the CPU. The Copper waits for specific raster positions and writes specific registers. A "Copper list" of `(WAIT, MOVE)` instructions can change palette, scroll, bitplane pointers per scanline with no CPU intervention. This is what makes Amiga rainbows essentially free.
+Commodore's *Programmer's Reference Guide* sold the feature on what it allowed: "This powerful interrupt structure lets you use split screen modes. For instance you can have half of the screen bitmapped, half text, more than 8 sprites at a time, etc. The secret is to use interrupts properly." Gary Liddon's machine-code column in [*ZZAP!64*](/vault/magazines/zzap-64) in September 1987 put it in players' terms: "all those games that have the top half of the screen scrolling and the bottom half of the screen stationary are using raster interrupts." After the playfield's scroll is set at the top of the screen, an interrupt halfway down "zeros the scroll registers", and "the rest of the screen is then stationary".
 
-See [Copper](/vault/hardware/copper) for the chip's design.
+The [raster interrupts](/vault/techniques/raster-interrupts) entry covers the C64 mechanism in full, with tested chains of interrupts. The short program below shows the whole idea in one place. It asks for an interrupt on line 260, which needs the ninth bit, and then changes the border colour on each of the next sixteen lines by waiting for `$D012` to change. On a PAL machine those lines are in the lower border, below the text, where the VIC-II never stops the processor, and the result is a band of colour bars under a working BASIC screen.
 
-### NES sprite-zero hit
+```asm
+; raster bars in the lower border (ACME syntax, PAL)
+; load and RUN: the BASIC line starts the program at 2061
+        * = $0801
+        !word basend, 10
+        !byte $9e
+        !text "2061"
+        !byte 0
+basend  !word 0
 
-The NES PPU sets a "sprite-zero hit" bit (`$2002` bit 6) when sprite 0's first non-transparent pixel collides with a non-transparent BG pixel. Games place sprite 0 at a known scanline (typically the top of the gameplay area) and poll the bit to detect when the beam passes it. The CPU then changes scroll registers (`$2005`) for the scanlines below — status bar above, scrolled playfield below.
+start   sei
+        lda #$7f
+        sta $dc0d           ; switch off CIA 1's timer interrupts
+        lda $dc0d           ; and clear any that are waiting
+        lda #<bars
+        sta $0314           ; point the KERNAL's IRQ vector at bars
+        lda #>bars
+        sta $0315
+        lda #<260
+        sta $d012           ; interrupt on line 260 ($104): low byte here...
+        lda $d011
+        ora #$80            ; ...and bit 8 in bit 7 of $d011
+        sta $d011
+        lda #$01
+        sta $d01a           ; enable the raster interrupt
+        sta $d019           ; clear any raster interrupt already flagged
+        cli
+        rts
 
-### MMC3 IRQ (NES)
+bars    ldx #0
+-       lda colours,x
+        ldy $d012           ; the line we are on now
+wait    cpy $d012
+        beq wait            ; wait for the next line to start...
+        sta $d020           ; ...and change the border colour
+        inx
+        cpx #16
+        bne -
+        lda #14
+        ldy $d012
+w2      cpy $d012
+        beq w2
+        sta $d020           ; back to light blue for the rest of the frame
+        lda #$01
+        sta $d019           ; acknowledge the interrupt
+        jmp $ea31           ; the KERNAL's clock, cursor and keyboard, then return
 
-The MMC3 mapper has a counter that decrements on every rising edge of PPU A12 (which happens once per scanline during sprite/BG fetches). When it reaches zero it fires an IRQ — gives the CPU per-scanline control. Used by *Battletoads*, *Castlevania III*, *Mega Man 3+*. Different on PAL vs NTSC due to different scanline counts.
+colours !byte 6,4,14,3,1,3,14,4,6,2,8,7,1,7,8,2
+```
 
-### Cycle counting (Spectrum)
+The handler spends sixteen lines in a loop, about a thousand cycles a frame that the main program does not get. That is the C64's bargain: the chip says *when*, but the processor does the work. The [Raster splits](/patterns/commodore-64/assembly/rendering/raster-splits) pattern shows the simpler two-colour split.
 
-The Spectrum has no raster IRQ — only a frame-rate IRQ at the start of every frame. Per-scanline tricks require cycle-counting from that interrupt: "wait exactly N T-states from frame start, then do the write." Famously hard to keep accurate across the contended-memory regions. *Black Lamp* and various demoscene Spectrum effects use this.
+### Timing is the hard part
 
-## Notable C64 raster effects
+The interrupt is punctual; the handler is not quite. The processor finishes the instruction it is running before it answers, and 6510 instructions take 2 to 7 cycles, so the handler starts a few cycles later in some frames than in others. One cycle is 8 pixels of screen, so a colour change made this way can have a ragged edge. Two more things get in the way:
 
-| Effect | What it does | Famous example |
-|--------|--------------|----------------|
-| **Border opening** (top/bottom) | Disable `$D011` bit 3 at the right line to remove top/bottom borders | Flash/FCG, *Intro*, October 1985 |
-| **Side-border opening** | Toggle `$D016` bit 3 at the right cycle to remove side borders | TSI/1001, *Border Letter I*, April 1986 |
-| **FLI** (Flexible Line Interpretation) | Re-read colour info every pixel line rather than every character line → 8 colour rows per character cell | Solomon/BeyondForce, *Charlatan*, January 1989 |
-| **DYCP** (Different Y Char Position) | Move text characters at sub-character vertical resolution | Documented by Pasi Ojala, *C= Hacking* 6 |
-| **VSP** (Variable Screen Positioning) | Delay the VIC-II's DMA fetch so the line starts from a different point in memory | JCB/Meanteam, *VSP&IK+*, October 1987 |
-| **Sprite stretching** | Write `$D017` per line so the sprite pointer never advances | Bob/Triad, *Cocktail*, February 1989 |
-| **Hi-res rasters** | Change colour every cycle for Atari-style coloured stripes | Common backdrop |
+- **Badlines.** On the first line of every character row inside the display window, the VIC-II stops the processor for 40 to 43 cycles to fetch the row's character codes, Bauer's section 3.5 explains. Code timed to the cycle has to allow for them, which is why the example above works in the border, where there are none.
+- **PAL and NTSC.** A PAL 6569 has 312 lines of 63 cycles; the NTSC 6567R8 has 263 lines of 65 cycles, and the early 6567R56A 262 lines of 64. An effect timed for one runs out of step on the others, and a line such as 280 does not exist on an NTSC machine at all.
 
-## Cycle-accurate timing
+For effects that must land on one exact cycle, programmers wrote [stable raster](/vault/techniques/stable-raster) routines, which find out how late the interrupt was and wait out the difference.
 
-Raster effects are extremely demanding on timing:
+### The VIC-II tricks
 
-- **Stable raster** — the IRQ has to fire at a predictable cycle, but interrupt latency varies by 0-7 cycles depending on what instruction was executing. Demoscene technique: NOP-pad the routine before the IRQ fires to absorb the variance.
-- **Badlines on C64** — every 8th scanline the VIC-II steals 40-43 cycles for memory access, breaking inner-loop timing. Demos work around this with carefully-placed code.
-- **PAL vs NTSC** — different scanline counts (312 vs 263) and per-line cycle counts (63 vs 65 PAL/NTSC). Effects timed for one region desync on the other.
+Once the timing was under control, C64 programmers found that writing the VIC-II's registers at the right moment did more than change colours. It could make the chip skip or repeat its own internal steps. Bauer's 1996 description of the chip gives the mechanism for each of these; the dates are from the demo scene's own list of firsts, a community record.
 
-See [Stable Raster](/vault/techniques/stable-raster) for the C64 demoscene technique of getting cycle-perfect raster IRQ.
+| Effect | What the write does | First listed |
+|--------|---------------------|--------------|
+| [Top and bottom border](/vault/techniques/open-borders) | Clear `RSEL`, bit 3 of `$D011`, on lines 248–250, so the chip misses the line where it would switch the border on | Flash/FCG, *Intro*, October 1985 |
+| [Side borders](/vault/techniques/open-borders) | Clear `CSEL`, bit 3 of `$D016`, in exactly cycle 56 of every line | TSI/1001, *Border Letter I*, April 1986 |
+| [FLD](/vault/techniques/fld) | Change the fine-scroll bits in `$D011` to hold back the next badline, opening a gap of empty lines | |
+| [VSP](/vault/techniques/vsp) | Start a badline late in the line, so the chip's character fetches fall out of step and the whole screen moves sideways | JCB/Meanteam, *VSP&IK+*, October 1987 |
+| [FLI](/vault/techniques/fli) | Force a badline on every line and switch screen memory with `$D018`, so a bitmap gets new colours on each pixel line instead of every eighth | Solomon/Beyond Force, *Charlatan*, January 1989 |
+| [Sprite stretching](/vault/techniques/sprite-stretching) | Clear and set a sprite's Y-expansion bit in `$D017` on each line, so the chip reads the same row of sprite data again | Bob/Triad, *Cocktail*, February 1989 |
 
-## Per-platform comparison
+[Sprite multiplexing](/vault/techniques/sprite-multiplexing), the most common raster effect in games, uses the same interrupts more plainly: once the beam has drawn a sprite, the program moves it further down the screen to be drawn again, so eight hardware sprites can show many more objects.
 
-| Platform | Mechanism | Cost |
-|----------|-----------|------|
-| **C64 / VIC-II** | Raster IRQ at any line | CPU-bound; effects compete with game logic for cycles |
-| **Amiga / Copper** | Copper list runs in parallel | Free — Copper doesn't steal CPU time |
-| **NES / sprite-0 + MMC3** | Sprite-zero hit + mapper IRQ | CPU polling (sprite-0) or hardware IRQ (MMC3); per-scanline is doable |
-| **SNES / HDMA** | Hardware DMA per scanline | Free for direct register changes; fixed-pattern only |
-| **Spectrum / cycle-count** | Cycle-counting from frame IRQ | Hardest — no raster IRQ; contention complicates timing |
+## On the Amiga: the copper
+
+The Amiga does not need the processor for most of this. Its [copper](/vault/hardware/copper), a coprocessor inside the Agnus chip, runs a list of instructions every frame: `WAIT` for a beam position, `MOVE` a value into a register. Commodore's *Hardware Reference Manual* says it "can control nearly the entire graphics system, freeing the 680x0 to execute program logic", and that while it waits "it does not use the memory bus at all".
+
+It is cheap rather than free. When a `WAIT` is satisfied, the manual says, "the Copper steals memory cycles from either the blitter or the 680x0" to make its writes, each `MOVE` taking four memory-cycle times. A gradient that changes one colour on every line of a PAL screen costs about 1,300 memory cycles a frame, out of the roughly 71,000 the manual's figure of 227.5 per line allows, and the processor does none of the work. By 1994 *The One* could say that nearly every Amiga game "uses the Copper list to graduate the colour of the ground and sky". The pattern [Copper Colour Bars](/patterns/commodore-amiga/assembly/rendering/copper-colour-bars) builds one.
+
+When the processor does have to act at a particular line, the copper can interrupt it with a `MOVE` to the `INTREQ` register; the [raster interrupts](/vault/techniques/raster-interrupts#on-the-amiga) entry shows how.
+
+## On the Spectrum: counting cycles
+
+The ZX Spectrum has no raster interrupt and no coprocessor. Its [ULA](/vault/hardware/ula) interrupts the Z80 once a frame, 50 times a second, at the end of each picture, and the ROM uses that interrupt to scan the keyboard. A program that wants to change something partway down the screen has to count. Each scan line lasts 224 T-states (processor clock cycles), and on a 16K or 48K machine the first line of the screen begins 14,336 T-states after the interrupt. A routine that waits exactly the right number of cycles after the interrupt, then makes a change every 224 cycles, stays in step with the beam.
+
+The best-known Spectrum example was Dominic Robinson's "Rainbow Processor", used on the title and high-score screens of [*Uridium*](/vault/games/uridium) and [*Zynaps*](/vault/games/zynaps). The Spectrum normally allows two colours in each 8×8 square. Robinson's routine rewrote the colour attributes for every pixel line instead, and [*Your Sinclair*](/vault/magazines/your-sinclair) printed it as a type-in in August 1987. In his words it gave "a different colour on each pixel line, in a band twenty characters wide in the centre of the screen". It ran from an Interrupt Mode 2 handler "to keep it synchronised with the generation of the TV picture". The price was the processor's attention: "The deeper the display you use, the less processor time will be available for Basic or any other code you have running. For this reason the rainbow effect can only really be used for title screens and special effects."
+
+[*Sinclair User*](/vault/magazines/sinclair-user) explained the method to a reader in December 1988. Because 224 T-states are "not long enough" to rewrite all 32 attributes of a row, a band narrower than the screen was all a routine could manage, and getting the timing right meant adjusting it "by adding or removing the odd NOP instruction". It was hard work, the magazine warned, "because as soon as your timing goes astray the screen image becomes very jumbled".
+
+The timing is harder than the C64's for another reason. When the ULA is fetching screen data, it holds up any processor access to the lower 16K of RAM, so code running there, or touching the screen, runs at a speed that depends on where the beam is ([contended memory](/vault/hardware/ula)). Some games turned the ULA's activity into a clock instead. Reading a port that nothing answers returns whatever is on the data bus, and while the screen is being drawn that is the byte the ULA has just fetched. Alessandro Grussu's *Spectrumpedia* names [*Arkanoid*](/vault/games/arkanoid), [*Cobra*](/vault/games/cobra), *Short Circuit* and *Sidewize* among the games that used this "floating bus" to find out where the beam was.
+
+## On Nintendo's consoles
+
+The NES's [PPU](/vault/hardware/ppu) has no line counter a program can set. Games that wanted a still status bar above a scrolling world used the sprite 0 hit flag, bit 6 of `$2002`: they placed sprite 0 over the background at a known point and polled the flag until it was set. NESdev's documentation gives the reason: it lets the processor "know its approximate location on the screen so it can time mid-screen writes to hardware registers", as in *Super Mario Bros.* Cartridges could add the missing counter. The [MMC3](/vault/hardware/mmc3) mapper counts lines by watching one of the PPU's address lines, which rises about once per line, and interrupts the processor when its count runs out.
+
+The Super NES built the idea into the console. Its HDMA channels, Nintendo's development manual says, "transfer data automatically, synchronizing with the H-Blank", so that "the S-PPU settings can be varied by each horizontal scan line". The program prepares a table and the hardware works through it a line at a time. That is how [Mode 7](/vault/hardware/mode-7) turns a flat rotating map into a floor that recedes into the distance.
+
+## How the machines compare
+
+| Machine | What finds the line | Who makes the change |
+|---------|---------------------|----------------------|
+| Atari VCS | The program, line by line, with `WSYNC` to wait for the next one | The processor, on every line |
+| Atari 400/800 | ANTIC, from a bit in the display list | The processor, in an interrupt |
+| Commodore 64 | The VIC-II's raster compare | The processor, in an interrupt |
+| Amiga | The copper's `WAIT` | The copper itself |
+| ZX Spectrum | The program, counting T-states from the frame interrupt | The processor |
+| NES | Sprite 0 hit, or a counter on the cartridge | The processor |
+| Super NES | HDMA, from a table | The DMA hardware |
+
+<Sources>
+
+- Atari, *De Re Atari* (Atari Program Exchange, 1982), section 5, "Display List Interrupts", p. 5-1: the 17,000-microsecond screen, changing parameters "at exactly the same time each time", ANTIC's interrupt bit and the DLI as "one of the most powerful capabilities".
+- Steve Wright, *Stella Programmer's Guide* (Atari, 1979), introduction: the picture drawn one line at a time, "one step ahead" of the beam, 76 machine cycles per line.
+- *Video Games*, vol. 1 no. 3, December 1982, pp. 44-45: the VCS's debut at the summer Consumer Electronics Show in 1977.
+- Commodore, *Commodore 64 Programmer's Reference Guide* (1982), pp. 150-151: the raster compare, the latched interrupt flags "cleared by writing a 1", and split screens.
+- Christian Bauer, *The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64* (1996): lines and cycles per line for the 6569, 6567R8 and 6567R56A (section 3.4); badlines and the 40-43 stolen cycles (3.5); the raster interrupt and the `$D019` latch (3.12); the border, FLD, FLI, DMA delay and sprite stretching tricks (3.14).
+- Gary Liddon, "Raster interrupts drive Mr Liddon off the rails", *ZZAP!64* issue 29, September 1987, p. 68: split-screen scrolling with raster interrupts.
+- Codebase64 wiki, "Demo records and world firsts" (community list, web, secondary): first appearances of the border, VSP, FLI and sprite-stretching effects. https://codebase64.org/doku.php?id=vic:demo:demo_world_records_and_world_firsts
+- *Amiga Hardware Reference Manual*, 3rd edition (Commodore-Amiga, Addison-Wesley, 1991), chapter 2, "Coprocessor Hardware", pp. 19-20: the copper "freeing the 680x0", not using the bus while it waits, stealing cycles from the blitter or the 680x0, and instruction timings; chapter 6, "Blitter Hardware", pp. 193-194: DMA priorities and 227.5 memory cycles per line.
+- David Upchurch, work-in-progress feature on *Guardian*, *The One* issue 66, March 1994: the copper list and graduated ground and sky.
+- Adrian Dickens, *Spectrum Hardware Manual*, 2nd edition (Melbourne House), chapters 7 and 8: the ULA's interrupt 50 times a second, at the end of each video frame, used to scan the keyboard.
+- Chris Smith, *The ZX Spectrum ULA: How to Design a Microcomputer* (ZX Design and Media, 2010), chapter 21: the frame interrupt and the 224 T-state scan line.
+- Alessandro Grussu, *Spectrumpedia*, volume 1 (English edition, CC BY-NC-ND 4.0), p. 110: contended memory beginning 14,336 T-states after the interrupt, and the floating bus in *Arkanoid*, *Cobra*, *Short Circuit* and *Sidewize*.
+- Dominic Robinson, "Star Tip 1", *Your Sinclair* issue 20, August 1987, p. 55: the Rainbow Processor, used in *Uridium* and *Zynaps*.
+- *Sinclair User* issue 81, December 1988, pp. 115-116: readers' questions, how the Rainbow Processor in *Uridium* works.
+- NESdev Wiki, "PPU registers" and "MMC3" (community references, web, secondary): the sprite 0 hit used to time mid-screen writes, as in *Super Mario Bros.*; the MMC3 counter clocked by PPU address line A12. https://www.nesdev.org/wiki/PPU_registers, https://www.nesdev.org/wiki/MMC3
+- Nintendo, *Super NES Development Manual*, Book I, section 2-17, "H-DMA": transfers synchronised with horizontal blanking.
+
+The C64 listing was assembled with ACME and run in the VICE emulator (x64sc) as a PAL machine.
+
+</Sources>
 
 ## See also
 
-- [Raster Interrupts](/vault/techniques/raster-interrupts)
-- [Stable Raster](/vault/techniques/stable-raster)
-- [Sprite Multiplexing](/vault/techniques/sprite-multiplexing)
+- [Raster interrupts](/vault/techniques/raster-interrupts)
+- [Stable raster](/vault/techniques/stable-raster)
+- [Raster tricks](/vault/techniques/raster-tricks)
+- [Sprite multiplexing](/vault/techniques/sprite-multiplexing)
+- [Open borders](/vault/techniques/open-borders)
+- [FLI](/vault/techniques/fli)
 - [Copper](/vault/hardware/copper)
 - [VIC-II](/vault/hardware/vic-ii)
+- [ULA](/vault/hardware/ula)
 - [Mode 7](/vault/hardware/mode-7)
