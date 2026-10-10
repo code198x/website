@@ -1,107 +1,95 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Sprite crunching"
-subtitle: "Shrinking a sprite by abusing a VIC-II glitch"
-summary: "A cycle-exact C64 trick that corrupts the VIC-II's internal sprite counter to make sprites shorter than the hardware allows — documented byte by byte by Crossbow of Crest, who got them down to 17 lines and left the record open."
+subtitle: "Scrambling the VIC-II's sprite counter on one exact cycle"
+summary: "Clear a Commodore 64 sprite's Y-expand bit on cycle 15 of a raster line and the VIC-II's sprite counter jumps to a strange new value, sometimes forwards and sometimes back. Pernod of Fairlight used it in Rutig Banan in 1989; Crossbow of Crest mapped every jump, named the trick and used it to cut sprites from 21 lines to 17 in Krestage (1997); later coders found loops as short as four lines."
 category: "techniques"
 platforms: ['commodore-64']
 tags: ['graphics', 'sprites', 'raster', 'vic-ii', 'demoscene', 'advanced']
 originated: 1989
 
 sources:
-  it_is_a_documented_glitch:
-    - title: "Codebase64, 'Sprite Crunching'"
-      kind: technical-doc
-      page: "base:sprite-crunching"
-      note: "'Sprite crunching is based on a glitch in the VIC-chip (as usual) that appears on a cycle-exact position every rasterline. You trigger the glitch by setting back $d017 to 0 on this exact position, and all sprites that had their $d017-bit set to 1 will be affected'"
-  the_counter_behaviour:
-    - title: "Codebase64, 'Sprite Crunching'"
-      kind: technical-doc
-      page: "base:sprite-crunching"
-      note: "Why the effect is erratic rather than parametric: 'There is an internal sprite-graphics-counter for each sprite that, in the normal case, is increased by 3 each line... Depending on what value it has, different things will happen when triggering the sprite crunching glitch. Sometimes 3 will be added (as normal), sometimes something else. Sometimes a negative value will be added(!)'"
-  why_sprites_run_on:
-    - title: "Codebase64, 'Sprite Crunching'"
-      kind: technical-doc
-      page: "base:sprite-crunching"
-      note: "'When the sprite-graphics-counter reaches $3f, the sprite will end. Normally this happens after 21 displayed lines. However if using the glitch results in adding anything not dividable by 3, the counter will not end up on $3f, but $3d or $3e instead. On the next line it will pass $3f and wrap around to $00 or $01, and the sprite will continue to be displayed for some 21 more lines'"
-  crossbow_mapped_it_by_hand:
-    - title: "Codebase64, 'Sprite Crunching'"
-      kind: technical-doc
-      page: "base:sprite-crunching"
-      note: "Attribution for the reference table the technique depends on: in Krestage/Crest 'you can also find exact documentation of what happens on each value of the sprite-graphics-counter when triggering the glitch, hand-haxxored by Crossbow himself. Finding the (probably) shortest path through the table, he managed to shrink the sprites from 21 lines to 17'"
-  the_record_is_left_open:
-    - title: "Codebase64, 'Sprite Crunching'"
-      kind: technical-doc
-      page: "base:sprite-crunching"
-      note: "The page ends by inviting someone to beat the number it just recorded: 'Now play away with it. Can you make a sprite smaller than 17 lines and beat Crossbow? ;D'"
-  three_named_uses:
-    - title: "Codebase64, 'Sprite Crunching'"
-      kind: technical-doc
-      page: "base:sprite-crunching"
-      note: "Three productions with what each did. Rutig Banan/FLT: crunching 'on the third sprite-line, adding -1 to the counter, which effectively causes the sprite to be displayed almost 3 times', giving '~120 lines of sprite area to play with'. Krestage/Crest: 'the first example of sprite crunching when used for shrinking sprites'. Edge of Disgrace/Booze Design: used in a 4x4 plasma with the glitch 'triggered on position $1e, making it add -9... instead of setting $d017 twice each line to repeat the graphics, it is set twice every 4 lines, saving some life supporting cycles'"
-  first_appearance_and_record:
-    - title: "Codebase64, 'Demo records and world firsts' (vic:demo namespace)"
+  originated:
+    - title: "Codebase64 wiki, 'Demo records and world firsts'"
       kind: database
-      page: "First appearance(s); Record performance of effects"
-      note: "First appearance: 'Sprite crunching - Pernod/Fairlight: Rutig Banan', 5 November 1989. The technique later set the sprite-count record: 'Crest: Krestage - 144 sprites, using sprite crunching', 1997, against 112 for conventional sprites"
+      page: "First appearance(s) of tricks/effects: Sprite crunching"
+      note: "web, secondary: 'Pernod/Fairlight: Rutig Banan. Release: 1989-11-05'. A collaborative list whose compilers warn that some entries are disputed. https://codebase64.net/doku.php?id=vic:demo:demo_world_records_and_world_firsts"
+    - title: "Linus Åkesson, 'Massively Interleaved Sprite Crunch' (19 December 2016)"
+      kind: modern-article
+      note: "web, secondary: the trick 'was first used by Pernod in the demo Rutig Banan (1989), and subsequently explored and described in more detail by Crossbow in the demo Krestage (1997)'. https://www.linusakesson.net/scene/lunatico/misc.php"
+    - title: "CSDb, 'Rutig Banan' by Fairlight"
+      kind: database
+      date: "1989-11-05"
+      note: "web, secondary: C64 demo released 5 November 1989 at Light Bålsta Party 1989, first in the demo competition; code credited to Judge, Mr. Wedge and Pernod. https://csdb.dk/release/?id=684"
 ---
+import Sources from '@components/Sources.astro';
 
----
+A Commodore 64 sprite is 21 lines tall, and once the [VIC-II](/vault/hardware/vic-ii) has started drawing one it will not stop until all 21 are done. That rule is what limits [sprite multiplexing](/vault/techniques/sprite-multiplexing): a sprite cannot be reused lower down the screen until it has finished. **Sprite crunching** breaks the rule. Clear a sprite's Y-expand bit on one particular clock cycle of a raster line and the chip's internal sprite counter jumps to a new value: sometimes forwards, sometimes backwards, and only occasionally by the usual three bytes. Chain the jumps carefully and a sprite can end after 17 lines, or loop over the same four lines for as long as you like.
 
-**Sprite crunching** makes a C64 sprite *shorter* than the 21 lines the hardware
-gives you, by deliberately corrupting the VIC-II's internal sprite counter at a
-cycle-exact moment.
+Linus Åkesson, who built a whole demo part on it in 2016, called it "perhaps the most bizarre VIC chip bug discovered to this day" and noted that "many programmers consider it to be too complicated to be useful in practice". The Codebase64 wiki puts it more bluntly: "This is nothing you do if you don't *really* need it."
 
-> Sprite crunching is based on a glitch in the VIC-chip (as usual) that appears on a
-> cycle-exact position every rasterline.
+## How the VIC-II counts its way through a sprite
 
-## Why it is hard
+Christian Bauer's 1996 description of the VIC-II sets out the machinery, with cycle numbers for the PAL 6569. Each sprite's 63 bytes of data are read three bytes per raster line. Two 6-bit counters keep the place: **MCBASE** holds the offset of the row being displayed, and **MC** is loaded from it at the end of each line and counts up by one as each of the three bytes is fetched. One **expansion flip-flop** per sprite decides whether MCBASE moves on:
 
-The counter normally advances by three each line, ending the sprite when it reaches
-`$3f`. Triggering the glitch changes what gets added — and not predictably:
+1. While the sprite's bit in `$D017`, the Y-expand register, is clear, the flip-flop is held set.
+2. In cycle 55, near the end of the line, the flip-flop is inverted if the bit is set.
+3. In cycles 15 and 16 of the next line, MCBASE advances by three, but only if the flip-flop is set. When MCBASE reaches 63 the sprite's DMA is switched off and it ends.
 
-> Sometimes 3 will be added (as normal), sometimes something else. Sometimes a
-> negative value will be added(!).
+An unexpanded sprite therefore steps 0, 3, 6 … 60, 63: 21 lines. A Y-expanded sprite only advances on every other line, so each row appears twice. [Sprite stretching](/vault/techniques/sprite-stretching) works by flipping the bit at a harmless point in the line so that a row repeats again.
 
-Miss `$3f` and the sprite does not end. The counter wraps to `$00` or `$01` and "the
-sprite will continue to be displayed for some 21 more lines", misaligned.
+Crunching hits the same machinery at the one moment that is not harmless. The sprite's bit must be set and its flip-flop reset, so the chip is about to leave MCBASE where it is. If the program clears the bit on cycle 15, the flip-flop becomes set while that decision is half made. Bauer noticed that MCBASE then advanced by only one instead of three, so every later row was read one byte out of step. Åkesson gives the general rule: MCBASE receives "the following very peculiar value":
 
-So the technique is not parametric. You cannot ask for a 17-line sprite; you have to
-find a path through the counter's behaviour that happens to land on one.
+```
+((MC | MCBASE) & $15) | ((MC & MCBASE) & $2A)
+```
 
-## Crossbow mapped the table by hand
+At that point in the line MC is three ahead of MCBASE, so the new offset mixes the old and new values bit by bit, alternately ORed and ANDed. From offset 0 the result is 1, which is Bauer's case. From `$0F` it is `$17`, a jump of 8. From `$1E` it is `$15`, a jump of 9 back. From `$3D` it is `$15`, 40 bytes back. The VICE emulator uses the same expression in its VIC-II code.
 
-That path exists because somebody wrote down what the glitch does at every one of
-the counter's 64 values. In *Krestage* by **Crest** you can find
+The program then sets the bit again before cycle 55 if it wants to crunch on the next line too, or leaves it clear to let the sprite carry on normally.
 
-> exact documentation of what happens on each value of the sprite-graphics-counter
-> when triggering the glitch, **hand-haxxored by Crossbow himself**. Finding the
-> (probably) shortest path through the table, he managed to shrink the sprites from
-> 21 lines to 17.
+## Why a crunched sprite does not stop
 
-Codebase64 reproduces the table, and then leaves the record standing open:
+The VIC-II switches a sprite off only when MCBASE equals 63 exactly. A normal sprite lands on 63 because it moves in steps of three from 0. As the Codebase64 page explains, a crunch that adds "anything not dividable by 3" leaves the counter on `$3D` or `$3E` instead; on the next line it passes 63, wraps round to `$00` or `$01`, and "the sprite will continue to be displayed for some 21 more lines". To end early, a crunched sprite has to reach `$3B` and crunch there, or reach `$3C` and finish normally.
 
-> Now play away with it. Can you make a sprite smaller than 17 lines and beat
-> Crossbow? ;D
+The graphics have to follow the counter. A sprite whose counter goes 0, 3 … `$0F`, then jumps to `$17`, reads its eighth line from bytes `$17` to `$19`, which straddle two of the 21 normal rows. The artist's pixels must be laid out in memory to match the planned route, with unused bytes left where the route skips them.
 
-## Three productions, three different uses
+Pasi Ojala met the effect while writing about sprite stretching for the online magazine [*C= Hacking*](/vault/magazines/c-hacking), and in March 1993 dismissed it: "I don't think the distorted counter effect can be used for anything".
 
-| Production | What it did |
-|---|---|
-| ***Rutig Banan*** / Fairlight | Glitch on the third sprite line adding −1, so the sprite draws "almost 3 times" — about 120 lines of sprite area to work in |
-| ***Krestage*** / Crest | "The first example of sprite crunching when used for shrinking sprites" |
-| ***Edge of Disgrace*** / Booze Design | Glitch at position `$1e` adding −9 inside a 4×4 plasma, so `$d017` is written "twice every 4 lines" instead of twice per line, "saving some life supporting cycles" |
+## Crossbow's map
 
-## The record it set
+The first known use had come earlier still. In *Rutig Banan*, the Fairlight demo that won at Light Bålsta Party on 5 November 1989, Pernod crunched once, on a sprite's third line, with a jump of −1. The sprite then missed its end and was drawn almost three times over. According to the Codebase64 wiki, Y-expanding it and switching graphics banks gave "~120 lines of sprite area to play with".
 
-*Rutig Banan* (Pernod/Fairlight, **5 November 1989**) is the first recorded use.
-Eight years later *Krestage* used the technique to put **144 sprites** on screen,
-against 112 for conventional sprites.
+Crossbow of [Crest](/vault/groups/crest) took the trick apart. In the demo *Krestage* (April 1997) he included what Codebase64 calls "exact documentation of what happens on each value of the sprite-graphics-counter when triggering the glitch, hand-haxxored by Crossbow himself", a table of 64 jumps. Finding "the (probably) shortest path through the table, he managed to shrink the sprites from 21 lines to 17". He used it to fit more sprites on screen: the scene's list of records credits *Krestage* with 144 sprites, against 112 for unshortened ones. Åkesson explains that Crossbow named the effect *sprite crunch* because he used it to crunch sprites, "make them shorter", so that the hardware could be reused sooner. HCL of [Booze Design](/vault/groups/booze-design) suggested "sprite scrambling", which Åkesson notes "hasn't caught on".
+
+The route is short to follow. Starting from 0, the sprite runs normally to `$0F`, crunches to `$17`, runs to `$29`, crunches to `$2D` and then to `$35`, runs to `$3B` and crunches to 63: 17 lines, with only four of them crunched. A commenter on Rutig Banan's CSDb page made the same count: "just 4 lines of crunching is enough to make the sprite 17 pixels high". Working through the published table confirms that no route starting from offset 0 ends in fewer lines.
+
+The Codebase64 page that reprints the table ends by inviting someone to beat it: "Can you make a sprite smaller than 17 lines and beat Crossbow? ;D"
+
+## Loops instead of endings
+
+The answer turned out to be: do not start from zero. Åkesson points out that 17 is the minimum only "under the assumption that we always have to begin at start". A sprite whose graphics begin at offset `$15` can run normally through `$15`, `$18` and `$1B` to `$1E`, crunch there back to `$15`, and repeat those four lines indefinitely. Booze Design's *[Edge of Disgrace](/vault/demos/edge-of-disgrace)* (2008) used that four-line loop in a plasma made of 4×4-pixel blocks: instead of writing `$D017` twice on every line as a stretcher would, it writes it "twice every 4 lines, saving some life supporting cycles".
+
+Åkesson went further in *Lunatico*, which came second at X'2016 on 30 October 2016. Starting from offset `$35`, he found loops of 1, 13, 14, 17, 18, 19, 20 and 21 lines. The greetings part of the demo draws columns of letters at heights of 14, 17, 19 and 21 lines, and works out which sprites to crunch on each line by reading the sprite-to-background collision register: the rightmost pixel of each sprite row is set where a crunch is due, and a thin stripe of hidden background pixels turns those pixels into collision bits, eight sprites at a time. He called the result *Massively Interleaved Sprite Crunch*.
+
+<Sources>
+
+- Christian Bauer, *The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64* (28 August 1996): section 3.8.1, MC, MCBASE, the expansion flip-flop and the sprite rules for cycles 15, 16 and 55; section 3.14.7, clearing the bit in cycle 15 so that MCBASE advances by one and the sprite is "effectively displayed twice in sequence". https://www.zimmers.net/cbmpics/cbm/c64/vic-ii.txt
+- Codebase64 wiki, "Sprite Crunching" (web, secondary): "nothing you do if you don't *really* need it"; the counter, the end at `$3F` and the wrap-round; *Rutig Banan*, *Krestage* and *Edge of Disgrace*; Crossbow's table and the "beat Crossbow" invitation. https://codebase64.net/doku.php?id=base:sprite-crunching
+- Linus Åkesson, "Massively Interleaved Sprite Crunch", linusakesson.net, 19 December 2016 (web, secondary): disabling Y-expand on the fifteenth cycle; the formula for the new MCBASE; Pernod, Crossbow and the name; HCL's "sprite scrambling"; Crossbow's 17-node path; the `$15`–`$18`–`$1B`–`$1E` loop and *Edge of Disgrace*; the loops from `$35` and the collision-register method in *Lunatico*. https://www.linusakesson.net/scene/lunatico/misc.php
+- Pasi 'Albert' Ojala, "The Demo Corner: Stretching Sprites", *C= Hacking* issue 5, March 1993: "I don't think the distorted counter effect can be used for anything". Public archive: http://www.ffd2.com/fridge/chacking/
+- Codebase64 wiki, "Demo records and world firsts" (web, secondary): sprite crunching first in *Rutig Banan*, 5 November 1989; *Krestage*'s 144 sprites "using sprite crunching" against 112 for normal sprites in *2 Years Crest* (1990). https://codebase64.net/doku.php?id=vic:demo:demo_world_records_and_world_firsts
+- CSDb release entries (web, secondary): *Rutig Banan* by Fairlight (5 November 1989, Light Bålsta Party, first place; user comments on how many lines Crossbow crunched), https://csdb.dk/release/?id=684; *Krestage* by Crest (April 1997, code by Crossbow), https://csdb.dk/release/?id=2968; *Lunatico* by Lft (30 October 2016, X'2016, second place), https://csdb.dk/search/?seinsel=releases&search=lunatico
+- VICE emulator source, `src/viciisc/vicii-mem.c`, `$D017` write handler (version 3.10, web, secondary): the same bitwise expression applied on the crunch cycle.
+
+</Sources>
 
 ## See also
 
-- [Sprite stretching](/vault/techniques/sprite-stretching) — the forgiving direction
+- [Sprite stretching](/vault/techniques/sprite-stretching): the same flip-flop, flipped where it is safe
 - [Sprite multiplexing](/vault/techniques/sprite-multiplexing)
-- [Stable raster](/vault/techniques/stable-raster) — the cycle-exactness this needs
-
+- [Stable raster](/vault/techniques/stable-raster): the cycle-exact timing this needs
+- [VIC-II](/vault/hardware/vic-ii)
+- [Crest](/vault/groups/crest)
+- [*Edge of Disgrace*](/vault/demos/edge-of-disgrace)
