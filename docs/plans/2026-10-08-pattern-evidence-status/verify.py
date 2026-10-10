@@ -64,6 +64,14 @@ def verify(site: Path, samples: Path) -> None:
                 assert pinned == current, relative
                 assert hashlib.sha256(current).hexdigest() == expected, relative
                 hashes_checked += 1
+            # Reused sample sources have repository-relative paths, unlike
+            # the local files above. Check their pinned and current bytes too.
+            for name, expected in record.get("shared_sources", {}).items():
+                pinned = git_file(samples, revision, name)
+                current = (samples / name).read_bytes()
+                assert pinned == current, name
+                assert hashlib.sha256(current).hexdigest() == expected, name
+                hashes_checked += 1
     print(json.dumps({
         "patterns": len(patterns), "statuses": dict(counts),
         "pinned_links": links_checked, "matching_source_hashes": hashes_checked,

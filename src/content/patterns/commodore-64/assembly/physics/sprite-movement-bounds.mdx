@@ -1,221 +1,106 @@
 ---
 title: "Sprite Movement with Bounds"
-summary: "Move sprites with joystick input and screen boundary clamping. Handle the VIC-II's 9-bit X coordinate."
+summary: "Move a C64 sprite with joystick port 2, clamp it to the screen edges, and handle its ninth X bit without disturbing other sprites."
 platform: "commodore-64"
 category: "physics"
 difficulty: "beginner"
-taught_in: "Game 2, Unit 2"
 tags: ["sprites", "movement", "bounds", "joystick", "vic-ii"]
 evolution:
   previous: "joystick-reading"
   next: null
 related:
-  patterns: ["joystick-reading", "game-loop-raster"]
+  patterns: ["hardware-sprites", "joystick-reading", "game-loop-basic"]
   vault: ["commodore-64"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Sources from '@components/Sources.astro';
 
-## Overview
+**Code status: assembled and emulator-executed.** PAL and NTSC C64, normal-size single-colour sprite 0, in Emu198x and VICE. The [recorded checks](https://github.com/code198x/code-samples/blob/301cb16b1ee2df7f5d6d383ae22dd45bf9807966/commodore-64/patterns/assembly/physics/sprite-movement-bounds/verification/results.json) identify the tested sources and observations. They establish these cases on those configurations; original-hardware checks are separate.
 
-C64 sprites use a 9-bit X coordinate (0-511) with the high bits stored separately. Read the joystick, apply movement with boundary checks, then update both the position registers and the MSB register. This pattern handles the split coordinate cleanly.
+## Move the sprite
 
-## Code
+This example puts a white 24×21-pixel sprite on a black screen. Use **joystick port 2** to move it. Hold a direction and it reaches the edge, then stays there. Move diagonally and both coordinates change. Release the stick and the sprite stops.
 
-```asm
-; =============================================================================
-; SPRITE MOVEMENT WITH BOUNDS - COMMODORE 64
-; Move sprite with joystick and boundary clamping
-; Taught: Game 2 (Parallax), Unit 2
-; CPU: ~120 cycles | Memory: ~80 bytes
-; =============================================================================
+The movement rule takes two pixels per update and clamps each coordinate to its permitted range. If Y=51 and you move up, the proposed position is 49, so the result is **50**. Rejecting that step would leave a one-pixel gap; clamping reaches the edge.
 
-; VIC-II registers
-VIC         = $D000
-SPR0_X      = $D000             ; Sprite 0 X position (low 8 bits)
-SPR0_Y      = $D001             ; Sprite 0 Y position
-SPR_MSB     = $D010             ; Sprite X position MSB (bit 0 = sprite 0)
+## Run it
 
-; Joystick port
-JOY2        = $DC00             ; Joystick port 2
+Use the maintained samples checkout, keeping its folder structure. The demonstration reuses the setup routine and shape from [Hardware Sprites](/patterns/commodore-64/assembly/rendering/hardware-sprites).
 
-; Movement settings
-MOVE_SPEED  = 2                 ; Pixels per frame
-
-; Boundaries (visible screen area)
-MIN_X       = 24                ; Left edge
-MAX_X       = 320               ; Right edge (9-bit value)
-MIN_Y       = 50                ; Top edge
-MAX_Y       = 229               ; Bottom edge
-
-; Move sprite 0 based on joystick input
-move_sprite:
-            lda JOY2            ; Read joystick (active low)
-            eor #$FF            ; Invert so 1=pressed
-
-            ; === Check Up (bit 0) ===
-            lsr                 ; Bit 0 -> Carry
-            bcc .no_up
-            lda sprite_y
-            sec
-            sbc #MOVE_SPEED
-            cmp #MIN_Y
-            bcc .no_up          ; Past top
-            sta sprite_y
-.no_up:
-            ; === Check Down (bit 1) ===
-            lda JOY2
-            eor #$FF
-            and #$02
-            beq .no_down
-            lda sprite_y
-            clc
-            adc #MOVE_SPEED
-            cmp #MAX_Y
-            bcs .no_down        ; Past bottom
-            sta sprite_y
-.no_down:
-            ; === Check Left (bit 2) ===
-            lda JOY2
-            eor #$FF
-            and #$04
-            beq .no_left
-            jsr move_left
-.no_left:
-            ; === Check Right (bit 3) ===
-            lda JOY2
-            eor #$FF
-            and #$08
-            beq .no_right
-            jsr move_right
-.no_right:
-            ; Update VIC-II registers
-            jsr update_sprite_pos
-            rts
-
-; Move left (handle 9-bit X)
-move_left:
-            lda sprite_x_lo
-            sec
-            sbc #MOVE_SPEED
-            sta sprite_x_lo
-            lda sprite_x_hi
-            sbc #0              ; Borrow from high byte
-            sta sprite_x_hi
-
-            ; Check minimum (24)
-            lda sprite_x_hi
-            bne .left_ok        ; High byte set = definitely > 255 > 24
-            lda sprite_x_lo
-            cmp #MIN_X
-            bcs .left_ok
-
-            ; Clamp to minimum
-            lda #MIN_X
-            sta sprite_x_lo
-            lda #0
-            sta sprite_x_hi
-.left_ok:
-            rts
-
-; Move right (handle 9-bit X)
-move_right:
-            lda sprite_x_lo
-            clc
-            adc #MOVE_SPEED
-            sta sprite_x_lo
-            lda sprite_x_hi
-            adc #0              ; Carry to high byte
-            sta sprite_x_hi
-
-            ; Check maximum (320 = $140)
-            lda sprite_x_hi
-            cmp #>MAX_X
-            bcc .right_ok       ; High byte less = definitely ok
-            bne .right_clamp    ; High byte greater = clamp
-            lda sprite_x_lo
-            cmp #<MAX_X
-            bcc .right_ok
-
-.right_clamp:
-            lda #<MAX_X
-            sta sprite_x_lo
-            lda #>MAX_X
-            sta sprite_x_hi
-.right_ok:
-            rts
-
-; Copy position to VIC-II
-update_sprite_pos:
-            lda sprite_x_lo
-            sta SPR0_X
-            lda sprite_y
-            sta SPR0_Y
-
-            ; Set/clear MSB for sprite 0
-            lda SPR_MSB
-            and #$FE            ; Clear bit 0
-            ora sprite_x_hi     ; Set if high byte is 1
-            sta SPR_MSB
-            rts
-
-; Variables (16-bit X, 8-bit Y)
-sprite_x_lo:    !byte 160       ; X position low byte
-sprite_x_hi:    !byte 0         ; X position high byte (0 or 1)
-sprite_y:       !byte 140       ; Y position
+```sh
+git clone https://github.com/code198x/code-samples.git
+cd code-samples/commodore-64/patterns/assembly/physics/sprite-movement-bounds
+make
 ```
+
+`make` uses Asm198x to produce `build/demo.prg`. Load it in a PAL or NTSC C64 emulator, type `RUN`, and map your controls to port 2. Reset to leave.
+
+The standalone program takes over the screen, VIC bank, sprites, CIA port directions and interrupt masks. It maps out BASIC and KERNAL and does not return to BASIC. It is not a subroutine you can drop into a program that still relies on those services.
+
+<CodeFromFile src="commodore-64/patterns/assembly/physics/sprite-movement-bounds/demo.asm" lang="6502" />
+
+The caller reads `$DC00` once per update. Its direction switches are active low, so `EOR #$FF` turns pressed switches into set bits. Both CIA1 ports are configured as inputs and keyboard scanning is disabled. That ownership matters when combining joystick code with a keyboard reader.
+
+## The movement contract
+
+`move_sprite` takes pressed direction bits in **A**: up=1, down=2, left=4, right=8. It reads and updates `sprite_x_lo`, `sprite_x_hi` and `sprite_y`, then writes sprite 0's VIC position. It changes A and flags, preserves X and Y, and keeps its input in `joy_state`.
+
+Call with the processor in binary arithmetic mode (decimal flag clear). State must start inside **X=24..320, Y=50..229**, inclusive, with X's high byte equal to 0 or 1. The routine assumes a normal-size sprite and the display window set up by this caller.
+
+Opposite directions cancel on their axis. Up+down therefore leaves Y alone; left+right leaves X alone. A diagonal applies both axes, moving two pixels horizontally and two vertically. It covers more distance than a straight move; there is no diagonal speed normalisation. Fire does nothing here.
+
+<CodeFromFile src="commodore-64/patterns/assembly/physics/sprite-movement-bounds/movement.inc" lang="6502" />
+
+## Crossing X=255
+
+The VIC-II splits a sprite's X coordinate between a low-byte register and a bit in `$D010`. Moving right from 254 gives 256: the low byte becomes 0 and the high bit becomes 1. Moving left from 256 gives 254: the borrow clears that high bit again.
+
+`update_sprite_pos` clears only bit 0 of `$D010`, then inserts sprite 0's high bit. Bits 1–7 belong to the other sprites and remain unchanged. The routine also leaves their positions, colours and modes alone. The caller must exclude a competing writer during the read/modify/write; preserving bits does not make the sequence atomic.
+
+## Inclusive screen bounds
+
+These are sprite coordinates for the normal 40-column, 25-row window:
+
+| Axis | Visible coordinates | Sprite size | Last fully visible origin |
+|------|---------------------|-------------|---------------------------|
+| X | 24 through 343 | 24 pixels | `343 - (24 - 1) = 320` |
+| Y | 50 through 249 | 21 lines | `249 - (21 - 1) = 229` |
+
+An origin plus `size - 1` gives the final occupied coordinate. That is why the lower bound includes Y=229, rather than stopping at 228. Expansion or a different display window needs different bounds.
+
+## One update per frame
+
+The caller polls the raster and updates below the displayed area, after the sprite has been drawn. Its frame counter and register snapshot make progress observable to the verifier. This is a small polling loop with exclusive hardware ownership, not an interrupt-driven game framework.
+
+Two pixels **per frame** means about 100 pixels per second on PAL and 120 on NTSC for straight movement. Keeping the same speed per second would require a separate regional timing policy. This example preserves the simple frame-based rule.
 
 ## Trade-offs
 
-| Aspect | Cost |
-|--------|------|
-| CPU | ~120 cycles |
-| Memory | ~80 bytes |
-| Limitation | 9-bit X handling adds complexity |
+| Aspect | Cost or limit |
+|--------|---------------|
+| Code | 160 assembled bytes for the movement routine, excluding the caller and sprite setup |
+| State | Four bytes for X low/high, Y and the sampled direction mask |
+| Display | A 64-byte sprite block plus its pointer; sprite DMA still takes CPU bus time |
+| CPU | Work depends on the selected directions and clamping path; no measured cycle bound is claimed |
+| Movement | Normal-size sprite 0, fixed bounds, two pixels per update; diagonals and PAL/NTSC have the speed differences described above |
 
-**When to use:** Any C64 game with moveable sprites.
+## What has been checked
 
-**When to avoid:** Character-based movement - simpler single-byte coordinates.
+The [verification recipe](https://github.com/code198x/code-samples/tree/301cb16b1ee2df7f5d6d383ae22dd45bf9807966/commodore-64/patterns/assembly/physics/sprite-movement-bounds) compares Asm198x and ACME output, then executes **6,144 arithmetic/register cases** across Emu198x and VICE on PAL and NTSC. It covers both sides of every boundary, odd and even coordinates, X=255/256, all direction/fire combinations and preservation of seeded high bits belonging to other sprites.
 
-## VIC-II Sprite Coordinates
+A separate sequence drives the emulator control ports and checks **48 captures**, including held input, release, both X-byte transitions, corners, diagonals and opposite directions. It reads state first, then releases the controls for one unchanged frame before checking every lit pixel in the completed picture. Injected direction-mask tests alone do not establish joystick wiring.
 
-The X coordinate spans 0-511, requiring a 9th bit:
-
-| Register | Purpose |
-|----------|---------|
-| `$D000` | Sprite 0 X (bits 0-7) |
-| `$D010` | X MSBs for all sprites (bit 0 = sprite 0) |
-
-```
-X = 280 ($118)
-$D000 = $18 (low 8 bits)
-$D010 = $01 (bit 0 set = 9th bit)
-```
-
-## Visible Screen Area
-
-| Edge | X | Y |
-|------|---|---|
-| Left | 24 | - |
-| Right | 343 | - |
-| Top | - | 50 |
-| Bottom | - | 249 |
-
-These are the **raw visible window** — the position values where a sprite's top-left corner is exactly at the visible edge. Because the sprite is 24×21 pixels, the code's `MIN`/`MAX` constants subtract the sprite dimensions: `MAX_X = 343 - 24 ≈ 320`, `MAX_Y = 249 - 21 ≈ 229`. Use the raw values when designing UI layouts; use the adjusted values when clamping movement so the whole sprite stays on-screen.
-
-## Collision detection
-
-When you have moving sprites, you almost always want to detect collisions. The VIC-II provides hardware collision registers that pair naturally with this movement pattern:
-
-| Register | Purpose |
-|----------|---------|
-| `$D01E` (53278) | Sprite-sprite collisions — bit *n* = sprite *n* hit another sprite |
-| `$D01F` (53279) | Sprite-background collisions — bit *n* = sprite *n* hit a non-transparent background pixel |
-
-**Important:** reading either register *clears* its bits, so check them once per frame and store the result if multiple checks are needed. See [VIC-II](/vault/hardware/vic-ii) for the full register reference.
+The old listing's boundary failures are reproduced, and deliberately removing a clamp fails the same observer. These are configuration-specific emulator checks, not physical joystick or original-hardware tests.
 
 ## Related
 
-**Patterns:** [Joystick Reading](/patterns/commodore-64/assembly/input/joystick-reading), Game Loop (Raster)
+**Patterns:** [Hardware Sprites](/patterns/commodore-64/assembly/rendering/hardware-sprites), [Joystick Reading](/patterns/commodore-64/assembly/input/joystick-reading), [Game Loop (Basic)](/patterns/commodore-64/assembly/framework/game-loop-basic)
 
 **Vault:** [Commodore 64](/vault/systems/commodore-64)
+
+<Sources>
+
+Commodore, *Commodore 64 Programmer's Reference Guide* (1983), chapter 3, pp. 131–144 (sprite size and positioning), and pp. 343–344 (control ports, direction switches and active-low input). Clamping, opposite-direction cancellation and diagonal speed are the example's software choices.
+
+</Sources>
