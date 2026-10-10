@@ -65,7 +65,8 @@ test('code status distinguishes execution evidence from maintained and illustrat
   ['sinclair-zx-spectrum/basic/rendering/progress-bar','maintained BASIC subroutine'],
   ['commodore-64/assembly/rendering/hardware-sprites','assembled and emulator-executed'],
   ['commodore-64/assembly/physics/sprite-movement-bounds','assembled and emulator-executed'],
-  ['commodore-64/assembly/rendering/raster-splits','illustrative code'],
+  ['commodore-64/assembly/rendering/raster-splits','assembled and emulator-executed'],
+  ['commodore-64/assembly/input/joystick-reading','illustrative code'],
  ]) {
   await page.goto(`/patterns/${path}/`);
   const statement=page.locator('.pattern-prose > p').filter({hasText:'Code status:'});
