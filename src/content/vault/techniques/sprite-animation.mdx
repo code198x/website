@@ -1,313 +1,237 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Sprite Animation"
 subtitle: "Bringing pixels to life"
-summary: "Frame-by-frame sprite animation creates the illusion of movement by cycling through carefully designed images at controlled intervals."
+summary: "Showing a sequence of drawings one after another, at a slower rate than the screen refreshes. With hardware sprites a new frame is often a single write, a pointer on the Commodore 64, a tile number on the NES, an address in the Copper list on the Amiga; on the Spectrum the program redraws the frame itself."
 category: "techniques"
 platforms: ['commodore-64', 'sinclair-zx-spectrum', 'commodore-amiga', 'nintendo-entertainment-system']
 tags: ['graphics', 'animation', 'fundamentals']
-sources:
-  c64_pointer_swap:
-    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
-      kind: book
-      page: "132-133"
-      note: "Sprite pointers: \"Even though each sprite takes only 63 bytes to define, one more byte is needed as a place holder at the end of each sprite. Each sprite, then, takes up 64 bytes.\" — \"These 8 bytes are always located as the last 8 bytes of the 1K chunk of screen memory. Normally, on the Commodore 64, this means they begin at location 2040 ($07F8 in HEX). However, if you move the screen, the location of your sprite pointers will also move.\" — \"LOCATION = (BANK * 16384) + (SPRITE POINTER VALUE * 64)\""
-    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
-      kind: book
-      page: "166-172"
-      note: "The Dancing Mouse — A Sprite Program Example: \"a fun sprite program called 'Michael's Dancing Mouse.' This program uses three different sprites in a cute animation with sound effects\" — line 20: \"We are going to use ONE SPRITE (sprite 0) in this animation, but we are going to use THREE sets of sprite data to define three separate shapes. To get our animation, we will switch the POINTERS for sprite 0 to the three places in memory where we have stored the data which defines our three different shapes. The same sprite will be redefined rapidly over and over again as 3 different shapes to produce the dancing mouse animation.\" — \"One sprite can have many different shapes, simply by changing the POINTER SETTING FOR THAT SPRITE\" — line 45: \"Changing this pointer to the locations of the other two sprite shapes is the secret of using one sprite to create an animation that is actually three different shapes.\" — line 80: \"POKE2040,P Sets the SPRITE POINTER\"; \"FORT=1TO60:NEXT A simple time delay loop which sets the speed at which the mouse dances.\""
-  c64_reviewers:
-    - ref: magazines/zzap-64
-      kind: magazine
-      issue: "1"
-      date: "1985-05"
-      page: "80-81"
-      note: "Tir Na Nog, Gargoyle Games, £9.95 cass, keys only. Strapline \"Stunningly animated arcade adventure\" — \"You control a superbly animated Celtic warrior, Cuchulainn\" — \"The first thing that strikes you about this game is the size and superb characterisation of Cuchulainn. Twice as large as most computer heroes he strolls into his quest with long, flowing strides, his hair flapping in the wind.\" — \"you will meet horrible creatures - these too are excellently animated. They walk along the paths and career into you\""
 ---
+import Sources from '@components/Sources.astro';
 
-Animation is the rapid display of slightly different images. For sprites, this means cycling through a sequence of frames: a walk cycle might use 4-8 frames, shown in sequence as the character moves. The timing between frames and the smoothness of the sequence determine whether animation feels fluid or jerky.
+Commodore taught sprite animation with a mouse. The worked example in the *Commodore 64 Programmer's Reference Guide*, "Michael's Dancing Mouse", uses "ONE SPRITE (sprite 0)" and "THREE sets of sprite data to define three separate shapes". The program never redraws the mouse. It changes one number, the sprite's pointer, so that the video chip reads a different shape: "The same sprite will be redefined rapidly over and over again as 3 different shapes to produce the dancing mouse animation." Its speed is set by a BASIC delay loop, `FORT=1TO60:NEXT`, "which sets the speed at which the mouse dances".
 
-## Animation fundamentals
+That is sprite animation in miniature: a set of drawings, a way to pick which one is shown, and a clock that decides when to move on. Done well, it was what reviewers noticed first. *ZZAP! 64*'s first issue, in May 1985, gave the Commodore 64 version of [Gargoyle Games](/vault/companies/gargoyle-games)' *Tir Na Nog* the strapline "Stunningly animated arcade adventure": its hero Cuchulainn, "twice as large as most computer heroes", "strolls into his quest with long, flowing strides, his hair flapping in the wind", and the creatures he meets "too are excellently animated".
 
-### Frame rate vs animation rate
+## Frames and timing
 
-| Term | Meaning |
-|------|---------|
-| Frame rate | How often the screen refreshes (50/60 Hz) |
-| Animation rate | How often the sprite image changes |
-
-Sprite animation is typically slower than screen refresh:
-- 50 fps screen refresh
-- Character animation at 10 fps (every 5 screen frames)
-
-### Animation timing
+A PAL television picture is redrawn 50 times a second and an NTSC one 60 times. Characters are rarely animated that fast: a walk shown at 50 drawings a second would need far more frames than a game could store. Instead the program counts screen frames and moves to the next drawing every few of them. At one change every five frames, a PAL game animates at 10 drawings a second.
 
 ```asm
-anim_timer:  .byte 0
-anim_frame:  .byte 0
-ANIM_SPEED = 6        ; frames between changes
+ANIM_SPEED = 6          ; screen frames between drawings
+NUM_FRAMES = 4          ; drawings in the cycle
 
-update_animation:
-    inc anim_timer
-    lda anim_timer
-    cmp #ANIM_SPEED
-    bcc .no_change
+update_animation:       ; call once per screen frame
+        inc anim_timer
+        lda anim_timer
+        cmp #ANIM_SPEED
+        bcc done        ; not time yet
+        lda #0
+        sta anim_timer
+        inc anim_frame  ; next drawing
+        lda anim_frame
+        cmp #NUM_FRAMES
+        bcc done
+        lda #0          ; wrap round to the first
+        sta anim_frame
+done    rts
 
-    lda #0
-    sta anim_timer
-
-    ; Advance animation frame
-    inc anim_frame
-    lda anim_frame
-    cmp #NUM_FRAMES
-    bcc .no_wrap
-    lda #0
-    sta anim_frame
-.no_wrap:
-
-.no_change:
-    rts
+anim_timer  .byte 0
+anim_frame  .byte 0
 ```
 
-## Walk cycle basics
+Animation that follows movement looks better when its speed matches the movement: a running character can use the same drawings as a walking one, changed more often, so that its feet do not appear to slide.
 
-A typical walk cycle:
+A walk is usually drawn as a cycle that returns to where it started. The two key drawings are the **contact** positions, with both feet on the ground and one leg forward, and between them the **passing** positions, where one leg swings past the other. Four drawings (contact, passing, contact with the other leg, passing) make a basic walk; more drawings between them make it smoother at the cost of memory.
 
-```
-Frame 1: Standing (contact)
-Frame 2: Passing (one leg forward)
-Frame 3: Contact (other leg)
-Frame 4: Passing (first leg forward)
-```
+## Commodore 64: change the pointer
 
-Four frames is minimum; 6-8 frames feels smoother.
-
-## Platform implementations
-
-### Commodore 64
-
-Sprites use 64 bytes each. Animation swaps sprite pointers:
+A C64 sprite is 24×21 pixels, which takes 63 bytes, and each sprite's shape occupies a 64-byte block: "one more byte is needed as a place holder at the end of each sprite". The [VIC-II](/vault/hardware/vic-ii) finds the shape through eight pointer bytes, which are "the last 8 bytes of the 1K chunk of screen memory", at 2040 (`$07F8`) to 2047 unless the screen has been moved. A pointer value times 64 gives the block's address in the chip's 16K bank, so with the screen at `$0400`, frames stored at `$2000`, `$2040`, `$2080` and so on have pointer values `$80`, `$81`, `$82`.
 
 ```asm
-; Sprite pointers at $07F8-$07FF
-SPRITE_PTRS = $07f8
-
-; Animation frames stored at $2000, $2040, $2080...
-walk_frames:
-    .byte $80, $81, $82, $83     ; pointers / 64
+SPRITE_PTRS = $07f8     ; with screen memory at $0400
 
 animate_player:
-    ldx anim_frame
-    lda walk_frames,x
-    sta SPRITE_PTRS             ; sprite 0 pointer
-    rts
+        ldx anim_frame
+        lda walk_frames,x
+        sta SPRITE_PTRS ; sprite 0 now shows this drawing
+        rts
+
+walk_frames .byte $80, $81, $82, $83   ; blocks at $2000, $2040, $2080, $20c0
 ```
 
-Commodore taught this in the Programmer's Reference Guide. Each sprite "takes up 64 bytes", the eight pointers are "the last 8 bytes of the 1K chunk of screen memory" — 2040 ($07F8) unless the screen has moved — and a pointer value times 64 addresses anywhere in the VIC-II's 16K bank. The guide's worked example, "Michael's Dancing Mouse", uses "ONE SPRITE (sprite 0)" and "THREE sets of sprite data to define three separate shapes", and animates by switching the pointer between them: "The same sprite will be redefined rapidly over and over again as 3 different shapes to produce the dancing mouse animation." Its animation rate is a BASIC delay loop, `FORT=1TO60:NEXT`, "which sets the speed at which the mouse dances".
+Because the pointer is a single byte, one write swaps the whole 63-byte drawing at once, and the change cannot be caught halfway through. A program can also prepare the next frame's data in a spare block while the current one is on screen, then switch the pointer.
 
-Reviewers noticed when it was done well. ZZAP! 64's first issue gave Gargoyle Games' *Tir Na Nog* the strapline "Stunningly animated arcade adventure": Cuchulainn is "twice as large as most computer heroes" and "strolls into his quest with long, flowing strides, his hair flapping in the wind", and the creatures "too are excellently animated".
+## ZX Spectrum: draw the frame
 
-### ZX Spectrum
-
-Software sprites require copying new frame data:
+The Spectrum has no sprite hardware. A moving character is drawn into the screen bitmap by the program, so animating it means erasing the old drawing and drawing a different one. The animation step is choosing which drawing to hand to the drawing routine:
 
 ```z80
-; Copy animation frame to sprite buffer
-animate_sprite:
-    ld a, (anim_frame)
-    ld l, a
-    ld h, 0
-    add hl, hl          ; ×2
-    add hl, hl          ; ×4
-    add hl, hl          ; ×8 (8 bytes per frame)
-    ld de, frame_data
-    add hl, de          ; hl = frame address
-
-    ld de, sprite_buffer
-    ld bc, 8
-    ldir
-    ret
+; Return HL = address of drawing number anim_frame
+; for a 16x16 one-colour sprite: 2 bytes x 16 lines = 32 bytes a drawing.
+frame_address:
+        ld a,(anim_frame)
+        ld l,a
+        ld h,0
+        add hl,hl       ; x2
+        add hl,hl       ; x4
+        add hl,hl       ; x8
+        add hl,hl       ; x16
+        add hl,hl       ; x32
+        ld de,frame_data
+        add hl,de
+        ret
 ```
 
-### NES
+The cost is drawing time: every change of drawing is a redraw, and an image redrawn while the television beam passes over it can flicker or tear.
 
-NES sprites are 8×8 or 8×16 (controlled globally by PPUCTRL bit 5). A 16×16 character is built from multiple OAM entries — typically 4 sprites in 8×8 mode (TL/TR/BL/BR) or 2 sprites side-by-side in 8×16 mode. Animation rewrites the tile-index byte of each OAM entry; the OAM buffer is in CPU RAM (commonly `$0200-$02FF`) and pushed to PPU OAM via `$4014` DMA each VBlank.
+## NES: change the tile numbers
+
+The NES picture processor holds up to 64 sprites, each 8×8 pixels, or 8×16 when bit 5 of `PPUCTRL` is set. Each sprite has four bytes in object attribute memory (OAM): Y position, tile number, attributes and X position. Most programs keep a copy of OAM in RAM, often at `$0200`–`$02FF`, and copy it to the chip each frame by writing its page number to `$4014`, which halts the CPU for 513 or 514 cycles while the bytes are transferred.
+
+A 16×16 character in 8×8 mode is four sprites. If each drawing uses four consecutive tiles, frame *N* starts at tile `base + N×4`:
 
 ```asm
-; OAM structure (4 bytes per sprite): Y, tile, attr, X
-; A 16x16 character built from 4 hardware sprites in 8x8 mode.
-; Each animation frame uses 4 sequential tiles in CHR, so frame N
-; starts at tile (PLAYER_TILE_BASE + N*4).
-animate_player:
-    lda anim_frame
-    asl
-    asl                  ; * 4 -> tile offset for this frame
-    clc
-    adc #PLAYER_TILE_BASE
+OAM_BUF = $0200         ; RAM copy of OAM, sent with STA $4014 in vertical blank
 
-    sta OAM_DATA+1       ; sprite 0 tile (top-left)
-    clc
-    adc #1
-    sta OAM_DATA+5       ; sprite 1 tile (top-right)
-    clc
-    adc #1
-    sta OAM_DATA+9       ; sprite 2 tile (bottom-left)
-    clc
-    adc #1
-    sta OAM_DATA+13      ; sprite 3 tile (bottom-right)
-    rts
+animate_player:         ; sprites 0-3 make up the player
+        lda anim_frame
+        asl
+        asl             ; x4: four tiles per drawing
+        clc
+        adc #PLAYER_TILE_BASE
+        sta OAM_BUF+1   ; sprite 0 tile (top left)
+        clc
+        adc #1
+        sta OAM_BUF+5   ; sprite 1 tile (top right)
+        clc
+        adc #1
+        sta OAM_BUF+9   ; sprite 2 tile (bottom left)
+        clc
+        adc #1
+        sta OAM_BUF+13  ; sprite 3 tile (bottom right)
+        rts
 ```
 
-In 8×16 mode the layout collapses to two OAM entries (left and right halves); the hardware fetches each sprite's two tiles from a pair starting at the tile field's index. There the per-frame stride is `2` tiles × `2` sprites = `4`, so the same `* 4` arithmetic applies — but you only update `OAM_DATA+1` and `OAM_DATA+5`, with `+2` between them rather than `+1`.
+In 8×16 mode the same character is two sprites, and the tile byte works differently: bit 0 chooses which pattern table the sprite comes from, and the other seven bits choose an even-numbered tile for the top half, with the next tile below it. Each drawing is still four tiles, but only `OAM_BUF+1` and `OAM_BUF+5` change, two tiles apart.
 
-### Amiga
+## Amiga: point the sprite somewhere else
 
-BOBs require redrawing with new image data. Sprites update data registers:
+An Amiga hardware sprite is a block of data in chip memory: two control words giving its position, two words for each line, and two end words. The *Hardware Reference Manual* explains that the sprite's DMA pointer moves through the data as the picture is drawn, so "you must rewrite the contents of the sprite pointers during each vertical blanking interval", normally with instructions in the [Copper](/vault/hardware/copper) list. Animation uses that rewrite: point it at a different drawing.
 
-```asm
-animate_sprite:
-    move.w  anim_frame,d0
-    lsl.w   #2,d0               ; ×4 for pointer table offset
-    lea     anim_table,a0
-    move.l  (a0,d0.w),a1        ; get frame address
-
-    ; Copy to sprite data area or update copper list
+```68000
+; a0 = the Copper list's two moves for sprite 0:
+;      dc.w SPR0PTH,0,SPR0PTL,0
+animate_sprite0:
+        move.w  anim_frame,d0
+        lsl.w   #2,d0           ; 4 bytes per entry in the table
+        lea     anim_table,a1
+        move.l  (a1,d0.w),d1    ; address of this drawing's sprite data
+        move.w  d1,6(a0)        ; low word into the SPR0PTL move
+        swap    d1
+        move.w  d1,2(a0)        ; high word into the SPR0PTH move
+        rts
 ```
 
-## State-based animation
+Each drawing carries its own pair of control words, so the program has to keep the position in every drawing it might show, or copy it into the next one before switching. The manual warns against changing control words while the hardware is reading them, which makes the vertical blank the safe time. A [Bob](/vault/techniques/bob-graphics) is animated by passing the blitter a different image and mask when it redraws the object.
 
-Different actions need different animations:
+## Facing left and right
 
-```asm
-; Animation states
-ANIM_IDLE    = 0
-ANIM_WALK    = 1
-ANIM_JUMP    = 2
-ANIM_ATTACK  = 3
+| Machine | Mirror in hardware? | Usual approach |
+|---|---|---|
+| Commodore 64 | No. `$D01D` and `$D017` double a sprite's width and height, but nothing reverses it | Store mirrored drawings and switch pointers when the character turns |
+| NES | Yes: in each sprite's attribute byte, bit 6 flips it horizontally and bit 7 vertically | One set of tiles serves both directions. For a sprite made of several tiles, the program also swaps which tile goes on which side |
+| Amiga sprites | No | Store mirrored drawings |
+| Amiga Bobs | No. The blitter's descending mode only runs a copy backwards through memory, for overlapping copies; it does not mirror the image | Store mirrored drawings. A vertical flip is possible by starting the source at its last line with a negative modulo, so each row steps back up the image |
 
-anim_state:    .byte ANIM_IDLE
-
-get_frame_table:
-    lda anim_state
-    asl
-    tax
-    lda anim_tables,x
-    sta ptr
-    lda anim_tables+1,x
-    sta ptr+1
-    rts
-
-anim_tables:
-    .word idle_frames
-    .word walk_frames
-    .word jump_frames
-    .word attack_frames
-```
-
-## Directional animation
-
-Characters facing left/right:
-
-### Mirrored sprites (hardware)
-
-Hardware horizontal/vertical flip support varies:
-
-- **C64:** no flip in hardware. Sprites have X- and Y-expand bits (`$D01D` / `$D017`) but no mirror. Trick: store a pre-mirrored copy of the sprite alongside the original and swap the sprite data pointer (`$07F8-$07FF`) when the character turns.
-- **NES:** flip bits in OAM byte 2 — bit 6 = vertical flip, bit 7 = horizontal flip. Free at the hardware level; no extra tile data.
-- **Amiga (hardware sprites):** no flip. The sprite DMA always reads forwards.
-- **Amiga (BOBs):** the Blitter has no built-in flip; you either pre-flip the source bitmap, or use the Blitter's *descending* mode (BLTCON1 DESC bit) to copy backwards — that mirrors vertically, but horizontal mirror still needs pre-built mirrored data.
-
-### Separate frames
-
-Store left and right versions:
+With stored drawings, the direction can simply pick which table to read:
 
 ```asm
-; 4 walk frames × 2 directions = 8 frames
-walk_right:  .byte $80, $81, $82, $83
-walk_left:   .byte $84, $85, $86, $87
-
+; X = drawing number within the walk
 get_walk_frame:
-    lda facing_right
-    bne .right
-    lda walk_left,x
-    rts
-.right:
-    lda walk_right,x
-    rts
+        lda facing_right
+        bne right
+        lda walk_left,x
+        rts
+right   lda walk_right,x
+        rts
+
+walk_right .byte $80, $81, $82, $83
+walk_left  .byte $84, $85, $86, $87
 ```
 
-## Animation speed variation
+## States and one-shot animations
 
-Match animation speed to movement speed:
+Different actions need different cycles: standing, walking, jumping, attacking. A table of addresses lets the current state choose the cycle:
 
 ```asm
-; Walking = slower animation
-; Running = faster animation
+ANIM_IDLE   = 0
+ANIM_WALK   = 1
+ANIM_JUMP   = 2
+ANIM_ATTACK = 3
 
-update_walk_animation:
-    lda is_running
-    bne .running
-    lda #8              ; slow
-    jmp .set_speed
-.running:
-    lda #4              ; fast
-.set_speed:
-    sta anim_speed
-    rts
+get_frame_table:        ; set ptr (two bytes in zero page) to the current cycle
+        lda anim_state
+        asl             ; two bytes per address
+        tax
+        lda anim_tables,x
+        sta ptr
+        lda anim_tables+1,x
+        sta ptr+1
+        rts
+
+anim_tables .word idle_frames, walk_frames, jump_frames, attack_frames
 ```
 
-## One-shot animations
-
-For attacks, jumps, or deaths—play once, don't loop:
+An attack or a death plays once and stops. Here the timer counts down; the program starts the animation by setting `anim_frame` to 0 and `anim_timer` to `ANIM_SPEED`, and a timer of 0 means the animation has finished:
 
 ```asm
 update_oneshot:
-    lda anim_timer
-    beq .done           ; already finished
-
-    dec anim_timer
-    bne .no_advance
-
-    inc anim_frame
-    lda anim_frame
-    cmp #ONESHOT_FRAMES
-    bcc .not_done
-
-    ; Animation complete
-    lda #0
-    sta anim_timer
-    sta anim_frame
-    jsr return_to_idle
-    rts
-
-.not_done:
-    lda #ANIM_SPEED
-    sta anim_timer
-.no_advance:
-.done:
-    rts
+        lda anim_timer
+        beq finished        ; nothing playing
+        dec anim_timer
+        bne finished        ; same drawing for now
+        inc anim_frame
+        lda anim_frame
+        cmp #ONESHOT_FRAMES
+        bcs ended
+        lda #ANIM_SPEED     ; show the next drawing
+        sta anim_timer
+        rts
+ended   lda #0
+        sta anim_frame      ; anim_timer is already 0
+        jmp return_to_idle
+finished
+        rts
 ```
 
-## Frame double-buffering
+These are small [state machines](/vault/techniques/state-machine), driven once per frame by the [game loop](/vault/techniques/game-loop).
 
-If a sprite's animation data lives in main RAM (C64 sprite slots, Amiga BOB sources, Spectrum software-sprite buffers), copying the next frame *while it is on screen* can tear or flash. Two patterns avoid this:
+## Saving memory
 
-- **Double-buffered sprite data:** keep two slots, draw into the inactive slot, switch the pointer atomically (during VBlank, or by writing the pointer once). The C64 lends itself to this because the sprite data pointer at `$07F8+n` is a single byte — one write swaps a 64-byte sprite atomically.
-- **Stage-and-DMA:** on NES, build the next OAM frame in a `$0200-$02FF` shadow buffer during the active frame, then push the whole 256 bytes via OAM DMA (`STA $4014`) at the start of VBlank. The DMA is atomic from the PPU's perspective.
+| Method | Saving | Cost |
+|---|---|---|
+| Share drawings between cycles, such as the standing pose in the walk | Fewer drawings | Movements can look alike |
+| Fewer drawings per cycle | Less memory | Less smooth |
+| Hardware flipping, where the machine has it | Half the drawings for left and right | Only on machines like the NES |
+| Recolouring the same drawings | One set of drawings for several characters | The characters look alike |
 
-## Memory optimisation
+<Sources>
 
-| Technique | Saving | Trade-off |
-|-----------|--------|-----------|
-| Share frames | Reuse idle frame in walk | May look stiff |
-| Reduce frames | 4 instead of 8 | Less smooth |
-| Smaller sprites | 16×16 vs 24×21 | Less detail |
-| Palette swap | Recolour same frames | Characters look similar |
+- Commodore, *Commodore 64 Programmer's Reference Guide* (1983): p. 131, a sprite is "24 by 21 dots", 63 bytes; pp. 132–133, the 64-byte blocks, sprite pointers as "the last 8 bytes of the 1K chunk of screen memory" and the location formula; pp. 136–137, expansion at 53277 (`$D01D`) and 53271 (`$D017`); pp. 166–172, "The Dancing Mouse — A Sprite Program Example", including the line-by-line notes on the pointer and the delay loop.
+- *ZZAP! 64* issue 1, May 1985, pp. 80–81: *Tir Na Nog* review.
+- NESdev wiki, "PPU OAM" (web, secondary): the four bytes of each sprite, 8×16 tile selection, the flip bits in byte 2, and OAM DMA through `$4014` taking 513 or 514 cycles. https://www.nesdev.org/wiki/PPU_OAM
+- Commodore-Amiga, *Amiga Hardware Reference Manual* (Addison-Wesley, 1985): pp. 102–103, the sprite data structure; pp. 106–107, rewriting the sprite pointers in each vertical blank, by the Copper; p. 110, changing control words only when the hardware is not reading them; p. 176, descending mode.
+
+</Sources>
 
 ## See also
 
-- [State Machine](/vault/techniques/state-machine)
+- [Sprites](/vault/techniques/sprites)
+- [BOBs](/vault/techniques/bob-graphics)
+- [Rotoscoping](/vault/techniques/rotoscoping)
+- [State machine](/vault/techniques/state-machine)
+- [Game loop](/vault/techniques/game-loop)
 - [VIC-II](/vault/hardware/vic-ii)
 - [PPU](/vault/hardware/ppu)
-- [Game Loop](/vault/techniques/game-loop)
