@@ -1,13 +1,24 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Filter Sweeps"
-subtitle: "Moving through the frequency spectrum"
-summary: "Filter sweeps create dynamic timbral changes by gradually adjusting filter cutoff frequency, a signature effect of the C64's SID chip."
+subtitle: "Moving the SID's cutoff while a note plays"
+summary: "A filter sweep changes a filter's cutoff frequency while a note sounds, so the tone opens up or closes down. The C64's SID put a resonant analogue filter on the chip with an 11-bit cutoff a program could rewrite at any moment, and its data sheet recommended doing exactly that. The catch was the filter itself: it varied from chip to chip, and Martin Galway refused to use it."
 category: "techniques"
 platforms: ['commodore-64']
 tags: ['sound', 'sid', 'synthesis']
 sources:
+  sid_filter_registers:
+    - title: "MOS Technology 6581 Sound Interface Device (SID) data sheet, as reprinted in the Commodore 64 Programmer's Reference Guide"
+      kind: manual
+      note: "FC LO/FC HI 'form an 11-bit number (bits 3-7 of FC LO are not used) which linearly controls the Cutoff (or Center) Frequency'; RES/Filt bits 4-7 resonance, '16 Resonance settings ranging linearly from no resonance (0) to maximum resonance (15)', bits 0-3 route voices 1-3 and the external input; Mode/Vol bit 4 LP, bit 5 BP, bit 6 HP, bit 7 '3 OFF'; LP and HP attenuate at 12 dB/octave, BP at 6 dB/octave; 'both LP and HP modes can be selected to produce a Notch'; 'In order for the Filter to have any audible effect, at least one Filter output must be selected and at least one Voice must be routed through the Filter'; 'The best results are achieved by varying the Cutoff Frequency in real-time'; FCmax = 2.6E-5/C"
+    - title: "Commodore Semiconductor Group 6582 Sound Interface Device (SID) data sheet (HMOS)"
+      kind: manual
+      note: "Cutoff 'between 30Hz and 12KHz with the recommended capacitor values of 6800 pF'; resonance 'ranging from about 0.707 (Critical Damping) for a count of 0 to a maximum for a count of 15'; FCmax = 8.2E-5/C"
+  yannes_on_the_filter:
+    - title: "Interview with Bob Yannes, by Andreas Varga (e-mail, August 1996)"
+      kind: interview
+      note: "Web, secondary copy (Codebase64 wiki): 'The Filter was a classic multi-mode (state variable) VCF design ... I simply used FETs as voltage-controlled resistors to control the cutoff frequency. An 11-bit D/A converter generates the control voltage for the FETs (it's actually a 12-bit D/A, but the LSB had no audible affect so I disconnected it!)' — 'Analog switches selected which combination of outputs were sent to the final amplifier' — 'different lots of SID chips had different cutoff frequency characteristics'"
   c64_galway_on_filters:
     - ref: magazines/zzap-64
       kind: magazine
@@ -15,125 +26,164 @@ sources:
       date: "1986-02"
       page: "51"
       note: "Martin Galway, interviewed by phone: asked whether he had any reservations about taking advantage of some of the Commodore's capabilities such as the filters, \"No, the filters are too unreliable. A brilliant result on one machine is no guarantee of satisfactory sound on another. The filters have been greatly improved on the C128, though. Perhaps when more people have upgraded to that, I'll take advantage of them — not until then though.\" — \"So does he think he's taken the use of old SID as far as is possible? 'No. In that piece you did on Rob Hubbard, you said that he had stretched the SID chip to its limits and that's ridiculous. There are plenty of things you can do with it yet!'\""
+  sidplayer_sweep:
+    - title: "COMPUTE!'s The Complete 64 (COMPUTE! Publications, 1986), chapter 5, Sidplayer"
+      kind: book
+      page: "144-145"
+      note: "F-C sets the cutoff, 255 being the maximum; 'Autofilter ... When the autofilter mode is turned on, the filter cutoff is automatically set according to the pitch of each note'; 'Filter sweep. Just as pulse width sweeping changes the pulse width during a note, filter sweeping lets you increase or decrease the cutoff frequency while a note is playing' — F-S takes -127 to 127; 'If the cutoff is swept too far, it will wrap around'"
   c64_table_filter:
     - title: "Codebase64 — Building a musicroutine, by Cadaver (Lasse Öörni)"
       kind: technical-doc
-      note: "\"This is a good opportunity for another table-based effect. There can be commands like “add <m> to cutoff frequence for <n> frames”. The additional trouble is that either only one voice must control the filter at a time (there can be a patterndata command to set that)\""
+      note: "Web, secondary. \"This is a good opportunity for another table-based effect. There can be commands like 'add <m> to cutoff frequence for <n> frames'. The additional trouble is that either only one voice must control the filter at a time (there can be a patterndata command to set that) or then the filter operation can be completely separate from the instruments, operated only by pattern data commands.\""
 ---
+import Sources from '@components/Sources.astro';
 
-A filter sweep moves a synthesiser's cutoff frequency over time, producing timbral motion from bright to dark or vice versa. The SID's state-variable analogue filter — running on the same die as the digital oscillators — made sweeps a signature sound of C64 music, though not every composer trusted it.
+A filter sweep moves a filter's cutoff frequency while a note is playing. Sweep a low-pass filter downwards and a bright, buzzy note closes to a muffled thud; sweep it back up and the note opens out again. Add resonance and the cutoff point itself starts to sing, a whistling peak that slides through the sound.
+
+On the Commodore 64 the effect came built into the sound chip. Bob Yannes's SID carries a resonant analogue filter, and its cutoff is just a number in two registers that a program can rewrite whenever it likes. The data sheet tells programmers to do exactly that: the filter is "perhaps, the most important element in SID", and "the best results are achieved by varying the Cutoff Frequency in real-time". The same chip made the effect hard to trust. Yannes later admitted he had not had time to make the filter better, every batch of chips sounded a little different, and in 1986 Martin Galway told *ZZAP!64* he would not use it at all.
 
 ## Fast facts
 
-- **Definition:** gradual change of filter cutoff frequency.
-- **Effect:** timbral brightness variation, often with a resonant peak.
-- **SID advantage:** built-in resonant state-variable filter (LP/BP/HP) per chip.
-- **Programming:** rewrite cutoff registers each frame from an IRQ.
-- **Uses:** bass growls, evolving pads, transitions, percussion fakes.
+- **What changes:** the filter's cutoff frequency, rewritten many times a second, usually once per frame.
+- **On the SID:** an 11-bit cutoff, 16 resonance settings, and low-pass, band-pass and high-pass outputs that can be mixed.
+- **One filter per chip:** all three voices share it, so only one sweep can run at a time.
+- **The problem:** the cutoff a given number produces varies from one 6581 to the next, and the later 8580 sounds different again.
 
-## SID filter registers
+## How the SID's filter works
 
-The SID's filter is configured by four registers; the cutoff is **not** at `$D418`. Per the 6581/8580 register map:
+Yannes described the design in 1996 as "a classic multi-mode (state variable) VCF". A state-variable filter produces its low-pass, band-pass and high-pass outputs all at once, and in the SID, "analog switches selected which combination of outputs were sent to the final amplifier". That is why the mode bits can be combined: low-pass and high-pass together give a notch, which cuts the frequencies at the cutoff and passes the rest. Low-pass and high-pass cut at 12 dB per octave, band-pass at 6 dB.
 
-| Register | Field | Purpose |
-|----------|-------|---------|
-| **`$D415` (FCLO)** | bits 2:0 | Filter cutoff, low 3 bits |
-| **`$D416` (FCHI)** | bits 7:0 | Filter cutoff, high 8 bits |
-| **`$D417` (RES/FILT)** | bits 7:4 | Resonance (0–15) |
-|                         | bit 3 | Route external audio in through filter |
-|                         | bit 2 | Route voice 3 through filter |
-|                         | bit 1 | Route voice 2 through filter |
-|                         | bit 0 | Route voice 1 through filter |
-| **`$D418` (MODE/VOL)** | bits 6:4 | LP/BP/HP mode bits (mix-selectable) |
-|                         | bit 7 | Voice 3 off (cuts V3 from output) |
-|                         | bits 3:0 | Master volume (0–15) |
+The filter only affects voices routed into it. A voice whose routing bit is clear goes straight to the output, untouched. A voice routed into the filter is heard only through whichever outputs are switched on: as the data sheet puts it, "at least one Filter output must be selected and at least one Voice must be routed through the Filter" for the filter to do anything.
 
-The cutoff is an 11-bit value: `cutoff = (FCHI << 3) | (FCLO & 7)`. Voices with their `$D417` bit *clear* bypass the filter and go straight to the mixer.
+| Register | Bits | Purpose |
+|----------|------|---------|
+| `$D415` (FC LO) | 2–0 | Cutoff, low 3 bits |
+| `$D416` (FC HI) | 7–0 | Cutoff, high 8 bits |
+| `$D417` (RES/FILT) | 7–4 | Resonance, 0–15 |
+| | 3 | Route the external audio input through the filter |
+| | 2 | Route voice 3 through the filter |
+| | 1 | Route voice 2 through the filter |
+| | 0 | Route voice 1 through the filter |
+| `$D418` (MODE/VOL) | 7 | "3 OFF": take voice 3 off the direct path to the output |
+| | 6 | High-pass output on |
+| | 5 | Band-pass output on |
+| | 4 | Low-pass output on |
+| | 3–0 | Master volume, 0–15 |
 
-## Filter modes
+The cutoff is an 11-bit number, 0 to 2047, split awkwardly: its bottom three bits go in `$D415` and the top eight in `$D416`. Yannes explained the odd split. The control voltage comes from "actually a 12-bit D/A, but the LSB had no audible affect so I disconnected it!" Many programs ignored the low register and wrote only `$D416`, which gives 256 steps across the range.
 
-`$D418` bits 4-6 are mix-selectable, so combinations are legal:
+The "3 OFF" bit is meant for using voice 3 as a modulator: it removes voice 3 from the direct path to the output. It does not silence a voice 3 that is routed through the filter, so the data sheet pairs it with clearing voice 3's routing bit.
 
-| Bits set | Result |
-|----------|--------|
-| LP only (bit 4) | Low-pass — bright → dark |
-| BP only (bit 5) | Band-pass — emphasises a frequency range |
-| HP only (bit 6) | High-pass — dark → bright |
-| LP + HP | Notch (band-reject) |
-| LP + BP + HP | Approximately all-pass — filter effectively bypassed |
+## A sweep in machine code
 
-Setting **all** bits clear silences any voice routed through the filter.
-
-## A simple downward sweep
-
-Update the cutoff each frame from an IRQ:
+The SID does not sweep by itself; the program changes the cutoff, typically once per screen frame. This program, for the ACME assembler, plays a low sawtooth note on voice 1 through the low-pass filter at full resonance and sweeps the cutoff from the top of its range down to `$0100`, then starts again, about one and a half seconds a sweep on a PAL machine. Run it with `SYS 49152`; RUN/STOP and RESTORE together stop it.
 
 ```asm
-sweep_cutoff:    .word $07F8        ; start near max cutoff
-sweep_step:      .word $0030        ; per-frame decrement
+STEP  = $18             ; cutoff change per frame
+TOP   = $07ff           ; the 11-bit maximum
+FLOOR = $0100           ; start again when the sweep gets this low
 
-update_filter:
-    ; cutoff -= step
-    sec
-    lda sweep_cutoff
-    sbc sweep_step
-    sta sweep_cutoff
-    lda sweep_cutoff+1
-    sbc sweep_step+1
-    sta sweep_cutoff+1
+        * = $c000
 
-    ; bottom 3 bits → FCLO, top 8 bits → FCHI
-    lda sweep_cutoff
-    and #$07
-    sta $d415
-    lda sweep_cutoff+1
-    sta $d416
-    rts
+        lda #$00
+        sta $d405       ; attack 0, decay 0
+        lda #$f0
+        sta $d406       ; sustain 15, release 0
+        lda #$51
+        sta $d400       ; frequency $0751: about 110 Hz on a PAL C64
+        lda #$07
+        sta $d401
+        lda #$f1
+        sta $d417       ; resonance 15, voice 1 through the filter
+        lda #$1f
+        sta $d418       ; low-pass output on, volume 15
+        jsr top         ; set the cutoff to the top of its range
+        lda #$21
+        sta $d404       ; sawtooth, gate on
+
+frame   bit $d011       ; wait for the raster to pass line 255
+        bpl frame
+        jsr update
+wait    bit $d011       ; wait for the next frame to begin
+        bmi wait
+        jmp frame
+
+update  sec             ; cutoff = cutoff - STEP
+        lda cutoff
+        sbc #<STEP
+        sta cutoff
+        lda cutoff+1
+        sbc #>STEP
+        sta cutoff+1
+        cmp #>FLOOR     ; is it still at or above FLOOR?
+        bne +
+        lda cutoff
+        cmp #<FLOOR
++       bcs write       ; yes: use it
+top     lda #<TOP       ; no: start the sweep again from the top
+        sta cutoff
+        lda #>TOP
+        sta cutoff+1
+write   lda cutoff
+        and #$07
+        sta $d415       ; low 3 bits of the cutoff
+        lda cutoff+1
+        sta hi
+        lda cutoff
+        lsr hi          ; shift the 11-bit value right three places
+        ror
+        lsr hi
+        ror
+        lsr hi
+        ror
+        sta $d416       ; high 8 bits of the cutoff
+        rts
+
+cutoff  !word TOP
+hi      !byte 0
 ```
 
-For a routed-and-resonant sweep, set `$D417` once with the desired voice routes and resonance:
+Two details matter. The 11-bit value has to be split, not just stored as two bytes: the low three bits go to `$D415`, and the value shifted right three places goes to `$D416`. Writing the high byte of a 16-bit number to `$D416` instead would put a cutoff of `$07FF` almost at the bottom of the range. And the sweep stops at a limit instead of running past zero, because the registers would wrap round and the cutoff would leap to the top. Sidplayer's manual warned its users about the same thing: "If the cutoff is swept too far, it will wrap around." The program keeps its own copy of the cutoff because the SID's filter registers can be written but not read.
 
-```asm
-    lda #$F1          ; resonance %1111, voice 1 routed through filter
-    sta $d417
-    lda #%00010000    ; LP only, master volume 0 — set volume separately
-    ora #$0F          ; volume = 15
-    sta $d418
-```
+## In music players and editors
 
-## Musical uses
+Sidplayer, the music system that *COMPUTE!* published for the 64, gave each voice a filter sweep command, `F-S`, taking a rate from −127 to 127: positive values swept upwards, negative ones downwards, "the larger the number, the faster the sweep". It also had an "autofilter" mode in which "the filter cutoff is automatically set according to the pitch of each note", so high and low notes got the same filtering.
 
-| Application | Effect |
-|-------------|--------|
-| Bass growls | Slow LP cutoff sweep over a sustained bass note |
-| Pad textures | Gentle BP sweep across a held chord |
-| Transitions | Cutoff ramp synced to a section change |
-| Percussion fakes | Snap the cutoff down with high resonance to imitate hi-hats and snares |
-| Wobble bass | LFO-style triangle-wave sweep — the precursor to dubstep wobble |
+In a table-driven player the sweep is an instrument effect like [pulse width modulation](/vault/techniques/pulse-width-modulation). Lasse Öörni (Cadaver) suggests commands of the form "add *m* to cutoff frequence for *n* frames". The difficulty is that the chip has one filter for three voices, so "either only one voice must control the filter at a time", chosen by a command in the pattern data, or the filter is driven entirely from the pattern data, separately from the instruments.
 
-## In the routines
+## A filter you could not rely on
 
-In a table-driven player the sweep is an instrument effect like pulse modulation: Cadaver describes filter tables with commands of the form "add *m* to cutoff frequency for *n* frames". The complication is that the chip has one filter for three voices, so either only one voice controls it at a time — set by a pattern command — or the player has to arbitrate.
+Yannes was frank about the filter. In 1996 he called it "the worst part of SID because I could not create high-gain op-amps in NMOS". He set the cutoff with FETs used as voltage-controlled resistors, and "the resistance of the FETs varied considerably with processing, so different lots of SID chips had different cutoff frequency characteristics. I knew it wouldn't work very well, but it was better than nothing and I didn't have time to make it better." The data sheet says the register "linearly controls" the cutoff; real chips do not follow that line, and each follows a different curve.
 
-## Unreliable by design
+Composers knew. Asked by *ZZAP!64* in February 1986 whether he had reservations about using the filters, [Martin Galway](/vault/people/martin-galway) said: "No, the filters are too unreliable. A brilliant result on one machine is no guarantee of satisfactory sound on another." He expected to use them only once the C128, whose filters he believed were "greatly improved", was more common. In the same interview he rejected the magazine's claim that [Rob Hubbard](/vault/people/rob-hubbard) had "stretched the SID chip to its limits": "There are plenty of things you can do with it yet!"
 
-The 6581's filter varies from chip to chip, and period composers knew it. Asked by Zzap!64 in February 1986 whether he had reservations about using the filters, Martin Galway said he did: "the filters are too unreliable. A brilliant result on one machine is no guarantee of satisfactory sound on another." He expected to use them only once the C128, whose SID he thought "greatly improved", was common. In the same interview he rejected the magazine's earlier claim that Rob Hubbard had "stretched the SID chip to its limits" — "there are plenty of things you can do with it yet".
+## 6581 and 8580
 
-## 6581 vs 8580
+Commodore's later HMOS version of the chip, documented in its 6582 data sheet and fitted to later C64s as the 8580, has the same registers but a redesigned filter. The data sheets give different formulas for the maximum cutoff (2.6×10⁻⁵/C for the 6581, 8.2×10⁻⁵/C for the HMOS chip, where C is the value of the two filter capacitors) and recommend different capacitors, 2200 pF against 6800 pF. The 6582 sheet also describes the resonance differently, from "about 0.707 (Critical Damping)" at 0 up to a maximum at 15.
 
-The two SID variants behave very differently in the filter:
+Public descriptions agree on how they sound: the 6581's filter "varies wildly between chips, and often distorts", while the 8580's has a linear cutoff range, is more consistent between chips, is nearly free of distortion and "can achieve higher resonances". A filter setting chosen by ear on one chip can sound thin, muffled or harsh on the other, so a sweep written on a 6581 rarely sounds the same on an 8580. Emulators leave the choice to the listener: VICE's reSIDfp engine has a "6581 filter curve" setting, and its reSID engine a filter bias, for matching the sound of a particular chip.
 
-| | 6581 (12V, original) | 8580 (9V, revised) |
-|---|---|---|
-| Cutoff curve | Wildly per-chip non-linear | Near-linear, predictable |
-| Distortion | Audible at high signal levels | Mostly clean |
-| Resonance | Less pronounced | Stronger, more peaky |
-| Sound | "Warm", "dirty" | "Clean", "crisp" |
+<Sources>
 
-A piece written for the 6581 — most pre-1986 SID music — often sounds wrong on an 8580 because the cutoff curve and distortion are fundamental to how the music was tuned. Modern players (reSIDfp, libsidplayfp) approximate per-chip cutoff curves to compensate.
+- MOS Technology, *6581 Sound Interface Device (SID)* data sheet, as reprinted in the *Commodore 64 Programmer's Reference Guide* (Commodore, 1983), Appendix O: the filter registers and routing, the filter modes and slopes, notch from low-pass plus high-pass, "3 OFF", the maximum-cutoff formula, and the advice to vary the cutoff in real time.
+- Commodore Semiconductor Group, *6582 Sound Interface Device (SID)* data sheet (HMOS): cutoff range and capacitor values, resonance, maximum-cutoff formula.
+- *Commodore 64 Programmer's Reference Guide*, "Filtering", pp. 199–201: the cutoff in registers 21 and 22 and the mode bits in register 24.
+- Andreas Varga, "Interview with Bob Yannes" (e-mail, August 1996; web, secondary, read in the copy on the Codebase64 wiki): the state-variable design, the FETs, the 12-bit converter with its lowest bit disconnected, the analogue output switches, the variation between batches of chips, and "I didn't have time to make it better".
+- *ZZAP!64*, issue 10, February 1986, p. 51: interview with Martin Galway.
+- *COMPUTE!'s The Complete 64* (COMPUTE! Publications, 1986), chapter 5, "Sidplayer", pp. 144–145: the cutoff command, autofilter mode and filter sweep.
+- Lasse Öörni (Cadaver), "Building a musicroutine", Codebase64 wiki (web, secondary). https://codebase64.org/doku.php?id=base:building_a_music_routine
+- VICE 3.10 source code, SID command-line options: `-resid6581filtercurve`, "reSIDfp 6581 filter curve setting", and `-residfilterbias`.
+- Wikipedia, "MOS Technology SID" (web, secondary): the 8580's filter compared with the 6581's. https://en.wikipedia.org/wiki/MOS_Technology_SID
+- The sweep program was assembled with ACME and run on the Commodore 64 ROMs in an emulated PAL C64. A copy that also logged each pair of values written to `$D415` and `$D416` showed one write a frame, the cutoff falling by `$18` from `$07FF`, never below `$0100`, and starting again at the top every 75 frames.
+
+</Sources>
 
 ## See also
 
-- [SID Chip](/vault/hardware/sid-chip)
-- [Pulse Width Modulation](/vault/techniques/pulse-width-modulation)
+- [SID chip](/vault/hardware/sid-chip)
+- [Bob Yannes](/vault/people/bob-yannes)
+- [Pulse width modulation](/vault/techniques/pulse-width-modulation)
+- [Hard restart](/vault/techniques/hard-restart)
+- [Sound drivers](/vault/techniques/sound-drivers)
+- [Martin Galway](/vault/people/martin-galway)
 - [Rob Hubbard](/vault/people/rob-hubbard)
