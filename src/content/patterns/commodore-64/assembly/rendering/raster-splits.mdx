@@ -13,137 +13,95 @@ related:
   vault: ["vic-ii", "commodore-64"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Sources from '@components/Sources.astro';
 
-## Overview
+**Code status: assembled and emulator-executed.** PAL and NTSC C64 with the KERNAL IRQ entry, in Emu198x and VICE. The [recorded checks](https://github.com/code198x/code-samples/blob/ffec9e93b5c1a537b91aeb67b4b26a81fd386421/commodore-64/patterns/assembly/rendering/raster-splits/verification/results.json) identify the tested sources and observations. These are configuration-specific emulator checks; original-hardware verification remains separate.
 
-The VIC-II can raise an interrupt the instant the raster beam reaches a scanline you choose. In the handler you change a register — and because the change lands part-way down the screen, the top and bottom show *different* settings. That one idea, "split the screen at a line," is behind colour bars, separate score panels that don't scroll, showing more than the usual sprites or colours, and almost every advanced C64 display trick.
+## Split the background
 
-This pattern sets up a raster interrupt that splits the background into two colours.
+The example shows a black upper background and a blue lower background. It uses two raster interrupts per frame: one near the top to restore black, and one to select blue farther down.
 
-## Code
+The VIC-II requests an interrupt when its raster counter matches the programmed value. The CPU still has to enter the interrupt, run the KERNAL prologue and reach our colour write. **The compare line and the visible colour change are different events.** In this caller, compare line 130 gives a first blue displayed line of **131**.
 
-```asm
-; =============================================================================
-; RASTER SPLITS - C64
-; A raster interrupt changes the background colour part-way down the screen
-; CPU: A handful of cycles per split | Memory: ~70 bytes
-; =============================================================================
+## Run it
 
-VIC_RASTER  = $D012     ; Raster compare line (low 8 bits)
-VIC_CTRL1   = $D011     ; Bit 7 = raster compare line bit 8
-VIC_IRQ     = $D019     ; Interrupt status — write a 1 to a bit to acknowledge
-VIC_IRQEN   = $D01A     ; Interrupt enable — bit 0 = raster
-BGCOLOR     = $D021     ; Background colour
-CIA1_ICR    = $DC0D     ; CIA #1 interrupt control
-IRQVEC      = $0314     ; KERNAL IRQ vector (low byte / high byte)
-
-SPLIT_LINE  = 130       ; Split the screen here
-
-setup:
-    sei                     ; no interrupts while we wire this up
-
-    lda #<raster_irq        ; point the IRQ vector at our handler
-    sta IRQVEC
-    lda #>raster_irq
-    sta IRQVEC+1
-
-    lda #$7f                ; switch off CIA #1 timer interrupts...
-    sta CIA1_ICR
-    lda CIA1_ICR            ; ...and acknowledge any that were pending
-
-    lda #$01                ; enable the VIC-II raster interrupt
-    sta VIC_IRQEN
-
-    lda #0                  ; first interrupt at the top of the screen
-    sta VIC_RASTER
-    lda VIC_CTRL1           ; clear compare-line bit 8 (our lines are < 256)
-    and #$7f
-    sta VIC_CTRL1
-
-    lda #$01                ; acknowledge any pending raster interrupt
-    sta VIC_IRQ
-
-    cli                     ; interrupts back on
-    rts
-
-; The handler fires twice a frame: once at the top, once at SPLIT_LINE.
-; Read the raster line to tell which, paint that zone, and aim at the other.
-raster_irq:
-    lda #$01
-    sta VIC_IRQ             ; acknowledge the raster interrupt
-
-    lda VIC_RASTER
-    cmp #SPLIT_LINE
-    bcs at_split
-
-at_top:
-    lda #$00               ; black above the split
-    sta BGCOLOR
-    lda #SPLIT_LINE        ; next interrupt: the split line
-    sta VIC_RASTER
-    jmp $EA81              ; KERNAL exit — restore registers and RTI
-
-at_split:
-    lda #$06               ; blue below the split
-    sta BGCOLOR
-    lda #0                 ; next interrupt: top of the next frame
-    sta VIC_RASTER
-    jmp $EA81
+```sh
+git clone https://github.com/code198x/code-samples.git
+cd code-samples/commodore-64/patterns/assembly/rendering/raster-splits
+make
 ```
 
-## Trade-offs
+`make` uses Asm198x to produce `build/demo.prg`. Load it in a PAL or NTSC C64 emulator and type `RUN`. Reset to leave.
 
-| Aspect | Cost |
-|--------|------|
-| CPU | A few cycles in the handler per split |
-| Memory | ~70 bytes for setup + handler |
-| Limitation | Jitter — without a *stable raster*, the change line wobbles a pixel or two |
+The caller selects a normal 40-column, 25-row text display, clears it to spaces and disables sprites. It owns the screen, VIC bank, colours, IRQ vector and CIA interrupt masks. KERNAL ROM stays mapped, but its normal keyboard scan and software clock service are no longer called. There is no BASIC return or RESTORE-key interface.
 
-**When to use:** Colour bars, a fixed status panel above a scrolling playfield, raster-timed effects, and as the engine for sprite multiplexing.
+<CodeFromFile src="commodore-64/patterns/assembly/rendering/raster-splits/demo.asm" lang="6502" />
 
-**When to avoid:** If a single static screen is all you need — the basic [game loop](/patterns/commodore-64/assembly/framework/game-loop-basic) polling `$D012` is simpler than wiring an interrupt.
+The foreground loop checks that interrupts preserve A, X and Y, and counts completed frames. Those checks make the demonstration observable; a game would put its own foreground work here.
 
-## How the interrupt is wired
+## The interrupt routine
 
-Four things have to be set up, all behind `sei`/`cli` so nothing fires mid-change:
+Call `split_init` with IRQs masked, KERNAL and I/O visible, CIA2 sources disabled and the display already configured. It changes A and flags, preserves X and Y, and leaves IRQs masked. The caller executes `CLI` when ready.
 
-1. **The vector.** `$0314`/`$0315` is the KERNAL's IRQ vector in RAM. Point it at your handler; the KERNAL saves the registers before jumping through it.
-2. **Silence the CIA.** The KERNAL's own 60 Hz interrupt comes from CIA #1. Writing `$7F` to `$DC0D` disables all of its interrupt sources so only the raster fires.
-3. **Enable the raster source** with bit 0 of `$D01A`, and set the compare line in `$D012` (with bit 8 in `$D011`).
-4. **Acknowledge.** At the *start* of the handler, write a 1 to bit 0 of `$D019` — until you do, the VIC-II keeps the request asserted and the interrupt re-fires forever.
+<CodeFromFile src="commodore-64/patterns/assembly/rendering/raster-splits/split.inc" lang="6502" />
 
-Exit through `$EA81`, the KERNAL routine that pulls the saved registers and runs `RTI`.
+Four connections make this work:
 
-## Colour bars
+1. **KERNAL entry.** The ROM IRQ prologue saves A, X and Y before jumping through the RAM vector at `$0314`/`$0315`. Our handler exits through `$EA81`, which restores those saved registers and returns from the interrupt. This pairing requires the expected C64 KERNAL ROM; it is not a direct hardware-vector handler.
+2. **Exclusive interrupt ownership.** Writing `$7F` to CIA1's `$DC0D` disables its interrupt sources; reading the register acknowledges pending ones. The caller also disables and acknowledges CIA2 sources. Do not enable another IRQ source or execute `BRK` while this handler owns the vector.
+3. **Raster comparison.** Writing `$D012` sets the low eight compare bits; reading it returns the current line. Bit 7 of `$D011` has the same distinction for bit 8. Both scheduled lines here are below 256.
+4. **Acknowledgement.** Writing 1 to bit 0 of `$D019` clears the raster interrupt latch. Writing `$01` to `$D01A` enables only that VIC interrupt source.
 
-Reprogram the line *and* the colour each time, cycling through a table, and you get bars:
+The handler reads the current line to choose the region, changes `$D021`, then schedules the other interrupt. This assumes prompt service: masking IRQs across a split or adding a long handler can miss the intended schedule. `$D021` changes the background behind the spaces; it does not change the border colour in `$D020`.
 
-```asm
-bar_irq:
-    lda #$01
-    sta VIC_IRQ
-    ldx bar_index
-    lda bar_colors,x       ; next colour
-    sta BGCOLOR
-    lda bar_lines,x        ; next line
-    sta VIC_RASTER
-    inx
-    cpx #BAR_COUNT
-    bne +
-    ldx #0                 ; wrap at the end of the frame
-+   stx bar_index
-    jmp $EA81
-```
+## Where the change appears
 
-Each entry is "at line *L*, switch to colour *C*" — a tiny copper-list-by-hand. The same loop drives sprite multiplexing, swapping sprite positions instead of colours.
+The verification runs the same caller with four compare values. These are **observations of this program**, not general latency guarantees:
 
-## Stable rasters
+| Compare line | First visible blue pixels | First fully blue display line |
+|--------------|---------------------------|-------------------------------|
+| 64 | 65 | 65 |
+| 130 | 131 | 131 |
+| 131 | Part-way across 132 | 133 |
+| 200 | 201 | 201 |
 
-The split line wobbles because the CPU might be mid-instruction (or stalled on a *badline*) when the interrupt arrives, so the handler reaches the colour write a few cycles late and at a different point each frame. For a rock-steady edge you need a **stable raster** — a double-interrupt or cycle-counted `NOP` sled that lands the write on the exact same cycle every frame. See [Stable Raster](/vault/techniques/stable-raster).
+Both emulators and both video standards produce these row ranges. The numbers are hardware raster lines, not screenshot rows or sprite Y coordinates.
+
+With this display's vertical scroll setting, line 131 is a **badline**: the VIC-II fetches a row of screen pointers and stalls the CPU. The extra delay moves the colour write farther across the following line. The remaining pixels on that line become blue; pixels already drawn stay black.
+
+Foreground instruction timing can also vary the horizontal position of a write. These sampled frames do not measure the full jitter range under arbitrary workloads. Enabling sprites, changing the display mode or moving code can alter timing too.
+
+## Trade-offs and alternatives
+
+| Aspect | Cost or limit |
+|--------|---------------|
+| Code | 81 assembled bytes for setup and handler, excluding the caller and KERNAL routines |
+| State | No private handler state; two diagnostic bytes in the caller |
+| CPU | Two interrupts per frame, including CPU entry, KERNAL work and possible DMA stalls; no universal cycle bound is claimed |
+| Timing | A delayed, unstabilised register write; no guarantee of a fixed horizontal edge |
+| Ownership | Exclusive raster IRQ use; normal KERNAL keyboard and clock servicing is suspended |
+
+Use this approach to learn mid-frame register changes or create regions where the exact horizontal transition is unimportant. A fixed score panel above a scrolling playfield also needs separate screen/scroll configuration and careful scheduling; changing the background alone does not build that panel.
+
+For a static display, [polling in the basic game loop](/patterns/commodore-64/assembly/framework/game-loop-basic) is simpler. For several colour bands, a handler can advance through line/colour pairs, provided each next compare is installed before its deadline. The verified example here has only two regions.
+
+For an edge that must land at a fixed horizontal position, use a [stable raster](/vault/techniques/stable-raster) technique with a measured, model-specific schedule. Adding a few `NOP`s alone does not remove unknown interrupt-entry delay.
+
+## What has been checked
+
+The [verification recipe](https://github.com/code198x/code-samples/tree/ffec9e93b5c1a537b91aeb67b4b26a81fd386421/commodore-64/patterns/assembly/rendering/raster-splits) compares Asm198x and ACME binaries and checks **48 captures** of the maintained example, plus 12 captures of the original listing. It checks frame progress, A/X/Y preservation and every coloured pixel, including the partial-line transition. Fixed capture origins account for each emulator's border crop. Emu198x runs normally after debugger observations to emit a fresh frame; a live colour-change control verifies that refresh and reproduces the stale debugger-only image.
+
+Twelve deliberately broken captures replace the blue write with black; the same picture observer rejects all of them. The observations establish the displayed result under the stated conditions, not the exact CPU bus cycle of the write or behaviour on every C64 revision.
 
 ## Related
 
-**Patterns:** [Game Loop (Basic)](/patterns/commodore-64/assembly/framework/game-loop-basic), [Hardware Sprites](/patterns/commodore-64/assembly/rendering/hardware-sprites)
+**Patterns:** [Game Loop (Basic)](/patterns/commodore-64/assembly/framework/game-loop-basic), [Hardware Sprites](/patterns/commodore-64/assembly/rendering/hardware-sprites), [Sprite Multiplexing](/patterns/commodore-64/assembly/rendering/sprite-multiplexing)
 
 **Vault:** [VIC-II](/vault/hardware/vic-ii) | [Commodore 64](/vault/systems/commodore-64)
+
+<Sources>
+
+Commodore Semiconductor Group, [*6567 Video Interface Chip Specification Sheet*](https://myoldcomputer.nl/Files/mos_6567_vic_ii_preliminary.pdf), drawing 318014, sheets 11 (raster and IRQ registers) and 15 (system interface and DMA). Commodore, *Commodore 64 Programmer's Reference Guide* (1983), pp. 150–152 (raster/IRQ registers). The transition table reports the linked execution record.
+
+</Sources>
