@@ -1,310 +1,248 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Tile-Based Collision"
-subtitle: "Efficient collision detection for platformers"
-summary: "By checking which tiles a character overlaps rather than testing every object, tile collision provides fast, memory-efficient collision detection for platform games."
+subtitle: "Asking the map what is there"
+summary: "Instead of testing a character against every wall and platform, a tile-based game turns a position into a map cell and looks up what the tile there is: solid, a ledge, a ladder, a hazard. 1980s home programmers did it in BASIC by asking the screen; C64 coders read the character under a sprite; Cadaver's Metal Warrior 3 made the map cell the high byte of every coordinate."
 category: "techniques"
-platforms: ['commodore-64', 'sinclair-zx-spectrum', 'commodore-amiga', 'nintendo-entertainment-system']
+platforms: ['commodore-64', 'sinclair-zx-spectrum']
 tags: ['gameplay', 'collision', 'platformers']
-sources:
-  c64_hardware_alternative:
-    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
-      kind: book
-      page: "144-145"
-      note: "\"Sprite to data collisions are detected in the sprite to data collision register at location 53279 ($D01F in HEX) of the VIC-II chip control register. Each sprite has a bit in this register. If that bit is a 1, then that sprite is involved in a collision. The bits in this register remain set until read (PEEKed).\" — \"NOTE: MULTI-COLOR data 01 is considered transparent for collisions, even though it shows up on the screen. When setting up a background screen, it is a good idea to make everything that should not cause a collision 01 in multi-color mode.\""
-  c64_map_lookup:
-    - title: "Codebase64 — Simple Software to Background collision, by Achim"
-      kind: database
-      note: "Community wiki page. \"To check wether a specific object has been hit or not, the correct screen position has to be calculated. Use sprite-X to calculate the screen column\": subtract \"#$18 //x-offset, visible screen area starts at x=$18\" (16-bit, with the MSB), then three shifts right; \"Use sprite-Y to calculate number of screen rows\": subtract \"#$32 //y-offset, visible screen area starts at y=$32\" and shift right three times; \"Use 'numberrows' to fetch actual screen row from a lookup table\" and \"lda (tmp0),y //read char value\" — \"The result is the top left screen position of the sprite.\" — \"column+40=next screen row, column+80=lowest screen row, column+1=top middle of sprite, column+2=top right of sprite etc.\""
-    - title: "Codebase64 — Multidirectional scrolling and the \"game world\" (Rant 4), by Cadaver (Lasse Öörni)"
-      kind: database
-      note: "Community wiki mirror of an article from Cadaver's site. \"Some of the knowledge in this rant originally comes from the book 'C-64 Pelintekijän Opas' ('C-64 Game Maker's Guide') by Jukka Tapanimäki, author of Netherworld and others.\" — \"The popular method of graphics encoding seen in for example SEUCK is the map-data & block-data system (sometimes the blocks are also called tiles.)\" — \"I prefer 4×4 blocks: the block size is always a tradeoff between memory use and the complexity of graphics that can be achieved. But for easy calculations, the block size should be a power of two.\" — on Turrican's walkers: \"they're only using the screen coordinate system, and checking only the characters on screen for background collisions. In some cases checking outside the screen would happen and the collision routine probably has a hardcoded response of either 'obstacle' or 'free space' in that case. This is fast, but honestly, incorrect.\" — \"Metal Warrior 1 & 2 simply measured pixels from the top-left edge of the game map (as 16bit values).\" — \"the background collisions were slow and complicated and there was a complete lack of subpixel accuracy\" — \"Metal Warrior 3 and BOFH use another way to represent world coordinates: the highbyte of the coordinate represents position as blocks and the lowbyte of the coordinate represents position within the block. A block has 4 chars = 32 pixels, so as a bonus we get 3 bits of subpixel accuracy. Now background collision checking becomes very fast & easy to do, because the map position is directly the coordinate highbyte.\""
 ---
+import Sources from '@components/Sources.astro';
 
-In tile-based games, the world is made of a grid. Instead of checking collision against every platform and wall, you check which tiles the player overlaps and whether those tiles are solid. This reduces collision detection from O(n) object comparisons to O(1) tile lookups.
+A platform game's level can hold hundreds of walls, floors and ledges. Testing the player against each of them every frame would swamp an 8-bit processor. A tile-based game does not have to. Its world is already a grid of small numbered pictures, the [tile map](/vault/techniques/tile-maps), so the question "am I touching a wall?" becomes "which cells does my body cover, and what is in them?" Dividing a pixel position by the tile size gives a cell; reading the map gives a tile number; a small table says what that number means. The cost is the same whether the level has three platforms or three hundred.
 
-## Tile map structure
+## The screen was the first map
 
-```
-Map: 40×25 tiles, 1 byte each
-+--+--+--+--+--+--+--+--+
-| 0| 0| 0| 0| 0| 0| 0| 0|  0 = empty (sky)
-+--+--+--+--+--+--+--+--+
-| 0| 0| 0| 0| 0| 0| 1| 1|  1 = solid (ground)
-+--+--+--+--+--+--+--+--+
-| 1| 1| 1| 0| 0| 1| 1| 1|  2 = platform (solid top only)
-+--+--+--+--+--+--+--+--+
-```
+Home computer programmers met the idea in BASIC, where the screen itself served as the map. The partwork *[INPUT](/vault/magazines/input-magazine)* explained it in an article called "Detecting things on screen": checking a moving ball against a curved object with IF … THEN tests on coordinates would need so many checks that "the movement on the screen would appear jerky". Instead, each machine could be asked what was already in a character square. The Spectrum's `ATTR (y,x)` returned the square's colour attributes, the Commodore 64 gave its colour code with a `PEEK` of colour memory, and the Acorn, Dragon and Tandy machines had `POINT` or `PPOINT`. *INPUT*'s Spectrum demonstration bounced a ball round a screen of yellow squares, testing `ATTR` of the square the ball was about to move into and turning it round when the answer was 48, yellow paper.
 
-## Basic collision check
+Assembly-language games on the Commodore 64 kept the idea and read the screen's character codes directly. A programmer called Achim sets out the routine on the Codebase64 wiki. Take the sprite's X position, subtract `$18` because "visible screen area starts at x=$18", and shift right three times to divide by 8; do the same with Y and `$32`; look up the screen row's address in a table; read the character code at that column. "The result is the top left screen position of the sprite." The neighbouring cells are the same address plus 1 and 2 for the columns to the right, and plus 40 and 80 for the rows below.
 
-Given a pixel position, find the tile:
+The C64 also offered hardware help. The *Commodore 64 Programmer's Reference Guide* describes a sprite-to-data collision register at 53279 (`$D01F`): one bit per sprite, set when the sprite overlaps background graphics and held "until read (PEEKed)". The guide's advice reads like a tile-design rule: in multicolour mode, colour pair 01 "is considered transparent for collisions", so "it is a good idea to make everything that should not cause a collision 01". The register reports *that* a sprite touched something, but not what or where, so a game that needs to know whether it hit a floor, a ladder or a spike still has to look at the map.
+
+## Reading the map
+
+The routines below are 6502 assembly in ca65 syntax. They assume a map 32 tiles wide and 24 high, one byte per cell, with 8×8-pixel tiles. That keeps every pixel coordinate in one byte (32 × 8 = 256); a 40-column C64 screen is 320 pixels wide and needs a second byte for X.
+
+Multiplying the row by the map width on every lookup is slow on a 6502, and a 768-byte map does not fit in an 8-bit index. A table of row addresses, worked out by the assembler, avoids both problems. A second table gives each tile number a collision class, so the graphics can use any tile numbers they like.
 
 ```asm
-; Convert pixel position to tile coordinates
-; Assuming 8×8 tiles
+MAP_W         = 32
+MAP_H         = 24
+TILE_EMPTY    = 0     ; passable
+TILE_SOLID    = 1     ; blocks from every side
+TILE_PLATFORM = 2     ; holds only from above
+TILE_LADDER   = 3
+TILE_HAZARD   = 4
 
-pixel_to_tile_x:
-    lda player_x
-    lsr
-    lsr
-    lsr             ; divide by 8
-    rts
+; Collision class of the map cell under pixel (check_x, check_y).
+; check_y must be below 192. Returns the class in A. Uses A and Y.
+get_tile_at_point:
+        lda check_y
+        lsr
+        lsr
+        lsr             ; row = y / 8
+        tay
+        lda row_lo,y
+        sta ptr         ; ptr is a two-byte zero-page pointer
+        lda row_hi,y
+        sta ptr+1
+        lda check_x
+        lsr
+        lsr
+        lsr             ; column = x / 8
+        tay
+        lda (ptr),y     ; the tile number in the map
+        tay
+        lda tile_type,y ; its class, from a 256-byte table
+        rts
 
-pixel_to_tile_y:
-    lda player_y
-    lsr
-    lsr
-    lsr             ; divide by 8
-    rts
-
-; Get tile at (tile_x, tile_y)
-; For map width = 40 we use × 40 = (tile_y << 5) + (tile_y << 3) — × 32 + × 8
-; For non-power-of-2 widths, a precomputed row-offset lookup table is cleaner:
-;     row_offset_lo[y], row_offset_hi[y]
-; This avoids the multiply entirely (each row's address is in the table).
-get_tile:
-    ; Compute tile_y × 40 cleanly: (y << 5) + (y << 3)
-    lda tile_y
-    asl
-    asl
-    asl                  ; A = tile_y × 8 (also we'll add this back after the next shifts)
-    sta tmp              ; save × 8
-    asl
-    asl                  ; A = tile_y × 32
-    clc
-    adc tmp              ; A = × 32 + × 8 = × 40
-
-    clc
-    adc tile_x
-    tax
-    lda map_data,x
-    rts
+row_lo:
+.repeat MAP_H, i
+        .byte <(map_data + i * MAP_W)
+.endrep
+row_hi:
+.repeat MAP_H, i
+        .byte >(map_data + i * MAP_W)
+.endrep
 ```
 
-Note: a 1000-byte map (40 × 25) crosses a 256-byte page in `map_data`, so the index needs to be 16-bit in production code (`map_data + tile_y × 40 + tile_x` may exceed 255). Use a row-pointer table for clean handling:
+## Which points to test
+
+The player below is 16×16 pixels. An edge 16 pixels long can lie across three rows of 8-pixel tiles, so testing only the two corners would miss a single solid tile level with the middle of the body. Testing three points along an edge, at 0, 8 and 15 pixels, covers every tile it can touch, because no two neighbouring points are more than one tile apart.
 
 ```asm
-row_lo:    .byte <(map_data + 0*40), <(map_data + 1*40), ..., <(map_data + 24*40)
-row_hi:    .byte >(map_data + 0*40), >(map_data + 1*40), ..., >(map_data + 24*40)
+edge_offsets:
+        .byte 0, 8, 15
 
-get_tile:
-    ldy tile_y
-    lda row_lo,y
-    sta ptr
-    lda row_hi,y
-    sta ptr+1
-    ldy tile_x
-    lda (ptr),y
-    rts
+; Is any point (check_x, player_y + 0, 8 or 15) solid?
+; Carry set if so. Uses A, X and Y.
+test_column:
+        ldx #2
+@loop:  lda player_y
+        clc
+        adc edge_offsets,x
+        sta check_y
+        jsr get_tile_at_point
+        cmp #TILE_SOLID
+        beq @hit
+        dex
+        bpl @loop
+        clc
+        rts
+@hit:   sec
+        rts
 ```
 
-## Collision points
+## Walls
 
-Check multiple points around the player:
-
-```
-Player hitbox (16×16):
-    +--+--+
-    |TL  TR|   TL = top-left
-    |      |   TR = top-right
-    |BL  BR|   BL = bottom-left
-    +--+--+    BR = bottom-right
-```
-
-### Horizontal movement
+Move the player first, then test the edge that is leading. If it has gone into a solid tile, push the player back to the tile boundary. Because the player is 16 pixels wide, a multiple of the tile size, clearing the bottom three bits of X lines its right-hand edge up with the last pixel before the wall. These routines assume a speed of under 8 pixels a frame, so a move can never jump right over a tile.
 
 ```asm
-check_horizontal:
-    ; Moving right? Check TR and BR
-    lda velocity_x
-    bmi .check_left
-    beq .no_collision
+; Call after adding velocity_x to player_x.
+check_walls:
+        lda velocity_x
+        bmi check_left
+        beq done
+        lda player_x    ; moving right: test the right-hand edge
+        clc
+        adc #15
+        sta check_x
+        jsr test_column
+        bcc done
+        lda player_x    ; back to the boundary
+        and #$f8
+        sta player_x
+        lda #0
+        sta velocity_x
+done:   rts
 
-    ; Check right edge
-    lda player_x
-    clc
-    adc #15             ; player width - 1
-    sta check_x
-
-    ; Check top-right
-    lda player_y
-    sta check_y
-    jsr get_tile_at_point
-    cmp #TILE_SOLID
-    beq .collision
-
-    ; Check bottom-right
-    lda player_y
-    clc
-    adc #15
-    sta check_y
-    jsr get_tile_at_point
-    cmp #TILE_SOLID
-    beq .collision
-
-.no_collision:
-    rts
-
-.check_left:
-    ; Similar for left edge
-    ...
-
-.collision:
-    ; Align to tile boundary
-    lda player_x
-    and #$f8            ; snap to 8-pixel grid
-    sta player_x
-    lda #0
-    sta velocity_x
-    rts
+check_left:
+        lda player_x    ; moving left: test the left-hand edge
+        sta check_x
+        jsr test_column
+        bcc done
+        lda player_x    ; forward to the first pixel of the next tile
+        and #$f8
+        clc
+        adc #8
+        sta player_x
+        lda #0
+        sta velocity_x
+        rts
 ```
 
-### Vertical movement (falling)
+## Floors and one-way platforms
+
+The floor test looks one pixel below the feet, at `player_y + 16`, across the same three points. A ledge that holds only from above needs one more fact: where the player was before this frame's move. If the feet were already below the top of the platform, the player is jumping up through it and should pass.
 
 ```asm
-check_falling:
-    ; Check below player
-    lda player_y
-    clc
-    adc #16             ; just below feet
-    sta check_y
+; Call after adding velocity_y to player_y; old_y is player_y before the move.
+check_floor:
+        lda velocity_y
+        bmi in_air      ; going up: no floor
+        lda player_y
+        clc
+        adc #16         ; the row just below the feet
+        sta check_y
+        jsr test_row
+        bcc in_air
+        lda player_y    ; stand on top of the tile
+        and #$f8
+        sta player_y
+        lda #0
+        sta velocity_y
+        sta is_falling
+        rts
+in_air: lda #1
+        sta is_falling
+        rts
 
-    ; Check both feet positions
-    lda player_x
-    sta check_x
-    jsr get_tile_at_point
-    cmp #TILE_SOLID
-    beq .on_ground
+; Is any point (player_x + 0, 8 or 15, check_y) a floor? Carry set if so.
+test_row:
+        ldx #2
+@loop:  lda player_x
+        clc
+        adc edge_offsets,x
+        sta check_x
+        jsr get_tile_at_point
+        cmp #TILE_SOLID
+        beq @hit
+        cmp #TILE_PLATFORM
+        bne @next
+        jsr platform_holds
+        bcs @hit
+@next:  dex
+        bpl @loop
+        clc
+        rts
+@hit:   sec
+        rts
 
-    lda player_x
-    clc
-    adc #15
-    sta check_x
-    jsr get_tile_at_point
-    cmp #TILE_SOLID
-    beq .on_ground
-
-    ; Not on ground - apply gravity
-    lda #1
-    sta is_falling
-    rts
-
-.on_ground:
-    lda #0
-    sta is_falling
-    sta velocity_y
-    ; Snap to tile top
-    lda player_y
-    clc
-    adc #8
-    and #$f8
-    sta player_y
-    rts
+; A platform holds if the feet were at or above its top before the move.
+platform_holds:
+        lda check_y
+        and #$f8        ; the platform's top pixel row
+        sec
+        sbc old_y
+        bcc @pass       ; the head was already below it
+        cmp #16         ; carry set if the feet were above the top
+        rts
+@pass:  clc
+        rts
 ```
 
-## Tile types
-
-```asm
-TILE_EMPTY    = 0       ; passable
-TILE_SOLID    = 1       ; blocked all sides
-TILE_PLATFORM = 2       ; solid from above only
-TILE_LADDER   = 3       ; climbable
-TILE_HAZARD   = 4       ; damages player
-TILE_WATER    = 5       ; swimmable
-```
-
-### Platform tiles (one-way)
-
-```asm
-check_platform:
-    ; Only solid when falling down onto it
-    lda velocity_y
-    bmi .not_solid      ; moving up, pass through
-
-    ; Check if feet are above platform
-    lda player_y
-    clc
-    adc #15             ; feet position
-    and #$07            ; position within tile
-    cmp #2              ; near top of tile?
-    bcs .not_solid      ; too far in, let them pass
-
-    ; Treat as solid
-    ...
-
-.not_solid:
-    rts
-```
+Snapping `player_y` down to a multiple of 8 works for the same reason as the walls: the player is two tiles tall, so the feet then sit on the last pixel row above the tile that holds them.
 
 ## Slopes
 
-More complex but achievable:
+A slope tile carries a height for each of its eight pixel columns: how far down from the top of the tile the surface lies. Test the column under the middle of the player, and if the feet have sunk below the surface, lift them onto it.
 
 ```asm
-; Slope tile contains height map
-; Each column of the tile has different height
+slope_up:
+        .byte 7, 6, 5, 4, 3, 2, 1, 0    ; rises to the right
 
-slope_heights:
-    .byte 7, 6, 5, 4, 3, 2, 1, 0   ; upward slope
-
-check_slope:
-    ; Get X position within tile
-    lda player_x
-    and #$07
-    tax
-    lda slope_heights,x
-
-    ; Compare to player Y within tile
-    lda player_y
-    and #$07
-    cmp slope_heights,x
-    bcc .above_slope
-    ; On or below slope surface
-    ...
+; check_x = player_x + 8 (the middle), check_y = player_y + 15 (the feet),
+; and get_tile_at_point has said the tile there is this slope.
+on_slope:
+        lda check_x
+        and #7
+        tax             ; pixel column within the tile
+        lda check_y
+        and #$f8        ; the tile's top row
+        clc
+        adc slope_up,x  ; the surface in this column
+        sec
+        sbc #15         ; the player_y that puts the feet there
+        cmp player_y
+        bcs @done       ; feet on or above the surface
+        sta player_y
+@done:  rts
 ```
 
-## Optimisation
+## Doing less work
 
-### Coarse-fine check
+Most frames a player moves a pixel or two and touches no new tiles. Only the leading edge can enter a new one, so a game can compare that edge's tile column before and after the move and skip the lookups when it has not changed. Comparing the player's top-left tile is not enough: the left edge can stay in one tile while the right edge crosses into the next.
 
-First check if player moved to a new tile:
+## The C64 in practice: screen or world?
 
-```asm
-    lda player_tile_x
-    cmp last_tile_x
-    bne .check_needed
-    lda player_tile_y
-    cmp last_tile_y
-    beq .skip_check     ; same tile, no collision possible
+Reading the screen is fast, but it only knows what is on screen. Lasse Öörni, who writes C64 games as Cadaver, wrote about the consequences in an article on scrolling game worlds. He credits some of what he knew to Jukka Tapanimäki's Finnish book *C-64 Pelintekijän Opas* ("C-64 Game Maker's Guide"). He points to the "walker" enemies in *[Turrican](/vault/games/turrican)*, which "sometimes behave very erratically" near the edges of the screen. In his reading they check "only the characters on screen for background collisions", and when a check falls outside the screen the routine "probably has a hardcoded response of either 'obstacle' or 'free space'": "fast, but honestly, incorrect". For serious scrolling games he recommends world coordinates for every object and checking the map and block data instead.
 
-.check_needed:
-    jsr full_collision_check
-.skip_check:
-```
+His own games show the trade-off. *Metal Warrior* 1 and 2 measured positions in pixels from the top-left of the map, as 16-bit values; "the background collisions were slow and complicated and there was a complete lack of subpixel accuracy, making all accelerating movement look rough". *Metal Warrior 3* and *BOFH* changed the coordinates themselves. The high byte became the position in blocks of 4×4 characters, the low byte the position within the block. A block is 32 pixels wide, which leaves three spare bits of the low byte for movement finer than a pixel, and "background collision checking becomes very fast & easy to do, because the map position is directly the coordinate highbyte". The cost moved elsewhere: drawing sprites and testing sprite against sprite now needed some bit shifts to throw the extra precision away.
 
-### Tile attribute table
+<Sources>
 
-Separate collision data from visual tiles:
+- "Detecting things on screen", *INPUT* (Marshall Cavendish), Vol. 2 No. 21, pp. 656–659: why coordinate tests are slow; `ATTR` on the Spectrum, `PEEK` of colour memory on the Commodore 64 and Vic 20, `POINT` and `PPOINT` on Acorn, Dragon and Tandy machines; the Spectrum bouncing-ball program testing `ATTR` against 48.
+- *Commodore 64 Programmer's Reference Guide* (Commodore Business Machines), p. 144: "Sprite to data collisions", register 53279 (`$D01F`), bits held until read, multicolour 01 "considered transparent for collisions".
+- Achim, "Simple Software to Background collision", Codebase64 wiki (web, secondary): the `$18` and `$32` offsets, the row table, "the top left screen position of the sprite", column +1, +2, +40 and +80. https://codebase64.net/doku.php?id=base:simple_software_sprite_to_background_collision
+- Lasse Öörni (Cadaver), "Multidirectional scrolling and the 'game world'" (Rant 4), Codebase64 wiki (web, secondary): the credit to Tapanimäki's book; section 3 on *Turrican*'s walkers, world coordinates, *Metal Warrior* 1 and 2, and the block-and-subpixel coordinates of *Metal Warrior 3* and *BOFH*. https://codebase64.net/doku.php?id=base:rant4
 
-```asm
-; Visual map uses tiles 0-255 for graphics
-; Collision map uses simplified types
-visual_map:   .res 1000
-collision_map: .res 1000   ; parallel array
-```
-
-## On the Commodore 64
-
-The VIC-II offers a shortcut. Commodore's Programmer's Reference Guide documents a sprite-to-data collision register at `$D01F`: a bit per sprite, set when the sprite's pixels overlap any background pixel, and held until read. The guide's advice for using it is a tile-design rule — in multicolour mode "data 01 is considered transparent for collisions", so "it is a good idea to make everything that should not cause a collision 01". The register says *that* a sprite touched something, not *what* or *where*, which is why platformers read the map instead.
-
-The map-reading version on the C64 is character arithmetic. Achim's Codebase64 routine converts a sprite's coordinates into a screen cell: subtract the visible area's origin (`$18` in X, `$32` in Y), shift right three times to divide by 8, look up the screen row's address from a table, and read the character code at that column. Neighbouring cells are the same column plus 1, 2, 40 or 80.
-
-Cadaver (Lasse Öörni) explains why a scrolling game should check the map rather than the screen. His "Rant 4", which credits Jukka Tapanimäki's *C-64 Pelintekijän Opas* ("C-64 Game Maker's Guide"), describes the SEUCK-style map-and-block system — he prefers 4×4-character blocks, a power of two "for easy calculations" — and points at *Turrican*'s walkers, which misbehave at the screen edge because they check "only the characters on screen for background collisions". His *Metal Warrior 1* and *2* stored world coordinates as 16-bit pixel positions and paid for it with slow collision checks and no subpixel movement. *Metal Warrior 3* and *BOFH* instead keep the block number in the high byte and the position within the 32-pixel block in the low byte, so "the map position is directly the coordinate highbyte" and the low byte's spare three bits are subpixel precision.
+</Sources>
 
 ## See also
 
+- [Tile Maps](/vault/techniques/tile-maps): the grid the lookups read
+- [Tile-Based Graphics](/vault/techniques/tile-graphics)
+- [Screen Memory](/vault/techniques/screen-memory)
 - [Fixed-Point Maths](/vault/techniques/fixed-point-math)
 - [State Machine](/vault/techniques/state-machine)
-- [Screen Memory](/vault/techniques/screen-memory)
