@@ -1,121 +1,135 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Palette Cycling"
-subtitle: "Animation without redraw"
-summary: "Palette cycling created animation effects by rotating colour values rather than redrawing graphics, enabling flowing water, glowing effects, and pulsing lights without CPU overhead."
+subtitle: "Animation by changing colours, not pixels"
+summary: "On machines whose pixels store a colour number rather than a colour, a program can animate a picture by rotating the colours held in a range of palette registers. Waterfalls flow and lights pulse while the bitmap stays untouched. Deluxe Paint offered it on the Amiga from 1985, the Boing Ball spun by it, and VGA programmers used the same idea; on the Commodore 64, with its fixed colours, the nearest equivalent was changing the shared colour registers."
 category: "techniques"
-platforms: ['commodore-amiga', 'ibm-pc', 'commodore-64', 'atari-st']
+platforms: ['commodore-amiga', 'atari-st', 'ibm-pc', 'commodore-64']
 tags: ['graphics', 'animation', 'technique']
-sources:
-  c64_indirect_registers:
-    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
-      kind: book
-      page: "116-117"
-      note: "Multicolour character mode bit pairs: \"00 Background #0 color (screen color) 53281 ($D021) / 01 Background #1 color 53282 ($D022) / 10 Background #2 color 53283 ($D023) / 11 Color specified by the lower 3 bits in color memory\" — \"You're not really putting color codes in the space for character color, you're actually using references to the registers associated with those colors. This conserves memory, since 2 bits can be used to pick 16 colors (background) or 8 colors (character). This also makes some neat tricks possible. Simply changing one of the indirect registers will change every dot drawn in that color. Therefore everything drawn in the screen and background colors can be changed on the whole screen instantly. Here is an example of changing background color register #1\" — the example loops \"170 X=INT(RND(1)*16) / 180 POKE 53282,X / 190 GOTO 160\""
-    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
-      kind: book
-      page: "119-120"
-      note: "\"Extended background color mode gives you control over the background color of each individual character, as well as over the foreground color.\" — \"There are 4 registers available for extended background color mode. Each of the registers can be set to any of the 16 colors.\" — character code ranges 0-63, 64-127, 128-191 and 192-255 select background registers 53281 ($D021) to 53284 ($D024); \"only the first 64 characters in the character ROM (or the first 64 characters in your programmable character set) can be used\""
-    - title: "Codebase64 — Colour Flashing Notewriter Style, by Richard Bayliss"
-      kind: database
-      note: "Community wiki page. \"Have you saw programs like Face Noter, Octanoter, etc. All those programs use a special extra colour mode, to activate char flashing.\" Source listing: \"lda #$5b / sta $d011 ;Swich on EBC mode\" and a raster-interrupt routine \"flash\" that loads \"colour1,x\", \"colour2,x\", \"colour3,x\" into \"$d022 ;EBC Multicolour 1\", \"$d023 ;EBC Multicolour 2\", \"$d024 ;EBC Multicolour 3\" and steps X through a 40-entry table"
-  c64_period_uses:
-    - ref: magazines/computes-gazette
-      kind: magazine
-      issue: "Volume 7, Number 10 (October 1989)"
-      date: "1989-10"
-      page: "56"
-      note: "The Programmer's Page, edited by Randy Thompson; tip \"Printing with Style\" by Jacques Bingham, DeSoto, MO. A BASIC loader whose DATA lines install an interrupt routine that stores a table of colour values into colour RAM (\"157,0,216\" = STA $D800,X and the following pages) from two DATA lines of 32 colour codes. \"You can shorten the program if you take out the color cycling. To do this, delete lines 20, 30, and 90-160. This also makes it work on the 128, since only the color-cycling portion is 64-specific.\""
-    - ref: magazines/computes-gazette
-      kind: advertisement
-      issue: "Volume 4, Number 42 (December 1986)"
-      date: "1986-12"
-      page: "71-72"
-      note: "Activision advertisement: \"Picture this. Paintworks, the easy-to-use, complete graphics editor and paint program, Lets you design cards, stationery, newsletters, musical slideshows, or just plain doodle. Features color cycling for animation effects, 3 work screens, multiple brushes and instant color blending to bring out the artist in you.\""
 ---
+import Sources from '@components/Sources.astro';
 
-Change the palette, not the pixels. Palette cycling animated graphics by shifting colour indices through different values—what was blue becomes green becomes yellow becomes red, cycling endlessly. Water appeared to flow, lights seemed to pulse, and fire flickered, all without redrawing a single pixel.
+In the first *Deluxe Paint* for the Amiga, Electronic Arts included a picture of a waterfall. Nothing in it was redrawn, yet *AmigaWorld*'s reviewer reported in 1986 that "the water appears to be flowing". The trick was palette cycling, also called colour cycling. The picture's pixels did not hold colours: each held a number that pointed into a small table of colour registers. Paint the water with a run of neighbouring register numbers, then shift the colours along those registers once a frame, and the bands of colour appear to move down the cliff while the bitmap does not change at all.
 
-## The principle
+The technique is cheap, but not free. A program still has to write a handful of registers every frame, and the artist has to plan the picture around it: every register given over to the waterfall is a colour the rest of the picture cannot use.
 
-| Step | Process |
-|------|---------|
-| 1 | Design image with gradient colours |
-| 2 | Assign sequential palette indices |
-| 3 | Each frame, shift palette values |
-| 4 | Pixels appear to move |
+## How it works
 
-## Common effects
+Palette cycling needs indexed colour. On the Amiga, the Atari ST and the VGA card in a PC, a pixel's value is an index into a colour table, and the table holds the actual red, green and blue values. Change one entry in the table and every pixel that uses it changes on the next frame.
 
-| Effect | Implementation |
-|--------|----------------|
-| Flowing water | Blue gradients cycling |
-| Fire/lava | Orange/red palette rotation |
-| Glowing lights | Brightness cycling |
-| Neon signs | Colour pulsing |
-| Waterfalls | Vertical flow illusion |
+To animate, the artist draws the moving part with a sequence of registers, say 1 to 7, painted in order along the direction of movement, and fills those registers with a gradient. Each frame the program rotates the values: register 1 takes register 2's colour, 2 takes 3's, and so on, with the colour that falls off the end going back to the start. André LaMothe's *Black Art of 3D Game Programming* (1995) gives the same recipe for a waterfall drawn in VGA registers 10, 11 and 12:
 
-## Technical advantages
-
-| Benefit | Explanation |
-|---------|-------------|
-| Zero CPU redraw | Only palette changes |
-| Tiny memory | No frame storage |
-| Smooth animation | Limited only by refresh rate |
-| Multiple effects | Different palette ranges |
-
-## Platform implementations
-
-### Amiga
-
-The Copper could change the palette per scanline. Colour registers live at `$DFF180-$DFF1BE` (32 entries × one word each). Cycling means writing the same range each frame with the values rotated by one slot:
-
-```m68k
-; Rotate colours 1-7 for a "flowing" effect
-; (palette[1] becomes palette[2], palette[2] becomes palette[3], etc.)
-            move.w  $dff182,d0          ; Save palette[1]
-            move.w  $dff184,$dff182     ; palette[1] <- palette[2]
-            move.w  $dff186,$dff184     ; palette[2] <- palette[3]
-            ; ... etc through palette[7] ...
-            move.w  d0,$dff18e          ; palette[7] <- saved
+```text
+temp = color register 10
+color register 10 = color register 11
+color register 11 = color register 12
+color register 12 = temp
 ```
 
-The Copper can additionally swap palettes mid-frame for per-scanline cycling (e.g. waterfall sprite columns where each row uses a different rotated palette).
+The speed of the animation is the number of frames between rotations. LaMothe's example program applied the same idea to a picture of a road, rotating the colours of the road surface and the roadside markers so that the road looked as if it was moving, and he pointed out that changing the rotation rate would change the apparent speed.
 
-### PC (VGA)
+## Amiga
 
-DAC register manipulation:
-- 256-colour palette
-- Direct register writes
-- Smooth transitions
+The original Amiga chipset has 32 colour registers, COLOR00 to COLOR31, at `$DFF180` to `$DFF1BE`. Each holds 12 bits, four each for red, green and blue, so each register can be any of 4,096 colours. The *Amiga Hardware Reference Manual* adds a warning that matters for cycling: "The color registers are write-only. Only by looking at the screen can you find out the contents of each color register." Its advice is to keep a copy of the colours in RAM and update the copy whenever you write a register. A cycling routine therefore rotates its own table and copies the result to the hardware; it cannot read the registers back.
 
-### C64
+```m68k
+; Rotate colours 1-7 once a frame.
+; The colour registers are write-only, so the palette lives in a RAM
+; table: rotate the table, then copy it to COLOR01-COLOR07.
+CUSTOM  equ     $dff000
+VPOSR   equ     $004
+COLOR01 equ     $182
 
-The C64 has no programmable palette — its sixteen colours are fixed — but in multicolour and extended-background-colour modes most pixels are not coloured directly. Commodore's Programmer's Reference Guide explains that a multicolour character's bit pairs 00, 01 and 10 are "references to the registers associated with those colors" at `$D021`–`$D023`, and points out the consequence: "Simply changing one of the indirect registers will change every dot drawn in that color. Therefore everything drawn in the screen and background colors can be changed on the whole screen instantly." The guide's own demonstration POKEs a random value into 53282 in a loop. Extended background colour mode adds a fourth register, `$D024`, chosen per character by the top two bits of its screen code, at the price of only 64 usable characters.
+start:
+        lea     CUSTOM,a5
+        move.w  #299,d7             ; run for 300 frames, then exit
+frame:
+.wait:  move.l  VPOSR(a5),d0        ; wait for raster line 300
+        and.l   #$1ff00,d0
+        cmp.l   #300<<8,d0
+        bne.s   .wait
+.leave: move.l  VPOSR(a5),d0        ; and for it to pass, so we run once a frame
+        and.l   #$1ff00,d0
+        cmp.l   #300<<8,d0
+        beq.s   .leave
 
-That is the mechanism behind the "flashing" text of demo-scene notewriters such as *Face Noter* and *Octanoter*: Richard Bayliss's Codebase64 example switches on extended colour mode and, on each raster interrupt, loads the next entries of three 40-byte tables into `$D022`, `$D023` and `$D024`. Cycling the fourth colour source, colour RAM, means rewriting it, and period BASIC programmers did that too — a 1989 *COMPUTE!'s Gazette* reader tip by Jacques Bingham installs an interrupt that walks a 32-entry table of colour codes through colour RAM behind a title message. Activision's *Paintworks* advertised "color cycling for animation effects" as a feature of a C64 paint program in 1986.
+        lea     palette(pc),a0      ; rotate the RAM copy by one entry
+        move.w  (a0),d0             ; save entry 1
+        moveq   #5,d1               ; shift entries 2-7 down one place
+.rot:   move.w  2(a0),(a0)+
+        dbf     d1,.rot
+        move.w  d0,(a0)             ; old entry 1 becomes entry 7
 
-## Limitations
+        lea     palette(pc),a0      ; write the table to the hardware
+        lea     COLOR01(a5),a1
+        moveq   #6,d1
+.copy:  move.w  (a0)+,(a1)+
+        dbf     d1,.copy
 
-| Constraint | Impact |
-|------------|--------|
-| Fixed design | Must plan for cycling |
-| Colour usage | Dedicates palette entries |
-| Art constraints | Limits general colour use |
-| Directional only | Can't change shape |
+        dbf     d7,frame
+        moveq   #0,d0
+        rts
 
-## Famous examples
+palette:
+        dc.w    $001,$002,$003,$004,$005,$006,$007
+```
 
-| Game | Effect |
-|------|--------|
-| Monkey Island | Ocean waves |
-| King's Quest | Waterfalls |
-| Deluxe Paint | Animation tool |
-| SimCity | Water features |
+The routine waits for a raster line below the visible picture before it writes, so the colours never change halfway down the screen. Run on an emulated Amiga 500, it writes COLOR01 to COLOR07 once a frame, and the seven values move along the registers by one place each time, returning to where they started every seven frames.
+
+The Copper, the Amiga's display coprocessor, can also write colour registers at chosen lines down the screen. That makes a different effect, changing a colour line by line for sky and ground gradients, and a program can combine the two by cycling the values the Copper list writes.
+
+The Amiga's most famous early demonstration used the technique. The spinning of the [Boing Ball](/vault/culture/boing-ball), shown at the Consumer Electronics Show in 1984, was colour cycling: each red or white check was drawn as narrow slices in different colour registers, and the program moved red and white along the registers every frame, so the checks seemed to turn while the ball's pixels never changed. *[Deluxe Paint](/vault/software/deluxe-paint)* offered colour cycling to artists from its first version in 1985, and Electronic Arts listed it among the program's features in its 1986 advertisements (see the [Dan Silva](/vault/people/dan-silva) entry).
+
+## Atari ST
+
+The Atari ST holds its 16-colour palette in registers at `$FF8240` to `$FF825E`. In February 1987 *Atari ST User* explained the effect to its readers: change a palette value "and all the corresponding pixels on the screen will also change automatically. This effect is called colour cycling and leads to such effects as the famous boink bouncing ball and the Neochrome waterfall demonstrations." *NEOchrome*, an early ST paint program, was known for its cycling waterfall.
+
+## PC and VGA
+
+The VGA card's 256 colour registers are reached through I/O ports. A program writes the number of the register it wants to change to port `0x3C8`, then writes the red, green and blue values to port `0x3C9`, one byte after another; a counter inside the card decides which component each byte sets. Each component is only 6 bits wide, 0 to 63. LaMothe noted the catch: with one data port and three components, "we can't select one component of the color register … and write specifically to it. We must write to all three."
+
+## Commodore 64
+
+The Commodore 64 has no programmable palette. Its sixteen colours are fixed, so true palette cycling is impossible. What it does have is a set of shared colour registers. In multicolour character mode, Commodore's *Programmer's Reference Guide* explains, the bit pairs 00, 01 and 10 in a character are "references to the registers associated with those colors" at `$D021` to `$D023`, and it draws the conclusion: "Simply changing one of the indirect registers will change every dot drawn in that color. Therefore everything drawn in the screen and background colors can be changed on the whole screen instantly." The guide's own example POKEs a random colour into 53282 (`$D022`) in a loop. Extended background colour mode adds a fourth register, `$D024`, chosen for each character by the top two bits of its screen code, at the price of using only 64 different characters.
+
+Changing those registers in turn on every frame gives the flashing, colour-washed text familiar from C64 scene programs. A Codebase64 article, written about the "char flashing" in notewriters such as *Face Noter*, switches on extended background colour mode and, from a raster interrupt, writes values from three tables of colours into `$D022`, `$D023` and `$D024`. Text drawn in ordinary character colours has to be cycled the slow way, by rewriting colour RAM. A 1989 *COMPUTE!'s Gazette* reader's tip by Jacques Bingham did exactly that, installing an interrupt that walked a 32-entry table of colour codes through colour RAM behind a title. Paint programs advertised the effect too: in 1986 Activision's *Paintworks* promised "color cycling for animation effects".
+
+## In games
+
+Games used cycling for water, fire and lights. *ST Format*'s review of *[The Secret of Monkey Island](/vault/games/monkey-island)* in June 1991 found the cost even so: "when there is a lot of colour cycling on-screen — next to a waterfall for instance — you do tend to slow down to more of a leisurely stroll." *Amiga Computing* singled out "a good example of colour cycling in a fairly neat waterfall" in the 1990 Amiga version of *Toobin'*, though it found the rest of the graphics small and slow. Mark Ferrari, one of the artists who painted *Monkey Island*'s backgrounds, has an entry of his own.
+
+## Limits
+
+- **Planning.** The picture has to be drawn for cycling from the start, with the moving parts painted in ordered runs of registers.
+- **Colours.** Every register in a cycle is a colour the rest of the picture cannot use. On a 16- or 32-colour screen that is a real cost.
+- **Movement, not shape.** Cycling can only move colour along paths already drawn. Nothing changes outline or position.
+- **Machines without palettes.** Where colours are fixed, as on the C64, the effect is limited to the shared colour registers, or needs the slower route of rewriting colour memory.
+
+<Sources>
+
+- *Amiga Hardware Reference Manual*, third edition (Commodore-Amiga / Addison-Wesley, 1991), chapter 3, "Playfield Hardware", pp. 45–46 (the colour table, 12-bit colour registers, "The color registers are write-only", the advice to keep a RAM copy) and p. 91; appendix A, pp. 291–292 (COLOR00–COLOR31 at `$180`–`$1BE`, write-only).
+- The Amiga routine above was assembled with vasm (Motorola syntax, Amiga hunk executable) and run from a floppy image on an emulated Amiga 500 (OCS, PAL) in Emu198x; the emulator's log of colour register writes showed COLOR04–COLOR07 written once a frame, 1,200 writes in 300 frames, each value moving one register per frame.
+- André LaMothe, *Black Art of 3D Game Programming* (Waite Group Press, 1995), chapter 3, pp. 77–79 (VGA colour registers, ports `0x3C8` and `0x3C9`, 6-bit components) and chapter 4, pp. 194–197 (colour rotation, the waterfall example and the road demonstration).
+- *Atari ST Internals* (Abacus Software, 1986): colour palette registers at `$FF8240`–`$FF825E`.
+- *Atari ST User*, February 1987: colour cycling, the bouncing ball and the *NEOchrome* waterfall.
+- Abigail Reifsnyder, review of *Deluxe Paint*, *AmigaWorld* vol. 2 no. 2, March/April 1986, pp. 72–77: the colour-cycled waterfall (see the [Deluxe Paint](/vault/software/deluxe-paint) entry).
+- Jimmy Maher, *The Future Was Here: The Commodore Amiga* (MIT Press, 2012), chapter 2: the Boing Ball's colour cycling (see the [Boing Ball](/vault/culture/boing-ball) entry).
+- *Commodore 64 Programmer's Reference Guide* (Commodore Business Machines and Howard W. Sams, 1982), pp. 116–117 (multicolour mode and the indirect colour registers) and pp. 119–120 (extended background colour mode).
+- Richard Bayliss, "Colour Flashing Notewriter Style", Codebase64 wiki (web, secondary). https://codebase64.net/doku.php?id=base:colour_flashing_notewriter_style
+- *COMPUTE!'s Gazette* vol. 7 no. 10, October 1989, p. 56: "Printing with Style" by Jacques Bingham, The Programmer's Page.
+- *COMPUTE!'s Gazette* vol. 4 no. 42 (December 1986), pp. 71–72: Activision *Paintworks* advertisement.
+- *ST Format* issue 23, June 1991, p. 52: *The Secret of Monkey Island* review.
+- *Amiga Computing* vol. 2 no. 9, February 1990, p. 25: *Toobin'* review.
+
+</Sources>
 
 ## See also
 
+- [Deluxe Paint](/vault/software/deluxe-paint)
+- [Boing Ball](/vault/culture/boing-ball)
+- [Mark Ferrari](/vault/people/mark-ferrari)
 - [Amiga Chipset](/vault/hardware/amiga-chipset)
 - [Copper](/vault/hardware/copper)
+- [VIC-II](/vault/hardware/vic-ii)
 - [Dithering](/vault/techniques/dithering)
