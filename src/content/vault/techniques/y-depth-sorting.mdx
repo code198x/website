@@ -1,128 +1,129 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Y-Depth Sorting"
-subtitle: "Sprite ordering by position"
-summary: "The technique of sorting sprites by their Y position to create correct depth ordering in top-down and isometric games, essential for beat 'em ups and action RPGs."
+subtitle: "Drawing whatever stands lowest on the screen last"
+summary: "In a beat 'em up or a top-down game, an object lower on the screen is nearer the viewer, so a program can decide what hides what by sorting its objects on their screen Y position and drawing the nearest last. Software sprites only need the drawing order; hardware sprites have fixed priorities, by sprite number on the C64 and NES and by a linked list on the Mega Drive, so the sort decides which object goes in which slot. The Amiga's own animation system sorted its Bobs this way by default."
 category: "techniques"
-platforms: ['cross-platform']
-tags: ['sprites', 'rendering', 'sorting', 'beat-em-up', 'isometric']
-originated: 1984
+platforms: ['commodore-64', 'nintendo-entertainment-system', 'commodore-amiga', 'sega-mega-drive', 'sinclair-zx-spectrum', 'arcade']
+tags: ['sprites', 'rendering', 'sorting', 'beat-em-up', 'priority']
 ---
+import Sources from '@components/Sources.astro';
 
-**Y-depth sorting** is the technique of ordering sprites by their vertical position so objects lower on screen appear in front of objects higher on screen. This creates correct visual layering in top-down and isometric games where "lower on screen = closer to camera." It's the simplest depth-sorting method that works — older than the formal painter's algorithm (1972) in arcade game form, made standard practice by *Marble Madness*, *Knight Lore*, and the early beat-em-up genre.
+Picture a street in a side-on beat 'em up. The pavement runs up the screen into the distance, so a thug standing near the top is further away than one at the bottom. When the two overlap, the nearer one, the one lower on the screen, should hide the other. Get that wrong and a character who walks behind a barrel appears to stand on top of it. The cheapest rule that gets it right is to sort the objects by their Y position on the screen and draw them from the top down, so that each new object covers the ones behind it.
 
-## Fast facts
+Commodore built exactly that rule into the Amiga's animation system, which draws software sprites called [Bobs](/vault/techniques/bob-graphics) with the blitter. Its manual explains that if the program does not set any priorities, "Bobs that are higher on the display will appear behind the lower ones, and Bobs that are more to the left on the display will appear behind Bobs on the right", and warns that "as Bobs are moved about the display, their priorities will change."
 
-| Aspect | Detail |
-|--------|--------|
-| **Also called** | Painter's algorithm (2D), Y-sorting, depth-sorting |
-| **Problem solved** | Correct sprite-overlap ordering when sprites can overlap |
-| **Key genres** | Beat-em-ups, action RPGs, isometric, top-down adventure |
-| **Modern equivalent** | Z-sorting, depth buffer, transparent-sort layer in modern engines |
+## Sorting on the feet
 
-## The core principle
+The key is where an object touches the ground, not where its picture starts. The Amiga system sorts on each object's x and y position, and that position is the upper left corner of its image. Two characters standing side by side have their feet on the same line, but if one is taller, its corner is higher, so it is drawn first and ends up behind. That is why the manual also gives each Bob a pair of pointers, Before and After, to set the drawing order by hand, and recommends using them for objects built from several Bobs, because otherwise "you may have an object drawn with half of its Bobs in front of another object!" A game that sorts on its own usually keeps a separate value for each object's foot position and sorts on that.
 
-In top-down or 3/4 perspective, the screen-Y axis maps directly to camera-distance:
+The same idea answers the awkward cases:
 
-| Screen Y | Depth interpretation |
-|----------|----------------------|
-| Higher Y (top of screen) | Further from camera |
-| Lower Y (bottom of screen) | Closer to camera |
+| Situation | Usual answer |
+|---|---|
+| Two objects on the same line | Keep last frame's order (a stable sort), so they do not swap and flicker back and forth |
+| A character jumping | Sort on the ground position under them, or their shadow, not the raised picture |
+| Something flying | Draw it on top of everything, or sort on its shadow |
+| An object much wider or deeper than a person | Split it into pieces, or compare objects in pairs as *Knight Lore* did |
 
-Objects closer to the camera should draw *last* (so they overlap things further away). Sort sprites by Y ascending, then draw in that order. The object lowest on screen draws on top.
+The last row is where Y sorting stops working. One number cannot say whether a long wall is in front of a character who stands beside one end of it. Ultimate's [Filmation](/vault/tools/filmation-engine) engine compared objects two at a time on all three axes instead (see [isometric projection](/vault/techniques/isometric-projection)).
 
-## Sorting approaches
+## Drawing order: software sprites
 
-| Method | Time complexity | Best for |
-|--------|------------------|----------|
-| **Bubble sort** | O(n²) worst, O(n) best | Few sprites, nearly-sorted (last frame's order) |
-| **Insertion sort** | O(n²) worst, O(n) best | Nearly-sorted — most frames don't reorder much |
-| **Bucket sort** | O(n + k) | Fixed Y precision (e.g. one bucket per scanline) |
-| **Radix sort** | O(n × digits) | Many sprites, fixed-width Y values |
+On a machine that draws its moving objects into screen memory, such as the ZX Spectrum, the drawing order is the priority. Drawing from back to front so that nearer things paint over further ones is what graphics textbooks call the painter's algorithm, after a painter who does the background first and the foreground last. Each object has to be drawn with a mask so that the ones behind show through its gaps (see [sprites](/vault/techniques/sprites)).
 
-**Insertion sort wins in practice for game sprites** — most frames have only a few objects swap order, so insertion sort runs near O(n).
+The sort does not have to be exact. Dean Belfield's open-source Spectrum library, written in 2020, files each masked sprite by the top four bits of its Y coordinate, so by the 16-line band of the screen it is in, and then draws the bands from the top down. Sprites in different bands come out in the right order, and the routine never compares one sprite with another.
 
-## Implementation considerations
+## Priority slots: hardware sprites
 
-| Factor | Impact |
-|--------|--------|
-| **Sort key** | Usually the sprite's *foot* Y position (where it touches the ground), not the sprite's centre or top |
-| **Tie-breaking** | When two sprites share the same Y, use X position or object ID for stable ordering |
-| **Frequency** | Every frame — positions change every frame |
-| **Stability** | Stable sort prevents flicker when sprites have identical Y |
+Hardware sprites do not have a drawing order the program controls frame by frame. The video chip decides which sprite wins where two overlap, and on most machines it decides by number:
 
-## Platform-specific challenges
+- **Commodore 64.** The *Programmer's Reference Guide* gives the rule as "first come, first served": "sprite 0 will appear to be IN FRONT OF sprite 1", and sprite 7 is behind all the others.
+- **TMS9918** (the MSX and ColecoVision chip). Texas Instruments numbers its 32 sprite planes so that 0 is "the highest priority or outermost".
+- **NES.** "Priority between sprites is determined by their address inside OAM", the sprite memory, so the sprite listed first is in front.
+- **Game Boy.** Nintendo's manual says that overlapping objects are ordered by number on the Game Boy Color, but on the original Game Boy "the object with the smallest x-coordinate is given priority". There, sorting by Y cannot change which of two overlapping sprites at different x positions is in front.
+- **Super NES.** Each of the 128 objects "has its own priority order" for overlaps, and the chip can rotate which object counts as first.
+- **Mega Drive.** Sega's manual explains that "priority between sprites is not determined by the sequence of sprite number, but by each sprite's link data". The sprites form a linked list, and their order in the list is their order in depth, so a program can re-sort them by rewriting the links without moving any sprite data.
 
-### Hardware sprites (C64, NES)
+So on most systems Y sorting means moving each object's picture into the right slot: the nearest object into the slot that wins. The bits that set a sprite in front of or behind the background are a different matter. On the NES and the C64 they decide whether a sprite covers the scenery, not other sprites (see [sprites](/vault/techniques/sprites)).
 
-Hardware-sprite systems have *fixed sprite priority slots* — sprite 0 always draws over sprite 1, etc. To Y-sort, the game must shuffle which graphics go in which sprite slot:
+This can clash with the other jobs the slots do. A [multiplexer](/vault/techniques/sprite-multiplexing) on the Commodore 64 hands out sprites in order down the screen, and an NES game that shuffles its sprite list each frame to share out [flicker](/vault/techniques/sprite-flicker) shuffles the priorities along with it. Robert A. Peck described the problem in his 1987 *Programmer's Guide to the Amiga*, writing about the system's virtual sprites: because hardware sprites are reassigned as they move, "a sprite that just one moment ago was behind another sprite will now be in front of that sprite."
 
-| Constraint | Solution |
-|------------|----------|
-| **Fixed slot priority** | Move sprite *graphics* between slots based on Y order |
-| **8 sprites per scanline (NES)** | Combine Y-sort with sprite multiplexing |
-| **Priority registers** | Set background-priority bits based on sorted order |
+## In the arcade
 
-### Bitmap rendering (Amiga, PC, Spectrum)
+Arcade hardware drew the scenery in layers as well as the sprites, which gave designers a second tool. In Capcom's *[Final Fight](/vault/games/final-fight)* (1989), as Fabien Sanglard's study of the CP System hardware shows, the characters, tyres and barrels all share one sprite layer, so which of them hides which is a matter of sprite order. To let the fighters pass behind part of the scenery, as they do on the stairs near the end of the first round, the hardware let individual background tiles mark some of their colours as drawn in front of the sprites.
 
-Software sprite systems draw sprites in any order, but the order matters absolutely:
+## Doing the sort every frame
 
-| Constraint | Solution |
-|------------|----------|
-| **Draw order matters** | Render back-to-front; back sprites drawn first, front sprites drawn last |
-| **Transparency** | Each sprite must respect those drawn before |
-| **Overdraw cost** | Far objects may be obscured — minimise overdraw via culling |
+Objects move every frame, so the list has to be sorted every frame. But they rarely overtake each other up and down the screen, so last frame's order is almost right. An insertion sort that starts from that order does little work: it checks each object against the one before it and only moves the few that have changed places. Commodore 64 programmers used the same idea for their multiplexers, which also sort on Y. Lasse Öörni called it "Ocean" sorting after the games he found it in, and Falco Paul's tests found that it was very fast on game-like data and performed poorly on random data, while a bucket sort was steadier.
 
-## Beat-em-up example
+This 6502 routine sorts a list of object numbers so that their foot positions rise down the list. Drawing the objects in list order, or giving the first entry the lowest-priority sprite slot, puts the nearest one in front.
 
-In a side-scrolling beat-em-up like *Final Fight* or *Streets of Rage*:
+```asm
+; ORDER  holds COUNT object numbers, furthest (smallest Y) first.
+;        It is kept from frame to frame, so it is nearly sorted.
+; FOOTY  holds each object's foot Y on the screen.
+; POS, OBJ, KEY are one-byte work variables.
 
-| Object | Foot Y | Draw order |
-|--------|--------|------------|
-| Background enemy | Y = 80 | Drawn first |
-| Player | Y = 120 | Drawn second |
-| Foreground enemy | Y = 160 | Drawn last (on top) |
+sort:   ldx #1           ; start with the second entry
+next:   cpx count
+        bcs done         ; all entries placed
+        stx pos          ; next entry to insert
+        lda order,x
+        sta obj
+        tay
+        lda footy,y
+        sta key          ; its foot Y
+        ldy pos          ; Y = the gap, starting at its old place
+shift:  ldx order-1,y    ; object just in front of the gap
+        lda footy,x
+        cmp key
+        beq place        ; same Y: leave it where it was
+        bcc place        ; further up the screen: stop here
+        txa
+        sta order,y      ; move it one place along
+        dey
+        bne shift
+place:  lda obj
+        sta order,y      ; drop the new entry into the gap
+        ldx pos
+        inx
+        bne next         ; always taken (COUNT is under 256)
+done:   rts
+```
 
-When the player walks behind a barrel, it's because the barrel's Y is higher (further down the screen) than the player's. Walk in front: the player's Y is higher. Same code, different positions.
+The `beq` makes the sort stable: an object with the same foot Y as the one before it stays where it was, so two characters standing on the same line do not swap from frame to frame. With sixteen objects already in order, the routine takes about 1,000 cycles, roughly 65 per object. Each place an object has to move costs about 25 cycles more, so a list in completely reversed order takes about 4,000. A 6502 running at 1 MHz has 20,000 cycles in a fiftieth of a second.
 
-## Optimisation techniques
+## In modern engines
 
-| Technique | Benefit |
-|-----------|---------|
-| **Insertion sort with prior order** | Nearly-sorted on most frames; near-O(n) typical |
-| **Dirty flag** | Only re-sort when something moves enough to change order |
-| **Spatial buckets** | Pre-group by screen region; sort within buckets |
-| **Index arrays** | Sort an index array, not the objects themselves; preserves object data layout |
-| **Bucket per scanline** | Ultimate-Y-precision spatial bucket; common in 16-bit games |
+Game engines still offer the rule as a setting. Godot's `y_sort_enabled` property makes child nodes "with a higher Y position" render "in front of nodes with a lower Y position". Unity's 2D renderer lets a game set its transparency sort axis to (0, 1, 0), "so the higher the GameObject in the scene, the further away it is", which its manual recommends for top-down games, and a diagonal axis for isometric ones.
 
-## Edge cases
+<Sources>
 
-| Situation | Solution |
-|-----------|----------|
-| **Same Y position** | Use X position as tiebreaker (left-most first) or stable sort by object ID |
-| **Large sprites** | Use anchor point — usually the sprite's feet, not its centre |
-| **Jumping characters** | Sort by *ground* Y (where the character would land), not the sprite's current Y while airborne — keeps the character behind the same objects when jumping in place |
-| **Flying objects** | Either separate layer (always-on-top) or use the ground-shadow's Y |
-| **Multi-tile objects** | Use the closest-to-camera point (the bottom edge of the object) |
+- *Amiga ROM Kernel Reference Manual: Libraries*, third edition (Addison-Wesley, 1991), "Graphics Sprites, Bobs and Animation", pp. 640–641: letting the system decide Bob priorities; the Before and After pointers; objects "drawn with half of its Bobs in front of another object"; SortGList(). The same chapter describes the GelsInfo list kept "sorted by the x, y values" and the VSprite position as its upper left corner.
+- Robert A. Peck, *Programmer's Guide to the Amiga* (Sybex, 1987), chapter 7, p. 249: disadvantages of virtual sprites, including swapped priorities.
+- *Commodore 64 Programmer's Reference Guide* (Commodore), "Sprite priorities", p. 161, and the sprite-making chart, p. 176.
+- Texas Instruments, *Video Display Processors Programmer's Guide*, section 9, "Sprites", p. 9-1: 32 sprite planes, plane 0 highest priority. https://map.grauw.nl/resources/video/ti-vdp-programmers-guide.pdf
+- Nintendo, *Game Boy Programming Manual*, version 1.1, chapter 2, section 1.9, "OBJ Display Priority", pp. 70–71.
+- Nintendo, *Super NES Development Manual*, book I, section 2, chapter 2, "Object (OBJ)": each object's priority order and priority rotation.
+- Sega, *Genesis Software Manual*, "Priority between Sprites", p. 58: the link data.
+- NESdev Wiki, "PPU OAM" (web, secondary): priority by address in OAM; the background priority bit. https://www.nesdev.org/wiki/PPU_OAM
+- Fabien Sanglard, *The Book of CP-System* (self-published), section 2.8, "Draw order and Priority mask", pp. 92–93: *Final Fight*'s layers and the tile priority masks. https://github.com/fabiensanglard/cpsb
+- Donald Hearn and M. Pauline Baker, *Computer Graphics, C Version*, second edition (Prentice Hall), section 13-6, "Depth-Sorting Method": the painter's algorithm.
+- Dean Belfield, lib-spectrum, `lib/sprite_masked.z80` (2020, MIT licence) (web, secondary): the 16-line Y buckets. https://github.com/breakintoprogram/lib-spectrum
+- Lasse Öörni (Cadaver), "Sprite multiplexing", and Falco Paul, "On sprite sorting methods", Codebase64 wiki (web, secondary): "Ocean" sorting and the comparison of sorting methods; see [sprite multiplexing](/vault/techniques/sprite-multiplexing). https://codebase.c64.org/doku.php?id=base:sprite_multiplexing https://codebase.c64.org/doku.php?id=base:sprite_multiplexer_sorting
+- Godot Engine documentation, "CanvasItem", `y_sort_enabled` (web, secondary). https://docs.godotengine.org/en/stable/classes/class_canvasitem.html
+- Unity Manual, "Change the sorting order of 2D GameObjects" (web, secondary): Transparency Sort Mode and Custom Axis. https://docs.unity3d.com/Manual/2d-renderer-sorting.html
 
-## Modern applications
-
-| Context | Usage |
-|---------|-------|
-| **Unity 2D** | Sorting layers + Y-based custom axis on the Sprite Renderer |
-| **Godot** | `y_sort_enabled` on Node2D containers |
-| **Unreal** | Custom Z-axis or sort group with Slate UI |
-| **Isometric games** | *Hades*, *Diablo* — Y-sort within the isometric tile |
-| **Transparency sorting (3D)** | Even with depth buffers, transparent objects need explicit back-to-front sorting |
-
-## Legacy
-
-Y-depth sorting remains fundamental — modern engines automate it via sorting layers and built-in features, but understanding the principle helps debug visual layering issues, optimise rendering in sprite-heavy games, and properly sort transparent objects in 3D rendering pipelines. Every game with a "weird sprite layering bug" has eventually traced it back to Y-sort logic.
+</Sources>
 
 ## See also
 
-- [Sprite Multiplexing](/vault/techniques/sprite-multiplexing)
-- [Isometric Projection](/vault/techniques/isometric-projection)
 - [Sprites](/vault/techniques/sprites)
+- [Sprite Multiplexing](/vault/techniques/sprite-multiplexing)
+- [Sprite Flicker](/vault/techniques/sprite-flicker)
+- [BOBs: Blitter Objects](/vault/techniques/bob-graphics)
+- [Isometric Projection](/vault/techniques/isometric-projection)
 - [Filmation Engine](/vault/tools/filmation-engine)
+- [Final Fight](/vault/games/final-fight)
