@@ -1,9 +1,9 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Character-Shift Parallax"
 subtitle: "Parallax by redrawing the font"
-summary: "The C64 has one background layer, so its games faked a second by rolling the pixel definitions of a few characters against the direction of the scroll. Achim traces it to Bounder, Parallax and Marauder; John Rowlands added it to Mayhem in Monsterland in an hour."
+summary: "The C64 scrolls one character screen, so its games faked a second layer by rolling the pixel definitions of a few background characters against the scroll. Achim's Codebase64 routine names Bounder, Parallax and Marauder; John Rowlands added it to Mayhem in Monsterland in an hour."
 category: "techniques"
 platforms: ['commodore-64']
 tags: ['graphics', 'scrolling', 'effects']
@@ -11,47 +11,93 @@ sources:
   method:
     - title: "Codebase64 — Simple parallax shifting, by Achim"
       kind: technical-doc
-      note: "\"A parallax effect can be achieved by shifting bits and bytes of one char or a pattern of chars, e. g. 2×2 tiles, corresponding to the soft scroll registers ($d016 & $d011). This effect can be seen in numerous games (e.g. Bounder, Parallax, Marauder etc.).\" The example rolls a 2×2 hires tile with four routines — left and right by `asl`/`rol` and `lsr`/`ror` across the paired characters, up and down by moving bytes and wrapping the saved end byte — and notes \"In mc-mode these loops have to be called twice per frame.\""
+      note: "\"A parallax effect can be achieved by shifting bits and bytes of one char or a pattern of chars, e. g. 2×2 tiles, corresponding to the soft scroll registers ($d016 & $d011). This effect can be seen in numerous games (e.g. Bounder, Parallax, Marauder etc.).\" Four routines roll a 2×2 hires tile left, right, up and down. \"In mc-mode these loops have to be called twice per frame.\" \"To make the tile look fixed while the background graphics are scrolling (e.g. Marauder) the main program has to call the inverse shifting routine\"; to make it scroll slower \"(e.g. Parallax or Bounder) ... the inverse scroll direction has to be called every second frame.\" (web) https://codebase64.net/doku.php?id=base:simple_parallax_shifting"
   mayhem:
     - ref: magazines/commodore-format
       kind: magazine
       issue: 30
       date: "1993-03"
-      note: "John Rowlands' Mayhem in Monsterland diary, \"Dextrous December — Week One\", p37: \"Working late one night this week, I decided that the levels could do with some parallax scrolling so I spent an hour adding a piece of code that rolls the definition of a few characters in the opposite direction of the scroll (which gives the illusion of parallax). Now we can put a pattern in the background that moves at half the speed of the foreground, giving a greater feel of depth.\" The Get Ready screen is separate: a \"mini-parallax version of the levels\" built from \"characters and sprites\" that \"scrolls along in six levels of parallax\". Screenshot caption: \"The levels in Mayhem will even feature a form of parallax scrolling where the … background appears to move at a different speed to the foreground to give an extra feeling of depth. It's a trick the Boyz use a lot.\""
+      page: "37"
+      note: "John and Steve Rowlands, Mayhem in Monsterland diary, 'Dextrous December — Week One', John: \"Working late one night this week, I decided that the levels could do with some parallax scrolling so I spent an hour adding a piece of code that rolls the definition of a few characters in the opposite direction of the scroll (which gives the illusion of parallax). Now we can put a pattern in the background that moves at half the speed of the foreground, giving a greater feel of depth.\" Week Two: the Get Ready screen 'scrolls along in six levels of parallax', built from 'characters and sprites'. Caption: 'It's a trick the Boyz use a lot.'"
   not_vsp:
     - title: "Codebase64 — Multidirectional scrolling and the \"game world\" (Rant 4), by Cadaver (Lasse Öörni)"
       kind: technical-doc
-      note: "\"(I won't go into any VIC-II trick methods of scrolling, they're usually too limiting for games, at least for scrolling in all directions)\""
-
+      note: "\"(I won't go into any VIC-II trick methods of scrolling, they're usually too limiting for games, at least for scrolling in all directions)\" (web) https://codebase64.net/doku.php?id=base:rant4"
 ---
+import Sources from '@components/Sources.astro';
 
-The VIC-II draws one character layer. It has no second playfield, and its scroll registers move the whole picture at once. A C64 game that wants a background drifting past more slowly than the platforms has to make the background out of something that can move without the screen moving — and the thing that qualifies is the character set itself.
+Late one night in December 1992, John Rowlands decided the levels of *Mayhem in Monsterland* needed parallax scrolling. He wrote in his diary for *Commodore Format* that he "spent an hour adding a piece of code that rolls the definition of a few characters in the opposite direction of the scroll (which gives the illusion of parallax)". The result was a background pattern that moved at half the speed of the foreground.
+
+An hour was enough because the trick changes very little. The [VIC-II](/vault/hardware/vic-ii) draws one screen of characters, and its fine-scroll registers move the whole of it at once, so it cannot slide a second layer past the first. What it can do is redraw a character. Every cell on screen that shows character 200 is drawn from the same eight bytes of the character set, so changing those eight bytes changes every copy at once. Roll them one pixel to the right while the screen scrolls one pixel to the left, and the pattern inside those cells stays still while everything else moves.
 
 ## Fast facts
 
-- **Mechanism:** the background is drawn with a handful of characters; every frame their 8-byte pixel definitions are rotated one pixel against the scroll direction.
-- **Effect:** the foreground moves with the scroll register, the background stays put on the character grid, and the eye reads the difference as depth.
-- **Cost:** a few dozen `rol`/`ror` instructions a frame; the screen and colour RAM are untouched.
-- **Named uses:** *Bounder*, *Parallax* and *Marauder* (Achim's list); *Mayhem in Monsterland* (John Rowlands, by his own account).
+- **Mechanism:** the background pattern is made of a few characters, often a 2×2 tile, whose 8-byte definitions are rotated one pixel against the scroll.
+- **Effect:** foreground and background move at different speeds without touching screen memory or colour RAM.
+- **Cost:** one pass over a 2×2 hires tile is 88 instructions, a few hundred cycles; a multicolour tile needs two passes.
+- **Limit:** only the cells built from the rolled characters move differently, and the pattern has to repeat every tile, because every copy of a character changes together.
+- **Named uses:** *Bounder* ([Gremlin](/vault/companies/gremlin-graphics)), *Parallax* and *Marauder* ([Hewson](/vault/companies/hewson-consultants)) in Achim's Codebase64 article; *Mayhem in Monsterland* in John Rowlands's own diary.
 
 ## How it works
 
-Achim's Codebase64 page lays out the four routines for a 2×2 hires tile. Horizontal shifts are bit rotations across the paired characters — `lda charB,x / asl / rol charA,x / rol charB,x` carries bit 7 of the right-hand character into bit 0 of the left, so the pattern wraps seamlessly across the tile boundary. Vertical shifts move bytes within the definition and put the saved end byte back at the other end. Multicolour characters have 4-pixel-wide pairs, so the horizontal loop runs twice per frame to move one visible pixel.
+Achim's Codebase64 article works through a 2×2 tile of characters A and B on top, C and D underneath, with one routine for each direction. The left roll treats each pixel row of A and B as one 16-pixel row and rotates it, so the pixel that leaves the left edge of A comes back in at the right edge of B:
 
-Run one of these every frame while the hardware scroll advances, and any screen cell using those characters appears to slide at a different speed. Half speed comes free: shift the characters on alternate frames, or shift them one pixel while the foreground moves two.
+```asm
+; Roll a 2x2 hires tile one pixel left (after Achim, Codebase64).
+; charA charB   are the tile's four character definitions,
+; charC charD   8 bytes each, in the character set.
+rollleft:
+        ldx #$00
+loop1:  lda charB,x          ; bit 7 of charB -> carry
+        asl
+        rol charA,x          ; carry -> bit 0 of charA, bit 7 of charA -> carry
+        rol charB,x          ; carry -> bit 0 of charB
+        lda charD,x          ; the same for the lower pair, C and D
+        asl
+        rol charC,x
+        rol charD,x
+        inx
+        cpx #$08
+        bne loop1
+        rts
+```
+
+The right roll is the mirror image, using `lsr` and `ror`. The vertical rolls move each byte down or up one row and put the byte that falls off one end back at the other, carrying it between the upper and lower characters so the tile wraps cleanly.
+
+The main program then calls the roll that runs against the scroll. Achim gives the two common uses:
+
+- **A fixed background.** Call the opposite roll every time the screen scrolls one pixel, so the pattern stays where it is while the scenery moves over it. His example is *Marauder*.
+- **A slower background.** Call the opposite roll every second frame, so the pattern drifts at half the scroll speed. His examples are *Parallax* and *Bounder*.
+
+In multicolour mode each pixel is two bits wide, so a one-bit roll would turn colours into other colours. Achim's note is that "in mc-mode these loops have to be called twice per frame", moving the pattern one whole multicolour pixel.
+
+The trick has a price beyond the cycles. Every cell that uses a rolled character changes, so anything else drawn with those characters would move with the background. The rolled characters can be used for the pattern and nothing else.
 
 ## Mayhem in Monsterland
 
-Rowlands' own diary, printed in *Commodore Format* in March 1993, records how the effect went in. Working late one night in December 1992, he "spent an hour adding a piece of code that rolls the definition of a few characters in the opposite direction of the scroll (which gives the illusion of parallax)". The result was a background pattern moving at half the foreground's speed. The "six levels of parallax" in the same diary entry belong to the game's Get Ready screen, a separate "mini-parallax version of the levels" built from characters and sprites, not to the levels themselves.
+*Mayhem in Monsterland* already scrolled with [VSP](/vault/techniques/vsp), the trick that moves the whole screen sideways, colours included. VSP made full-screen scrolling cheap, but it still moves one layer. Rowlands's rolled characters added the second. The magazine's caption called it "a trick the Boyz use a lot", the Boyz being John and Steve Rowlands.
 
-## Why not VSP?
+The same diary has a second kind of parallax, which is easy to confuse with the first. In Week Two the diary turns to the game's Get Ready screen, which "scrolls along in six levels of parallax". Steve Rowlands drew it as a "mini-parallax version of the levels" from "characters and sprites". That screen, not the levels, has the six layers.
 
-VSP and its relatives reposition the whole screen; they do not create a second layer. Cadaver's rant on multidirectional scrolling sets the VIC-II tricks aside for games because "they're usually too limiting".
+## Why not a VIC-II trick?
+
+VSP and its relatives change where the VIC-II starts drawing the screen. They make scrolling cheaper, but every one of them still moves the whole screen, so none of them gives a second layer. Cadaver, writing about scrolling games in all directions, set the VIC-II tricks aside as "usually too limiting for games, at least for scrolling in all directions". Rolling characters works however the screen is moved, so it can sit on top of any of them.
+
+<Sources>
+
+- Achim, "Simple parallax shifting", Codebase64 (web): the four roll routines, multicolour mode, fixed and half-speed backgrounds, and *Bounder*, *Parallax* and *Marauder*. https://codebase64.net/doku.php?id=base:simple_parallax_shifting
+- John Rowlands and Steve Rowlands, "Let's make a monster", *Mayhem in Monsterland* development diary, *Commodore Format* issue 30, March 1993, p. 37: the hour's work on rolling characters, half-speed background, the six-layer Get Ready screen and the caption.
+- Cadaver (Lasse Öörni), "Multidirectional scrolling and the 'game world'" (Rant 4), Codebase64 (web): VIC-II scrolling tricks "usually too limiting for games". https://codebase64.net/doku.php?id=base:rant4
+- Commodore, *Commodore 64 Programmer's Reference Guide* (1983), pp. 128–129: the fine-scroll registers move the whole screen.
+- *Zzap!64* issue 40, August 1988, pp. 26–27: review of Hewson's *Marauder*.
+
+</Sources>
 
 ## See also
 
 - [Parallax Scrolling](/vault/techniques/parallax-scrolling)
 - [Character Graphics](/vault/techniques/character-graphics)
-- [Multidirectional Scrolling](/vault/techniques/multidirectional-scrolling)
 - [VSP](/vault/techniques/vsp)
+- [Multidirectional Scrolling](/vault/techniques/multidirectional-scrolling)
+- [VIC-II](/vault/hardware/vic-ii)
 - [Commodore Format](/vault/magazines/commodore-format)
