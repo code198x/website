@@ -1,21 +1,21 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Lookup Tables"
 subtitle: "Trading memory for speed"
-summary: "Lookup tables pre-calculated expensive operations like trigonometry and multiplication, storing results for instant retrieval on processors too slow for real-time maths."
+summary: "A lookup table works an answer out in advance, once for every input a program will need, so that at run time one indexed read replaces a calculation. On 8-bit processors with no multiply instruction it turned sines, products, screen addresses and mirror-image graphics into a few cycles each, at the price of the memory the table filled."
 category: "techniques"
-platforms: ['commodore-64', 'sinclair-zx-spectrum', 'nintendo-entertainment-system', 'commodore-amiga']
+platforms: ['commodore-64', 'sinclair-zx-spectrum', 'apple-ii']
 tags: ['optimisation', 'maths', 'performance']
 sources:
   c64_note_table:
     - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
       kind: book
-      page: "383-385"
-      note: "Appendix E, Music Note Values: \"This appendix contains a complete list of Note#, actual note, and the values to be POKEd into the HI FREQ and LOW FREQ registers of the sound chip to produce the indicated note.\" Columns NOTE / OCTAVE / DECIMAL / HI / LOW, starting \"0 C-0 268 1 12\""
-    - title: "Codebase64 — How to calculate SID frequency tables, by FTC/HT"
+      page: "186, 384-387"
+      note: "Appendix E, Music Note Values: \"This appendix contains a complete list of Note#, actual note, and the values to be POKEd into the HI FREQ and LOW FREQ registers of the sound chip to produce the indicated note.\" Columns NOTE / OCTAVE / DECIMAL / HI / LOW, starting \"0 C-0 268 1 12\". p. 186 gives the formula behind it, Fn = Fout/.06097, a factor that corresponds to the NTSC machine's 1.02 MHz clock"
+    - title: "Codebase64 wiki, 'PAL A440 frequency table' and 'NTSC A440 frequency table'"
       kind: database
-      note: "Community wiki. \"How do you know what value to feed the 16-bit SID frequency register to get a certain note? The easy way is to use ready made tables calculated by someone else.\" — \"FREQ_HZ = BASEFREQ * 2^(NOTE/STEPS_PER_OCTAVE)\""
+      note: "Web, secondary: separate note tables for PAL and NTSC machines; the PAL table's lowest C is $0116 (278) against the NTSC table's 268"
   c64_sine_tables:
     - title: "C=Hacking issue 8 — A Different Perspective: Three-Dimensional Graphics on the C64, by Stephen Judd and George Taylor (mirrored on Codebase64)"
       kind: magazine
@@ -27,177 +27,156 @@ sources:
     - title: "C=Hacking issue 5 — The Demo Corner: Stretching Sprites, by Pasi 'Albert' Ojala (mirrored on Codebase64)"
       kind: magazine
       date: "1993-03-07"
-      note: "Fast-stretch from Megademo92 (part: Fore!): \"YSINUS Y-sinus table\" — \"STRETCH Sprite line sizes (LSB of the address must be 0)\" — \"SIZET Sprite size/2 table (LSB of the address must be 0)\""
+      note: "Article 'Written: 16-May-91 Translation/Revision 01-Jun-92, Dec-92'. Its listing is the 'Fast-stretch from Megademo92 (part: Fore!)': \"YSINUS Y-sinus table\" — \"STRETCH Sprite line sizes (LSB of the address must be 0)\" — \"SIZET Sprite size/2 table (LSB of the address must be 0)\""
   c64_quarter_squares:
     - title: "C=Hacking issue 16 — 3D Graphics for the Masses: lib3d and Cool World, by Stephen L. Judd (mirrored on Codebase64)"
       kind: magazine
       date: "1998-04-26"
       note: "\"But, first and foremost, we need a multiply. We will of course be using the fast multiply, which uses the fact that a*b = f(a+b) - f(a-b), f(x) = x^2/4.\" — \"By using the indexed addressing mode, we let the CPU add A and Y together. If Y and A can both range from 0..255, then Y+A can range from 0..510. So we need a 510-byte table of f(x).\" — \"the upper 256 bytes of this table is the same as the lower 256 bytes of the first table: f(x-256) for x=256..511 is the same as f(x) for x=0..255. This means that the first table can be piggy-backed on top of the second table in memory.\""
-    - title: "Codebase64 — Fast 8bit multiplication 16bit product, by Oswald/Resource"
+    - title: "Codebase64 — Multiplication and division"
       kind: database
-      note: "\";the routine is based on this equation: a*b = ((a+b)/2)^2-((a-b)/2)^2\" — \"SQRL = $2000 ;low bytes of: x=(x*x)/4; 512 entry on 16 bits\""
+      note: "Web, secondary: a full table of 8-bit products would need 128K; Damon Slye's shift-and-add routine, 'published in \"Call APPLE\" in June 1983', 'takes 7 cycles in the best case, 144 cycles in the average case and 149 cycles in the worst case'"
     - title: "Codebase64 — Seriously fast multiplication (8-bit and 16-bit), by Jackasser"
       kind: database
-      note: "\"They require 2k of tables which can be generated using table_generator_routine_for_fast_8_bit_mul_table. The article from C=Hacking 16 which is mentioned in the source is available here.\" — \"square1_lo, square1_hi, square2_lo, square2_hi must be page aligned. Each table are 512 bytes. Total 2kb.\""
+      note: "\"square1_lo, square1_hi, square2_lo, square2_hi must be page aligned. Each table are 512 bytes. Total 2kb.\""
     - title: "Codebase64 — Fastest 16x16 unsigned multiplication, by Repose"
       kind: database
-      note: "\"Jack Asser's: 238.1 cycles\" — \"Mine: 198.6 zp variation: 194.6\" — \"This is the winner out of 120 published algorithms as independently tested here\" — \";table generator by Graham\""
+      note: "\"Jack Asser's: 238.1 cycles\" — \"Mine: 198.6 zp variation: 194.6\""
 ---
+import Sources from '@components/Sources.astro';
 
-When your processor runs at 1 MHz and lacks multiplication hardware, calculating sine values in real-time is impossible. Lookup tables solved this by pre-computing results and storing them in memory. Need sin(45°)? Look it up instantly. The technique traded RAM for speed—a bargain on systems where cycles were precious.
+The 6502 in a Commodore 64 or an Apple II cannot multiply. It can add, subtract and shift a byte one bit left or right, and everything else is built from those. Multiplying two bytes the schoolbook way, with shifts and adds, takes 144 cycles on average even in Damon Slye's well-known fast routine of 1983, and a sine built from multiplications takes many times longer. A game that rotates a dozen points each frame cannot spend its time like that.
 
-## The problem
+So programmers did the sums in advance. A **lookup table** holds the answer for every input a program will ask about, and a single indexed read fetches it: on the 6502, `LDA table,X` takes four cycles. The cost moves from time to memory, and the 1980s programmer's question was always how much memory an answer was worth.
 
-| Operation | 6502 cycles |
-|-----------|-------------|
-| Addition | 2-4 |
-| Multiplication | 100-200 (software) |
-| Division | 200-400 (software) |
-| Sine/cosine | 500+ (software) |
+Commodore printed a lookup table in the C64's own manual. Appendix E of the *Programmer's Reference Guide* lists, for eight octaves of notes, "the values to be POKEd into the HI FREQ and LOW FREQ registers of the sound chip": 268 for the lowest C, split into a high byte of 1 and a low byte of 12. Music routines kept a table like it, indexed by note number. Commodore's figures were worked out for the American machine's clock; on a European PAL C64, whose clock runs about 4% slower, the same values play a little over half a semitone flat, so programmers there needed a PAL table of their own.
 
-Real-time games couldn't afford these costs.
+## Fast facts
 
-## The solution
+- **The idea:** compute once, store the results, and replace a calculation with an indexed read.
+- **Cost on the 6502:** `LDA table,X` takes 4 cycles, plus 1 if the index carries the address into the next 256-byte page.
+- **Typical tables:** sines and cosines, squares for multiplication, note frequencies, the start address of each screen row, bytes with their bits reversed.
+- **Price:** memory. A sine table of 256 angles is 256 bytes. The quarter-square multiply below needs 2K. A table of every product of two bytes would need 128K, twice the C64's whole memory.
 
-Pre-calculate and store. The table below stores `(sin(angle) + 1) × 127` so values fit in unsigned bytes (0-254), which is the common signed-sine convention on 8-bit hardware:
+## A sine table
 
-```asm
-; 256 entries: angle 0-255 maps to one full circle
-; entry = round((sin(angle * 2π / 256) + 1) * 127)
-sine_table:
-    .byte 127, 130, 133, 136, 139, 143, 146, 149   ; angles 0-7
-    .byte 152, 155, 158, 161, 164, 167, 170, 173   ; angles 8-15
-    ; ... continue for 256 entries
+The simplest useful table divides the circle into 256 steps, so that an angle fits in one byte and wraps round by itself when it overflows. Each entry holds `sin` of that angle, scaled and shifted to fit a byte. This version stores `round((sin + 1) × 127)`, so the wave runs from 0 to 254 with 127 in the middle. A program that wants signed values can store them in two's complement instead, as Judd and Taylor's 3D routines did.
 
-get_sine:
-    ldx angle              ; X = angle (0-255), assume zero-page
-    lda sine_table,x       ; A = sine value
-    rts
-    ; Cost: LDX zp (3) + LDA abs,X (4) + RTS (6) = 13 cycles
-    ; vs ~500 cycles to compute sin() in software
-```
-
-## Common lookup tables
-
-| Table | Use |
-|-------|-----|
-| Sine/cosine | Rotation, movement |
-| Multiplication | Scaling, coordinates |
-| Square root | Distance calculation |
-| Screen addresses | Fast plotting |
-| Colour cycling | Animation effects |
-
-## Multiplication tables
-
-8×8 multiplication via the *quarter-squares* identity:
-
-```
-a × b = ((a + b)² − (a − b)²) / 4
-```
-
-Pre-calculate `f(n) = n² / 4` once for n = 0..510, then `a × b = f(a + b) − f(a − b)`. The full multiply needs only two table lookups and one subtraction:
+The assembler can generate the table itself (ACME syntax):
 
 ```asm
-; quarter_squares[n] = (n*n) / 4 for n = 0..510
-; Stored as two 256-byte tables (low byte / high byte)
-qsq_lo:    .byte <(0*0/4), <(1*1/4), <(2*2/4), ...
-qsq_hi:    .byte >(0*0/4), >(1*1/4), >(2*2/4), ...
-
-; Multiply A × X, leaving result in (qsq_result_hi:qsq_result_lo)
-; Caller has already computed (a+b) into Y and (a-b) into A
-mul8x8:
-    ldy_aplusb:                ; Y = a + b
-    sty .ap1
-    sty .ap2
-    sec
-    ; ... fetch qsq[a+b] - qsq[a-b]
-    rts
+        !align 255, 0           ; start the table on a page boundary
+sine    !for i, 0, 255 { !byte int(127.5 + 127 * sin(float(i) * 2 * 3.14159265 / 256)) }
 ```
 
-The full quarter-squares routine is ~30 cycles compared to ~120 for shift-and-add multiply.
-
-## Screen address tables
-
-Fast pixel plotting:
+The first entries come out as 127, 130, 133, 136, 139, 143, 146, 149, and reading one costs a single instruction:
 
 ```asm
-screen_lo:
-    .byte <$0400, <$0428, <$0450, ...  ; Each row start
-screen_hi:
-    .byte >$0400, >$0428, >$0450, ...
-
-plot_pixel:
-    ldy row
-    lda screen_lo,y
-    sta ptr
-    lda screen_hi,y
-    sta ptr+1
-    ; Now ptr points to row start
+        lda sine,x              ; A = sine of the angle in X: 4 cycles
 ```
 
-## Memory vs speed tradeoff
+Cosine needs no table of its own: it is the same wave a quarter of a circle later, so `cos(a)` is `sine` at `a + 64`.
 
-| Table size | Lookup cost (6502) | Calculation cost | Notes |
-|------------|--------------------|-------------------|-------|
-| 256 bytes (8-bit index) | 7 cycles (`LDX` + `LDA abs,X`) | 100-500 cycles | Fits a full circle of sine, page-aligned for free |
-| 512 bytes (9-bit index) | 9-12 cycles | Same | Need extra arithmetic to compose the index |
-| 1024 bytes | 12-15 cycles | Same | Two-table form (low byte / high byte) |
-| 4096 bytes | 15+ cycles | Same | Page-cross overhead becomes significant |
+## Multiplying with squares
 
-The cost of the table is paid **once** at assembly time; the cost of the calculation is paid **every time it runs**.
+A table of every product of two bytes would need 65,536 entries of two bytes each. The *quarter-square* method needs far less. It rests on an identity:
 
-### Page alignment
+```
+a × b = (a + b)² / 4 − (a − b)² / 4
+```
 
-Place tables at addresses ending `$xx00` so `LDA table,X` never crosses a page. A page-cross adds 1 cycle to indexed addressing modes. For 256-byte tables this gives a free, predictable cost; for larger tables, splitting into per-page sections lets you keep the index inside one page.
+Write `f(n)` for `n² / 4`, rounded down. Because `a + b` and `a − b` are always both odd or both even, the rounding cancels, and `a × b = f(a + b) − f(a − b)` exactly. A table of `f` for 0 to 510 turns a multiplication into two lookups and a subtraction. Stephen Judd's 1998 *[C=Hacking](/vault/magazines/c-hacking)* article on 3D graphics called it "the fast multiply", and noticed that by letting the processor's indexed addressing do the addition, "we let the CPU add A and Y together".
 
-## Interpolation
+The routine below multiplies A by X. It writes A into the low byte of its own lookup addresses ([self-modifying code](/vault/techniques/self-modifying-code)), so that `sqr_lo,X` reads entry `A + X`. For the difference it uses a second copy of the table, shifted by 255, and writes the complement of A, so that `neg_lo,X` reads entry `X − A + 255`, which holds `f(X − A)`.
 
-When table resolution insufficient:
-1. Look up nearest values
-2. Interpolate between them
-3. Still faster than calculation
+```asm
+; f(n) = n*n/4, rounded down; neg holds the same values shifted by 255
+        !align 255, 0
+sqr_lo  !for i, 0, 511 { !byte <((i * i) >> 2) }
+sqr_hi  !for i, 0, 511 { !byte >((i * i) >> 2) }
+neg_lo  !for i, 0, 511 { !byte <(((i - 255) * (i - 255)) >> 2) }
+neg_hi  !for i, 0, 511 { !byte >(((i - 255) * (i - 255)) >> 2) }
 
-## Platform examples
+prod    = $fd                   ; two zero-page bytes for the result
 
-### C64
+; Multiply A by X (both 0-255). The 16-bit product goes to prod, prod+1.
+mul8    sta sm1+1               ; aim the first pair of lookups at f(X + A)
+        sta sm3+1
+        eor #$ff                ; and the second pair at f(X - A),
+        sta sm2+1               ; using the tables shifted by 255
+        sta sm4+1
+        sec
+sm1     lda sqr_lo,x
+sm2     sbc neg_lo,x
+        sta prod
+sm3     lda sqr_hi,x
+sm4     sbc neg_hi,x
+        sta prod+1
+        rts
+```
 
-Commodore printed the first lookup table itself. Appendix E of the Programmer's Reference Guide is "a complete list of Note#, actual note, and the values to be POKEd into the HI FREQ and LOW FREQ registers of the sound chip to produce the indicated note" — 268 for the lowest C, split into HI 1 and LOW 12. Codebase64's FTC/HT gives the formula for rolling your own, `FREQ_HZ = BASEFREQ * 2^(NOTE/STEPS_PER_OCTAVE)`, and notes that "the easy way is to use ready made tables calculated by someone else".
+The tables start on page boundaries because the routine replaces only the low byte of each address. The four tables take 2K, and the routine runs in 48 to 52 cycles including its `RTS`, about a third of the 144 of Slye's shift-and-add. The same tables build bigger multiplications: Repose's 16-by-16-bit routine on Codebase64, which uses them, takes about 199 cycles.
 
-The 3D articles in *C=Hacking* say why tables win. Stephen Judd and George Taylor (1994): "how do we take the sine of a number and make it fast? The answer of course is to use a table. We used a BASIC routine to calculate the table for us". Their tables hold sine and cosine already scaled by the fixed-point offset and halved, so the rotation needs no division, and the projection folds the viewing distance into a table of `d/(z-z0)` indexed by z. Judd's 1998 *lib3d* article introduces the quarter-squares multiply above — "a 510-byte table of f(x)", with the first table "piggy-backed on top of the second table in memory" — which Oswald, Jackasser and Repose later reworked on Codebase64 into routines that need "2k of tables", page-aligned, with Repose's 16×16 version at 198.6 cycles.
+## Tables in place of address arithmetic
 
-Sine tables did not always come from a sine. White Flame records "a long-standing tradition in games & demos that sine waves can be approximated by parabolas", boxier and about 6% off but "quick and dirty trig", with the generator taken from Cruzer/Camelot's *Too(C)o(M)p(L)ex*. And Pasi Ojala's 1991 sprite stretcher marks two of its tables "(LSB of the address must be 0)": page alignment as a stated requirement, not an optimisation.
+Screen memory is another place where the same sum is done over and over. The C64's text screen starts at `$0400` and each row is 40 bytes long, so finding a row means multiplying by 40. Two small tables, one for the low byte of each row's address and one for the high byte, replace the multiplication:
 
-### ZX Spectrum
+```asm
+ptr     = $fb                   ; two zero-page bytes for the pointer
 
-- Screen address calculation (complex layout)
-- Attribute addresses
-- Trigonometry for 3D
+row_lo  !for r, 0, 24 { !byte <($0400 + r * 40) }
+row_hi  !for r, 0, 24 { !byte >($0400 + r * 40) }
 
-### NES
+; Put the screen code in A at column Y of row X.
+plot    pha
+        lda row_lo,x
+        sta ptr
+        lda row_hi,x
+        sta ptr+1
+        pla
+        sta (ptr),y
+        rts
+```
 
-- PPU address mapping
-- Collision tables
-- Sine for movement
+Splitting a table of 16-bit values into two tables of bytes is a habit of 6502 code, because the processor's index registers count in bytes. Richard Mansfield's *The Second Book of Machine Language* (1984) used the same arrangement in his assembler's tables: with tables that run "parallel" to one another, one index register can "quickly pull out the values in any table which is parallel to the primary lookup table".
 
-## Limitations
+On the ZX Spectrum the need is greater. Its screen does not store pixel lines in order: the bitmap fills the top third of the screen first, then the middle, then the bottom, and within each third the lines are interleaved, so the address of the line below is not a fixed distance away. A table of 192 line addresses, two bytes each, removes the bit-shuffling. The [Bitmap Addressing](/patterns/sinclair-zx-spectrum/assembly/rendering/bitmap-addressing) pattern shows both ways of doing it.
 
-| Limitation | Mitigation |
-|------------|------------|
-| Memory cost | Reduce precision (8-bit instead of 16-bit), or share tables (sine and cosine differ only by a 90° shift) |
-| Table generation | Generate at assemble time using the assembler's macro language, or once at boot into RAM |
-| Precision limits | Interpolate between adjacent entries if needed |
-| Page-cross cost | Page-align all hot tables |
+## Tables in games
 
-### Build-time vs runtime generation
+Tables saved memory as well as time. Mike Lamb, writing about his Spectrum version of [*Renegade*](/vault/games/renegade) for *Sinclair User* in November 1987, explained that he stored only the right-facing frames of his characters. "When a left facing graphic is required, it can be generated from the same data using a look-up table in which every number from 0-255 has its bit-reflection stored. This cuts the memory required for graphics in half."
 
-Two strategies:
+The demo scene used tables everywhere, and wrote about them. Stephen Judd and George Taylor's 1994 *C=Hacking* article on 3D graphics asks "how do we take the sine of a number and make it fast? The answer of course is to use a table." They generated theirs with a BASIC program, stored the values already scaled and halved so that the rotation did not have to keep dividing by two, and replaced the division in perspective projection with a table indexed by depth: "As long as we're using a table, why not incorporate the d into it?" Pasi Ojala's article on stretched sprites, written in 1991 and published in *C=Hacking* in 1993, prints a routine from the demo *Megademo92* whose tables are marked "(LSB of the address must be 0)", that is, page-aligned. Not every sine came from a sine. The Codebase64 programmer White Flame records "a long-standing tradition in games & demos that sine waves can be approximated by parabolas", a little boxier and about 6% out, "but generally work for doing quick and dirty trig".
 
-- **Assembled in:** the table is part of the ROM/binary. No startup cost; uses ROM rather than RAM. Best when ROM is plentiful (cartridge era) or when the table is small.
-- **Generated at boot:** a one-shot routine fills a RAM table with computed values, then the program runs from there. Saves ROM at the cost of startup time and RAM. Common when a single table covers many similar uses or when ROM is tight.
+## Choosing a table
+
+| Question | What programmers did |
+|---|---|
+| Too big? | Store less precision, use symmetry (cosine from sine, a quarter-wave mirrored), or split one big table into a few smaller ones |
+| Built when? | Assembled into the program, which costs nothing at run time but makes the file bigger and slower to load; or generated by a short routine at start-up, which saves loading time and costs a moment before the program begins |
+| Where? | On a page boundary, so that `LDA table,X` never crosses a page and always takes 4 cycles; some routines, like the multiply above, need it |
+| Not fine enough? | Interpolate between neighbouring entries |
+
+<Sources>
+
+- Commodore, *Commodore 64 Programmer's Reference Guide* (1982), p. 186 (the frequency formula) and Appendix E, "Music Note Values", pp. 384-387.
+- Codebase64 wiki, "PAL A440 frequency table" and "NTSC A440 frequency table" (web, secondary).
+- Richard Mansfield, *The Second Book of Machine Language* (COMPUTE! Books, 1984), pp. 108-110: lookup tables and parallel tables.
+- Mike Lamb on *Renegade*, "Background Noise", *Sinclair User* issue 68, November 1987.
+- Alessandro Grussu, *Spectrumpedia*, volume 1 (English edition, CC BY-NC-ND 4.0), pp. 103-104: the Spectrum screen filled a third at a time.
+- Stephen Judd and George Taylor, "A Different Perspective: Three-Dimensional Graphics on the C64", *C=Hacking* issue 8, 1994. Stephen L. Judd, "3D Graphics for the Masses: lib3d and Cool World", *C=Hacking* issue 16, 26 April 1998. Pasi Ojala, "The Demo Corner: Stretching Sprites", *C=Hacking* issue 5, 7 March 1993. All mirrored on the Codebase64 wiki (web, secondary). https://codebase64.org/doku.php?id=magazines:chacking8
+- Codebase64 wiki (web, secondary): "Multiplication and division" (the 128K full table; Damon Slye's routine from *Call-A.P.P.L.E.*, June 1983, with its cycle counts); Jackasser, "Seriously fast multiplication"; Repose, "Fastest 16x16 unsigned multiplication"; White Flame, "Generating Sine Tables from Parabolas". https://codebase64.org/doku.php?id=base:multiplication_and_division
+- MOS Technology, *MCS6500 Microcomputer Family Programming Manual* (1976), sections 6.6 and 6.7, pp. 79-80: absolute indexed addressing with and without a page crossing.
+- Codebase64 wiki, "Clock Frequency" (web, secondary): the PAL C64's 985,248 Hz clock against the NTSC machine's 1,022,727 Hz.
+
+The listings were assembled with ACME and run in the VICE emulator (x64sc). A test program checked the multiply against shift-and-add for all 65,536 pairs of bytes, checked the sine table against computed values, and printed its result with the row-address routine.
+
+</Sources>
 
 ## See also
 
 - [Fixed-Point Math](/vault/techniques/fixed-point-math)
+- [Self-Modifying Code](/vault/techniques/self-modifying-code)
 - [6502](/vault/hardware/6502)
 - [Z80](/vault/hardware/z80)
 - [Sprite Multiplexing](/vault/techniques/sprite-multiplexing)
