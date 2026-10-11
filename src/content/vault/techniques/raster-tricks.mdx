@@ -1,16 +1,24 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Raster Tricks"
-subtitle: "Exploiting the electron beam"
-summary: "Raster tricks push hardware beyond specifications by precisely timed manipulation during screen display, achieving impossible-seeming effects."
+subtitle: "Writing to the VIC-II when it isn't expecting it"
+summary: "The Commodore 64 tricks that go beyond changing a colour partway down the screen: writes timed to a raster line or a single cycle that make the VIC-II skip or repeat its own internal steps. Opening the borders, FLD, linecrunch, VSP, AGSP, FLI and sprite stretching all work this way, mostly discovered by the demo scene between 1985 and 1989."
 category: "techniques"
-platforms: ['commodore-64', 'commodore-amiga', 'nintendo-entertainment-system']
+platforms: ['commodore-64']
 tags: ['graphics', 'demoscene', 'advanced']
-originated: 1980
-
-
+originated: 1985
 sources:
+  originated:
+    - title: "Codebase64 wiki, 'Demo records and world firsts' (vic:demo namespace)"
+      kind: database
+      note: "Web, secondary, a community list open to correction: upper and lower borders first opened by Flash Cracking Group, 'Intro', 11 October 1985; side borders by TSI of 1001 Crew, April 1986"
+    - ref: magazines/zzap-64
+      kind: magazine
+      issue: 20
+      date: "1986-12"
+      page: "131"
+      note: "Compunet column: the Dutch 1001 Crew 'have managed to dispose of the border'; a full-screen picture of 58 or 112 expanded sprites, 'some of which are \"in\" the top and side borders. I've no idea how it's done, but I hope someone puts the effect to good use in a game!'"
   what_agsp_is:
     - title: "Codebase64, 'Any Given Screen Positioning (AGSP)'"
       kind: technical-doc
@@ -20,70 +28,63 @@ sources:
     - title: "Codebase64, 'FLI'"
       kind: technical-doc
       page: "base:fli"
-      note: "'This method causes a bug on the left side of the screen, the typical \"FLI-bug\", where the color info is set to $ff, which is translated to bright gray by VIC. Thus when painting on the FLI-bug, the color usage is very restricted, and the very few ones who manage to have colorful graphics there are considered having wizard skills ;)'. Its extent: 'In this mode the resolution is 160x200 multicolor-pixels, where the leftmost 12 pixels have the well-known FLI-bug'"
+      note: "'This method causes a bug on the left side of the screen, the typical \"FLI-bug\", where the color info is set to $ff, which is translated to bright gray by VIC.' Its extent: 'In this mode the resolution is 160x200 multicolor-pixels, where the leftmost 12 pixels have the well-known FLI-bug'"
   vsp_has_four_names:
     - title: "Codebase64, 'Horizontal Screen Positioning (HSP) aka … aka DMA-Delay'"
       kind: technical-doc
       page: "base:horizontal_screen_positioning_hsp"
       note: "One effect, four names in circulation: the page title gives 'Horizontal Screen Positioning (HSP) aka … aka DMA-Delay', it notes the world-firsts page uses 'Variable Screen Positioning', and it cites the VIC-II documentation's '3.14.6. DMA delay'"
 ---
+import Sources from '@components/Sources.astro';
 
-Raster tricks are raster effects taken further—exploiting undocumented behaviours, cycle-exact timing, and hardware quirks to achieve effects the chip designers never intended. The demoscene pushed these techniques furthest, displaying more colours, more sprites, and more complex effects than any specification promised.
+In December 1986 a disk arrived at *[ZZAP!64](/vault/magazines/zzap-64)* from "some 'Dutch 64 freaks' called the [1001 Crew](/vault/groups/1001-crew)". On it was a full-screen picture made of 58 or 112 expanded sprites, "some of which are 'in' the top and side borders". The magazine's Compunet columnist was baffled: "I've no idea how it's done, but I hope someone puts the effect to good use in a game!" Four months later Andrew Braybrook, writing his diary of *Morpheus* in the same magazine, was "unhappy about using sprites in the border as it could be exploiting a video-chip bug. This may not work on some machines or it could cause damage."
 
-## Why the beam is the clock
+Neither the columnist nor Braybrook knew yet how the trick worked. What the 1001 Crew had found was a register write made at a moment the [VIC-II](/vault/hardware/vic-ii)'s designers had not planned for. That is what this entry means by a **raster trick**: not changing a colour or a scroll value partway down the screen, which is an ordinary [raster effect](/vault/techniques/raster-effects), but timing a write so that the chip skips or repeats one of its own internal steps.
 
-Every trick here rests on one fact: the video chip builds the picture a line at a
-time, in a fixed order, and the CPU can change the chip's registers while it
-works. Whatever the chip has already drawn keeps its old settings; whatever it
-draws next uses the new ones. One screen, two configurations.
+## Why the chip can be fooled
 
-That makes the electron beam a clock the program can synchronise to — and it means
-these effects are measured in **CPU cycles, not milliseconds**. A C64 PAL line is
-63 cycles, and a write landing one cycle late lands on the wrong side of a pixel.
-The technique is not "write to this register"; it is "write to this register
-*now*".
+The registers involved are all in Commodore's manual. What the manual does not describe is the logic behind them, and the tricks depend on that logic. The VIC-II switches its border on and off by comparing the beam's position with a few fixed values, and Christian Bauer's 1996 description of the chip explains the weakness: "The comparisons only match if the values are reached precisely. There is no comparison with an interval." Change the screen height between the two possible bottom lines and neither comparison matches, so the border never starts. In the same way, the chip decides whether a raster line is a *badline*, the line on which it fetches a new row of characters, by comparing the low three bits of the line number with the vertical scroll value in `$D011`. Change the scroll value and a program can make a badline happen early, late, twice or not at all.
 
-## Advanced techniques
+The price is timing. A PAL C64 line lasts 63 processor cycles and the chip draws 8 pixels in each one, so a write a cycle late lands 8 pixels further along. Most tricks need a [stable raster](/vault/techniques/stable-raster) routine first, to remove the few cycles of jitter in a raster interrupt.
 
-Beyond basic raster effects:
+## The tricks
 
-- **FLI (C64):** Flexible Line Interpretation — force a badline on every line by writing YSCROLL into `$D011` to match the current raster line's low 3 bits. Combined with per-line `$D018` writes, this gives 8 colours per 8×8 cell instead of 2.
-- **AGSP (C64):** Any Given Screen Positioning — VSP for the horizontal position combined with a line crunch for the vertical, so the whole screen can be placed anywhere. Not a mid-line technique in its own right, but a composition of two.
-- **NUFLI (C64):** New Unrestricted FLI — refined FLI with reduced sprite-count constraints.
-- **VSP (C64):** Variable Screen Position — mid-line `$D016` XSCROLL manipulation that shifts the *entire* screen position. Originally a side-effect (the "VSP crash"), later weaponised for stable scrolling effects.
-- **Border opening (C64):** clearing bit 3 of `$D011` (24-row mode) or `$D016` (38-column mode) at exactly the right cycle bypasses the border and renders sprites/playfield outside the normal display area.
-- **Sprite stretching (C64):** writing to `$D017` (Y-expand) at a precise cycle causes the VIC-II to re-fetch sprite data, allowing arbitrary-height sprites — used for full-screen logos and demo effects.
-- **Copper tricks (Amiga):** per-scanline register manipulation — colour gradients, mode switches, sprite repositioning, palette cycling. The Copper's elegance makes most C64-style raster tricks one or two MOVE instructions apart.
+Each has its own entry. The dates are from the demo scene's own list of first appearances, a community record open to correction.
 
-## Why they work at all
+| Trick | The write | What it gives | First listed |
+|---|---|---|---|
+| [Open borders](/vault/techniques/open-borders) | Switch to 24 rows on line 248, 249 or 250; for the side borders, switch to 38 columns in exactly cycle 56 of each line | Sprites shown in the border | Top and bottom 1985, sides 1986 |
+| [FLD](/vault/techniques/fld) | Keep moving the vertical scroll value so the next badline never comes | A gap of blank lines that pushes the screen down | 1986 |
+| [Linecrunch](/vault/techniques/linecrunch) | Cancel a badline after one line of a character row | The screen moves up without copying memory | 1987 |
+| [VSP](/vault/techniques/vsp) | Start a badline late in the line with a write to `$D011` | The whole screen moves sideways a character per cycle of delay | 1987 |
+| [AGSP](/vault/techniques/agsp) | VSP for the horizontal position plus linecrunch for the vertical | The whole screen placed anywhere without copying memory | 1988 |
+| [FLI](/vault/techniques/fli) | Force a badline on every line and switch screen memory with `$D018` | New screen-memory colours on every pixel line instead of every eighth | 1989 |
+| [Sprite stretching](/vault/techniques/sprite-stretching) | Clear and set a sprite's Y-expansion bit in `$D017` on each line | The same row of sprite data shown again, so a sprite can be any height | 1989 |
 
-These are not undocumented *registers* — the registers are all in the manual. What
-is undocumented is what happens when you write to them at a moment the designers
-did not anticipate, because the chip is a state machine that was only ever
-specified for the states it was expected to be in.
+The names were not fixed. VSP, short for Variable Screen Positioning, is also called HSP and DMA delay, and Bauer's document describes it as DMA delay.
 
-Border opening is the clearest case. The VIC-II decides to draw border by comparing
-the current line against a limit; change the limit *after* it has made that
-comparison for the frame and it never finds the edge it was looking for, so it
-carries on drawing playfield into the surround. Nothing is being tricked — the
-chip is doing exactly what it was built to do, having been asked a question its
-designers assumed nobody would ask.
+Later picture modes stacked these tricks with others. Crossbow and DeeKay of the German group [Crest](/vault/groups/crest) are credited with a series of them, from UFLI in 1996, which puts a layer of sprites under an FLI picture, to NUFLI in 2009.
 
-📘 **The FLI bug is what it costs.** Forcing a badline where the chip does not
-expect one leaves the colour information set to `$FF` for the **leftmost 12 multicolour
-pixels**, which the VIC-II renders as bright grey.
-That grey-ish left-hand stripe on FLI pictures is not a bug in the demo; it is the
-hardware telling you where it was interrupted. Artists designed around it, and
-later variants reduced it.
+## What they cost
 
-⚠ Several of these depend on chip revision — 6567R56A against 6567R8 against 6569,
-6581 against 8580. Code that is cycle-exact on one machine can be a line out on
-another, which is why the scene tested on hardware rather than in emulators.
+Every trick takes processor time, and some take most of it. The VIC-II stops the processor for 40 to 43 cycles on each badline, so FLI, which makes every line a badline, leaves little time for anything else while the picture is on screen. Some leave marks. FLI's forced badlines come too late for the chip's first three reads of screen memory on each line, which return `$FF`, and the result is a stripe three character cells wide down the left of the picture, 12 multicolour pixels, where two of the four colour choices show light grey. FLI pictures leave it blank or design around it. VSP corrupts memory on some C64s, a fault traced to the machine's DRAM in 2013.
+
+The tricks also depend on the chip. The PAL 6569 has 312 lines of 63 cycles, the NTSC 6567R8 263 lines of 65 cycles and the early 6567R56A 262 lines of 64, so a routine counted out for one machine can be out of step on another.
+
+<Sources>
+
+- *ZZAP!64* issue 20, December 1986, p. 131: the 1001 Crew's border-opening demos. Issue 24, April 1987, p. 90: Andrew Braybrook's *Morpheus* diary.
+- Christian Bauer, *The MOS 6567/6569 video controller (VIC-II) and its application in the Commodore 64* (1996): lines and cycles per line for the three chips (section 3.4); badlines and the 40-43 stolen cycles (3.5); the border comparisons (3.9); the tricks (3.14).
+- Codebase64 wiki, "Demo records and world firsts" (community list, web, secondary): first appearances of the tricks. https://codebase64.org/doku.php?id=vic:demo:demo_world_records_and_world_firsts
+- Codebase64 wiki, "FLI", "Any Given Screen Positioning (AGSP)" and "Horizontal Screen Positioning (HSP)" (web, secondary).
+- The detail of each trick, and its sources, is in the reviewed entries linked from the table.
+
+</Sources>
 
 ## See also
 
-- **[Raster splits](/patterns/commodore-64/assembly/rendering/raster-splits)** — working C64 code for the basic technique everything here builds on, in the Pattern Library.
-- [Raster effects](/vault/techniques/raster-effects) — the general idea, before it is pushed.
-- [Stable raster](/vault/techniques/stable-raster) — getting cycle-exact in the first place, which every trick here assumes.
-- [VIC-II](/vault/hardware/vic-ii) and [Copper](/vault/hardware/copper) — the chips being argued with.
-- [Demo Scene](/vault/communities/demo-scene) — who worked most of this out.
+- [Raster Effects](/vault/techniques/raster-effects): the general idea on every machine, before it is pushed.
+- [Raster Splits](/patterns/commodore-64/assembly/rendering/raster-splits): working C64 code for the basic split, in the Pattern Library.
+- [Stable Raster](/vault/techniques/stable-raster)
+- [VIC-II](/vault/hardware/vic-ii)
+- [Demo Scene](/vault/communities/demo-scene)
