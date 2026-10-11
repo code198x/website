@@ -1,11 +1,11 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Memory Mapping"
 subtitle: "Addresses for everything"
-summary: "Memory-mapped I/O places hardware registers at specific addresses, allowing software to control graphics, sound, and input by reading and writing memory locations."
+summary: "Memory-mapped I/O gives each hardware register an address, so a program drives the video chip, the sound chip and the joystick ports with the same loads and stores it uses for memory. The 6502 and 68000 had no other way; the Z80 had separate I/O ports as well. The addresses behave unlike memory: some registers cannot be read back, and reading others changes them."
 category: "techniques"
-platforms: ['commodore-64', 'nintendo-entertainment-system', 'commodore-amiga']
+platforms: ['commodore-64', 'nintendo-entertainment-system', 'commodore-amiga', 'sinclair-zx-spectrum']
 tags: ['hardware', 'programming', 'low-level']
 sources:
   c64_io_map:
@@ -22,63 +22,100 @@ sources:
       kind: book
       page: "260-261"
       note: "\"the character ROM occupies the same address space as the I/O devices ($D000 to $DFFF). When the CHAREN line is set to 1 (as is normal), the I/O devices appear in the processor address space\" — \"When the CHAREN bit is cleared to 0, the character ROM appears in the processor address space, and the I/O devices are not accessible.\""
+  registers_are_not_memory:
+    - title: "Commodore 64 Programmer's Reference Guide, Commodore Business Machines"
+      kind: book
+      page: "432-433, 460-461"
+      note: "Appendix M, the 6526 CIA: the Interrupt Control Register 'consists of a write-only MASK register and a read-only DATA register' and 'The interrupt DATA register is cleared and the IRQ line returns high following a read of the DATA register'. Appendix O, the SID: 'There are 29 eight-bit registers in SID which control the generation of sound. These registers are either WRITE-only or READ-only'"
+  z80_ports:
+    - title: "Zilog, Z80 CPU User Manual (UM008011-0816)"
+      kind: manual
+      note: "IN A,(n): 'The operand n is placed on the bottom half (A0 through A7) of the address bus to select the I/O device at one of 256 possible ports. The contents of the Accumulator also appear on the top half (A8 through A15) of the address bus at this time.' IN r,(C): the contents of register B are placed on the top half"
+    - title: "Adrian Dickens, Spectrum Hardware Manual, 2nd edition (Melbourne House)"
+      kind: book
+      page: "32-33"
+      note: "Chapter 7, The Keyboard: each of the eight rows 'is selected by setting the relevant address line to logic 0'; 'IN 65278 uses A8 to read the half row SHIFT to V' through 'IN 32766 uses A15 to read the half row SPACE to B'"
+  amiga_map:
+    - title: "Amiga Hardware Reference Manual, 3rd edition (Commodore-Amiga, Addison-Wesley)"
+      kind: manual
+      page: "293, 317-318"
+      note: "Appendix D: 'BFD000-BFDF00 8520-B (access at even-byte addresses only)'; 'BFE001-BFEF01 8520-A (access at odd-byte addresses only)'; 'DFF000-DFFFFF Chip registers'; location 4, the address of exec.library, is 'the only absolute memory location in the system'. Appendix F: CIA-A PRA at BFE001 holds /FIR1 /FIR0 /RDY /TK0 /WPRO /CHNG /LED OVL; PRB at BFE101 is the parallel port; CIA-B PRA at BFD000 holds /DTR /RTS /CD /CTS /DSR SEL POUT BUSY; PRB at BFD100 holds the disk drive's /MTR /SEL3-0 /SIDE DIR /STEP"
 ---
+import Sources from '@components/Sources.astro';
 
-Memory mapping assigns specific memory addresses to hardware registers, allowing programs to control peripherals through normal load/store operations rather than special I/O instructions. This approach defined how programmers interacted with 8-bit and 16-bit hardware.
+On a Commodore 64, `POKE 53280,0` turns the border black. Address 53280, `$D020`, is not memory at all. It is a register inside the VIC-II video chip, wired into the processor's address space so that a store to that address lands in the chip. That is **memory-mapped I/O**: every piece of hardware a program needs to talk to has an address, and the program reaches it with the same loads and stores it uses for ordinary memory. For a generation of programmers it was how hardware felt, a list of magic numbers to `POKE`.
 
-## Examples
+It was not the only design. The Z80 had separate instructions and a separate address space for I/O, and machines built round it, such as the ZX Spectrum, used both kinds. And registers mapped into memory did not behave like memory, which caught out anyone who treated them as if they did.
 
-**Commodore 64:**
-- `$D000-$D3FF`: VIC-II graphics chip (47 registers + mirrors)
-- `$D400-$D7FF`: SID sound chip (29 registers + mirrors)
-- `$D800-$DBFF`: colour RAM (1 KB, 4-bit-wide chip)
-- `$DC00-$DCFF`: CIA#1 (keyboard, joystick, IRQ source)
-- `$DD00-$DDFF`: CIA#2 (serial bus, RS-232, NMI source, VIC bank select)
+## Fast facts
 
-**NES:**
-- `$2000-$2007`: PPU registers (mirrored every 8 bytes through `$3FFF`)
-- `$4000-$4017`: APU and I/O ($4014 = OAMDMA, $4016/$4017 = controllers)
-
-**Amiga:**
-- `$DFF000-$DFF1FE`: custom chip registers (Agnus, Denise, Paula, Copper, Blitter)
-- `$BFE001`: CIA-A PRA (joystick fire buttons, parallel port)
-- `$BFD000`: CIA-B (serial port, disk control, mouse)
-
-## Memory-mapped vs port-mapped I/O
-
-Most 8-bit and 16-bit systems use **memory-mapped I/O** — hardware registers live in the same address space as RAM, accessed by normal `LDA`/`STA` (or equivalent). The 6502, 6510, 6809, and 68000 have no separate I/O instructions, so memory mapping is the only option.
-
-The Z80 is different: it has dedicated `IN` and `OUT` instructions that access a separate **I/O port** address space (256 ports on a basic Z80, 65,536 with the indirect form). The ZX Spectrum, Amstrad CPC, MSX, and Z80-based arcade boards all use port-mapped I/O for hardware control. Memory-mapped accesses to the same hardware on those systems would require dedicated address decoding and aren't typically used.
-
-Hybrid systems (like Sega Master System with Z80 + memory-mapped VDP) place graphics in memory space but sound in port space, mixing both styles.
+- **Memory-mapped I/O:** hardware registers share the address space with RAM and ROM, and ordinary instructions reach them.
+- **Port-mapped I/O:** a separate address space for hardware, reached with special instructions such as the Z80's `IN` and `OUT`.
+- **Processors with no I/O instructions:** the 6502 and 6510, the 6809 and the 68000. On these, memory mapping is the only option.
+- **The catch:** an I/O address is not a variable. Some registers cannot be read back, and reading others clears them.
 
 ## The C64's page of I/O
 
-Commodore's Programmer's Reference Guide draws the 4K at `$D000-$DFFF` as a single block of I/O: 1K each for the VIC-II, the SID and colour RAM ("1K Nybbles" — the chip is four bits wide), 256 bytes each for the two CIAs, and two "open I/O slots" at `$DE00` and `$DF00` that the manual says were "tentatively designated for enabling the Z-80 cartridge (CP/M option) and for interfacing to a low-cost high-speed disk system". The chips do not fill their blocks — the VIC-II has 47 registers, the SID 29 — so the rest of each 1K is mirrors.
+Commodore's *Programmer's Reference Guide* draws the 4K at `$D000-$DFFF` as a single block of I/O:
 
-The same 4K is also where the character generator ROM lives, and what the processor sees there depends on the CHAREN bit of the 6510's port at `$01`: set "as is normal", the I/O appears; cleared, "the character ROM appears in the processor address space, and the I/O devices are not accessible". Memory-mapped I/O on the C64 is therefore one layer of a [bank-switched](/vault/techniques/bank-switching) map, not a fixed feature of the address.
+| Address | Chip | What it does |
+|---|---|---|
+| `$D000-$D3FF` | VIC-II | Video: 47 registers, `$D000-$D02E` |
+| `$D400-$D7FF` | SID | Sound: 29 registers |
+| `$D800-$DBFF` | Colour RAM | One four-bit colour for each of the 1,000 screen positions |
+| `$DC00-$DCFF` | CIA 1 | Keyboard and joysticks, and two timers |
+| `$DD00-$DDFF` | CIA 2 | Serial bus, user port and RS-232; also selects which 16K the VIC-II sees |
+| `$DE00-$DFFF` | Two open I/O slots | For cartridges |
 
-## Programming Model
+The guide says the two open slots were "tentatively designated for enabling the Z-80 cartridge (CP/M option) and for interfacing to a low-cost high-speed disk system". The chips do not fill their blocks. The VIC-II has 47 registers in its 1K and the SID 29, so the rest of each block repeats the same registers again.
+
+The same 4K is also where the character generator ROM lives, and what the processor sees there depends on the CHAREN bit of the 6510's own port at `$01`. Set "as is normal", the I/O appears; cleared, "the character ROM appears in the processor address space, and the I/O devices are not accessible". That port is itself memory-mapped: the [6510](/vault/hardware/6510) answers at addresses 0 and 1. Memory-mapped I/O on the C64 is therefore one layer of a [bank-switched](/vault/techniques/bank-switching) map, not a fixed feature of the address.
+
+Talking to the chips is a store:
 
 ```asm
-; C64: Set border colour to black
-LDA #$00
-STA $D020    ; Border colour register
-
-; C64: Set volume
-LDA #$0F
-STA $D418    ; SID volume register
+        lda #$00
+        sta $d020       ; VIC-II: border colour black
+        lda #$0f
+        sta $d418       ; SID: volume to maximum (low four bits)
 ```
 
-## Advantages
+## Registers are not memory
 
-- Consistent programming model
-- Works with all CPU instructions
-- No special I/O instructions needed
-- Debuggers can monitor register access
+Treat a register like a variable and it bites. The SID's registers, the guide says, "are either WRITE-only or READ-only": a program that stores a frequency and later reads the same address back does not get its frequency, so a program that needs to know what it wrote has to keep its own copy.
+
+Reading can change things too. The CIA's interrupt control register is two registers at one address, "a write-only MASK register and a read-only DATA register", and the data register "is cleared and the IRQ line returns high following a read". Reading it is how a program acknowledges an interrupt. That is why C64 interrupt code contains loads that seem to do nothing, such as `LDA $DC0D` with the result thrown away. The [raster effects](/vault/techniques/raster-effects) entry has an example.
+
+## The NES and the Amiga
+
+The NES's processor is a 6502 too, so its hardware is memory-mapped. The picture processor (PPU) has eight registers at `$2000-$2007`, repeated every eight bytes up to `$3FFF`, and the sound, the controllers and the sprite DMA live at `$4000-$4017`. The PPU's own video memory, though, is not in the processor's address space at all. A program reaches it through a window: it writes an address to `$2006`, then reads or writes data through `$2007`, one byte at a time.
+
+The Amiga's 68000 has no I/O instructions either. Its custom chips answer at `$DFF000` onwards, and its two 8520 CIAs sit near `$BFD000` and `$BFE001`, on alternate bytes. The CIA called CIA-A is wired to the low half of the data bus, so it answers only at odd addresses. CIA-B uses the high half and even addresses. Their ports are a mixed bag. CIA-A's port A at `$BFE001` holds the two joystick fire buttons, signals from the disk drive and the LED control, and its port B is the parallel port; CIA-B drives the disk motors and heads and the serial port's control lines. Commodore's *Hardware Reference Manual* treated these hardware addresses as fixed and almost nothing else. Everything in RAM is allocated at run time, it says, and the pointer at location 4 is "the only absolute memory location in the system".
+
+## Ports: the Z80's other address space
+
+The Z80 has `IN` and `OUT` instructions, and an `IORQ` signal that tells the hardware an access is for I/O rather than memory. Zilog's manual describes a port number as selecting "the I/O device at one of 256 possible ports", but both forms of `IN` and `OUT` also put a second byte on the upper half of the address bus: the accumulator for `IN A,(n)`, register B for `IN r,(C)`. Designers used it.
+
+The ZX Spectrum uses both styles. Its screen is ordinary RAM from address 16384, which the ULA reads to draw the picture, so drawing is a matter of writing memory. Its keyboard, border colour, speaker and cassette are behind I/O port 254: an `OUT` to that port, the Spectrum +2 manual explains, "drives the sound (D4) and the save signal to the datacorder (D3), and also sets the border colour (D2, D1 and D0)". The keyboard shows off the upper address byte. Its 40 keys are wired in eight half-rows, and Adrian Dickens's *Spectrum Hardware Manual* explains that each half-row is selected by one of the upper address lines: `IN 65278` "uses A8 to read the half row SHIFT to V", and `IN 32766` uses A15 for SPACE to B. Every one of those addresses is port 254 in its low byte.
+
+Other Z80 machines made other choices, and many mixed the two styles. The rule of thumb is the processor's: on a 6502 or 68000 everything is in memory, and on a Z80 the designer chose for each device.
+
+<Sources>
+
+- Commodore, *Commodore 64 Programmer's Reference Guide* (1982): the VIC-II registers and colour RAM (p. 100); bank selection through CIA 2 (p. 101); the memory map, the I/O block and CHAREN (pp. 260-262); the 6526 CIA's interrupt control register (Appendix M, pp. 432-433); the SID's 29 registers (Appendix O, pp. 460-461).
+- *Amiga Hardware Reference Manual*, 3rd edition (Commodore-Amiga, Addison-Wesley): Appendix D, "System Memory Map", p. 293; Appendix F, CIA address maps, pp. 317-318.
+- Zilog, *Z80 CPU User Manual* (UM008011-0816): the `IN` and `OUT` instructions and the upper address byte.
+- Adrian Dickens, *Spectrum Hardware Manual*, 2nd edition (Melbourne House), chapter 7, "The Keyboard", pp. 32-33.
+- Amstrad, *Sinclair ZX Spectrum +2* manual, BASIC section, part 23, "IN and OUT": the port addresses, including port 254 in output.
+- NESdev Wiki, "PPU registers" (community reference, web, secondary): the eight registers, their mirroring through `$3FFF`, `PPUADDR` and `PPUDATA`, and `OAMDMA` at `$4014`. https://www.nesdev.org/wiki/PPU_registers
+
+</Sources>
 
 ## See also
 
+- [Bank Switching](/vault/techniques/bank-switching)
 - [Memory Management](/vault/techniques/memory-management)
+- [6510](/vault/hardware/6510)
 - [VIC-II](/vault/hardware/vic-ii)
 - [6502](/vault/hardware/6502)
+- [Z80](/vault/hardware/z80)
