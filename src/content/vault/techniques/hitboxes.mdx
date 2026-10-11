@@ -1,123 +1,141 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Hitboxes"
 subtitle: "Collision boundaries"
-summary: "Hitboxes define the invisible collision boundaries around game objects, determining when attacks connect, pickups are collected, and characters collide with the world."
+summary: "A hitbox is the invisible rectangle a game tests instead of the drawn shape. Designers sized them by hand: Dave Jones shrank Menace's alien boxes to fit the smaller aliens, C64 coders kept a box per sprite type, and bullet-hell shooters cut the player's box to a few pixels so dense bullet patterns could be dodged."
 category: "techniques"
-platforms: ['commodore-64', 'sinclair-zx-spectrum', 'commodore-amiga', 'nintendo-entertainment-system', 'sega-mega-drive']
+platforms: ['commodore-64', 'commodore-amiga', 'ibm-pc']
 tags: ['collision', 'gameplay', 'programming']
-originated: 1978
-
 sources:
   one_size_fits_all_fails_on_mixed_sizes:
     - title: "Achim, 'Individual sprite boxes for collision detection', Codebase64"
       kind: technical-doc
       page: "base:sprite_collision_detection"
-      note: "'The regular way of detecting a sprite to sprite collision is to define a box around the sprite, which means you add an offset to the sprite's y and x values to get y2 and x2. In most cases the 'one size fits all' approach will work, as long as all sprites in the game have a similar size. But with different sprite sizes (e.g. a big space ship and a small bullet) it's better to work with individual boxes for accurate results'"
+      note: "'The regular way of detecting a sprite to sprite collision is to define a box around the sprite, which means you add an offset to the sprite's y and x values to get y2 and x2. In most cases the 'one size fits all' approach will work, as long as all sprites in the game have a similar size. But with different sprite sizes (e.g. a big space ship and a small bullet) it's better to work with individual boxes for accurate results' (web) https://codebase64.net/doku.php?id=base:sprite_collision_detection"
   the_box_is_a_table_not_a_constant:
     - title: "Achim, 'Individual sprite boxes for collision detection', Codebase64"
       kind: technical-doc
       page: "base:sprite_collision_detection"
-      note: "Four offsets per sprite, held in a table indexed alongside the sprite arrays: 'offsettable: .byte 03, 12, 08, 16, //the two y and two x offset values'. For the worked example, 'y coordinates of red box: y1= y+3px and y2= y1+12px; x coordinates of red box: x1= x+8px and x2= x+16px (use x again to figure out x2 for easier msb handling)'"
+      note: "Four offsets per sprite in a table: 'offsettable: .byte 03, 12, 08, 16, //the two y and two x offset values'; 'y1= y+3px and y2= y1+12px; x1= x+8px and x2= x+16px'. 'Using the 2*x trick makes life easier: Delete all msb tables, use 8bit additions to figure out x1 and x2 and use comparisons instead of subtractions for collision detection.'"
+  menace_boxes:
+    - ref: magazines/amiga-format
+      kind: magazine
+      issue: 12
+      date: "1990-07"
+      page: "156-158"
+      note: "Dave Jones, games programming series on Menace, collision detection: 'What normally happens is that a box is defined within the two objects you are checking. A box only needs two coordinates, the top left and bottom right. If two boxes overlap then we flag a collision.' Missiles: 'only one coordinate at the tip of each missile was checked'. 'I made all the alien collision boxes 32 x 24 pixels in size, the same as the alien'; for a small alien 'One way around this would be to store a collision box size for each alien. The one in Figure 2 for example would suit a box of 24 x 18 better.' 12 aliens and 18 missiles 'would mean checking every missile against every alien = 216 checks'."
   the_hardware_alternative_was_rejected:
+    - title: "Commodore 64 Assembly Language Arcade Game Programming (TAB Books, 1985)"
+      kind: book
+      page: "32"
+      note: "'the SSCOL register will only tell you which sprites are involved in collisions, not which sprite hit which sprite. If you are multiplexing sprites, the data in the SSCOL register may be useless.'"
     - title: "Richard Bayliss, 'Sprite/Sprite hardware collision', Codebase64"
       kind: technical-doc
       page: "base:simple_hardware_sprite_to_sprite_collision"
-      note: "'Unfortunately with most games these days, $D01E is very useless, therefore a software collision is used'"
-
+      note: "'Unfortunately with most games these days, $D01E is very useless, therefore a software collision is used' (web)"
 ---
+import Sources from '@components/Sources.astro';
 
-What you see isn't always what the game detects. **Hitboxes** are the simplified collision boundaries that determine interactions between game objects. A character sprite might be 32 pixels tall, but their vulnerable hitbox could be a small rectangle at chest height — making the game feel fair despite the simplification. Done well, hitboxes make a fighting game's frame data, a platformer's "this jump should make it" forgiveness, and a shooter's "the bullet didn't seem to hit" satisfaction.
+When Dave Jones of DMA Design wrote *Menace* for the Amiga, he gave every alien a collision box the size of its sprite, 32 by 24 pixels. Then he noticed what that did to the small aliens. A missile could enter the box, register a hit and destroy an alien that, on screen, it had plainly missed. His fix, he told *Amiga Format* readers in 1990, was to "store a collision box size for each alien"; the small one in his example "would suit a box of 24 x 18 better."
 
-The technique is alive and central to modern games — fighting-game frame data discussions on YouTube and Twitch (*Street Fighter*, *Tekken*, *Smash Bros.*) revolve around hitbox / hurtbox visualisations.
+That is a hitbox: the invisible shape a game tests instead of the picture the player sees. Almost every hitbox in the period was a rectangle, because a rectangle can be tested with a handful of comparisons. Its size and position are a design decision as much as a programming one. Too large and the player dies from bullets that missed; too small and shots pass through enemies. The arithmetic of testing boxes is covered in [Collision Detection](/vault/techniques/collision-detection). This entry is about choosing them.
 
 ## Fast facts
 
-- **Purpose:** Collision detection boundaries.
-- **Shape:** Usually rectangles (axis-aligned bounding boxes); circles, capsules, or hand-tuned polygons for higher precision.
-- **Visibility:** Hidden from players in-game; visible in debug modes and frame-data analysis.
-- **Design goal:** Feel fair and responsive.
+- **What it is:** a rectangle, usually smaller than the sprite, stored as offsets from the sprite's position.
+- **Why not the pixels:** testing every pixel costs far too much, and the C64's hardware collision register reports which sprites touched something, not which touched which.
+- **Per-object sizes:** a box for each kind of object, kept in a table, so a big ship and a small bullet each get a fair box.
+- **Per-frame sizes:** some games stored a box for every animation frame, so the box changed as the character moved.
+- **Deliberately small:** bullet-hell shooters shrank the player's box to a small part of the ship, which is what makes their dense bullet patterns survivable.
 
-## Hitbox types
+## A box for each kind of object
 
-Modern games typically use multiple distinct box types per object:
+A box is two corners. Jones put it plainly: "A box only needs two coordinates, the top left and bottom right. If two boxes overlap then we flag a collision." It is rough, he admitted, because "not many aliens appear as a box shape", which is why the box's size matters.
 
-| Type | Purpose | Example |
-|------|---------|---------|
-| **Hurtbox** | Where the character can *be hit* | Body, head — separate boxes per limb in fighters |
-| **Hitbox / attack box** | Where an attack *deals damage* | Sword swing, punch, projectile body |
-| **Collision box / pushbox** | Solid-world collision; characters can't overlap | Player vs player, player vs wall |
-| **Trigger box** | Event activation (no physical collision) | Door entry, area-of-effect, cutscene trigger |
-| **Grab box** | Throw-attack range | Fighter grabs |
-| **Counter box** | Active-during-counter window | Parry / counter mechanics |
-| **Block box** | Blocking-attack registration | Shield raised states |
+On the C64, Achim's Codebase64 article makes the same point. One box size for every sprite works "as long as all sprites in the game have a similar size. But with different sprite sizes (e.g. a big space ship and a small bullet) it's better to work with individual boxes." His version keeps four offsets for each sprite in a table. In his worked example the box starts 3 pixels below the sprite's top and is 12 pixels tall, and runs from 8 to 16 pixels across: a small target in the middle of a 24 by 21 sprite.
 
-Different *games* have different needs — a platformer might just have collision and hurt; a fighting game has all of the above plus more.
+C64 sprites can sit at X positions above 255, which needs a ninth bit. Achim suggests the "2*x trick": store X positions halved, so every edge fits in a byte and plain comparisons will do. A routine in that style builds each object's box from its type, then tests it against the player's:
 
-## Design considerations
+```asm
+; Build object X's box from the table entry for its type, in Y.
+; X coordinates are stored halved (0-159), so every edge fits in a byte.
+makebox:
+        lda obj_x,x
+        clc
+        adc box_x1,y
+        sta box_left,x
+        lda obj_x,x
+        clc
+        adc box_x2,y
+        sta box_right,x
+        lda obj_y,x
+        clc
+        adc box_y1,y
+        sta box_top,x
+        lda obj_y,x
+        clc
+        adc box_y2,y
+        sta box_bottom,x
+        rts
 
-| Factor | Approach |
-|--------|----------|
-| **Fairness to player** | Player hurtbox often *smaller* than sprite — gives a "felt fair" advantage on close calls |
-| **Hostile to player** | Enemy hitboxes can be *slightly larger* than visuals to give attacks reach |
-| **Forgiveness on pickups** | Generous trigger boxes — coin pickups feel snappy |
-| **Precision in skill games** | Tight boxes that exactly match the visual (fighting games, bullet-hells) |
-| **Animation matching** | Per-frame boxes that follow the sprite's actual extension (a sword swing's hitbox grows during the swing animation) |
+; Does object X's box overlap the player's (object 0)?
+; Returns with carry set for a hit, clear for a miss.
+hittest:
+        lda box_right          ; player's right edge
+        cmp box_left,x         ; left of the enemy's left edge?
+        bcc miss
+        lda box_right,x        ; enemy's right edge
+        cmp box_left           ; left of the player's left edge?
+        bcc miss
+        lda box_bottom         ; player's bottom edge
+        cmp box_top,x          ; above the enemy's top?
+        bcc miss
+        lda box_bottom,x       ; enemy's bottom edge
+        cmp box_top            ; above the player's top?
+        bcc miss
+        rts                    ; carry is set: the boxes overlap
+miss:   clc
+        rts
+```
 
-The "player hurtbox smaller than sprite" rule is the secret behind why classic Nintendo games "felt good" — a tiny hurtbox at Mario's centre means most close-call jumps barely-cleared rather than barely-failed.
+Each `cmp` sets the carry when the first number is at least as large as the second, so the test gives up at the first pair of edges that are apart, and boxes that share an edge count as touching. With Achim's offsets, the player's entry in the table is 4 and 8 for X (his 8 and 16 pixels, halved) and 3 and 15 for Y.
 
-## Platform approaches
+## Why not let the hardware do it?
 
-| Platform | Common method |
-|----------|---------------|
-| **NES / 8-bit** | Bounding box comparison — single rect per object, simple AABB intersection |
-| **C64** | Software boxes, per sprite. The hardware register `$D01E` exists but was widely judged too coarse for anything but a dodge game |
-| **Mega Drive / SNES** | Multiple boxes per object; software AABB; sometimes hierarchical |
-| **Arcade fighters** | Multiple boxes per character per frame; *Street Fighter II* introduced the per-frame approach |
-| **Modern engines** | Hierarchical: broad-phase via spatial partition + narrow-phase via per-bone capsules / boxes |
+The C64's video chip will report sprite collisions by itself, pixel by pixel, in register `$D01E`. But a 1985 guide to arcade game programming on the machine warned that the register "will only tell you which sprites are involved in collisions, not which sprite hit which sprite. If you are multiplexing sprites, the data in the SSCOL register may be useless", because one hardware sprite may be showing several objects in a frame. It also cannot be made smaller than the drawing. Codebase64's article on the hardware method concedes that "with most games these days, $D01E is very useless, therefore a software collision is used."
 
-## Fighting game precision
+The Amiga's hardware can also detect collisions, and Jones used it for the player's ship in *Menace*. For missiles against aliens he used boxes, with two shortcuts. A missile was too small to need a box of its own, so "only one coordinate at the tip of each missile was checked". And because twelve aliens against eighteen missiles "would mean checking every missile against every alien = 216 checks", he first used the blitter to ask whether any missile had touched any alien at all, and only then worked out which.
 
-Fighting games made hitboxes their own art form:
+## A box for each frame
 
-| Element | Implementation |
-|---------|----------------|
-| **Per-frame boxes** | Different shapes each animation frame |
-| **Active frames** | Attack only hits during specific frames of the animation |
-| **Recovery frames** | Vulnerable hurtboxes during cooldown — punishable |
-| **Invincibility frames (i-frames)** | No hurtbox during certain moves (dragon-punches, dodges) |
-| **Counter-hit window** | Hitbox registers as "counter" only during specific opponent frames |
-| **Hurtbox extensions** | Some attacks expose the attacker's hurtbox during startup |
+A character that crouches, kicks or stretches changes shape, and a fixed box fits some poses badly. One answer is a box for every image. The source code of id Software's *Keen Dreams* (1991), released in 2014, shows how. Each sprite image in the game's graphics file carries its own hit rectangle, four values `xl`, `yl`, `xh` and `yh`, alongside its size. Every time an object moves, the game reads the rectangle for whatever image it is showing at that moment, so the box follows the animation. Objects whose rectangles overlap call each other's `contact` routine.
 
-The *Street Fighter II* fighting-game tradition — startup, active, recovery — is now standard across genres. Modern fighting-game training modes show all boxes in real time so players can study frame data.
+## Small on purpose
 
-## Common optimisations
+The most deliberate hitboxes belong to shoot-'em-ups. James Greenhalgh of the site Shmups.com explained to *Retro Gamer* in 2007 that the old rule, "when a bullet touching your ship in any way meant death", could not work in shooters that fill the screen with bullets. So designers "reduce the size of the hit-box, the area of the player sprite that can collide with bullets, and even reduced bullet hit-boxes themselves. You can't reduce the sprites to those sizes; it would just look like tiny specks on the screen." Some games turned the gap between sprite and box into a scoring system, rewarding the player for "grazing" bullets.
 
-| Technique | Benefit |
-|-----------|---------|
-| **Axis-aligned boxes (AABB)** | Simplest overlap maths — 4 comparisons per pair |
-| **Hierarchical checks** | Broad-phase (large box around the whole entity) before narrow-phase (per-limb boxes) |
-| **Spatial partitioning** | Quadtree / grid bucketing — only check pairs that share a region |
-| **Sweep and prune** | Sort objects by axis, only check pairs whose axes overlap |
-| **Frame skipping** | Some checks can run every other frame for non-critical objects |
+Modern games keep the idea and the name, though not always the box. *Wireframe* noted in 2019 that "hitbox" is "actually a bit of a misnomer, because they come in more shapes than just boxes": first-person shooters build characters' hitboxes from spheres and capsules fitted to the skeleton.
 
-The **broad-then-narrow** approach is universal: an axis-aligned bounding box is cheap to test; per-bone capsules are expensive. Test the cheap one first, fall through to the expensive one only when the cheap one says "maybe."
+<Sources>
 
-## Visualising hitboxes
+- Dave Jones, games programming series, part on collision detection in *Menace*, *Amiga Format* issue 12, July 1990, pp. 156–158: boxes from two corners, the 32 × 24 and 24 × 18 boxes, the single point at the missile's tip, 216 checks, and the blitter test.
+- Achim, "Individual sprite 'boxes' for collision detection", Codebase64 (web): per-sprite offset tables, the worked example and the "2*x trick". https://codebase64.net/doku.php?id=base:sprite_collision_detection
+- *Commodore 64 Assembly Language Arcade Game Programming* (TAB Books, 1985), p. 32: what the sprite collision register does and does not tell you.
+- Commodore, *Commodore 64 Programmer's Reference Guide* (1983), pp. 144–145: the sprite collision registers.
+- Richard Bayliss, "Sprite/Sprite hardware collision", Codebase64 (web). https://codebase64.net/doku.php?id=base:simple_hardware_sprite_to_sprite_collision
+- *Keen Dreams* source code, released under the GNU GPL in September 2014 (web): `id_vw.h` (the sprite table's `xl`, `yl`, `xh`, `yh`) and `kd_play.c` (building each object's rectangle from its current image, and the overlap test that calls `contact`). https://github.com/keendreams/keen
+- Bas Smits, *Game Engine White Papers: Commander Keen* (self-published, 2026; modern book): *Keen Dreams* released in 1991.
+- James Greenhalgh, interviewed in *Retro Gamer* issue 42, 2007, p. 55: smaller hit-boxes in shoot-'em-ups and "grazing".
+- Patrick Gordon, "The theory behind first-person hitboxes", *Wireframe* issue 22, September 2019, pp. 30–31: hitbox shapes in modern shooters.
 
-Modern fighting game communities have made hitbox visualisation a public discourse:
-
-- **Training mode toggles** — Street Fighter, Tekken, Smash Bros training modes show boxes
-- **Mods / hacks** — older fighting games have community mods to expose boxes
-- **Frame data sites** — Dustloop, SuperCombo Wiki, Smash Wiki document boxes per frame
-- **Streamer culture** — Maximilian Dood, Sajam, and others routinely overlay box data during analysis
-
-This transparency is relatively recent; original game designers often guarded box layouts as design secrets.
+</Sources>
 
 ## See also
 
 - [Collision Detection](/vault/techniques/collision-detection)
+- [Tile-based collision](/vault/techniques/tile-collision)
 - [Sprites](/vault/techniques/sprites)
-- [Street Fighter II](/vault/games/street-fighter-ii)
-- [Frame Animation](/vault/techniques/frame-animation)
+- [Shoot-'em-up](/vault/genres/shoot-em-up)
+- [Dave Jones](/vault/people/dave-jones)
+- [id Software](/vault/companies/id-software)
