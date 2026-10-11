@@ -1,164 +1,125 @@
 ---
 ai_generated: true
-reviewed: false
+reviewed: true
 title: "Dirty Rectangles"
-subtitle: "Efficient screen updates"
-summary: "Dirty rectangle rendering optimised screen updates by tracking and redrawing only the areas that changed, saving CPU cycles when most of the display remained static."
+subtitle: "Redraw only what changed"
+summary: "Keep a list of the screen areas that changed since the last frame, rebuild only those, and copy only those to the display. Windowing systems of the 1980s made it a system service (the Macintosh's update region, GEM's rectangle list, the Amiga's DamageList, Windows' invalid rectangle), and games used it wherever most of the screen stood still; Doom (1993) still kept a 'dirtybox'."
 category: "techniques"
-platforms: ['commodore-amiga', 'ibm-pc', 'commodore-64']
+platforms: ['commodore-amiga', 'ibm-pc', 'atari-st', 'macintosh']
 tags: ['graphics', 'optimisation', 'rendering']
-sources:
-  gui_systems:
-    - title: "Amiga ROM Kernel Reference Manual: Libraries, 3rd edition, Commodore-Amiga (Addison-Wesley)"
-      kind: technical-doc
-      page: "711"
-      note: "Layers Library: \"As areas of simple refresh layers become exposed, due to layer movement or sizing for example, the newly exposed areas have not been drawn into, and need refreshing. The system keeps track of these areas by using a DamageList. To update only those areas that need it, the BeginUpdate() EndUpdate() functions are called.\" — \"BeginUpdate() saves the pointer to the current clipping rectangles and installs a pointer to a set of ClipRects generated from the DamageList in the layer structure. To repair the layer, use the graphics rendering routines as if to redraw the entire layer, and the routines will automatically use the new clipping rectangle list. So, only the damaged areas are actually rendered into, saving time.\""
-    - title: "Inside Macintosh — Window Manager Programmer's Guide, Apple Computer (pre-release binder, Rose/Davis draft dated 1984-05-30)"
-      kind: technical-doc
-      date: "1984-05-30"
-      page: "8-9, 15"
-      note: "\"Another important window region is the update region. Unlike the regions described above, the update region is dynamic rather than fixed: the Window Manager keeps track of all areas of the content region that have to be redrawn and accumulates them into the update region. For example, if you bring to the front a window that was overlapped by another window, the Window Manager adds the formerly overlapped (now exposed) area of the front window's content region to its update region. You'll also accumulate areas into the update region yourself\" — \"The Toolbox Event Manager periodically checks to see if there's any window whose update region is not empty; if it finds one, it reports (via the GetNextEvent function) that an update event has occurred\""
-    - title: "ST-Log — Window BASICs: An introduction to handling windows in ST BASIC, by James Luczak"
-      kind: magazine
-      date: "1987-01"
-      page: "15-17"
-      note: "GEM AES update sequence: \"Step 3: WIND_GET. Get the first rectangle of the rectangle list. This function is used when you have overlapping windows in the area of the window that's being updated. Step 4: Calculate resultant rectangle. This calculates the portion of the work area to redraw. Depending on how many overlapping windows there are, several rectangular portions of the work area may need to be redrawn.\" — \"Step 6: WIND_GET. Use the WIND_GET function to get the next rectangle to update from the rectangle list. This function, along with the draw routine and rectangle calculate routine, is in a loop that will automatically find, calculate and redraw each rectangle that's in the rectangle list.\""
 ---
+import Sources from '@components/Sources.astro';
 
-Why redraw the entire screen when only a small part changed? Dirty rectangle rendering tracks which screen regions have changed and redraws only those areas. For games with mostly static backgrounds and a handful of moving sprites — point-and-click adventures, strategy games, GUI applications — this dramatically reduces rendering work compared to redrawing every pixel every frame.
+Most frames look almost exactly like the one before. A character takes a step, a score ticks over, a window is dragged aside, and everything else stays where it was. On a machine whose screen is a block of memory that the processor has to write itself, redrawing all of it every frame wastes most of the work. A 320 × 200 screen with one byte per pixel is 64,000 bytes; a sprite 16 pixels square is 256 bytes. The dirty-rectangle technique keeps a list of the areas that have changed, which are "dirty", and redraws and copies only those.
 
-Dirty rectangles fall between [double-buffering](/vault/techniques/double-buffering) (full redraw, swap) and direct screen drawing (write while displaying, risk tearing). They give you tear-free output without the cost of touching unchanged pixels.
+The clearest period descriptions come from the people who built windowing systems, because a window that is uncovered has to be repaired without redrawing the whole screen. Apple's Window Manager documentation of 1984 calls the area the "update region"; Digital Research's GEM hands the program a "rectangle list"; the Amiga's Layers library keeps a "DamageList"; Windows keeps an "invalid rectangle". Games used the same trick wherever most of the picture stood still, and id Software's *[Doom](/vault/games/doom)* (1993) still kept a single "dirtybox" for the parts of the screen it had touched.
 
 ## Fast facts
 
-- **Purpose:** Reduce unnecessary redrawing.
-- **Method:** Track changed screen regions as bounding rectangles.
-- **Benefit:** Lower CPU usage when most of the screen is static.
-- **Best for:** Static backgrounds with a few moving elements (adventures, GUIs, board games).
-- **Worst for:** Full-screen scrolling, particle systems, fast-moving full-screen action.
+- **What it saves:** drawing and copying time, roughly in proportion to how little of the screen changes.
+- **What it costs:** bookkeeping. Every change has to be recorded as a rectangle, and the rectangles have to be merged, clipped and redrawn in the right order.
+- **Pays off when:** most of the screen is still. Adventure games, strategy and board games, status bars, desktop windows.
+- **Does not pay off when:** everything moves. In a game that scrolls the whole screen, nearly every pixel changes every frame, so the whole screen is dirty anyway.
+- **Not needed for:** hardware [sprites](/vault/techniques/sprites), which the video chip draws over the background without changing screen memory.
+- **Usually paired with:** a back buffer, as in [double buffering](/vault/techniques/double-buffering), so that the repairs are made off screen and only finished areas are copied to the display.
 
 ## How it works
 
-Each frame:
+Each frame runs through four steps.
 
-| Step | Action |
-|------|--------|
-| 1 | Mark previous sprite/object positions as "dirty" |
-| 2 | Mark new sprite/object positions as "dirty" |
-| 3 | Coalesce overlapping or adjacent dirty rects |
-| 4 | For each dirty rect: redraw the background, then any objects that overlap it |
-| 5 | Copy only the dirty rects from back buffer to front buffer (or to display) |
+1. **Collect.** For every object that moved, changed its animation frame, appeared or disappeared, add the box where it was last frame and the box where it is now. Add the box of anything in the background that changed, such as a door that opened or a digit of the score.
+2. **Tidy.** Clip each rectangle to the screen and drop any that are now empty. Merge rectangles that overlap, and neighbours whose combined box costs less to redraw than the two apart.
+3. **Rebuild.** For each rectangle, redraw the background inside it, then every object that overlaps it, back to front, clipped to the rectangle.
+4. **Show.** Copy each rectangle from the back buffer to the screen.
 
-The dirty list is typically a small array of `(x, y, w, h)` rectangles, regenerated every frame.
-
-## Tracking changes
-
-| Change type | Dirty region |
-|-------------|--------------|
-| **Sprite moved** | Old position + new position (often coalesced if they overlap) |
-| **Animation frame change** | Sprite bounding box at current position |
-| **Score / HUD update** | Score display area |
-| **Background change** | Affected tiles (e.g. a door opening) |
-| **Particle effect** | Bounding box of all particles (or per-particle if scattered) |
-
-## Rectangle operations
-
-A small library of rectangle primitives suffices:
-
-| Operation | Purpose |
-|-----------|---------|
-| **Union** | Combine two overlapping rects into one bounding rect |
-| **Intersection** | Find overlap area |
-| **Containment** | Does rect A entirely contain rect B? |
-| **Clipping** | Restrict rect to within screen bounds |
-| **Coalescing** | Merge nearby rects whose union is cheaper than two separate updates |
-
-The coalescing decision is heuristic: merge if the union area is less than the sum of the individual areas plus some overhead, otherwise keep them separate.
-
-## Pseudo-code
+Then empty the list and start again.
 
 ```
-dirty_list = []
+each frame:
+    dirty = []                                  # a fresh list every frame
 
-each_frame:
-    # Phase 1: erase and remember what was where
-    for sprite in moving_sprites:
-        if sprite.moved or sprite.animated:
-            dirty_list.append(sprite.previous_bbox())
-            dirty_list.append(sprite.current_bbox())
+    # 1. Collect what changed since the last frame
+    for obj in objects:
+        if obj moved, changed frame, appeared or vanished:
+            if obj.was_drawn: dirty.append(obj.old_box)
+            if obj.visible:   dirty.append(obj.box)
+            obj.old_box = obj.box
+            obj.was_drawn = obj.visible
+    for tile in changed_background_tiles:
+        dirty.append(tile.box)
 
-    # Phase 2: coalesce overlapping rects
-    coalesce(dirty_list)
+    # 2. Tidy the list
+    dirty = [clip_to_screen(r) for r in dirty]
+    dirty = [r for r in dirty if not r.empty]
+    dirty = merge(dirty)
 
-    # Phase 3: redraw each dirty rect
-    for rect in dirty_list:
-        clip rect to screen
-        redraw_background(rect)
-        for sprite in sprites_overlapping(rect):
-            draw_sprite_clipped_to(sprite, rect)
+    # 3. Rebuild those areas in the back buffer
+    for r in dirty:
+        draw_background(back, r)
+        for obj in objects, back to front:
+            if obj.visible and overlaps(obj.box, r):
+                draw_clipped(back, obj, r)
 
-    # Phase 4: blit dirty rects to display
-    for rect in dirty_list:
-        blit(back_buffer, display, rect)
+    # 4. Show them
+    for r in dirty:
+        copy(back, screen, r)
 ```
 
-## Advantages
+This is pseudocode, so trace it rather than run it. The expected result is that after step 4 the screen holds exactly what a full redraw of every pixel would have produced.
 
-| Benefit | Impact |
-|---------|--------|
-| **CPU savings** | More processing time available for game logic |
-| **Reduced flicker** | Smaller updates blit faster, lower chance of catching the raster mid-update |
-| **Memory bandwidth** | Less data moved per frame; matters on shared-memory systems (Amiga chip RAM) |
-| **Scales with activity** | Idle screens cost nothing to "render" |
+### The mistakes it guards against
 
-## Limitations
+- **Forgetting where something was.** If only the new box is marked, the old position is never repainted and the object leaves a trail.
+- **Forgetting things that vanish.** A sprite that is destroyed has no new box, but its old one still has to be repaired, or a ghost of it stays on screen.
+- **Redrawing only the objects that moved.** Step 3 repaints the background over the whole rectangle, which wipes out any still object that overlaps it. Every visible object that touches the rectangle has to be drawn again, in depth order.
+- **Never emptying the list.** The picture stays correct, but the list grows every frame until the program is redrawing everything and paying for the bookkeeping as well.
 
-| Drawback | Situation |
-|----------|-----------|
-| **Tracking overhead** | Bookkeeping is non-trivial; small rects don't pay back |
-| **Full-screen changes** | If everything moves, dirty-rect costs more than full redraw |
-| **Many objects** | Coalesce-and-redraw degenerates toward full-screen as object count rises |
-| **Scrolling** | The whole screen is dirty every frame; no benefit |
-| **Z-ordering** | Rectangles overlapping in depth need careful redraw order |
-| **Complex backgrounds** | Background reconstruction must be cheap, or savings vanish |
+### Merging rectangles
 
-## When to use
+How far to merge is a judgement. Two overlapping boxes are always worth combining, because the overlap would otherwise be drawn twice. Two boxes far apart are cheaper to draw separately than as one big box that covers the empty space between them. A common rule is to merge when the bounding box is no larger than the two areas added together, plus an allowance for the cost of handling an extra rectangle.
 
-| Game style | Dirty rects? |
-|------------|--------------|
-| Point-and-click adventures (Sierra, LucasArts) | Yes — ideal use case |
-| Strategy games with mostly static maps | Yes |
-| Board games, card games | Yes |
-| GUI applications (Workbench, GEM, Windows 1-2) | Yes — original motivating use case |
-| Side-scrolling platformers | No — too much movement |
-| Vertical-scrolling shooters | No |
-| Action games with full-screen scroll | No |
-| Particle-heavy effects | Marginal at best |
+The simplest scheme keeps just one box and stretches it to take in every change. *Doom*'s source code does this: its `V_MarkRect` routine grows a single `dirtybox` to include each rectangle the engine draws into. Windows does the same for each window. Charles Petzold's *Programming Windows* explains that Windows keeps "the coordinates of the smallest rectangle that encompasses the invalid region", and if another area becomes invalid before the program has repainted, "Windows calculates a new invalid region that encompasses both areas".
 
-## Platform-specific notes
+### Page flipping
 
-| Platform | Application |
-|----------|-------------|
-| **Amiga** | Built into the operating system: the Layers library keeps a `DamageList` of exposed rectangles per window, and `BeginUpdate()`/`EndUpdate()` clip redrawing to it |
-| **PC (pre-VGA)** | EGA-era games before fast hardware blits; Sierra and LucasArts ports |
-| **C64** | Less common — sprites are hardware, so the technique mostly applies to the playfield |
-| **GUI systems** | The Macintosh Window Manager accumulates an "update region" and raises an update event when it is not empty; GEM AES hands the application a "rectangle list" of the parts of a window that need redrawing |
-| **HTML5 Canvas** | Modern web games still use this; Canvas's `clearRect` + redraw pattern is dirty-rect rendering |
+With two screens that take turns, as in [double buffering](/vault/techniques/double-buffering) by page flipping, the bookkeeping changes. The page about to be drawn was last brought up to date two frames ago, so it needs this frame's rectangles and the previous frame's too. Fabien Sanglard's account of *Doom* describes how its DOS version, which cycled through three pages of VGA memory, kept a separate update box for each page.
 
-## Where the technique was written down
+Copying a rectangle straight to the visible screen can still be caught half done by the display's beam, which shows as tearing. Small copies finish sooner, which narrows that window without closing it; the usual cure is to copy during the vertical blank, or to flip pages.
 
-The clearest period descriptions come from windowing systems rather than games, because overlapping windows made partial redraw a system service. Apple's 1984 Window Manager documentation describes an "update region" that "the Window Manager keeps track of… and accumulates" as windows are uncovered, with the application asked to redraw only when the region is not empty. GEM on the Atari ST exposes the same idea as a rectangle list: James Luczak's *ST-Log* tutorial (January 1987) walks through fetching each rectangle with `WIND_GET` and redrawing "the correct number of rectangles" in a loop. On the Amiga, the ROM Kernel Reference Manual's Layers chapter documents the `DamageList` and the `BeginUpdate()`/`EndUpdate()` pair that installs it as the clipping list, so that "only the damaged areas are actually rendered into, saving time".
+## In the windowing systems
 
-## Modern relevance
+Overlapping windows made partial redrawing a job for the operating system. When one window moves, the part of the window behind it that comes into view is damaged, and only that part needs repainting. Each system recorded the damage in its own way and handed it to the program.
 
-Dirty rectangles remain alive in:
+**Macintosh (1984).** Apple's Window Manager documentation describes the update region as "dynamic rather than fixed: the Window Manager keeps track of all areas of the content region that have to be redrawn and accumulates them into the update region". The Toolbox Event Manager "periodically checks to see if there's any window whose update region is not empty" and reports an update event. The program then calls `BeginUpdate`, which limits drawing to the damaged area, draws the window, and calls `EndUpdate`. The program can draw the whole window if that is simpler, because "only the parts of the window that require updating will actually be drawn on the screen". The update region is a QuickDraw region, which, the QuickDraw documentation explains, "can be any arbitrary area or set of areas", including ones with holes, so it is not limited to rectangles.
 
-- **Web rendering** — browsers track dirty regions for repaint optimisation.
-- **Game engines** — UI systems use dirty-rect updating (Unity UGUI, Unreal Slate).
-- **GUI toolkits** — Qt, GTK, AppKit/UIKit all use damage-region tracking under the hood.
-- **Compositing window managers** — every modern window manager tracks per-window damage rectangles.
+**Amiga.** The Layers library does the same for its "simple refresh" layers, which keep no copy of their hidden parts. "The system keeps track of these areas by using a DamageList," the *ROM Kernel Reference Manual* explains. `BeginUpdate()` installs a set of clipping rectangles made from the DamageList, so "use the graphics rendering routines as if to redraw the entire layer ... only the damaged areas are actually rendered into, saving time".
 
-The terminology has evolved (now "damage tracking" or "invalidation") but the core idea is unchanged from the 1980s.
+**Atari ST (GEM).** GEM gives the program a list of rectangles instead of a clipping region, and the program walks through it. James Luczak's 1987 tutorial in *ST-Log* sets out the loop: call `WIND_GET` for "the first rectangle of the rectangle list", work out which part of the window it covers, draw, then call `WIND_GET` again "to get the next rectangle to update from the rectangle list", until the list is empty. In 1993 *ST Format*'s assembly-language column described the same process, setting the VDI clipping rectangle with `vs_clip` for each one, and called the area to repair "the dirty rectangle".
+
+**Windows.** A program marks an area for repainting with `InvalidateRect`, and Windows sends a single `WM_PAINT` message however many areas have been invalidated. Petzold advised that although a program "can simply repaint the entire client area", "repainting only the area of the window defined by that rectangle saves time".
+
+Two styles run through these systems. The Macintosh and Amiga manuals let the program redraw everything and rely on clipping to keep the output inside the damage, which is simple to write. GEM's loop, and careful Windows programs, draw only inside each rectangle. Petzold explained why the extra code was worth it: when a program draws outside the invalid rectangle, Windows has to work out that there is nothing to do, and "this determination takes time".
+
+## In games
+
+A game uses the technique when its picture is mostly still: a room in an adventure game, a board or a map, or the status panel around a 3D view. *Doom* rendered its 3D view in full every frame, but kept its dirty box so that only the parts of the screen it had drawn into were sent to the video card. In a game that scrolls the whole screen, every rectangle is dirty every frame, and the bookkeeping is wasted.
+
+## Later use
+
+The same idea now goes by "damage" or "invalidation". In the Wayland display protocol used on Linux, for example, a program tells the compositor "the regions where the pending buffer is different from the current surface contents, and where the surface therefore needs to be repainted".
+
+<Sources>
+
+- Apple Computer, *Inside Macintosh*, pre-publication edition (1984), "Window Manager Programmer's Guide" (Rose and Davis draft dated 30 May 1984), pp. 8 and 15: the update region, update events, `BeginUpdate` and `EndUpdate`; "QuickDraw Programmer's Guide", p. 10: regions.
+- Commodore-Amiga, *Amiga ROM Kernel Reference Manual: Libraries*, third edition (Addison-Wesley, 1992), Layers Library, p. 711: simple refresh layers, the DamageList, `BeginUpdate()` and `EndUpdate()`.
+- James Luczak, "Window BASICs", *ST-Log* issue 10, January 1987, pp. 15–17: the GEM rectangle list and the `WIND_GET` loop.
+- Tony Wagstaff, "The Bytecruncher Guide to Assembly", *ST Format* issue 47, June 1993, p. 86: redraw messages, the AES rectangle list, `vs_clip` and "the dirty rectangle".
+- Charles Petzold, *Programming Windows 3.1*, third edition (Microsoft Press, 1992), chapter 2, "Valid and Invalid Rectangles" and "The Paint Information Structure": the invalid rectangle, `InvalidateRect`, a single `WM_PAINT` message, the clipping rectangle, "this determination takes time".
+- id Software, *Doom* source code, `linuxdoom-1.10/v_video.c` (released 23 December 1997; later under the GNU GPL): `dirtybox` and `V_MarkRect`. https://github.com/id-Software/DOOM
+- Fabien Sanglard, *Game Engine Black Book: Doom* (Software Wizards, 2018), section 5.9, "Video Manager", pp. 182–184: the five framebuffers, the dirtybox and the per-page update boxes of the DOS version.
+- freedesktop.org, *Wayland protocol specification*, `wl_surface.damage` (web). https://wayland.freedesktop.org/docs/html/apa.html
+
+</Sources>
 
 ## See also
 
@@ -166,3 +127,4 @@ The terminology has evolved (now "damage tracking" or "invalidation") but the co
 - [Sprites](/vault/techniques/sprites)
 - [Blitter](/vault/hardware/blitter)
 - [Game Loop](/vault/techniques/game-loop)
+- [Doom](/vault/games/doom)
