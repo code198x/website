@@ -2,80 +2,46 @@
 ai_generated: true
 reviewed: false
 title: "Ring Buffer"
-subtitle: "Circular data, fixed memory"
-summary: "A fixed block of memory used as a queue, with read and write indexes that wrap. BYTE explained it to hobbyists in 1977; Tim Follin's Agent X II engine uses a 16-entry one, wrapped with AND 15, for its echo; Amiga Exec's interrupt handlers fed device tasks through them."
+subtitle: "Reusing a fixed stretch of memory"
+summary: "A ring buffer wraps back to its first slot instead of growing. Period documentation and Follin's music source show its use for queued input and an echo history."
 category: "techniques"
-platforms: ['zx-spectrum', 'commodore-amiga', 'cross-platform']
-tags: ["data-structure", "audio", "networking", "memory", "snake"]
-sources:
-  the_definition:
-    - title: "BYTE, January 1977, \"Using Interrupts to Speed Up an ELM\" by G H Gable"
-      kind: magazine
-      date: "1977-01"
-      page: "107"
-      note: "Figure 2 caption: \"A circular buffer is conceptually a ring although in memory it is actually a region from HEAD to TAIL. Two pointers are maintained for a circular buffer: The IN pointer gives the next available location, and the OUT pointer gives the next location to be used by a processing program. In hardware, a circular buffer corresponds roughly to an integrated circuit called the first in first out memory, sometimes abbreviated FIFO.\" The article is about buffering terminal input and output under interrupts in the author's Eloquent Little Monitor. Page from the folio nearest the figure in the OCR. The earliest explanation of the structure found; the term is older than this."
-  a_game_engine_that_used_one:
-    - title: "Tim Follin, Agent X II Spectrum music engine source (AGEXM.SRC), Software Creations, c. 1987, in Dean Belfield's archive-follin"
-      kind: source-code
-      note: "Z80 source recovered from Tatung Einstein 3-inch disks donated by Tim Follin (Tatung/Source/Disk 05/Side B/AGEXM.SRC; the archive files the assembled binary under Examples/Beeper/Agent X II). The echo delay line is a 16-entry ring: the buffer is declared \"ECTA:DS 49\" and initialised in a 16-iteration loop of three bytes each (\"LD HL,ECTA / LD B,16 / ECF1:LD (HL),85 / INC HL / LD (HL),1 / INC HL / LD (HL),31 / INC HL / DJNZ ECF1\"). The write index wraps with a mask — \"POINT:LD A,000 / INC A / AND 15 / LD (POINT+1),A\" — and the read-back position is the write index minus a delay, masked again: \"LD A,(POINT+1) / DELAY:SUB 015 / AND 15 / LD HL,ECTA\". Each entry holds the note's current state (three bytes copied from the SMCC, SMXC and SCS operands), and the read-back re-injects that state attenuated to make the echo. The index itself lives in the operand byte of the POINT instruction, self-modified each frame. The game is not named in the source; the attribution rests on the archive's own folder name."
-    - ref: magazines/crash-magazine
-      kind: magazine
-      issue: "48"
-      date: "1988-01"
-      page: "169-170"
-      note: "Christmas Special 1987 review of Agent X II, \"Producer: Mastertronic\", \"Retail price: £1.99\": \"Sound: superb tune on the first level, sampled title tune\"; general rating \"a disappointing sequel\". Dates the game and is the only period notice of its music found; the review does not name the composer."
-  where_a_system_kept_them:
-    - title: "Amiga ROM Kernel Reference Manual: Exec, Commodore-Amiga"
-      kind: technical-doc
-      note: "On calling the Wack debugger from a program, with multitasking disabled but interrupts running: \"many inter-rupts deposit raw data into bounded or circular buffers. These interrupts often signal related device tasks to further process these buffers. If too many interrupts occur, device buffers may begin to overflow or wrap around. You should limit the number of inter-rupt actions (typing keys on the Amiga keyboard for example) you perform while execut-ing in Wack.\" (line-break hyphens as printed; the OCR spaces 'data' as 'd a ta') The consulted copy's provenance record gives no edition or year."
+platforms: ["zx-spectrum", "commodore-amiga", "cross-platform"]
+tags: ["data-structure", "audio", "memory"]
 ---
 
-A ring buffer is a fixed block of memory used as a queue: a write index and a read index each advance through it and wrap to the start when they reach the end, so the block never has to grow or move. It is old computer-science vocabulary — *BYTE* was explaining it to hobbyists in 1977 — and it turns up in period game code wherever something has to be remembered for a fixed number of frames and then forgotten. The example found is an echo effect in one of [Tim Follin](/vault/people/tim-follin)'s Spectrum beeper engines.
+A **ring buffer**, or circular buffer, reuses a fixed block of memory by wrapping its position back to the start. The memory is not physically circular: the program treats the slot after the last one as the first. G. H. Gable explained this arrangement to *BYTE* readers in January 1977.[^byte]
 
-## Fast facts
+## A queue with a limit
 
-- **Definition (BYTE, 1977):** "conceptually a ring although in memory it is actually a region from HEAD to TAIL", with an IN pointer for the next free slot and an OUT pointer for the next slot to process.
-- **Hardware equivalent:** the FIFO memory chip, per the same article.
-- **In a game:** the 16-entry delay line (`ECTA`) in the *Agent X II* music engine, wrapped with `AND 15`.
-- **In a system:** Amiga Exec's device interrupts "deposit raw data into bounded or circular buffers", which "overflow or wrap around" if nobody drains them.
+For a queue, one position marks where the next item will be written and another marks where the next item will be read. Each advances and wraps independently. Already stored items do not need to be shifted towards the start after every read.[^byte]
 
-## The idea, as BYTE explained it
+Equal read and write positions create an ambiguity: is the buffer empty, or has writing caught up with reading? Gable describes leaving one slot unused to distinguish those cases. With that convention, an eight-slot array holds at most seven queued items.[^byte]
 
-G H Gable's January 1977 article on adding interrupt-driven terminal I/O to his monitor program set out the two shapes a buffer can take. A linear buffer is a region from HEAD to TAIL walked once by a single pointer. A circular buffer keeps two pointers: "The IN pointer gives the next available location, and the OUT pointer gives the next location to be used by a processing program." Interrupt handlers write at IN; the program reads at OUT; both wrap. Gable added that "in hardware, a circular buffer corresponds roughly to an integrated circuit called the first in first out memory, sometimes abbreviated FIFO."
+A ring buffer cannot absorb unlimited input. When it fills, the program needs a policy: wait for room, reject new input, or overwrite older data where losing it is acceptable. Which choice is appropriate depends on what the buffer holds.
 
-The structure is a good fit for anything produced and consumed at different rates — characters arriving from a keyboard or serial port, samples for an audio device — because the producer never waits for the consumer and the memory cost is fixed in advance. The price is that a full buffer must either refuse new data or overwrite the oldest.
+## Remembering a sound
 
-## A ring buffer in a Spectrum music engine
+A ring can also hold a rolling history rather than a queue awaiting consumption. The `AGEXM.SRC` music engine in Dean Belfield's archive of donated Follin source contains a concrete example.[^follin]
 
-Tim Follin's engine for *Agent X II* ([Mastertronic](/vault/companies/mastertronic), £1.99; reviewed in *Crash*'s Christmas 1987 special, which called the first-level tune "superb") produces an echo by remembering what each note was a fixed number of frames ago. The source, recovered from Follin's Tatung Einstein development disks, declares a 49-byte table `ECTA` and fills it as sixteen three-byte entries. Every frame the write index is advanced and masked:
+Its echo table, `ECTA`, reserves 49 bytes and initialises **sixteen three-byte records**. The write position advances and wraps through `AND 15`, retaining the low four bits and therefore a position from 0 to 15. The read position subtracts a delay and applies the same mask. This masking shortcut works for a sixteen-entry ring because sixteen is a power of two.[^engine]
 
-```
-POINT:LD A,000
-      INC A
-      AND 15
-      LD (POINT+1),A
-```
+Each record stores three values from the live sound state. Reading an older record supplies values for the delayed voice, with two values reduced before reuse. The ring remembers sound parameters; it is not a recording of digital audio samples.[^engine]
 
-The current note's state — three bytes taken from the operands of other instructions in the engine — is copied into the slot at that index. The read-back position is the write index minus a delay, masked the same way:
+The write position itself sits inside an instruction's operand and is updated there. This is [self-modifying code](/vault/techniques/self-modifying-code): the engine changes a byte in its own instructions to retain the position.[^engine]
 
-```
-      LD A,(POINT+1)
-DELAY:SUB 015
-      AND 15
-      LD HL,ECTA
-```
+## When the consumer stops
 
-What comes back is the note as it was fifteen frames earlier, which the engine re-injects at reduced volume behind the live voice. Two details are characteristic of the period. The index is stored in the operand byte of the `LD A,000` instruction and rewritten in place — [self-modifying code](/vault/techniques/self-modifying-code) standing in for a variable — and the `AND 15` mask does the wrapping, which only works because the entry count is a power of two.
+Commodore's *Amiga ROM Kernel Reference Manual: Exec* gives a practical warning. Calling Wack from a program stops multitasking while interrupts continue. Some interrupt handlers keep putting data into buffers, but the device tasks which normally process it cannot run. Too much input can therefore overflow or wrap those buffers.[^exec]
 
-## Where a system kept them
-
-The Amiga's Exec kernel used the same structure between interrupt handlers and the device tasks that served them. The *ROM Kernel Reference Manual* warns programmers calling the Wack debugger — which stops multitasking but leaves interrupts running — that "many interrupts deposit raw data into bounded or circular buffers", that device tasks normally drain them, and that with those tasks halted the buffers "may begin to overflow or wrap around" if the user keeps typing. The keyboard buffer being described is Gable's diagram twenty years on, with the processing program suspended.
+Fixed storage and wraparound solve memory reuse. They do not remove the need to handle a reader that falls behind.
 
 ## See also
 
-- [Beeper music](/vault/techniques/beeper-music)
 - [Audio programming](/vault/techniques/audio-programming)
 - [Self-modifying code](/vault/techniques/self-modifying-code)
-- [Object pooling](/vault/techniques/object-pooling)
 - [Tim Follin](/vault/people/tim-follin)
-- [ZX Spectrum](/vault/systems/sinclair-zx-spectrum)
+
+[^byte]: G. H. Gable, “Using Interrupts to Speed Up an ELM”, *BYTE*, January 1977, pp. 108–109, figure 2 and the circular-buffer discussion. This is a period explanation, not a claim that the structure originated in 1977.
+[^follin]: Dean Belfield, [archive-follin README](https://github.com/breakintoprogram/archive-follin), describing source donated by Tim Follin and recovered from Tatung Einstein development disks.
+[^engine]: [AGEXM.SRC](https://github.com/breakintoprogram/archive-follin/blob/main/Tatung/Source/Disk%2005/Side%20B/AGEXM.SRC), `ECTA`, `ECF1`, `POINT` and `DELAY`. The filename alone does not establish the exact shipped game version or the duration of one update.
+[^exec]: Commodore-Amiga, [*Amiga ROM Kernel Reference Manual: Exec*](https://studylib.es/doc/8862940/commodore-amiga-rom-reference-manual-exec), chapter 8, “Getting to Wack”, p. 84. Published manual, available here as a transcription.
