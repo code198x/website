@@ -15,6 +15,13 @@ export const crashTypeins = [
     next: '/systems/sinclair-zx-spectrum/basic',
   },
   {
+    id: 'spectrum-qr', title: 'Time travel in motion.', machine: 'ZX Spectrum',
+    source: '_capture/crash-live/typein-qr.bas', lang: 'sinclair-basic',
+    note: 'Type this in 1982. Scan it in 2026. Each DATA number holds one row of a prepared QR pattern; the program draws it with black squares. Enter all 19 lines, then RUN and let it finish drawing before scanning.',
+    alt: 'Actual Spectrum output: a QR code linking to this event page above SCAN THIS CODE', width: 256, height: 192,
+    next: '/systems/sinclair-zx-spectrum/basic',
+  },
+  {
     id: 'c64-logo', title: 'Also on the Commodore 64.', machine: 'Commodore 64',
     source: '_capture/crash-live/typein-198x-c64.bas', lang: 'basic',
     note: 'The program reads the built-in character shapes and draws them with coloured blocks. Enter the listing in BASIC on a Commodore 64 or an emulator.',
