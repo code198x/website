@@ -98,7 +98,7 @@ for (const [name, engine, options] of [
   if(options.hasTouch){await page.setViewportSize({width:844,height:390});assert(await modal.evaluate(d=>d.scrollWidth<=d.clientWidth),'Landscape modal overflows');await page.setViewportSize(options.viewport);}
   await activate(modal.getByRole('button',{name:'Close and return'}));
   const navigating=Date.now();
-  await activate(page.getByRole('link',{name:/next unit/i}));await page.waitForURL(/unit-02-remember-and-save\/?$/,{timeout:20000});
+  await activate(page.getByRole('link',{name:/next unit/i}));await page.waitForURL(/unit-02-remember-and-save\/?$/,{timeout:5000});
   report.nextLessonMs=Date.now()-navigating;
   report.checks.push('Pause, return, resume, restart, error/reset, edited tape checksum/content, landscape and onward navigation');
   assert.deepEqual(report.errors,[]);

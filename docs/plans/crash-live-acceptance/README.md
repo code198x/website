@@ -57,6 +57,45 @@ The recheck passed with no console errors. No error filter or production
 workaround was added. The initial screenshot is retained as
 `preview-sound/python-server-failure.png`.
 
+## Hosted navigation follow-up
+
+Website PR #681 merged as `a20246a6ee7a831f5a17ac1f193473945ef35a78`.
+[Deployment 38263496641](https://github.com/code198x/website/actions/runs/38263496641)
+served the new phone guidance and the exact published 0.4.3 WASM bytes; see
+`published/deployment.json`.
+
+The hosted journey completed in all four profiles, but WebKit desktop spent
+18,566 ms reaching the next BASIC lesson (`published/results.json`). Tracing
+the complete journey reproduced this in both WebKit profiles at 18,560 ms and
+18,568 ms. The request to the slashless next-lesson URL failed with
+`The request timed out.` Astro then recovered with a full document navigation.
+The trace is in `published/navigation-timeout.json`. Page-local lifecycle events
+were lost when that full navigation replaced the document.
+
+Five minimal journeys took 74–275 ms. Separate minimal tape-download controls
+also completed promptly. Those controls did not establish a download defect.
+In the full journey, changing only the next link to the destination's canonical
+trailing-slash URL before interaction produced 59 ms and 75 ms transitions,
+without a failed request (`published/canonical-experiment.json`). The browser
+experiment used `a.href = a.href.replace(/\/?$/, '/')` on the next-unit link.
+The precise browser/network interaction behind the timeout remains unknown.
+
+The bounded correction adds the missing slash to generated previous/next lesson
+URLs. It preserves lesson selection and avoids the redundant redirect. The pager
+regression compares links with the canonical URLs of their actual destinations
+for BASIC, assembly and Foundations. Against the old build it failed with:
+
+```text
+Expected: "/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer/"
+Received: "/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer"
+```
+
+The visitor script again requires final navigation within five seconds; the
+20-second diagnostic budget no longer allows the observed delay to pass.
+The rebuilt production candidate passed all 10 learner-journey checks and all
+four complete visitor profiles (`pager-preview/results.json`); the offline link
+audit checked 227,289 references with zero errors.
+
 ## Native Safari
 
 Safari 27.0 was also exercised through its native application UI in a separate

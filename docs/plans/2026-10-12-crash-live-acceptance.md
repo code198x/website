@@ -20,3 +20,21 @@ does not establish physical-device, Safari application or listening acceptance.
 
 Use the existing release and lesson-sound scripts where suitable. A fresh learner
 trial and audible quality require human observation and remain separate.
+
+## Hosted navigation follow-up
+
+The hosted full WebKit journey exposed an 18.6-second lesson fetch timeout before
+Astro recovered with a full navigation. Both profiles reproduced it. Changing
+only the next link to the destination's canonical trailing-slash URL in the
+browser reduced those journeys to 59 ms and 75 ms. Minimal navigation and isolated
+tape downloads did not reproduce the timeout; the underlying browser/network
+interaction is not yet established.
+
+1. Compare the generated pager links with their destinations' canonical URLs in
+   `tests/spectrum-learner-journey.spec.ts`; confirm the current build fails.
+2. Add the missing slash in `computeUnitNav` in `src/pages/[...slug].astro`.
+   This retains destinations and nearest-available-unit selection.
+3. Build, run the pager regression and complete visitor journeys, then commit,
+   push and merge after checks. Verify the hosted link and both WebKit journeys.
+   Preserve the failed-fetch and canonical-link experiment evidence in the
+   acceptance report; do not claim a general WebKit networking fix.
