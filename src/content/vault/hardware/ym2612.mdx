@@ -22,9 +22,9 @@ sources:
 
 import Sources from '@components/Sources.astro';
 
-When Sega described the Mega Drive's sound chip to developers, it began with the chip's family: "The Yamaha 2612 Frequency Modulation (FM) sound synthesis IC resembles the Yamaha 2151 (used in SEGA's coin-operated machines) and the chips used in Yamaha's synthesizers." The YM2612 put six channels of four-operator FM synthesis in a home console, the same kind of sound as Sega's arcade boards, alongside the Texas Instruments PSG (programmable sound generator) the Master System already had.
+The YM2612 gives the Mega Drive six channels of FM synthesis, each built from four operators that shape a voice. Sega's [public hardware history](https://www.sega.jp/history/hard/megadrive/) lists six FM voices and explains that one can instead play sampled sound. The PSG supplies its own tones and noise alongside them.
 
-The same manual is frank about the limits. Sampled sound takes over one of the six FM channels, and has to be timed by the processor byte by byte, "meaning that unless the software is very cleverly constructed, it is impossible to use any of the FM channels at the same time as the DAC". The two timers "do not cause interrupts". Stereo comes out of the headphone socket only. And one of the manual's own claims about the chip is wrong.
+That replacement has a cost: samples take over FM channel 6, and software must feed the bytes to the chip at the right times. Sega's *Genesis Sound Software Manual*, dated 21 February 1992, describes that scheduling problem and compares the YM2612 with the YM2151 used in its arcade machines. Its details need checking against the hardware: the overview incorrectly assigns one of channel 3's features to channel 6 as well.
 
 ## Fast facts
 
@@ -41,9 +41,9 @@ The same manual is frank about the limits. Sampled sound takes over one of the s
 
 ## Four operators to a voice
 
-Sega's manual explains FM through its operators. A channel has one overall frequency, and four operators turn it into the final waveform, "each possessing a frequency (a variant of the overall frequency), an envelope, and the capability to modulate its input using the frequency and envelope". An operator's frequency is the channel's multiplied by a whole number from 1 to 15, or by ½, and nudged by a small detune.
+Each channel combines four operators. An operator generates a waveform at a selected frequency and shapes its level over time with an envelope; its output can modulate another operator or contribute to the audible signal. An operator's frequency is the channel's multiplied by a whole number from 1 to 15, or by ½, and nudged by a small detune.
 
-The algorithm decides which operators modulate which, and which ones are heard. Each operator has its own envelope, with an attack, two decay stages and a release, and a total level that sets its loudness in steps of about 0.75 dB. Sega's advice follows from that: to make a note softer, change the level of the operators that are heard, because "changing the other operators will affect the flavor of the note". The envelope of a modulating operator changes the tone over the length of a note, which is how one channel can sound like a plucked bass that starts bright and dulls as it fades. The [FM synthesis](/vault/technologies/fm-synthesis) entry explains the method.
+The algorithm decides which operators modulate which, and which ones are heard. Each operator has its own envelope, with an attack, two decay stages and a release, and a total level that sets its loudness in steps of about 0.75 dB. To make a note softer while preserving its tone, change the level of the audible operators. Changing a modulating operator's level changes the timbre instead, as Sega's February 1992 sound manual explains. The envelope of a modulating operator changes the tone over the length of a note, which is how one channel can sound like a plucked bass that starts bright and dulls as it fades. The [FM synthesis](/vault/technologies/fm-synthesis) entry explains the method.
 
 ## Talking to the chip
 
@@ -69,17 +69,17 @@ wait:   ld   a,(4000h)     ; status: bit 7 set while busy
 
 A few registers matter in every sound driver. Register `28h` keys notes on and off: the low three bits pick the channel (0-2 for channels 1-3, 4-6 for channels 4-6) and the top four switch its operators on, so writing `F0h` starts channel 1 and `00h` releases it. A channel's frequency is 14 bits long, a 3-bit octave ("block") and an 11-bit frequency number, split across two registers, and Sega's manual warns that multi-byte values must be written high byte first.
 
-Sega was not always sure of the chip either. Its manual lists a per-operator register now known as SSG-EG as "a proprietary register whose usage is unknown. It should be set to zero." It controls an envelope mode left over from the SSG, the square-wave sound generator built into Yamaha's earlier OPN chips, which the YM2612 otherwise leaves out.
+The February 1992 manual leaves the per-operator SSG-EG function unexplained and recommends disabling it. The public [Plutiedev register reference](https://plutiedev.com/ym2612-registers) describes its envelope shapes. SSG-EG controls an envelope mode left over from the SSG, the square-wave sound generator built into Yamaha's earlier OPN chips, which the YM2612 otherwise leaves out.
 
 ## Channel 3, not channel 6
 
-The manual's overview says that "Channels 3 and 6, the last in each set, have the capability to [set a] fully separate frequency for each operator", and gives percussion as the reason, with a hedge: it "works well (we believe) for percussion instruments, which have harmonics at odd multiples such as 1.4 or 1.7 of the fundamental".
+Only channel 3 has the mode that gives each operator an independent frequency. The public [Plutiedev register reference](https://plutiedev.com/ym2612-registers) distinguishes it from channel 6.
 
-The manual's own register pages disagree. The mode bits in register `27h` offer "Channel 3 is the same as the others" or "Channel 3 has four separate frequencies", and the extra frequency registers, `A8h`-`AEh`, exist only in Part I. Only channel 3 has the special mode. Freed from whole-number ratios, its operators can play inharmonic sounds such as bells and metallic percussion, or four separate pitches at once, which Sega's author suggested in the key-on section: "Using a special channel 3, I believe it possible to have each operator be a separate note."
+Sega's February 1992 overview attributes the feature to both channels, but its register descriptions identify channel 3 alone. Register `27h` selects the mode, and the extra frequency registers, `A8h`–`AEh`, exist only in Part I. Independent frequencies allow inharmonic sounds such as bells and metallic percussion, or separate pitches within one channel.
 
 ## The DAC and its cost
 
-The DAC is not a seventh voice. Setting bit 7 of register `2Bh` turns FM channel 6 off and sends whatever byte was last written to register `2Ah` out in its place; of channel 6's own settings, only its left and right switches still apply. The chip does no timing of its own. To play a sample at a steady rate, the program must write each byte at exactly the right moment, and that is the work the manual calls "unfortunately" impossible to combine with FM "unless the software is very cleverly constructed".
+The DAC is not a seventh voice. Setting bit 7 of register `2Bh` turns FM channel 6 off and sends whatever byte was last written to register `2Ah` out in its place; of channel 6's own settings, only its left and right switches still apply. The chip does no timing of its own. To play a sample at a steady rate, the program must write each byte at exactly the right moment, while leaving time for FM register updates. This is the scheduling difficulty described in Sega's February 1992 manual.
 
 Sega's technical overview gives the Z80 the job of controlling the sound chips, which makes it the natural place for sample playback: a driver there can feed the DAC in a tight loop and fit FM register writes between samples, leaving the 68000 to run the game. Every sampled drum over FM music was paid for twice, once with channel 6 and once with the Z80's time.
 
@@ -87,7 +87,7 @@ Sega's technical overview gives the Z80 the job of controlling the sound chips, 
 
 The two timers were meant for software timing. Timer A is 10 bits long and Timer B 8 bits, and Sega gives their periods as 18 × (1024 − A) microseconds and 288 × (256 − B) microseconds, up to about 18.4 ms and 73.7 ms. Those figures assume an 8 MHz clock; on an NTSC Mega Drive the chip runs at 7.67 MHz, so the real periods are about 4 per cent longer. Register `27h` loads, enables and resets them.
 
-When a timer runs out it sets a bit in the status byte, and that is all. "Unfortunately," says the manual, "these two timers do not cause interrupts - they must be read by the software to determine if they have finished counting." The manual offers the timers as an alternative to the Z80's vertical-blank interrupt, so a driver that takes its tempo from them has to keep checking the status byte between its other work.
+A timer can set a status flag when it expires, but it does not interrupt the Mega Drive's processor. Sega's February 1992 manual tells software to poll those flags. The manual offers the timers as an alternative to the Z80's vertical-blank interrupt, so a driver that takes its tempo from them has to keep checking the status byte between its other work.
 
 ## The ladder effect and the YM3438
 
@@ -97,10 +97,11 @@ Yamaha also made the chip in CMOS as the YM3438 (OPN2C), with a cleaner converte
 
 <Sources>
 
-- Sega, *Genesis Software Manual* (© 1989 Sega of Japan, revised February 1992): the *Genesis Sound Software Manual* section, dated 21 February 1992. Overview, p. 3: the YM2151 comparison, the capability list, operators, "channels 3 and 6", the DAC as a replacement for channel 6, stereo through the headphone jack, the LFO, and timers that do not interrupt. Register overview, p. 6. Access, Parts I and II, the busy bit and writing high bytes first, and SSG-EG as "proprietary", pp. 7-8. Timers A and B and register 27H, p. 11. Key on/off, the special channel 3 and the DAC registers, p. 12. MUL and detune, p. 12; TL in 0.75 dB steps, p. 13. The channel 3 frequency registers, pp. 14-15.
+- Sega, *Sega Hard Encyclopedia*, “Mega Drive”: publicly available hardware specifications, including six FM voices and the use of one for PCM. https://www.sega.jp/history/hard/megadrive/
+- Plutiedev, “YM2612 registers”: public programming reference for operator controls, channel 3 mode, DAC use and timers, including the chip clock and the 8 MHz assumption in Sega’s timer figures. https://plutiedev.com/ym2612-registers
+- Sega, *Genesis Software Manual* (© 1989 Sega of Japan, revised February 1992): the *Genesis Sound Software Manual* section, dated 21 February 1992. Overview, p. 4: chip comparison, capabilities, operator frequencies, DAC use, stereo and timers. Register overview, p. 6. Access, Parts I and II, the busy bit, write order and the undocumented SSG-EG function, pp. 7–9. Timers A and B and register 27H, p. 11. Key on/off, the special channel 3 and the DAC registers, p. 12. MUL and detune, p. 12; TL in 0.75 dB steps, p. 13. The channel 3 frequency registers, pp. 14-15.
 - Sega, *Genesis Software Manual*: the Technical Overview dated 28 February 1990 (the Z80 controls the PSG and FM chips); the register section (NTSC and PAL CPU clocks of 7.67 MHz and 7.60 MHz).
 - Sega of America, *Genesis Technical Bulletin* #11, "Problems during sound access", 9 September 1991: reading the busy flag only from 4000h.
-- Plutiedev, "YM2612 registers" (web, secondary): that the chip shares the 68000's clock, and that Sega's timer figures assume 8 MHz; channel 3 special mode applies to channel 3 but not channel 6. https://plutiedev.com/ym2612-registers
 - Wikipedia, "Yamaha YM2612" (web, secondary): the OPN family and OPN2 name; the SSG section of earlier OPN chips left out, with its envelope generator vestigial; the built-in time-multiplexed 9-bit DAC and its low-volume distortion, called the "ladder effect"; the YM3438 (OPN2C) in CMOS with an improved DAC; the YM3438 core in the custom chips of later Mega Drive models. https://en.wikipedia.org/wiki/Yamaha_YM2612
 - Sega Retro, "Sega System C" (web, secondary): the YM3438 as System C's FM chip. https://segaretro.org/Sega_System_C
 
