@@ -5,6 +5,10 @@ import { COLOUR_ROLES, CONFIDENCES } from './lib/machine-colours';
 // CPU families a system can be keyed by — shared by the primary and secondary
 // architecture fields on the systems collection.
 const cpuArchitectures = z.enum([
+  // DEC word-addressed families (distinct instruction sets)
+  'pdp-1',
+  'pdp-8',
+  'pdp-10',
   // 8-bit families
   '8080',      // Intel 8080/8085
   'f8',        // Fairchild F8
@@ -55,8 +59,8 @@ const systems = defineCollection({
     tagline: z.string(),
 
     // Classification
-    type: z.enum(['computer', 'console', 'handheld']),
-    bits: z.enum(['8', '16', '32', '64', '128']),
+    type: z.enum(['computer', 'minicomputer', 'console', 'handheld']),
+    bits: z.enum(['8', '12', '16', '18', '32', '36', '64', '128']),
     region: z.enum([
       // Core markets
       'US', 'UK', 'Japan', 'Europe', 'Netherlands',
@@ -447,7 +451,7 @@ const architectures = defineCollection({
     shortName: z.string(),
     description: z.string(),
     era: z.enum(['early', 'classic-8bit', '16bit', '32bit', 'later']),
-    bits: z.enum(['8', '16', '32', '64', '128']),
+    bits: z.enum(['8', '12', '16', '18', '32', '36', '64', '128']),
     order: z.number(),
   }),
 });
