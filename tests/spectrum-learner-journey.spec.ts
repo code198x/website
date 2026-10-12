@@ -4,6 +4,29 @@ import fs from 'node:fs/promises';
 import catalogue from '../public/emulators/catalog.json' with { type: 'json' };
 import { playerFirmwareNote } from '../src/lib/player-firmware';
 
+test('lesson pager links match destination canonical URLs', async ({ page, context }) => {
+  const destination = await context.newPage();
+  try {
+    for (const route of [
+      '/systems/sinclair-zx-spectrum/basic/meet-basic/unit-02-remember-and-save/',
+      '/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-02/',
+      '/foundations/structure/unit-02/',
+    ]) {
+      await page.goto(route);
+      const links = await page.locator('a.nav-prev, a.nav-next').evaluateAll(anchors =>
+        anchors.map(anchor => (anchor as HTMLAnchorElement).href));
+      expect(links).toHaveLength(2);
+      for (const href of links) {
+        await destination.goto(href);
+        const canonical = await destination.locator('link[rel="canonical"]').getAttribute('href');
+        expect(new URL(href).pathname).toBe(new URL(canonical!).pathname);
+      }
+    }
+  } finally {
+    await destination.close();
+  }
+});
+
 test('browser start precedes optional local setup and Meteor Storm offers the foundation', async ({ page }) => {
   await page.goto('/systems/sinclair-zx-spectrum/assembly/');
   const start = page.getByRole('link', { name: 'Start: Meet Assembly', exact: false });
