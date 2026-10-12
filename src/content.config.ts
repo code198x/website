@@ -230,8 +230,10 @@ const vault = defineCollection({
     // thing worth counting: PRINCIPLES.md, "ten websites quoting one incorrect
     // source remain one incorrect source".
     //
-    // `kind` follows the evidence hierarchy in PRINCIPLES.md, strongest first,
-    // so relative confidence can be computed rather than argued.
+    // `kind` describes the evidence, not its host or a verification score.
+    // Participant interviews stay interviews on community sites; a later
+    // participant comment is a recollection, separate from a database record.
+    // See code198x/docs specifications/vault.md#participant-accounts-and-source-kinds.
     //
     // Absent means not established — never "verified". Populate as entries are
     // grounded; this is deliberately not a migration.
