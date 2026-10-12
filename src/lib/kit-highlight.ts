@@ -121,7 +121,12 @@ export async function tokenise(code: string, lang = 'text'): Promise<Token[][]> 
 }
 
 export const escapeHtml = (s: string) =>
-  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 
 /** One line's tokens as HTML, roles as `hl-*` classes (styles/lesson.css). */
 export function tokensHtml(tokens: Token[]): string {
