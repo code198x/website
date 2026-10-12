@@ -1,6 +1,6 @@
 # Vault batch 110: evidence and verification
 
-The 43 entry reviews are complete and ready for human sign-off. Every entry remains `reviewed: false`; automated review does not establish a person's approval.
+The owner signed off the 43 entry reviews by merging [website PR #676](https://github.com/code198x/website/pull/676) on 12 October 2026. All 43 entries are now marked `reviewed: true`. [Documentation PR #54](https://github.com/code198x/docs/pull/54) was merged the same day.
 
 The claim tables record 464 decisions: **237 VERIFIED, 100 CORRECTED, 54 QUALIFIED and 73 REMOVED**. These are review decisions, not 464 independently corroborated facts. Each report distinguishes participant recollection, period evidence, secondary fallback and unresolved uncertainty.
 
@@ -15,7 +15,17 @@ The claim tables record 464 decisions: **237 VERIFIED, 100 CORRECTED, 54 QUALIFI
 
 ## Verification
 
-Checks ran against the content at `6bc09c05`, after merging current main (`33f73438`).
+### Owner sign-off follow-up
+
+After approval, `npm run check` passed (227 tests in 31 files, content and link checks, assembler and player checks) and `npm run build` produced 2,448 pages with all 35 shared rendering families verified.
+
+The [sign-off results](verification/signoff-results.json) verify all 43 built pages: checked status, no unreviewed notice, no robots exclusion, sitemap inclusion and a matching result from the generated Pagefind index when searching by title. A nonexistent exact phrase returned zero results. The first notice assertion rejected Astro's scoped attribute on `<strong>`; accepting that attribute fixed the check. Chromium needed to run outside the filesystem sandbox after macOS denied its bootstrap service.
+
+The entry diffs contain only the 43 approved review-flag changes. All 1,486 Vault entries now have `reviewed: true`. The original source reviews, prose-date findings and pre-approval render captures below remain unchanged.
+
+### Before owner sign-off
+
+These pre-approval checks ran against the content at `6bc09c05`, after merging current main (`33f73438`).
 
 | Check | Result |
 |---|---|
