@@ -78,7 +78,8 @@ export default defineConfig({
     '/vault/systems/mega-drive': '/vault/systems/sega-mega-drive',
     '/vault/magazines/zzap64': '/vault/magazines/zzap-64',
     '/vault/communities/demo-scene-101': '/vault/communities/demo-scene',
-    '/vault/techniques/raster-tricks-101': '/vault/techniques/raster-tricks',
+    '/vault/techniques/raster-tricks-101': '/vault/techniques/raster-effects',
+    '/vault/techniques/raster-tricks': '/vault/techniques/raster-effects',
     '/vault/people/tim-stamper': '/vault/people/stamper-brothers',
     '/vault/culture/type-in-programs': '/vault/distribution/type-in-listings',
     // Renamed: the slug named the publisher, not the game (Batman: The Movie, 1989).
