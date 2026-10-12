@@ -1,5 +1,6 @@
 # CRASH! Live visitor acceptance — 12 October 2026
 
+**Hosted acceptance remains open for an intermittent WebKit navigation delay.**
 The flyer routes reach working assembly and BASIC lessons. The first BASIC
 lesson needed an early route for touchscreen readers: its opening instructions
 assumed a physical keyboard, while the editable listing appeared later without
@@ -95,6 +96,42 @@ The visitor script again requires final navigation within five seconds; the
 The rebuilt production candidate passed all 10 learner-journey checks and all
 four complete visitor profiles (`pager-preview/results.json`); the offline link
 audit checked 227,289 references with zero errors.
+
+## Final hosted result: navigation delay remains open
+
+PR #682 merged as `4cbee352b4b3fe545dc9e7bb3825c6e460f10a9c` and
+[deployment 38267014141](https://github.com/code198x/website/actions/runs/38267014141)
+succeeded. The hosted pager now uses the canonical trailing-slash destination
+(`hosted-final/deployment.json`). No content announcements were sent.
+
+Both complete hosted WebKit journeys still failed the restored five-second
+navigation deadline (`hosted-final/results.json`). A diagnostic recheck with a
+longer observation window reached the destination in 18,419 ms and 18,595 ms;
+its requests used the corrected URL and timed out before Astro's full-navigation
+fallback recovered (`hosted-final/navigation-trace.json`). The canonical URL
+correction removes a redundant redirect, **not this intermittent timeout**.
+
+Controls narrow the finding:
+
+- Fresh contexts with no emulator use or downloads navigated after waits of
+  0, 10 and 15 seconds in 92, 64 and 184 ms. After 20 seconds idle, the same
+  navigation took 18,910 ms with fetch timeouts (`idle-navigation.json`).
+- After 22 seconds idle, a plain `fetch('/crash-live/')` took 17,162 ms and
+  returned HTTP 200. A separate context following a `data-astro-reload` lesson
+  link took 17,683 ms. Neither uses Astro's fetch-and-swap navigation path
+  (`idle-fetch-native.json`). Replacing the router with native navigation would
+  therefore not address the observed delay.
+- Chromium's matching plain-fetch control after 22 seconds idle took 10156 ms
+  and returned HTTP 200 (`idle-chromium.json`). This is one comparison on the
+  same machine and network, not a measured failure rate.
+- Minimal navigation immediately after a tape download, and after waits of
+  1.1 and 2.2 seconds, completed in 168, 54 and 55 ms (`recent-download.json`).
+
+These observations establish a hosted WebKit/browser-network investigation;
+they do not establish the underlying transport cause or how often customers
+encounter it. Do not widen the acceptance timeout or change emulator timing to
+hide it. A repeat on native Safari with an idle interval and another network,
+plus a physical-phone trial, remains the next validation boundary.
 
 ## Native Safari
 
