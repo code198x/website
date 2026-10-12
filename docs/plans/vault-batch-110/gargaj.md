@@ -1,6 +1,6 @@
 # Gargaj
 
-Source and prose review complete; human sign-off pending. Includes the recovered draft.
+Source and prose review complete; owner sign-off received through [PR #676](https://github.com/code198x/website/pull/676), merged on 12 October 2026. Includes the recovered draft.
 
 | Claim | Verdict | Evidence (public citation) | Change made |
 |---|---|---|---|
