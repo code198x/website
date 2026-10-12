@@ -2,93 +2,47 @@
 ai_generated: true
 reviewed: false
 title: "Arbitrary Code Execution"
-subtitle: "Playing the game's memory"
-summary: "The most powerful speedrunning exploit - manipulating game memory through normal inputs to execute arbitrary code, enabling impossible shortcuts and instant wins."
+subtitle: "When game data becomes instructions"
+summary: "An exploit that redirects a game into machine code prepared through its own inputs, illustrated by Pokémon's 8F item and a Super Mario World demonstration."
 category: "techniques"
 platforms: ["cross-platform"]
 tags: ["speedrunning", "exploit", "memory", "glitch"]
 ---
 
-**Arbitrary Code Execution** (ACE) is the most powerful class of speedrunning exploit. By manipulating game memory through carefully chosen inputs — controller presses, item arrangements, screen positions — runners trick the game into running code of their own design. The "code" is whatever bytes happen to occupy a region the CPU is about to jump to. The runner shapes those bytes through gameplay, then triggers the jump.
+**Arbitrary code execution** (ACE) means making a program execute instructions chosen by someone other than its developers. In games, an exploit can use ordinary controls to prepare bytes in memory, then exploit a bug to direct execution there. The result might be a shortcut to the ending or a new program running inside the game.[^8f][^smw]
 
-Done well, ACE collapses entire games to seconds: skip to the credits, set the win flag, jump to a custom payload. Done well *and tastefully*, ACE inserts a Twitch-Plays-Pokemon-style live console into the game, or boots a different game from inside the running one. ACE is computer security's "buffer overflow + code injection" applied to games — same skill set, friendlier consequences.
+## Data and machine code
 
-## How ACE works
+An inventory normally contains data: item identifiers and quantities. Those numbers do not become instructions merely because a player arranges them carefully. A separate fault must make the processor fetch them as code. Once that happens, the processor interprets the bytes according to its instruction set.[^8f]
 
-Every ACE exploit chain has three parts:
+This is **not compilation from source**. The game has not translated an inventory into a program. The player has chosen values whose byte patterns already encode suitable machine instructions. Preparing them can require a detailed understanding of the game's memory layout and the processor's instructions.[^8f]
 
-| Step | What it does | Typical mechanism |
-|------|---------------|-------------------|
-| 1. Memory write primitive | The runner needs to write *chosen bytes* to *chosen addresses*. | Stack overflow, off-by-one in an inventory loop, buffer that wraps past its bounds, misindexed array. |
-| 2. Code crafting | Those chosen bytes become CPU instructions. The runner thinks in opcodes, not items. | Item slots whose IDs encode 6502/Z80/ARM bytes; controller buttons writing into a polled-input buffer; sprite coordinates landing as immediate operands. |
-| 3. Control flow hijack | The CPU has to actually *jump* to the crafted region. | Function pointer overwrite, return address corruption, jump table index out of range, trampoline through a known address. |
+## Pokémon's 8F item
 
-## A worked example: Pokemon Red/Blue 8F
+TheZZAZZGlitch documented an exploit using the glitch item **8F** in *Pokémon Red and Blue* in April 2013. Its identifier is `0x5D`; it should not be confused with the different **ws m** item used in *Pokémon Yellow*.[^8f]
 
-The classic 8-bit ACE: in *Pokémon Red/Blue* (Game Boy), an obscure item glitch lets you insert item ID `0x5C` (the unused "ws m" item, called **8F** in the speedrun community) into your bag.
+Using 8F can transfer execution into memory holding the player's party. A specially arranged party supplies a short starting sequence which redirects execution into the inventory. Item identifiers **and** quantities there supply further instruction bytes. These arrangements depend on the particular game version; an arbitrary bag of items is not a working program.[^8f]
 
-When you "Use" item 8F, the game's switch statement falls through to a handler at an unintended address — specifically, the *game's own item-effect dispatch table*, indexed by the item ID. With your item *quantities* corresponding to specific opcodes (e.g. quantity 76 = `$4C`, low byte of `JP nn`), the bytes the dispatcher reads are exactly the Z80 instructions you placed there by buying and selling carefully chosen item counts.
+The community's *Red/Blue* disassembly makes the normal item dispatch visible: `ItemUse_` looks up a handler in `ItemUsePtrTable`, loads its address and jumps to it. This is reconstructed assembly source, not source code released by Nintendo.[^source]
 
-The runner builds a tiny Z80 program — half a dozen items' quantities — that writes the "won the game" flag and jumps to credits. Total exploit: under a minute of in-game prep.
+## A Super Mario World demonstration
 
-## Other famous ACE exploits
+Masterjun's January 2014 demonstration used manipulated sprite state and an invalid sprite routine lookup to reach prepared data, then controller registers. TASBot supplied a carefully prepared input sequence through the controller ports on a real SNES at Awesome Games Done Quick.[^smw]
 
-| Game | System | Mechanism |
-|------|--------|-----------|
-| **Super Mario World** | SNES | Yoshi-stack glitch + sprite-table corruption → controller-2 inputs become 65816 code |
-| **Ocarina of Time** | N64 | Stale Reference Manipulation (SRM, 2019, ZFG et al.): a freed actor reference is reused, letting Link's animation data overwrite return addresses |
-| **Super Mario 64** | N64 | Parallel Universes + held-object pointer corruption — the famous "0.5 A-press" sub-genre |
-| **Super Mario Bros. 3** | NES | Wrong-warp via PRG-bank desync; minor controller-2 ACE variants |
-| **Pokémon Crystal** | Game Boy Color | Coin-case glitch: reading an undefined save flag exposes the box-name buffer to an instruction fetch |
-| **Twilight Princess** | GameCube / Wii | Wii version's "stack smash" — careful jar/torch placement smashes the return address |
+This was a **tool-assisted demonstration**, prepared with emulator tools and replayed on hardware. It was not a person improvising button presses at that speed. The submission explicitly pursued a demonstration rather than the fastest completion, even though its setup reused an exploit from a completion run.[^smw]
 
-## Categories and ACE
+## What an exploit needs
 
-| Category | ACE Status | Notes |
-|----------|------------|-------|
-| **Any%** | Often allowed | The "anything goes" category — beat the game by any means |
-| **No ACE** | Common restriction | Carve out the "go to credits" exploits but allow ordinary glitches |
-| **Glitchless** | ACE prohibited | Plus most other glitches |
-| **TAS** | ACE demos popular | TAS communities push ACE into "playaround" art — running custom games inside the original |
+These examples combine control over some bytes with a way to redirect execution. They do not require an initial ability to write any value to any address: the restrictions imposed by an inventory or sprite system are part of the problem the exploit solves.[^8f][^smw]
 
-## How it works on 8-bit hardware
-
-The 6502 and Z80 don't have memory protection. There's no W^X, no executable bit, no stack cookie. *Every byte is potentially executable code*. If you can:
-
-1. Write bytes you control to a known location, **and**
-2. Get the program counter to that location
-
-you have arbitrary code execution. On a real 8-bit system this can be as simple as:
-
-- An OAM buffer (sprite data) that the game blindly trusts as instructions if a separate bug points the PC there. Sprite Y-coordinates and tile indices become opcodes.
-- A controller-2 polling loop that reads the second player's button pattern into RAM. Press the right combination, and the bytes there are valid 6502 — let a corrupted return address pop into PC and you're executing controller input.
-- A high score table written to non-volatile RAM. Enter your initials carefully; on the next boot, a load-game routine with a swapped pointer treats your initials as code.
-
-The pattern is always the same: **find a place where user input lands in RAM, find a way to redirect the PC there, and translate your goal into the target CPU's machine code.**
-
-## Connection to security
-
-ACE on consoles is exactly **buffer-overflow code injection** on PCs. Same primitives, same defences (none, on retro hardware), same pay-off. Modern consoles ship with hardware DEP and W^X to make ACE painful; jailbreak chains on PS3, PS4, 3DS, and Switch are all extended ACE exploits scaled up to deal with kernel-mode signatures and hypervisors.
-
-The skills cross over directly. A retro speedrunner reverse-engineering an N64 ROM to find a stack overflow is doing the same job as a CTF player attacking a Linux binary — different ABI, same playbook.
-
-## Educational value
-
-Understanding ACE teaches:
-
-- **Computer architecture fundamentals** — what's a stack, what's a return address, why does PC matter
-- **Memory layout** — code, data, stack, heap; what happens when they touch
-- **Security concepts** — bounds checking, validation, why "user input as code" is dangerous
-- **Low-level programming** — opcode encoding, addressing modes, calling conventions
-
-Pretty much any low-level concept — short of caches and pipelines — has a 1-to-1 ACE example you can watch on YouTube.
-
-## Legacy
-
-ACE represents the ultimate mastery of a game — understanding it so completely that players can make it do *anything*, including things developers never imagined possible. It is also the most direct line from the demo scene to the speedrun community to professional security research: every retro ACE you watch on stream is a primer for binary exploitation.
+Nor does one successful exploit establish that every version or every console game supports the same technique. The useful questions are concrete: which bytes can the player influence, how does execution reach them, and what can that particular instruction sequence do?
 
 ## See also
 
 - [Tool-Assisted Speedrun](/vault/culture/tool-assisted-speedrun)
 - [Sequence Breaking](/vault/design/sequence-breaking)
 - [Self-Modifying Code](/vault/techniques/self-modifying-code)
+
+[^8f]: TheZZAZZGlitch, [“Arbitrary code execution in Red/Blue using the ‘8F’ item”](https://archives.glitchcity.info/forums/board-115/thread-6638/page-0.html), original post 25 April 2013, subsequently updated. The post distinguishes the Red/Blue and Yellow items and documents party and inventory arrangements.
+[^source]: pret, [*Pokémon Red/Blue* disassembly, `engine/items/item_effects.asm`](https://github.com/pret/pokered/blob/master/engine/items/item_effects.asm), `ItemUse_` and `ItemUsePtrTable`; see the repository's description of the reconstructed source.
+[^smw]: Masterjun, [*Super Mario World* arbitrary code execution submission](https://tasvideos.org/4156S), 6 January 2014, especially the explanation, TASBot section and judging notes; [publication record](https://tasvideos.org/2513M), 12 January 2014.
