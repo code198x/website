@@ -9,7 +9,7 @@ const browser=await chromium.launch({channel:'chrome',headless:true});
 const context=await browser.newContext();const page=await context.newPage();page.setDefaultTimeout(20000);
 const report={date:new Date().toISOString(),base,phase,browser:browser.version(),pages:[],checks:[],errors:[]};
 page.on('pageerror',error=>report.errors.push(String(error)));
-const assert=(v,m)=>{if(!v)throw Error(m)};
+const assert=(v,m)=>{if(!v)throw Error(m);};
 // Compute expected arithmetic; never read the authored Output text as the oracle.
 const numeric=values=>values.map(String).join('\n');
 const expected={
@@ -62,5 +62,5 @@ try{
   }
  }
  assert(!report.errors.length,report.errors.join('\n'));report.status=phase==='baseline'&&report.pages.some(p=>p.violations.length)?'findings':'passed';console.log(JSON.stringify({phase,pages:report.pages.length,checks:report.checks.length}));
-}catch(error){report.status='failed';report.failure=String(error);throw error}
-finally{await fs.writeFile(`${out}/${phase}.json`,JSON.stringify(report,null,2)+'\n');await browser.close()}
+}catch(error){report.status='failed';report.failure=String(error);throw error;}
+finally{await fs.writeFile(`${out}/${phase}.json`,JSON.stringify(report,null,2)+'\n');await browser.close();}
