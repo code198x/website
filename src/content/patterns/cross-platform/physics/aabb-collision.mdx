@@ -23,53 +23,29 @@ This is the same algorithm on every platform — only the implementation details
 
 ## Algorithm
 
-Two rectangles overlap if and only if:
-- Box A's left edge is left of Box B's right edge, AND
-- Box A's right edge is right of Box B's left edge, AND
-- Box A's top edge is above Box B's bottom edge, AND
-- Box A's bottom edge is below Box B's top edge
+Treat each box as a half-open rectangle: its left and top edges are included, and its right and bottom edges are excluded. Touching edges do not count as overlap. A box with zero or negative width or height is empty and cannot collide.
+
+Coordinates and dimensions must use arithmetic wide enough for `x + width` and `y + height`. An 8-bit position plus an 8-bit width may need nine bits for its right edge; do not let the sum wrap at 255. Negative coordinates are allowed by the rectangle test when the target implementation supports them.
 
 ```text
-; Returns: true if collision, false otherwise
-check_collision(ax, ay, aw, ah, bx, by, bw, bh):
-    if ax >= bx + bw: return false    ; A is right of B
-    if ax + aw <= bx: return false    ; A is left of B
-    if ay >= by + bh: return false    ; A is below B
-    if ay + ah <= by: return false    ; A is above B
-    return true                        ; Overlap!
+DEFINE check_collision(ax, ay, aw, ah, bx, by, bw, bh)
+    IF aw <= 0 OR ah <= 0 OR bw <= 0 OR bh <= 0 THEN RETURN FALSE
+    IF ax >= bx + bw THEN RETURN FALSE
+    IF ax + aw <= bx THEN RETURN FALSE
+    IF ay >= by + bh THEN RETURN FALSE
+    IF ay + ah <= by THEN RETURN FALSE
+    RETURN TRUE
+END
 ```
 
-## Pseudocode
+The four separation checks ask whether either box lies entirely to the right, left, below or above the other. If none holds, they overlap on both axes.
+
+For two 16×16 sprites, call the test with their top-left positions and sizes:
 
 ```text
-; Object structure
-player_x, player_y: byte
-player_w, player_h: byte = 16, 16
-
-enemy_x, enemy_y: byte
-enemy_w, enemy_h: byte = 16, 16
-
-; Check player vs enemy collision
-check_player_enemy:
-    ; Check X axis overlap
-    load player_x
-    add player_w
-    if result <= enemy_x: return NO_COLLISION
-
-    load enemy_x
-    add enemy_w
-    if result <= player_x: return NO_COLLISION
-
-    ; Check Y axis overlap
-    load player_y
-    add player_h
-    if result <= enemy_y: return NO_COLLISION
-
-    load enemy_y
-    add enemy_h
-    if result <= player_y: return NO_COLLISION
-
-    return COLLISION
+IF check_collision(player_x, player_y, 16, 16, enemy_x, enemy_y, 16, 16) THEN
+    CALL handle_hit
+END
 ```
 
 ## Implementation Notes
@@ -79,28 +55,31 @@ check_player_enemy:
 **Sprite centre vs corner:** Hardware sprites often use top-left as origin. If your collision box should be centred, offset the check coordinates:
 
 ```text
-; For a 16x16 sprite with 8x8 collision box centred
-collision_x = sprite_x + 4
-collision_y = sprite_y + 4
-collision_w = 8
-collision_h = 8
+# For a 16×16 sprite with an 8×8 collision box centred
+LET collision_x = sprite_x + 4
+LET collision_y = sprite_y + 4
+LET collision_w = 8
+LET collision_h = 8
 ```
 
 **Multiple enemies:** Loop through enemy array, checking each against player:
 
 ```text
-for i = 0 to num_enemies - 1:
-    if check_collision(player, enemies[i]):
-        handle_hit(i)
+FOR EACH enemy IN enemies
+    IF check_collision(player_x, player_y, player_w, player_h,
+                       enemy.x, enemy.y, enemy.width, enemy.height) THEN
+        CALL handle_hit(enemy)
+    END
+END
 ```
 
 ## Trade-offs
 
 | Aspect | Cost |
 |--------|------|
-| CPU | ~30-60 cycles per check (platform dependent) |
-| Memory | 4 bytes per object (x, y, w, h) |
-| Accuracy | Rectangle only — diagonal corners may miss or false-hit |
+| CPU | Up to four separation checks after size validation; instruction cost depends on the target implementation |
+| Memory | Four values per box; storage depends on coordinate range and precision |
+| Accuracy | Exact for these rectangles; transparent parts of a sprite can still produce a visual false hit |
 
 **When to use:** Most games — shooters, platformers, action games.
 
@@ -114,30 +93,46 @@ for i = 0 to num_enemies - 1:
 
 ## Many-object optimisation: spatial bucketing
 
-A naive "player vs all enemies" loop does N checks per frame; "all enemies vs all enemies" does N². At 16 enemies this is already 256 checks per frame, eating cycle budget on 8-bit CPUs.
+A player tested against N enemies needs N checks. Testing every distinct pair among N objects needs `N × (N - 1) / 2` checks: 120 for 16 objects. A coarse grid can reduce the number of pairs sent to the rectangle test when nearby objects occupy only a small part of the screen.
 
-The standard mitigation is **spatial bucketing**: divide the screen into a coarse grid (e.g. 8×8 cells of 32×32 pixels each on a Spectrum). Each frame, sort objects into buckets by their position. Then for each object, only test against others in the same bucket (and adjacent buckets if the object spans a boundary).
+Here the 256×192 playfield has eight columns and eight rows of **32×24-pixel cells**. Store each object only in the cell containing its top-left corner. This version accepts boxes wholly inside the playfield, with width at most 32 and height at most 24. Larger boxes need a different scheme, such as inserting them into every cell they occupy and removing duplicate pairs; they must not be silently passed through this version.
+
+`bucket_index` returns 0 for an unsupported box, otherwise a list index from 1 to 64. The caller must reject or handle a 0 result before indexing the bucket list. Cell coordinates remain zero-based, 0 to 7; the extra 1 converts them to the shared notation's one-based list index.
 
 ```text
-; 8x8 bucket grid for a 256x192 Spectrum screen
-buckets: array[64] of object_list
-bucket_size_x = 32
-bucket_size_y = 24
-
-rebucket_objects:
-    clear all buckets
-    for each object o:
-        col = o.x / bucket_size_x
-        row = o.y / bucket_size_y
-        bucket = row * 8 + col
-        add o to buckets[bucket]
-
-check_collisions:
-    for each bucket b:
-        check all object pairs within b   ; small N
-        check b against right neighbour
-        check b against bottom neighbour
-        check b against bottom-right neighbour
+DEFINE bucket_index(x, y, width, height)
+    IF width <= 0 OR height <= 0 OR width > 32 OR height > 24 THEN RETURN 0
+    IF x < 0 OR y < 0 OR x + width > 256 OR y + height > 192 THEN RETURN 0
+    LET col = ROUND DOWN (x / 32)
+    LET row = ROUND DOWN (y / 24)
+    RETURN row * 8 + col + 1
+END
 ```
 
-Bucketing trades memory (the bucket arrays) for cycles. Worthwhile once N exceeds 8-12 objects.
+Clear the buckets each frame, then append each accepted object to its bucket. Objects must appear exactly once. Rebuild after movement so that bucket membership and the positions used for collision tests agree.
+
+Check each unordered pair within a bucket. Then compare every object in that bucket with every object in its **right, bottom-left, bottom and bottom-right** neighbours, running `check_collision` on each candidate pair. These four directions cover each adjacent pair once. The grid-edge checks below prevent wrapping from the last column into the next row.
+
+```text
+DEFINE neighbour_indices(col, row)
+    LET cells = []
+    FOR dy = 0 TO 1
+        FOR dx = -1 TO 1
+            IF dy = 1 OR dx = 1 THEN
+                LET next_col = col + dx
+                LET next_row = row + dy
+                IF next_col >= 0 AND next_col < 8 AND next_row >= 0 AND next_row < 8 THEN
+                    APPEND next_row * 8 + next_col + 1 TO cells
+                END
+            END
+        END
+    END
+    RETURN cells
+END
+```
+
+For example, the 2×2 boxes at `(31, 24)` and `(32, 23)` overlap at pixel `(32, 24)`, even though their top-left corners lie in different rows and columns. From cell `(1, 0)`, the bottom-left comparison reaches cell `(0, 1)` and finds the pair. Checking only the right, bottom and bottom-right neighbours misses it.
+
+The size limit is what makes this local search complete. If two accepted boxes overlap, their top-left cells differ by at most one column and one row. The same-cell check and four neighbour directions therefore include their pair. No such guarantee holds for a box spanning several cells.
+
+Bucketing adds bucket lists and rebuilding work. It saves comparisons when objects are spread out; if they all share a cell, it still tests every pair. Measure the trade-off in the actual game rather than assuming an object-count threshold.
