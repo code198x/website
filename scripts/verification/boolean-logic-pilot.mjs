@@ -8,7 +8,7 @@ await fs.mkdir(out,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});const context=await browser.newContext();const page=await context.newPage();page.setDefaultTimeout(20000);
 const report={date:new Date().toISOString(),base,phase,browser:browser.version(),pages:[],checks:[],errors:[]};
 page.on('pageerror',error=>report.errors.push(String(error)));
-const assert=(value,message)=>{if(!value)throw Error(message)};
+const assert=(value,message)=>{if(!value)throw Error(message);};
 const expected={
  'alive':([a])=>a,'NOT alive':([a])=>Number(!a),
  'A AND B':([a,b])=>Number(Boolean(a)&&Boolean(b)),
@@ -84,5 +84,5 @@ try{
  }
  if(phase==='after')for(const route of ['/foundations/gates-and-the-adder/unit-01/','/foundations/gates-and-the-adder/unit-03/']){await page.setViewportSize({width:390,height:900});await page.goto(base+route);await page.locator('h1').waitFor();await keyboardScroll(route,390);}
  assert(!report.errors.length,report.errors.join('\n'));report.status=phase==='baseline'&&report.pages.some(p=>p.violations.length)?'findings':'passed';console.log(JSON.stringify({phase,pages:report.pages.length,checks:report.checks.length}));
-}catch(error){report.status='failed';report.failure=String(error);throw error}
-finally{await fs.writeFile(`${out}/${phase}.json`,JSON.stringify(report,null,2)+'\n');await browser.close()}
+}catch(error){report.status='failed';report.failure=String(error);throw error;}
+finally{await fs.writeFile(`${out}/${phase}.json`,JSON.stringify(report,null,2)+'\n');await browser.close();}

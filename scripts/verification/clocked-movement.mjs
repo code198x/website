@@ -7,7 +7,7 @@ await fs.mkdir(output,{recursive:true});
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const context=await browser.newContext({viewport:{width:1280,height:1000}}),page=await context.newPage();
 const checks=[],errors=[];page.on('pageerror',e=>errors.push(String(e)));
-const assert=(x,msg)=>{if(!x)throw Error(msg)};
+const assert=(x,msg)=>{if(!x)throw Error(msg);};
 try{
  await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-06/');await openSourceEditors(page);
  await page.locator('a.nav-next').click();await page.waitForURL(/\/unit-07\/?$/);await openSourceEditors(page);
@@ -16,8 +16,8 @@ try{
  await page.waitForFunction(()=>document.querySelector('.movement-lesson').dataset.ready==='true');
  await root.evaluate(el=>el.addEventListener('sandbox:memory',e=>window.reading=e.detail));
  const original=await source.inputValue();
- async function read(){return page.evaluate(()=>window.reading)}
- async function run(interval=6){await page.evaluate(()=>window.reading=null);await root.locator('.sandbox-run').click();await page.waitForFunction(n=>window.reading?.named.interval===n,interval)}
+ async function read(){return page.evaluate(()=>window.reading);}
+ async function run(interval=6){await page.evaluate(()=>window.reading=null);await root.locator('.sandbox-run').click();await page.waitForFunction(n=>window.reading?.named.interval===n,interval);}
  async function rate(n){
   const before=(await read()).named;
   await page.waitForFunction(f=>(window.reading.named.frames-f+256)%256>=60,before.frames);
@@ -56,4 +56,4 @@ try{
  const accessibility=await new AxeBuilder({page}).include('.movement-lesson').analyze();assert(accessibility.violations.length===0,'Accessibility failures: '+accessibility.violations.map(v=>v.id));
  checks.push('Clocked source download, mobile layout and held pointer input, zero scoped axe violations');
  assert(!errors.length,errors.join('\n'));await fs.writeFile(output+'/results.json',JSON.stringify(checks,null,2)+'\n');console.log(checks);
-}catch(error){await page.screenshot({path:output+'/failure.png'});throw error}finally{await browser.close()}
+}catch(error){await page.screenshot({path:output+'/failure.png'});throw error;}finally{await browser.close();}

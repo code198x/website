@@ -13,10 +13,10 @@ try {
  const root=page.locator('.byte-lesson'),source=root.locator('textarea');
  await root.locator('.assembly-editor-colours span').first().waitFor();
  const original=await source.inputValue();
- async function run(){await root.locator('.sandbox-run').click();await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running'))}
- async function bitmap(value){await page.waitForFunction(v=>document.querySelector('.memory-byte').textContent.includes(v),value)}
- async function attribute(value){await page.waitForFunction(v=>document.querySelector('.attribute-byte').textContent.includes(`attribute: ${v} ·`),value)}
- async function zoom(){return root.locator('.pixel-zoom').evaluate(canvas=>Array.from(canvas.getContext('2d').getImageData(0,0,8,1).data))}
+ async function run(){await root.locator('.sandbox-run').click();await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running'));}
+ async function bitmap(value){await page.waitForFunction(v=>document.querySelector('.memory-byte').textContent.includes(v),value);}
+ async function attribute(value){await page.waitForFunction(v=>document.querySelector('.attribute-byte').textContent.includes(`attribute: ${v} ·`),value);}
+ async function zoom(){return root.locator('.pixel-zoom').evaluate(canvas=>Array.from(canvas.getContext('2d').getImageData(0,0,8,1).data));}
  if(await root.locator('.readings').isVisible())throw Error('Answer exposed before run');
  await root.locator('.save-prediction').click();await run();await bitmap('10101010');
  if(!(await root.locator('.comparison').textContent()).includes('Your prediction was 00000000'))throw Error('Mismatch feedback missing');
@@ -61,4 +61,4 @@ try {
  checks.push('mobile no page overflow, keyboard prediction control and forced-colours selection');
  if(errors.length)throw Error(errors.join('\n'));
  await fs.writeFile(output+'/results.json',JSON.stringify(checks,null,2)+'\n');console.log(checks);
-}finally{await browser.close()}
+}finally{await browser.close();}

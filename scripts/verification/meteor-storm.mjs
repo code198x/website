@@ -19,7 +19,7 @@ const context=await browser.newContext({viewport:{width:1280,height:1000}});
 const page=await context.newPage(),errors=[],checks=[];
 page.on('pageerror',error=>errors.push(String(error)));
 await page.addInitScript(()=>{window.meteorReadings=null;document.addEventListener('sandbox:memory',event=>window.meteorReadings=event.detail);});
-const assert=(value,message)=>{if(!value)throw Error(message)};
+const assert=(value,message)=>{if(!value)throw Error(message);};
 // Playwright's waits here time out after 30 s, but evaluate() waits for as long
 // as the page's main thread is busy. A stage that outruns its limit fails and
 // names itself instead of hanging. Each stage prints its wall-clock start and
@@ -27,8 +27,8 @@ const assert=(value,message)=>{if(!value)throw Error(message)};
 // (compare `pmset -g log` on macOS), not that the lesson stuck.
 async function within(name,limit,work){
  const started=new Date();let timer;
- const stuck=new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(`${name} did not finish within ${limit/1000} s (started ${started.toISOString()}, now ${new Date().toISOString()})`)),limit)});
- try{await Promise.race([work(),stuck])}finally{clearTimeout(timer)}
+ const stuck=new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error(`${name} did not finish within ${limit/1000} s (started ${started.toISOString()}, now ${new Date().toISOString()})`)),limit);});
+ try{await Promise.race([work(),stuck]);}finally{clearTimeout(timer);}
  return `${started.toISOString()} ${((Date.now()-started)/1000).toFixed(1)} s`;
 }
 async function open(n){
@@ -202,4 +202,4 @@ try{
  // A stuck page cannot answer these either, so they must not replace the error that says where it stuck.
  console.error(String(error));console.error('Browser errors:',errors);
  try{await page.screenshot({path:out+'/failure.png',fullPage:true,timeout:10000});console.error('Status:',await page.locator('.sandbox-status').textContent({timeout:10000}));console.error('Debug:',await page.locator('.meteor-debug-state').allTextContents());}catch(diagnostic){console.error('Page diagnostics unavailable:',diagnostic.message.split('\n')[0]);}
- throw error;}finally{await browser.close()}
+ throw error;}finally{await browser.close();}

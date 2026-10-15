@@ -23,7 +23,7 @@ try {
     if(!text.includes(expected))throw Error(label+': '+text);
     if(JSON.parse(m.query('tape.loaded'))||JSON.parse(m.query('tape.playing')))throw Error('Tape used');
     checks.push({label,milliseconds:Math.round(elapsed),tapeLoaded:false,text});
-   }finally{m.free()}
+   }finally{m.free();}
   };
   test('BASIC direct RUN',m=>m.runBasic('10 PRINT "DIRECT BASIC"'),'DIRECT BASIC');
   test('BASIC ROM syntax report',m=>m.runBasic('10 PRONT 2'),'Nonsense');
@@ -34,4 +34,4 @@ try {
   return checks;
  });
  console.log(JSON.stringify(result,null,2));
-}finally{await browser.close()}
+}finally{await browser.close();}

@@ -13,8 +13,8 @@ try{
  await page.waitForFunction(()=>document.querySelector('.routine-lesson').dataset.ready==='true');
  await root.evaluate(el=>el.addEventListener('sandbox:routine',e=>window.captured=e.detail));
  const original=await source.inputValue();
- async function run(){await page.evaluate(()=>window.captured=null);await root.locator('.sandbox-run').click();await page.waitForFunction(()=>window.captured);return page.evaluate(()=>window.captured)}
- function assert(value,message){if(!value)throw Error(message)}
+ async function run(){await page.evaluate(()=>window.captured=null);await root.locator('.sandbox-run').click();await page.waitForFunction(()=>window.captured);return page.evaluate(()=>window.captured);}
+ function assert(value,message){if(!value)throw Error(message);}
  let capture=await run();let events=capture.trace.events;
  assert(capture.trace.complete&&events.map(e=>e.kind).join(',')===['call',...Array(8).fill('write'),'return','call',...Array(8).fill('write'),'return'].join(','),'Wrong event sequence');
  const patterns=[24,60,126,219,255,60,102,66];
@@ -56,4 +56,4 @@ try{
  await root.locator('.routine-replay').screenshot({path:output+'/mobile.png'});
  checks.push('Overwrite, saved artwork, stale labels, exact source download, bounded incomplete trace, Revert and mobile keyboard replay');
  assert(!errors.length,errors.join('\n'));await fs.writeFile(output+'/results.json',JSON.stringify(checks,null,2)+'\n');console.log(checks);
-}catch(error){await page.screenshot({path:output+'/failure.png'});throw error}finally{await browser.close()}
+}catch(error){await page.screenshot({path:output+'/failure.png'});throw error;}finally{await browser.close();}

@@ -71,4 +71,4 @@ try{
   return checked;
  });
  await fs.writeFile(out+'/results.json',JSON.stringify({method:'Real browser runner, ordinary elapsed-time ticks, keyboard feedback pilot and read-only state/bitmap probes. No game-state writes or debugger stepping.',checkpoint,routesFile,state,native,scorePixelsChecked:pixels},null,2)+'\n');console.log(state,pixels);
-}finally{await browser.close()}
+}finally{await browser.close();}

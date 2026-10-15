@@ -27,13 +27,13 @@ for (const [name, engine, options] of [
   await activate(page.getByRole('region',{name:'Start programming'}).getByRole('link',{name:'Try your first assembly lesson',exact:true}));
   await expect(page).toHaveURL(/meet-assembly\/unit-01\/?$/);
   await activate(page.locator('.sandbox-run'));
-  await page.waitForFunction(()=>{const c=document.querySelector('.sandbox-screen');const d=c?.getContext('2d').getImageData(0,0,1,1).data;return d&&d[0]>100&&d[1]===0&&d[2]===0});
+  await page.waitForFunction(()=>{const c=document.querySelector('.sandbox-screen');const d=c?.getContext('2d').getImageData(0,0,1,1).data;return d&&d[0]>100&&d[1]===0&&d[2]===0;});
   await activate(page.locator('.source-drawer > summary'));
   const assembly=page.locator('.sandbox-source'),originalAsm=await assembly.inputValue();
   assert(originalAsm.includes('ld a,2'));
   await assembly.fill(originalAsm.replace('ld a,2','ld a,4'));
   await activate(page.locator('.sandbox-run'));
-  await page.waitForFunction(()=>{const d=document.querySelector('.sandbox-screen').getContext('2d').getImageData(0,0,1,1).data;return d[0]===0&&d[1]>100&&d[2]===0});
+  await page.waitForFunction(()=>{const d=document.querySelector('.sandbox-screen').getContext('2d').getImageData(0,0,1,1).data;return d[0]===0&&d[1]>100&&d[2]===0;});
   await assembly.fill(originalAsm.replace('ld a,2','ld a,unknown_label'));
   await activate(page.locator('.sandbox-run'));
   await expect(page.locator('.sandbox-diagnostics')).toContainText('undefined symbol');
@@ -81,7 +81,7 @@ for (const [name, engine, options] of [
   await expect(modal.getByRole('button',{name:'Resume',exact:true})).toBeVisible();
   await activate(modal.getByRole('button',{name:'Resume',exact:true}));
   await activate(modal.getByRole('button',{name:'Restart Spectrum',exact:true}));
-  await page.waitForFunction(()=>{const text=document.querySelector('.machine-transcript pre').textContent;return text.includes('FLYER VISITOR')&&!text.includes('0 OK')},{},{timeout:60000});
+  await page.waitForFunction(()=>{const text=document.querySelector('.machine-transcript pre').textContent;return text.includes('FLYER VISITOR')&&!text.includes('0 OK');},{},{timeout:60000});
   await activate(modal.getByRole('button',{name:'6',exact:true}));
   await activate(modal.getByRole('button',{name:'Enter',exact:true}));await screen('7');await screen('0 OK');
   await activate(modal.getByRole('button',{name:'Back to the listing'}));

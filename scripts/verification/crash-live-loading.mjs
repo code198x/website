@@ -12,7 +12,7 @@ try{
   const cdp=await context.newCDPSession(page);
   await cdp.send('Network.enable');await cdp.send('Network.setCacheDisabled',{cacheDisabled:true});
   await cdp.send('Network.emulateNetworkConditions',{offline:false,latency:150,downloadThroughput:200000,uploadThroughput:93750});
-  await page.addInitScript(()=>{window.layoutShiftTotal=0;new PerformanceObserver(list=>{for(const e of list.getEntries())if(!e.hadRecentInput)window.layoutShiftTotal+=e.value}).observe({type:'layout-shift',buffered:true});});
+  await page.addInitScript(()=>{window.layoutShiftTotal=0;new PerformanceObserver(list=>{for(const e of list.getEntries())if(!e.hadRecentInput)window.layoutShiftTotal+=e.value;}).observe({type:'layout-shift',buffered:true});});
   const started=Date.now();await page.goto(base+path,{waitUntil:'domcontentloaded'});
   await expect(page.locator('h1')).toBeVisible();const headingMs=Date.now()-started;
   await page.waitForLoadState('load');await page.evaluate(()=>document.fonts.ready);
