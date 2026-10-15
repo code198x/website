@@ -34,7 +34,7 @@ await page.addInitScript(()=>{
  window.AudioContext=class extends Original{constructor(...args){super(...args);window.soundContexts.push(this);}};
  window.meteorReadings=null;document.addEventListener('sandbox:memory',event=>window.meteorReadings=event.detail);
 });
-const assert=(value,message)=>{if(!value)throw Error(message)};
+const assert=(value,message)=>{if(!value)throw Error(message);};
 
 /** The context's rate and state, and the captured samples since `from`. */
 async function captured(from){

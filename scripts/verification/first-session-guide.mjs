@@ -10,7 +10,7 @@ const context=await browser.newContext({acceptDownloads:true});const page=await 
 const reopenBase=process.env.FIRST_SESSION_REOPEN_BASE||base;
 const report={reopenBase,date:new Date().toISOString(),base,browser:browser.version(),mode,pages:[],checks:[],errors:[]};
 page.on('pageerror',error=>report.errors.push(String(error)));
-const assert=(value,message)=>{if(!value)throw Error(message)};
+const assert=(value,message)=>{if(!value)throw Error(message);};
 const basic='/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer/';
 const assembly='/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-01/';
 const navigate=async route=>{const response=await page.goto(base+route);assert(response?.ok(),`HTTP ${response?.status()} ${route}`);await page.locator('h1').waitFor();};
@@ -86,5 +86,5 @@ try{
   report.checks.push({check:'actual border red to green, source download and revert',passed:true});
  }
  assert(!report.errors.length,report.errors.join('\n'));report.status='passed';console.log(JSON.stringify({status:report.status,pages:report.pages.length,checks:report.checks.length}));
-}catch(error){report.status='failed';report.failure=String(error);await page.screenshot({path:`${out}/failure.png`,fullPage:true});throw error}
-finally{await fs.writeFile(`${out}/results.json`,JSON.stringify(report,null,2)+'\n');await browser.close()}
+}catch(error){report.status='failed';report.failure=String(error);await page.screenshot({path:`${out}/failure.png`,fullPage:true});throw error;}
+finally{await fs.writeFile(`${out}/results.json`,JSON.stringify(report,null,2)+'\n');await browser.close();}

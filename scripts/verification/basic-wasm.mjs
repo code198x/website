@@ -32,11 +32,11 @@ try{
  await page.goto(base+greeting);await openDrawers(page);await root.locator('.assembly-editor-colours span').first().waitFor();
  const original=await source.inputValue();
  await alignment(1280);
- await page.evaluate(()=>{window.trialFrames=0;window.trialActive=true;const tick=()=>{if(window.trialActive){window.trialFrames++;requestAnimationFrame(tick)}};requestAnimationFrame(tick)});
+ await page.evaluate(()=>{window.trialFrames=0;window.trialActive=true;const tick=()=>{if(window.trialActive){window.trialFrames++;requestAnimationFrame(tick);}};requestAnimationFrame(tick);});
  await button('run');
  await source.fill(original.replace('Welcome','Edited greeting'));
  await screen('Welcome');await loaded();
- const frames=await page.evaluate(()=>{window.trialActive=false;return window.trialFrames});
+ const frames=await page.evaluate(()=>{window.trialActive=false;return window.trialFrames;});
  if(frames<2)throw Error('UI did not keep rendering during load');
  if(!(await source.inputValue()).includes('Edited greeting'))throw Error('Edit lost during boot');
  reports.push({check:'editor remains responsive during worker boot',ui_frames:frames});
@@ -88,5 +88,5 @@ try{
  if(errors.length)throw Error(errors.join('\n'));
  await fs.writeFile(path.join(output,'browser-results.json'),JSON.stringify(reports,null,2)+'\n');
  console.log(JSON.stringify(reports,null,2));
-} catch(error){await page.screenshot({path:path.join(output,'failure.png')});throw error}
-finally{await browser.close()}
+} catch(error){await page.screenshot({path:path.join(output,'failure.png')});throw error;}
+finally{await browser.close();}

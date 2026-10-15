@@ -14,8 +14,8 @@ try {
  const original=await source.inputValue();
  const patterns=[24,60,126,219,255,60,102,66];
  const binary=n=>n.toString(2).padStart(8,'0');
- async function run(){await root.locator('.sandbox-run').click();await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running'))}
- async function rows(expected){await page.waitForFunction(values=>Array.from(document.querySelectorAll('[data-live-row]')).every((e,i)=>e.textContent===values[i]),expected.map(binary))}
+ async function run(){await root.locator('.sandbox-run').click();await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running'));}
+ async function rows(expected){await page.waitForFunction(values=>Array.from(document.querySelectorAll('[data-live-row]')).every((e,i)=>e.textContent===values[i]),expected.map(binary));}
  if(await root.locator('.readings').isVisible())throw Error('Result before execution');
  for(let row=0;row<8;row++)for(let bit=0;bit<8;bit++)if(patterns[row]&(1<<bit))await root.locator(`[data-row="${row}"][data-bit="${bit}"]`).click();
  await root.locator('.save-prediction').click();await run();await rows(patterns);
@@ -59,4 +59,4 @@ try {
  checks.push('mobile no page overflow; all rows keyboard accessible; forced-colours selection visible');
  if(errors.length)throw Error(errors.join('\n'));
  await fs.writeFile(output+'/results.json',JSON.stringify(checks,null,2)+'\n');console.log(checks);
-}finally{await browser.close()}
+}finally{await browser.close();}

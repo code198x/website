@@ -39,5 +39,5 @@ try{
  }
  if(report.errors.length)throw Error(report.errors.join('\n'));
  console.log(JSON.stringify({phase,pages:report.pages.length,checks:report.checks.length,browser:report.browser}));
-}catch(error){report.failure=String(error);throw error}
-finally{await fs.writeFile(`${output}/${phase}.json`,JSON.stringify(report,null,2)+'\n');await browser.close()}
+}catch(error){report.failure=String(error);throw error;}
+finally{await fs.writeFile(`${output}/${phase}.json`,JSON.stringify(report,null,2)+'\n');await browser.close();}

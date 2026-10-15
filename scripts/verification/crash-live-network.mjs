@@ -9,7 +9,7 @@ for(const engine of [chromium,webkit]) {
  try {
   const page=await browser.newPage();page.setDefaultTimeout(20000);
   let attempts=0,releaseDownload;
-  const released=new Promise(resolve=>{releaseDownload=resolve});
+  const released=new Promise(resolve=>{releaseDownload=resolve;});
   await page.route('**/emu198x_spectrum_web_bg*.wasm',async route=>{
    attempts++;
    if(attempts===1)await route.abort('failed');

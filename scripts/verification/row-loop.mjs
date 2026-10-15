@@ -10,9 +10,9 @@ const checks=[];
 try {
  const route='/systems/sinclair-zx-spectrum/assembly/meet-assembly/';
  const root=page.locator('.byte-lesson'),source=root.locator('textarea');
- async function run(){await root.locator('.sandbox-run').click();await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running'))}
- async function count(n){await page.waitForFunction(n=>document.querySelector('.replay-note').textContent.startsWith(`0 of ${n} captured`),n)}
- async function next(n){for(let i=0;i<n;i++)await root.locator('.replay-next').click()}
+ async function run(){await root.locator('.sandbox-run').click();await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running'));}
+ async function count(n){await page.waitForFunction(n=>document.querySelector('.replay-note').textContent.startsWith(`0 of ${n} captured`),n);}
+ async function next(n){for(let i=0;i<n;i++)await root.locator('.replay-next').click();}
  await page.goto(base+route+'unit-03/');await openSourceEditors(page);await source.waitFor();await root.locator('.assembly-editor-colours span').first().waitFor();await page.waitForFunction(()=>document.querySelector('.byte-lesson').dataset.ready==='true');
  await source.fill((await source.inputValue()).replace('%00011000','%10011000'));
  await root.locator('.transfer-character').click();
@@ -65,5 +65,5 @@ try {
  checks.push('source download, Revert, mobile layout and keyboard replay');
  if(errors.length)throw Error(errors.join('\n'));
  await fs.writeFile(output+'/results.json',JSON.stringify(checks,null,2)+'\n');console.log(checks);
-} catch(error){await page.screenshot({path:output+'/failure.png'});throw error}
-finally{await browser.close()}
+} catch(error){await page.screenshot({path:output+'/failure.png'});throw error;}
+finally{await browser.close();}

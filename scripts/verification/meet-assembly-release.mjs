@@ -9,7 +9,7 @@ const out=process.argv[3]||'/tmp/meet-assembly-release-overview';await fs.mkdir(
 const browser=await chromium.launch({channel:'chrome',headless:true});
 const context=await browser.newContext({viewport:{width:1280,height:1000}});const page=await context.newPage();const errors=[],checks=[];
 page.on('pageerror',error=>errors.push(String(error)));
-const assert=(value,message)=>{if(!value)throw Error(message)};
+const assert=(value,message)=>{if(!value)throw Error(message);};
 const path='/systems/sinclair-zx-spectrum/assembly/meet-assembly';
 try {
  await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/');
@@ -17,13 +17,13 @@ try {
  await page.waitForURL(/\/meet-assembly\/unit-01\/?$/);await openSourceEditors(page);
  await page.locator('.sandbox-run').click();
  await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running'));
- await page.waitForFunction(()=>{const c=document.querySelector('.sandbox-screen');const rgba=c.getContext('2d').getImageData(0,0,1,1).data;return rgba[0]>100&&rgba[1]===0&&rgba[2]===0});
+ await page.waitForFunction(()=>{const c=document.querySelector('.sandbox-screen');const rgba=c.getContext('2d').getImageData(0,0,1,1).data;return rgba[0]>100&&rgba[1]===0&&rgba[2]===0;});
  const source=page.locator('.sandbox-source');await source.fill((await source.inputValue()).replace('ld a,2','ld a,4'));
  await page.locator('.sandbox-run').click();await page.waitForFunction(()=>document.querySelector('.sandbox-status').textContent.startsWith('Running'));
- await page.waitForFunction(()=>{const c=document.querySelector('.sandbox-screen');const rgba=c.getContext('2d').getImageData(0,0,1,1).data;return rgba[0]===0&&rgba[1]>100&&rgba[2]===0});
+ await page.waitForFunction(()=>{const c=document.querySelector('.sandbox-screen');const rgba=c.getContext('2d').getImageData(0,0,1,1).data;return rgba[0]===0&&rgba[1]>100&&rgba[2]===0;});
  checks.push('Recommended starting link reaches lesson 1; real border changes red to green');
  for(let n=1;n<=8;n++){
-  if(n>1){await page.locator('a.nav-next').click();await page.waitForURL(new RegExp(`/unit-0${n}/?$`))}
+  if(n>1){await page.locator('a.nav-next').click();await page.waitForURL(new RegExp(`/unit-0${n}/?$`));}
   assert(await page.locator('h1').count()===1,`Lesson ${n} heading`);
   const expected=await fs.readFile(`${samples}/sinclair-zx-spectrum/assembly/meet-assembly/opening/${['first-program','one-byte','eight-rows','row-loop','draw-routine','move-character','clocked-character','debug-branch'][n-1]}.asm`,'utf8');
   if(n>1)assert((await source.inputValue()).trim()===expected.trim(),`Lesson ${n} source differs`);
@@ -49,4 +49,4 @@ try {
  checks.push('Entry pages and endpoint lessons fit narrow, desktop and wide layouts');
  await page.goto(base+'/systems/sinclair-zx-spectrum/assembly/meet-the-machine/unit-01/');assert(await page.locator('h1').count()===1,'Old lesson inaccessible');
  assert(!errors.length,errors.join('\n'));await fs.writeFile(out+'/results.json',JSON.stringify({base,checks,errors},null,2)+'\n');console.log(checks);
-}finally{await browser.close()}
+}finally{await browser.close();}
