@@ -1,6 +1,6 @@
 ---
 title: "Slide the Whole Row"
-description: "Shifting slides every bit sideways at once, which is the machine's quickest way to multiply and divide by two."
+description: "Slide an eight-bit row, predict the new value, and see when shifting matches multiplication or whole-number division."
 pubDate: 2026-06-30
 game: 1
 unit: 2
@@ -15,13 +15,17 @@ together.
 
 It is called **shifting**, and the interesting part is what the sliding does to the number.
 
+Here we use **eight-bit unsigned values**, from 0 to 255. A shift keeps eight bits,
+puts 0 in each newly empty position, and drops bits that leave the row. This is a
+**logical shift**. Those rules matter when a value is near the ends of the range.
+
 ## Slide left, and the number doubles
 
 Push every bit one place to the **left**. Each switch moves into the next place up, and a 0
 drifts in to fill the gap on the right.
 
 Every place is worth twice the one to its right. So moving every bit up one place makes the
-whole number worth **twice as much**. A left shift is a doubling.
+whole number worth **twice as much**, provided the result still fits in eight bits.
 
 Take 5, which is `00000101`. Slide it left and it becomes `00001010`, which is 10:
 
@@ -38,8 +42,8 @@ The number after `SHIFTLEFT` is how many places to slide. One place, one doublin
 Shift left again and you double again. Slide by three places and you have doubled three times
 over, which is times **eight**.
 
-A shift left by *n* multiplies by 2 to the power *n*. One place is ×2, two places ×4, three
-places ×8:
+While the result fits, a shift left by *n* multiplies by 2 to the power *n*.
+One place is ×2, two places ×4, three places ×8:
 
 ```text
 SHOW 5 SHIFTLEFT 3
@@ -49,13 +53,17 @@ SHOW 5 SHIFTLEFT 3
 
 Three slides: `00000101` becomes `00101000`, and 5 times eight is 40.
 
+But 200 is `11001000`. Shift it left once and the stored byte becomes `10010000`,
+which is 144, not 400. The top 1 no longer fits in the byte. A processor may save
+that shifted-out bit separately: the Z80 copies it to its carry flag.
+
 ## Slide right, and it halves
 
-Slide the row the other way and every bit drops to a lower place. That **halves** the number.
+Slide the row the other way and every bit drops to a lower place. A **0 fills the top position**.
 
 There is a catch. The bit on the far right has nowhere to go, so it **falls off the end**. A
 right shift is a divide by two that throws away any remainder, which is exactly what
-whole-number division does.
+whole-number division does for these unsigned values.
 
 ```text
 SHOW 5 SHIFTRIGHT 1
@@ -64,35 +72,56 @@ SHOW 5 SHIFTRIGHT 1
 <Output>{`2`}</Output>
 
 Not 2.5. `00000101` became `00000010`, and the bottom 1 fell off. That lost bit is the
-remainder.
+remainder. The bit is outside the result byte; the Z80 can retain it in the carry flag.
 
-## Why the machine loves it
+This is not a rule for every signed right shift. Read `10000000` as signed −128:
+a zero-fill right shift makes `01000000`, which is +64, not −64. An **arithmetic
+right shift** keeps the top bit’s old value instead, producing `11000000`, or −64.
+Check which operation your language or processor supplies.
 
-Real multiplication and division are slow work for an old CPU. Some of these processors have no
-multiply instruction at all.
+<details>
+<summary>Using our eight-bit zero-fill rules, what are 200 shifted left once and 5 shifted right once?</summary>
 
-Shifting is almost free. Sliding the switches is one of the quickest things the machine can do.
-So whenever a value needs scaling by 2, 4, 8 or 16, the machine reaches for a shift instead.
-When you see `×2` or `÷2` in old code, picture the whole row of bits sliding one place over.
+The left result is `10010000`, or 144: 400 does not fit in eight bits. The right
+result is `00000010`, or 2, with remainder 1. Both shifts remove a 1 from the
+stored byte; on the Z80, that bit is copied to carry.
+
+</details>
+
+## Why the machine uses it
+
+Some older processors, including the Z80, have no general multiply instruction.
+Shifts can help build scaling operations from simpler instructions.
+
+The quickest choice depends on the processor, the value’s width and the instructions
+used. On a Z80, `ADD A,A` doubles the value in register A in four clock periods;
+`SLA A` shifts it left in eight. Their result bytes agree, but some flags differ.
+A shift is a useful tool, not a promise of the fastest code.
 
 ## When it's wrong, see why
 
-- **A left-shifted number came out far too small.** Bits slid off the **top** and were lost.
+- **A left-shifted number came out far too small.** Bits slid off the **top** of the stored byte.
   Shift too far and the value overflows its byte.
 - **A right shift lost part of the answer.** It did, on purpose. The bottom bit falls off, so a
   right shift discards the remainder. 5 ÷ 2 gives 2, not 2.5.
-- **`× 2` did not match a shift.** The two agree only for whole numbers, and only while the
-  result still fits. Once bits fall off either end they part ways.
+- **`× 2` did not match a shift.** For our unsigned values, left shift agrees with multiplication
+  only while the result fits. Check the stored width before replacing arithmetic with a shift.
 
 ## What you've learnt
 
 - **Shifting** slides every bit one place at once, the whole row together.
-- **Left** is **×2**, and a shift by *n* places multiplies by 2ⁿ.
-- **Right** is **÷2**, and the bottom bit falls off as the discarded remainder.
-- It is the machine's **fastest** way to scale by a power of two, which is why old code is full
-  of it.
+- **Left** is **×2** while the result fits; a shift by *n* places scales by 2ⁿ under that condition.
+- Our **zero-fill right shift** divides an unsigned value by two, dropping the remainder.
+- A signed **arithmetic right shift** preserves the old top bit instead of filling with zero.
+- Speed depends on the **processor and instructions**, not just the name of the operation.
 
 ## What's next
 
 Every number so far has been a number. In **Unit 3** we look at a byte holding a letter, and
 find the bit tools waiting for us there.
+
+## Sources
+
+[Zilog’s *Z80 CPU User Manual*](https://www.zilog.com/docs/z80/um0080.pdf),
+UM008011-0816: ADD A,r, p. 145; SLA, pp. 230–231; SRA, pp. 233–234; and SRL,
+pp. 236–237. These entries specify the bit movement, carry behaviour and instruction timings.
