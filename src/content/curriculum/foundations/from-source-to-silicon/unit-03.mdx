@@ -32,7 +32,7 @@ pass. We translate again when we change the source and rebuild.
 >
   The middle column has one entry now, and it is above the loop rather than inside it. The
   table counts the additions and translation lookups. It omits other work such as
-controlling the loop; it is not an instruction or timing measurement.
+  controlling the loop; it is not an instruction or timing measurement.
 </TraceTable>
 
 A **native-code compiler** translates higher-level source into instructions for
@@ -76,18 +76,38 @@ addresses used by the operation.
 
 ## Build it
 
-We can describe a toy assembler with two lists, a loop that walks a program, and
-a question that checks a name. Trace this pseudocode:
+We use two matching lookup lists, a list for pending output, and loops that
+check each name. A flag records whether the whole program is valid. Trace this
+pseudocode:
 
 ```text
 LET names = ["INC", "DOUBLE", "SHOW"]
 LET codes = [1, 2, 3]
 LET program = ["INC", "INC", "DOUBLE", "SHOW"]
 
+LET pending = []
+LET valid = TRUE
+
 FOR EACH word IN program
-  FOR i = 1 TO 3
-    IF word = names[i] THEN SHOW codes[i]
+  LET found = FALSE
+  FOR i = 1 TO LENGTH(names)
+    IF word = names[i] THEN
+      APPEND codes[i] TO pending
+      LET found = TRUE
+    END
   END
+  IF NOT found THEN
+    SHOW "Unknown instruction: ", word
+    LET valid = FALSE
+  END
+END
+
+IF valid THEN
+  FOR EACH code IN pending
+    SHOW code
+  END
+ELSE
+  SHOW "Translation failed; no code emitted"
 END
 ```
 
@@ -96,15 +116,41 @@ END
 2
 3`}</Output>
 
-Read it through. For each word in the program, look along the list of names. When you
-find the one that matches, show the number in the same place in the other list.
+For each word, start `found` at FALSE and look along the names list. List
+positions start at **1**. When a name matches, append its code to `pending` and
+set `found` to TRUE. The fixed names table contains each name once; the two
+lists have matching positions.
 
-`1 1 2 3`. That is the row of numbers from Unit 1, and you just produced it from the
-names. You have written an assembler.
+We keep these codes in a list first. If any word has no match, report it and
+leave `valid` FALSE for the rest of this translation. We show the codes only
+after checking the whole program. A later recognised word cannot erase an
+earlier error.
 
-This toy shows a name-to-number lookup. A real assembler also handles details
-such as operands, labels, addresses and diagnostics. The small model gives us a
-starting point for understanding those jobs; it does not implement them.
+For the valid program, we emit `1 1 2 3`. You have traced the encoding part of a
+toy assembler. A real assembler also handles operands, labels, addresses and
+diagnostics; this small model does not implement those jobs.
+
+## Reject a program we cannot translate
+
+Replace the program list with `["INC", "MYSTERY", "DOUBLE", "SHOW"]`. Predict
+whether the translator emits `1 2 3` or rejects the whole translation.
+
+<details>
+<summary>Does a recognised last word make the program valid?</summary>
+
+No. `MYSTERY` has no match. The diagnostic output is:
+
+<Output>{`Unknown instruction: MYSTERY
+Translation failed; no code emitted`}</Output>
+
+`pending` contains codes for the recognised names, but none is emitted as
+program output. Fix the source name and translate again. In particular, do not
+run an old output file as though this failed build had replaced it.
+
+</details>
+
+An empty program list has no words to check and emits no codes. That is a valid
+empty program in this model, distinct from a rejected program with a diagnostic.
 
 ## What runs afterwards
 
@@ -142,9 +188,9 @@ the translation; “native” tells us about the instructions and their target.
 
 ## When it's wrong, see why
 
-- **A name was not in the table.** The assembler found nothing to match, so it wrote
-  nothing down, and the machine got a shorter program than you wrote. A real assembler
-  stops and tells you. This toy does not, which is a good reason to make yours do so.
+- **A name was not in the table.** Read the diagnostic, correct the source and
+  translate again. Skipping the word would silently change the program. Our toy
+  keeps pending codes private until all names have passed.
 - **You changed the program and nothing changed.** The old numbers are still what the
   machine has. Translating once means translating *again* when you change something.
 - **The program runs but gives the wrong result.** Keep the matching source and
@@ -156,7 +202,7 @@ the translation; “native” tells us about the instructions and their target.
 - A **native-code compiler** chooses machine instructions to implement higher-level source.
 - An **assembler** encodes instructions selected in assembly source.
 - Both can produce **native machine code** for the same processor.
-- You built one from **two lists and a loop**.
+- You traced a toy encoder using lists and loops, with **no code emitted after an unknown name**.
 - Removing runtime translation work does not establish the whole program's speed.
 
 ## What's next
