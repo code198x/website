@@ -1,6 +1,6 @@
 ---
 title: "Nailing the Point Down"
-description: "Fix the point at an agreed scale and a fraction becomes an ordinary whole number, which the machine adds at full speed."
+description: "Fix the point at an agreed scale and a fraction becomes an ordinary whole number, with explicit precision and range limits."
 pubDate: 2026-06-30
 game: 1
 unit: 5
@@ -9,15 +9,15 @@ tags: ["foundations", "working-the-bits", "fixed-point"]
 
 import Output from "@components/Output.astro";
 
-Unit 4 left us with a problem. Floating-point carries any fraction you like, approximately, and
-on these machines it is far too slow for a game loop.
-
-So games did the opposite. They fixed the point instead of floating it.
+Unit 4 showed a flexible representation with finite precision. Another option is
+**fixed-point**: agree on one scale and store a whole number of those smaller steps.
+That can simplify the arithmetic, but it does not make every fraction exact.
 
 ## Agree on a scale
 
-Pick a scale, say **256**, and agree once and for all that every number you store is that many
-*256ths*.
+Pick a scale, say **256**, and agree that each stored unit means one *256th*.
+For this example, use a **sixteen-bit unsigned integer**, from 0 to 65535.
+That gives us two bytes to hold both whole and fractional parts.
 
 Then 1.5 is not stored as "1.5" at all. It is stored as 1.5 × 256, which is **384**. That is an
 ordinary whole number.
@@ -36,10 +36,10 @@ agrees to it.
 The fraction is being carried as a **whole number**. That is the trick, and it is also the name:
 **fixed-point**.
 
-## The maths is just integer maths
+## Adding at one scale
 
-Here is why that is such a win. Fixed-point values *are* whole numbers, so you do arithmetic on
-them with plain integer addition, which is the fast kind.
+When two values share a scale, their stored integers can be added directly.
+The answer keeps that scale, provided it still fits in the chosen width.
 
 Add 1.5 and 0.5. Store both scaled, as 384 and 128, then add the integers:
 
@@ -51,27 +51,43 @@ SHOW 384 + 128
 
 512 is 2 at our scale, so 1.5 + 0.5 came to 2 using nothing but whole-number addition.
 
-## The scale is a shift
+## Reading the value is not dropping the fraction
 
-Scaling by 256 is not even a multiplication.
+A power-of-two scale makes the split visible. At scale 256, the high byte
+counts whole units and the low byte counts 256ths. For 384, those bytes are 1 and
+128: one whole plus 128/256, or **1.5**.
 
-256 is 2⁸, so multiplying by 256 is a shift left by eight, and dividing by 256 is a shift right by
-eight. Both come straight from Unit 2.
+A right shift by eight keeps only the whole part: **1**. It does not decode the
+full value 1.5. The discarded low byte held the fraction.
 
-So fixed-point is built from the two fastest things the machine does: integer arithmetic and
-shifting. That is the whole reason it won.
+Multiplying an integer by 256 can be expressed as a left shift by eight if the
+result fits. That does not mean the full operation of reading a fractional
+value is the same as an integer right shift.
+
+<details>
+<summary>At scale 256, does shifting stored 384 right by eight give 1.5?</summary>
+
+No. It gives the whole part, 1. Reading the full stored value means 384/256 = 1.5.
+The low byte, 128, accounts for the half that a right shift removes.
+
+</details>
 
 ## What it costs you
 
-Fixed-point is not free. Two things are now your job rather than the machine's.
+Fixed-point makes several choices explicit.
 
 **You remember the scale.** The machine sees 384 and thinks 384. Only you know it means 1.5.
 
 **You keep the scales matching.** Every value in a sum has to share one scale, or the answer is
 nonsense.
 
-That bookkeeping buys speed. In a game moving dozens of objects fifty times a second, it was the
-trade worth making, every time.
+**You choose how to round.** At scale 256, 0.1 would need a stored integer of
+25.6. If we round to the nearest integer, we store 26, which means 26/256 =
+0.1015625. A half fits exactly; a tenth does not at this scale.
+
+The scale need not be a power of two. At scale 10, a tenth is exactly one stored
+unit. Pick the scale and rounding rule for the job. Operations such as multiplying
+two scaled values also need care with the resulting scale and intermediate range.
 
 ## Choosing the scale
 
@@ -79,8 +95,18 @@ The scale decides what you get and what you give up.
 
 A bigger scale buys finer fractions. At ×256 you can hold 256ths, which is far finer than a pixel.
 
-It costs range. At ×256 the largest value you can hold is 256 times smaller than the raw
-integer's limit. Choose the scale to fit the job.
+It costs range. Our largest stored integer is 65535, so at scale 256 the largest
+value is 65535/256 = **255.99609375**. More fractional steps mean fewer whole units
+in the same storage. Choose the width and scale together.
+
+Matching-scale integer addition can be cheaper than software floating-point on a
+Z80. That is a reason to consider fixed-point, not a guarantee that it is best for
+every game. Check the precision, range and work needed on the target machine.
+
+For another explicit conversion from fractions to whole numbers, see
+[Meet BASIC’s secret-number expression](/systems/sinclair-zx-spectrum/basic/meet-basic/unit-07-choose-a-new-secret/).
+Its table explains how `INT` removes the fractional part; you can read that section
+without following the preceding game lessons.
 
 ## When it's wrong, see why
 
@@ -90,16 +116,18 @@ integer's limit. Choose the scale to fit the job.
   must share the **same scale**.
 - **The numbers ran out of room.** A scale eats range, so a value that fitted as a plain integer
   may not fit once scaled.
-- **A fraction vanished.** Scaled values are still whole numbers, so anything finer than one unit
-  of your scale rounds away.
+- **A fraction vanished.** Scaled values are still whole numbers, so values between the steps of
+  your scale need rounding. Check the chosen rule and allowed error.
 
 ## What you've learnt
 
 - **Fixed-point** stores a fraction as a **whole number** at an agreed scale.
-- Its arithmetic is plain integer addition, and its scaling is a **shift**.
+- **Addition at one scale** uses integer addition, while the result fits.
+- Extracting the **whole part** with a shift is different from reading the full fraction.
 - You carry the bookkeeping: remembering the scale, and keeping every value in a sum on the same
   one.
-- Games chose it because in a loop, **speed won**.
+- Its **precision, range and rounding** depend on the chosen width and scale.
+- Its speed depends on the **target and operations**, so measure the work that matters.
 
 ## Where this leaves you
 
