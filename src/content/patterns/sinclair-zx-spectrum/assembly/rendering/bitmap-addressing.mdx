@@ -19,6 +19,12 @@ related:
 
 The Spectrum has no hardware sprites and no drawing chip — every pixel is placed by the CPU, straight into the screen bitmap at `$4000`. And that bitmap is laid out unlike any other: **consecutive screen lines are not consecutive addresses.** The [ULA](/vault/hardware/ula) stores pixels interleaved by third-of-screen and character row, so moving one pixel *down* the screen can jump the address by 256 bytes or by thousands. Every Spectrum graphics routine begins by taming this — turning an `(x, y)` into the right byte, and then stepping between lines without recomputing from scratch. Get this right and the rest of Spectrum drawing follows; get it wrong and your sprite scatters itself across the screen.
 
+## The routine's contract
+
+`pixel_addr` takes Y in D (0–191) and X in E (0–255), and returns the byte address in HL. It changes A, H, L and flags; B, C, D and E are preserved. The pixel mask is separate: `$80 >> (x AND 7)`.
+
+`pixel_down` takes an address in `$4000`–`$57FF` belonging to a bitmap row **0–190**, and returns the same byte column on the next row. It changes A, H, L and flags, preserving B, C, D and E. Neither routine checks its inputs. Stop before stepping from row 191: that step reaches attribute memory at `$5800`, not another bitmap row.
+
 ## Code
 
 ```z80
@@ -76,9 +82,11 @@ pixel_down:
 
 | Aspect | Cost |
 |--------|------|
-| CPU | ~40–60 T-states to compute an address from scratch; far less to step |
-| Memory | Nothing — or 192×2 bytes for a line-address lookup table |
+| CPU | `pixel_addr`: 117 T-states; `pixel_down`: 26, 46 or 65, depending on the row boundary |
+| Memory | No lookup data; an optional 192×2-byte line-address table needs 384 bytes |
 | Limitation | The layout resists straight-line arithmetic; plan routines around it |
+
+These are uncontended Z80 instruction totals, including each routine's `RET` and excluding the caller's `CALL` (17 more T-states). `pixel_down` takes 26 within a character cell, 46 across a 64-line third, and 65 across another character-row boundary. Memory contention and interrupts can increase elapsed time; these totals are not an emulator or hardware benchmark.
 
 **When to use:** Every pixel-level draw — [sprites](/patterns/sinclair-zx-spectrum/assembly/rendering/masked-sprites), lines, plotting, scrolling.
 
@@ -97,3 +105,7 @@ You rarely need a fresh address per line — you need the line *below* the one y
 **Patterns:** [Masked Sprites](/patterns/sinclair-zx-spectrum/assembly/rendering/masked-sprites), [Attribute Writing](/patterns/sinclair-zx-spectrum/assembly/rendering/attribute-writing)
 
 **Vault:** [ULA](/vault/hardware/ula) — the screen layout | [ZX Spectrum](/vault/systems/sinclair-zx-spectrum)
+
+## Sources
+
+Zilog, *[Z80 CPU User Manual](https://www.zilog.com/docs/z80/um0080.pdf)*, UM008011-0816: instruction descriptions for `LD`, `AND`, `OR`, `RLCA`, `RRCA`, `INC`, `ADD`, `SUB`, `RET` and conditional `RET`. The timing totals above account for the instructions in these listings.
