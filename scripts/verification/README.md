@@ -77,3 +77,15 @@ the tape loader header and distinguishes a fresh restart from stale output.
 Run it with a base URL and evidence directory like the checks above. Results
 retain response hashes and failed assertions; passing this desktop task does not
 establish learner understanding, latency or cross-platform accessibility.
+
+`embedded-latency` measures the first-session greeting in Meet BASIC unit 1.
+Pass a base URL, evidence directory and optional trial count (default five).
+Each fresh context clears/disables browser HTTP cache, then measures an original
+Run, a same-page unchanged Run and an edited greeting. The click capture event
+starts the timer; complete ROM output, a fresh transcript transition, two animation
+frame callbacks and nonblank canvas readback end it. Editing also records input
+event to result, including the automation's submission gap. This is an observed
+application endpoint, not first-pixel latency or a Core Web Vitals metric.
+Results include individual timings, source/runtime hashes, network/cache records
+and a missing-result timeout control. Warm means module reuse on the same page;
+HTTP cache stays disabled. OS/DNS/CDN caches and other host load are uncontrolled.
