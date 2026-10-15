@@ -13,7 +13,9 @@ related:
   vault: ["ula", "zx-spectrum"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+**Code status: executed sample.** The maintained listing and [complete caller](https://github.com/code198x/code-samples/tree/main/sinclair-zx-spectrum/patterns/assembly/rendering/bitmap-addressing) were assembled and executed in Emu198x on a 48K PAL configuration. The check covers every valid pixel coordinate and next-row byte address; it does not qualify physical hardware or contended execution.
 
 ## Overview
 
@@ -27,56 +29,7 @@ The Spectrum has no hardware sprites and no drawing chip — every pixel is plac
 
 ## Code
 
-```z80
-; =============================================================================
-; BITMAP ADDRESSING - ZX SPECTRUM
-; Pixel (D = y 0..191, E = x 0..255) -> HL = screen byte address
-; High byte:  0 1 0 y7 y6 y2 y1 y0     Low byte:  y5 y4 y3 x4 x3 x2 x1 x0
-; =============================================================================
-
-pixel_addr:
-    ld   a,d
-    and  %00000111         ; y2 y1 y0
-    ld   h,a
-    ld   a,d
-    and  %11000000         ; y7 y6 (which third)
-    rrca
-    rrca
-    rrca                   ; -> bits 4,3
-    or   h
-    or   %01000000         ; the $40 base
-    ld   h,a               ; H = 010 y7 y6 y2 y1 y0
-
-    ld   a,d
-    and  %00111000         ; y5 y4 y3 (char row within third)
-    rlca
-    rlca                   ; -> bits 7,6,5
-    ld   l,a
-    ld   a,e
-    rrca
-    rrca
-    rrca
-    and  %00011111         ; x / 8 -> column 0..31
-    or   l
-    ld   l,a               ; L = y5 y4 y3 x4 x3 x2 x1 x0
-    ; the pixel within the byte is bit (7 - (x AND 7)); mask = $80 >> (x AND 7)
-    ret
-
-; Step HL down exactly one pixel line — the interleave made cheap
-pixel_down:
-    inc  h                 ; within a cell, the next line is simply H+1
-    ld   a,h
-    and  %00000111
-    ret  nz                ; still inside this character cell — done
-    ld   a,l
-    add  a,32              ; crossed a cell: move to the next character row
-    ld   l,a
-    ret  c                 ; carried into the next third — H is already right
-    ld   a,h
-    sub  8                 ; else undo the cell carry that inc h left in H
-    ld   h,a
-    ret
-```
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/bitmap-addressing/bitmap-addressing.inc" lang="z80" />
 
 ## Trade-offs
 
@@ -86,7 +39,7 @@ pixel_down:
 | Memory | No lookup data; an optional 192×2-byte line-address table needs 384 bytes |
 | Limitation | The layout resists straight-line arithmetic; plan routines around it |
 
-These are uncontended Z80 instruction totals, including each routine's `RET` and excluding the caller's `CALL` (17 more T-states). `pixel_down` takes 26 within a character cell, 46 across a 64-line third, and 65 across another character-row boundary. Memory contention and interrupts can increase elapsed time; these totals are not an emulator or hardware benchmark.
+These are uncontended Z80 instruction totals, including each routine's `RET` and excluding the caller's `CALL` (17 more T-states). `pixel_down` takes 26 within a character cell, 46 across a 64-line third, and 65 across another character-row boundary. Memory contention and interrupts can increase elapsed time; the [retained verification](https://github.com/code198x/code-samples/blob/main/sinclair-zx-spectrum/patterns/assembly/rendering/bitmap-addressing/verification/results.json) matches these totals in Emu198x with code at `$8000`, stack at `$FF00` and interrupts disabled. The routines compute addresses without reading or writing screen RAM. These measurements do not cover contention or physical hardware.
 
 **When to use:** Every pixel-level draw — [sprites](/patterns/sinclair-zx-spectrum/assembly/rendering/masked-sprites), lines, plotting, scrolling.
 
