@@ -68,3 +68,12 @@ a listener's ears.
 completion, four separated sounds delivered to the AudioWorklet, source and
 include downloads, tape download, changed-source execution, revert, Sound off
 and narrow-screen overflow. Listening remains a separate check.
+
+`embedded-basic-values` qualifies the stored-value task in Meet BASIC unit 2.
+It checks two reads of ONE, replacement with TWO, the original pilot's wrong
+stored name and single-line repair, immediate wrong-name/repaired reads, RUN,
+Restart and source reset. It waits for actual complete screen text, accounts for
+the tape loader header and distinguishes a fresh restart from stale output.
+Run it with a base URL and evidence directory like the checks above. Results
+retain response hashes and failed assertions; passing this desktop task does not
+establish learner understanding, latency or cross-platform accessibility.
