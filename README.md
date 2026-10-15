@@ -49,6 +49,9 @@ website/
 
 Do not duplicate live module counts or availability in README files. Use the content collections as the current state.
 
+The [family progress pages](docs/family-progress.md) consume a reviewed generated
+public snapshot; that guide covers validation and refresh.
+
 ## Commands
 
 Run commands from this directory:
