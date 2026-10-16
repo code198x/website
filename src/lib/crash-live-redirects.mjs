@@ -12,4 +12,8 @@ export const crashLiveRedirects = {
   "/crash-live/clash": "/vault/techniques/colour-clash/",
   "/crash-live/gauge": "/patterns/sinclair-zx-spectrum/basic/rendering/progress-bar/",
   "/crash-live/bedroom": "/vault/phenomena/bedroom-coder/",
+  "/crash-live/graftgold": "/vault/companies/graftgold/",
+  "/crash-live/olivers": "/vault/people/oliver-twins/",
+  "/crash-live/follin": "/vault/people/tim-follin/",
+  "/crash-live/gremlin": "/vault/companies/gremlin-graphics/",
 };
