@@ -39,7 +39,7 @@ test('reading page has conditions, usable contents and no false runnable control
  await toc.getByRole('link',{name:'Calling the routine'}).click();
  await expect(page).toHaveURL(/#calling-the-routine$/);
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
- await expect(page.locator('header a[aria-current]').filter({hasText:'SYSTEMS'})).toHaveCount(0);
+ await expect(page.locator('header a[aria-current]').filter({hasText:'Systems'})).toHaveCount(0);
 });
 
 test('assembly page exposes tools and stays inside viewport',async({page})=>{

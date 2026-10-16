@@ -627,7 +627,7 @@ const fromTheMetal = defineCollection({
     title: z.string(),
     description: z.string(),       // meta description
     lede: z.string(),              // on-page opening paragraph
-    kicker: z.string(),            // mono eyebrow, e.g. "PERFORMANCE · WHAT'S UNDERNEATH"
+    kicker: z.string(),            // label, sentence case, e.g. "Performance · What's underneath"
     pubDate: z.coerce.date(),
     cpu: z.string(),               // "6502" | "Z80" | "68000" | "6502 vs 68000"
     category: z.string(),          // PERFORMANCE, ARITHMETIC, …
@@ -647,7 +647,7 @@ const fieldNotes = defineCollection({
     title: z.string(),
     description: z.string(),       // meta description
     dek: z.string(),               // italic standfirst under the title
-    kicker: z.string(),            // mono eyebrow, e.g. "FIELD NOTES · AMIGA"
+    kicker: z.string(),            // label, sentence case, e.g. "Field notes · Amiga"
     pubDate: z.coerce.date(),
     accent: z.string(),            // per-post hex (platform-tied)
     order: z.number(),             // arc sort order
