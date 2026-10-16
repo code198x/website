@@ -17,13 +17,45 @@ test('Craft shows legal choices and keeps the paper activity reachable', async (
   await expect(page.locator('#try-it')).toContainText('whoever takes the last counter loses');
 });
 
+test('Demoscene identifies a loaded production frame and explains its purpose', async ({ page }) => {
+  await page.goto('/demoscene/');
+  const feature = page.locator('.production-feature');
+  const image = feature.getByRole('img');
+  await image.scrollIntoViewIfNeeded();
+  await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+  for (const width of [320, 390, 900, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const bounds = await image.evaluate((img: HTMLImageElement) => {
+      const box = img.getBoundingClientRect();
+      const column = img.closest('.figure')!.getBoundingClientRect();
+      const feature = img.closest('.production-feature')!.getBoundingClientRect();
+      return { width: box.width, height: box.height, left: box.left, right: box.right,
+        columnLeft: column.left, columnRight: column.right,
+        featureLeft: feature.left, featureRight: feature.right,
+        sourceWidth: img.naturalWidth, sourceHeight: img.naturalHeight };
+    });
+    expect([bounds.sourceWidth, bounds.sourceHeight]).toEqual([752, 572]);
+    expect(bounds.width / bounds.height).toBeCloseTo(752 / 572, 3);
+    expect(bounds.left).toBeGreaterThanOrEqual(bounds.columnLeft - 1);
+    expect(bounds.right).toBeLessThanOrEqual(bounds.columnRight + 1);
+    expect(bounds.left).toBeGreaterThanOrEqual(bounds.featureLeft - 1);
+    expect(bounds.right).toBeLessThanOrEqual(bounds.featureRight + 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  }
+  await expect(feature.locator('figcaption')).toContainText('Spaceballs, 1992, Commodore Amiga');
+  await expect(feature.locator('figcaption')).toContainText('Captured by Code198x');
+  await expect(feature).toContainText('traced from video');
+  await expect(feature.getByRole('link', { name: 'Explore State of the Art' })).toHaveAttribute('href', '/vault/demos/state-of-the-art/');
+  await expect(page.locator('main audio, main video')).toHaveCount(0);
+});
+
 for (const theme of ['light', 'dark']) {
   test(`opening figures fit the page and remain readable without images in ${theme}`, async ({ page }) => {
     await page.addInitScript(theme => localStorage.setItem('theme', theme), theme);
-    for (const route of ['/craft/']) {
+    for (const route of ['/craft/', '/demoscene/']) {
       await page.goto(route);
       await page.evaluate(() => document.fonts.ready);
-      const figure = page.locator('.counter-choices');
+      const figure = page.locator(route === '/craft/' ? '.counter-choices' : '.production-feature');
       const bounds = await figure.boundingBox();
       expect(bounds).not.toBeNull();
       const viewport = page.viewportSize()!;
