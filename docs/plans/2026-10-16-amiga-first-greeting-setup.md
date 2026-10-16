@@ -22,3 +22,15 @@ AMOS's baseline, edited output and fault/repair passed. AmiBlitz's window became
 unavailable during compilation; no greeting output was observed. Keep both Blitz
 pages unchanged and #766 open. This PR changes only the two AMOS pages and does
 not claim the paired runtime qualification is complete.
+
+## AmiBlitz recovery follow-up
+
+The fresh trial resolved plain-text import, error dismissal and waiting output.
+Update only Blitz `getting-started.mdx` and `meet-blitz/unit-01.mdx`: pinned
+release and named OS/RAM/media; Tools mount and explicit Execute launcher;
+PED rather than Ted; `.ab3` text import with the observed RuntimeDebug=0 XTRA
+header; right-Amiga+#; left-click then Return; genuine trailing-plus fault and
+left-Amiga+V dismissal. Retain four maintained program statements through
+CodeFromFile; distinguish the header from program logic. Replace the unqualified
+Blitz 2 illustration with literal expected output. Validate build, generated
+content and wide/narrow reading/navigation. No later lessons or sample changes.
