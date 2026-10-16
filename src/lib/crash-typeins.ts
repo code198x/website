@@ -10,7 +10,7 @@ export const crashTypeins = [
   {
     id: 'spectrum-circles', title: 'Seven lines. One screen.', machine: 'ZX Spectrum',
     source: '_capture/crash-live/typein-rosette.bas', lang: 'sinclair-basic',
-    note: 'Twenty-four circles share six colours. Try changing the final 40 on line 40 to change their radius.',
+    note: 'Twenty-four circles share six colours. Change the final 40 on line 40 to 50 and the Spectrum stops with B Integer out of range: the fifth circle would go above the top row, 175. What is the largest radius that fits all 24?',
     alt: 'Overlapping coloured circles forming a ring on a white Spectrum screen', width: 256, height: 192,
     next: '/systems/sinclair-zx-spectrum/basic',
   },
