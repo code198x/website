@@ -1,5 +1,39 @@
 import { test, expect } from '@playwright/test';
 
+test('layered Demoscene artwork fills the viewport without losing its title or reading frame', async ({ page }) => {
+  await page.goto('/demoscene/');
+  const banner = page.locator('.demoscene-opening');
+  await expect(banner).toBeVisible();
+  await expect(banner.locator('figcaption')).toContainText('not captures of historical productions');
+  const layers = banner.locator('img');
+  await expect(layers).toHaveCount(3);
+  for (const image of await layers.all()) {
+    await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+  }
+  for (const width of [320, 390, 768, 1440, 1920]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const geometry = await banner.evaluate(banner => {
+      const scene = banner.querySelector('.scene')!.getBoundingClientRect();
+      const title = banner.querySelector('.scene-title')!.getBoundingClientRect();
+      const reading = document.querySelector('.wrap')!.getBoundingClientRect();
+      return { scene: { left: scene.left, right: scene.right },
+        title: { left: title.left, right: title.right },
+        readingWidth: reading.width, viewport: document.documentElement.clientWidth,
+        documentWidth: document.documentElement.scrollWidth };
+    });
+    expect(geometry.scene.left).toBeCloseTo(0, 0);
+    expect(geometry.scene.right).toBeCloseTo(geometry.viewport, 0);
+    expect(geometry.title.left).toBeGreaterThanOrEqual(0);
+    expect(geometry.title.right).toBeLessThanOrEqual(geometry.viewport);
+    expect(geometry.readingWidth).toBeLessThanOrEqual(1264);
+    expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewport);
+  }
+  await page.addStyleTag({ content: '.demoscene-opening img { display: none !important; }' });
+  await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Explore State of the Art' })).toBeVisible();
+});
+
 test('Craft shows legal choices and keeps the paper activity reachable', async ({ page }) => {
   await page.goto('/craft/');
   const figure = page.locator('.counter-choices');
