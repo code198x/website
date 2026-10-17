@@ -64,7 +64,7 @@ test('setup manuals remain readable and expose local installation', async ({ pag
   for (const route of routes) {
     await page.goto(route);
     await page.evaluate(() => document.fonts.ready);
-    await expect(page.locator('.setup-page h1')).toHaveCount(1);
+    await expect(page.locator('main h1')).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), route).toBe(true);
     expect.soft((await new AxeBuilder({ page }).include('.setup-page').analyze()).violations, route).toEqual([]);
     if (info.project.name === 'mobile') {
