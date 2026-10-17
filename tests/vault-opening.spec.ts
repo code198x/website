@@ -1,27 +1,25 @@
 import { test, expect } from '@playwright/test';
 
-test('Vault opening spans connected histories and distinguishes unwritten subjects', async ({ page }) => {
+test('Vault opens with full-bleed illustrative collage and live title', async ({ page }, testInfo) => {
   await page.goto('/vault/');
+  await page.evaluate(() => document.fonts.ready);
   await expect(page.locator('main h1')).toHaveCount(1);
   await expect(page.locator('main h1')).toHaveText('The Vault.');
-  const opening = page.locator('.vault-atlas');
-  const reading = opening.locator('.constellation-reading');
-  await reading.evaluate((element: HTMLDetailsElement) => { element.open = true; });
-  await expect(reading.locator('ol > li')).toHaveCount(6);
-  for (const name of ['Ada Lovelace', 'Margaret Hamilton', 'Dartmouth', 'BASIC', 'Bomb the Bass']) {
-    await expect(reading.locator('.future-name', { hasText: name }).first()).toContainText('Not yet covered');
-    await expect(reading.getByRole('link', { name, exact: true })).toHaveCount(0);
-  }
-  await expect(reading.locator('#constellation-culture')).toContainText('The Assembly Line programmed it');
-  await expect(reading.locator('#constellation-flight')).toContainText('under contract to NASA');
-  const sources = reading.locator('.thread-source');
-  await expect(sources).toHaveCount(6);
-  await reading.getByRole('link', { name: 'Alexey Pajitnov', exact: true }).click();
-  await expect(page).toHaveURL(/\/vault\/people\/alexey-pajitnov\/?$/);
-  await expect(page.locator('main h1')).toHaveText('Alexey Pajitnov');
+  const image = page.locator('.collage-stage img');
+  await image.evaluate((element: HTMLImageElement) => element.decode());
+  const source = await image.evaluate((element: HTMLImageElement) => element.currentSrc);
+  expect(source).toContain(testInfo.project.name === 'mobile' ? 'portrait-' : 'landscape-');
+  const geometry = await page.locator('.collage-stage').evaluate(element => {
+    const box = element.getBoundingClientRect();
+    return { left: box.left, right: box.right, viewport: innerWidth };
+  });
+  expect(Math.abs(geometry.left)).toBeLessThanOrEqual(1);
+  expect(Math.abs(geometry.right - geometry.viewport)).toBeLessThanOrEqual(1);
+  await expect(page.locator('.collage-caption')).toContainText('Original AI-generated illustration');
+  await expect(page.locator('.constellation-node, .constellation-lines, .constellation-reading')).toHaveCount(0);
 });
 
-test('Vault search remains directly reachable from the constellation', async ({ page }) => {
+test('Vault search remains directly reachable after the collage', async ({ page }) => {
   await page.goto('/vault/');
   await page.getByRole('link', { name: 'Search the Vault', exact: true }).click();
   const search = page.getByRole('searchbox', { name: 'Search article titles' });
@@ -36,34 +34,15 @@ test('Vault search remains directly reachable from the constellation', async ({ 
   await expect(page.locator('#vault-results')).toBeHidden();
 });
 
-test('Vault connections reflow when the reader enlarges text', async ({ page }) => {
+test('Collage title and search remain usable without artwork and with enlarged text', async ({ page }) => {
+  await page.route('**/images/vault-opening/**', route => route.abort());
   await page.goto('/vault/');
-  const before = await page.locator('.thread-source').first().evaluate(element => parseFloat(getComputedStyle(element).fontSize));
+  const before = await page.locator('.collage-caption').evaluate(element => parseFloat(getComputedStyle(element).fontSize));
   await page.addStyleTag({ content: 'html { font-size: 150% !important; }' });
-  await expect(page.locator('.constellation-nodes')).toHaveCSS('display', 'none');
-  await expect(page.locator('.constellation-reading')).toHaveAttribute('open');
-  const after = await page.locator('.thread-source').first().evaluate(element => parseFloat(getComputedStyle(element).fontSize));
+  await expect(page.locator('main h1')).toBeVisible();
+  const after = await page.locator('.collage-caption').evaluate(element => parseFloat(getComputedStyle(element).fontSize));
   expect(after).toBeGreaterThan(before * 1.4);
+  await page.getByRole('link', { name: 'Search the Vault', exact: true }).click();
+  await expect(page.getByRole('searchbox', { name: 'Search article titles' })).toBeInViewport();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(await page.evaluate(() => innerWidth));
-});
-
-test('Every constellation relationship label has clear space', async ({ page }, testInfo) => {
-  test.skip(testInfo.project.name !== 'desktop', 'Explicit diagram viewport matrix');
-  for (const width of [1200, 1440]) {
-    await page.setViewportSize({ width, height: 1100 });
-    await page.goto('/vault/');
-    await page.evaluate(() => document.fonts.ready);
-    await expect(page.locator('.constellation-node').first()).toBeVisible();
-    const labels = page.locator('.constellation-labels span');
-    expect(await labels.count()).toBeGreaterThan(0);
-    const overlaps = await page.evaluate(() => {
-      const labels = [...document.querySelectorAll<HTMLElement>('.constellation-labels span')];
-      const nodes = [...document.querySelectorAll<HTMLElement>('.constellation-node')];
-      const overlaps = (a: DOMRect, b: DOMRect) => a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1;
-      return labels.flatMap(label => [...nodes, ...labels.filter(other => other !== label)]
-        .filter(other => overlaps(label.getBoundingClientRect(), other.getBoundingClientRect()))
-        .map(other => `${label.textContent} overlaps ${other.textContent}`));
-    });
-    expect(overlaps, `Relationship labels must remain readable at ${width}px`).toEqual([]);
-  }
 });
