@@ -143,6 +143,25 @@ export class SpectrumRunner {
     this.#tapeHeld = !playing && this.tapeState().position < 1;
   }
 
+  /** Whether this emulator build can rewind the tape. */
+  get hasTapeRewind(): boolean {
+    return typeof (this.#spectrum as unknown as {rewind?: unknown}).rewind === 'function';
+  }
+
+  /**
+   * Presses the deck's REWIND: back to the start, stopped.
+   *
+   * The player types `LOAD ""` and plays the tape at once, and the ROM has the
+   * loader in well under a second. Rewind is how a reader gets back to it to
+   * `MERGE ""` instead.
+   */
+  rewindTape() {
+    const machine = this.#spectrum as unknown as {rewind?: (slot: string) => void};
+    if (!machine.rewind) throw Error('Tape rewind is unavailable in this emulator build.');
+    machine.rewind('tape-1');
+    this.#tapeHeld = true;
+  }
+
   /** The tape's state for a page to show: loaded, playing, and how far through (0–1). */
   tapeState(): {loaded: boolean; playing: boolean; position: number} {
     const position = this.#ask('tape.progress');
