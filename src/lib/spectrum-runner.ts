@@ -71,6 +71,15 @@ export class SpectrumRunner {
   #onFrame: (() => void) | null = null;
   #checksSinceTape = 0;
   #verdictGiven = false;
+  /**
+   * Whether the reader stopped the tape partway.
+   *
+   * A stopped tape is otherwise the sign that loading has finished. A reader
+   * who stops it to add a POKE to the loader has not finished loading, and
+   * judging the program counter then would report the ROM's editor as a
+   * program that ran off the end.
+   */
+  #tapeHeld = false;
 
   private constructor(
     spectrum: Spectrum,
@@ -111,6 +120,56 @@ export class SpectrumRunner {
     }
     this.#spectrum.load('tape-1', 'tape', bytes);
     this.#spectrum.autoload(BOOT_FRAMES);
+    this.#tapeHeld = false;
+  }
+
+  /** Whether this emulator build can stop and restart the tape. */
+  get hasTapeControls(): boolean {
+    return typeof (this.#spectrum as unknown as {transport?: unknown}).transport === 'function';
+  }
+
+  /**
+   * Presses the deck's PLAY (`true`) or STOP (`false`).
+   *
+   * STOP keeps the tape's place and PLAY resumes from it, so a reader can
+   * `MERGE ""` a loader, stop the tape, add a line and play the rest.
+   */
+  setTapePlaying(playing: boolean) {
+    const machine = this.#spectrum as unknown as {
+      transport?: (slot: string, playing: boolean) => void;
+    };
+    if (!machine.transport) throw Error('Tape controls are unavailable in this emulator build.');
+    machine.transport('tape-1', playing);
+    this.#tapeHeld = !playing && this.tapeState().position < 1;
+  }
+
+  /** Whether this emulator build can rewind the tape. */
+  get hasTapeRewind(): boolean {
+    return typeof (this.#spectrum as unknown as {rewind?: unknown}).rewind === 'function';
+  }
+
+  /**
+   * Presses the deck's REWIND: back to the start, stopped.
+   *
+   * The player types `LOAD ""` and plays the tape at once, and the ROM has the
+   * loader in well under a second. Rewind is how a reader gets back to it to
+   * `MERGE ""` instead.
+   */
+  rewindTape() {
+    const machine = this.#spectrum as unknown as {rewind?: (slot: string) => void};
+    if (!machine.rewind) throw Error('Tape rewind is unavailable in this emulator build.');
+    machine.rewind('tape-1');
+    this.#tapeHeld = true;
+  }
+
+  /** The tape's state for a page to show: loaded, playing, and how far through (0–1). */
+  tapeState(): {loaded: boolean; playing: boolean; position: number} {
+    const position = this.#ask('tape.progress');
+    return {
+      loaded: this.#ask('tape.loaded') === true,
+      playing: this.#ask('tape.playing') === true,
+      position: typeof position === 'number' ? position : 0,
+    };
   }
 
   /** Boot the ROM, install bytes in RAM and call through RANDOMIZE USR. */
@@ -277,6 +336,11 @@ export class SpectrumRunner {
       return;
     }
     if (!this.#direct && !this.#tapePlayed) return;
+    // Stopped by the reader partway through: still loading.
+    if (this.#tapeHeld) {
+      this.#checksSinceTape = 0;
+      return;
+    }
 
     // The ROM needs a moment after the tape stops to hand over to the program.
     // Judging inside that window would report every successful load as a
