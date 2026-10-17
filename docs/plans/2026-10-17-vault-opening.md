@@ -1,32 +1,39 @@
-# The Vault opening
+# The Vault connected-history opening
 
-Add one bounded section opening before the event. Preserve the existing search, subject directory, editorial features and article pages.
+## User-approved direction
+
+The user rejected the C64-led opening as too narrow, selected a connected constellation over a chronological panorama, and clarified that women are one example within the whole history, not the organising theme. The user approved recording the broad scope in the Vault specification (companion docs branch codex/vault-connected-history).
 
 ## Direction contract
 
-THESIS: Make the Vault's connections visible before the reader starts browsing.
-OWN-WORLD: Existing paper, ink and red magazine identity; Fira Sans Condensed display lettering, Nebula Sans labels, authentic hardware photography. No new fonts or dependencies.
-STORY: Follow the Commodore 64 through its SID sound chip to Rob Hubbard's Commando soundtrack. All destinations already exist and the relationship is already documented by the current Vault exploration.
-FIRST VIEWPORT: A full-width paper opening, huge live The Vault lettering on the left, a real C64 photograph on the right, and a labelled reading path underneath. Search immediately follows the opening.
-FORM: Local extension of the existing Vault index and established family identity; no concept roll or replacement visual world. User delegated the section choice and approved layered imagery across the preceding section openings.
+THESIS: Make relationships between different entities and decades visible, including subjects whose biographies or entries are not published yet.
+OWN-WORLD: Existing paper, ink and magazine typography. Live names and precise vector relationship lines form an explanatory constellation; no invented portraits, decorative archival material or new dependencies.
+STORY: Move among people, institutions, machines, languages, games and music. Each connection states a documented relationship; the arrangement does not claim a single chain of influence.
+FIRST VIEWPORT: Large live title amid six open, connected groupings of named subjects. A compact legend distinguishes published links from future subjects. A direct search jump remains visible. On phones, the constellation reflows into the same readable named relationships.
+FORM: Replace only the section opening within the established Vault surface. User-selected connected constellation; no new visual identity or concept tournament.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance.
 
 ## Tasks
 
-1. Add `src/components/VaultOpening.astro`: live title, authentic existing C64 photograph, article connections, derived article/subject counts, and source credit. Reuse `public/images/systems-opening/c64-{480,960}.webp` and its existing provenance without modifying image content.
-2. Replace only the index masthead in `src/pages/vault/index.astro`. Keep the existing `vault-index` reading frame, search script and directory. Scope full-width framing to this route and component.
-3. Add behavioural checks in `tests/vault-opening.spec.ts`: meaningful linked destinations, accessible heading, source credit and search interaction. Preserve existing Vault frame/capture checks.
-4. Run repository checks and production build. Inspect desktop, true mobile and 320px in both themes in a single batched pass; check overflow, image loading, keyboard interaction and accessibility. Correct material findings once, then confirm.
-5. Obtain independent Impeccable finish and documentation reviews. Commit, push and open a reviewable PR. Remove task-owned worktree, inputs and preview process after confirming the remote retains the commit.
+1. Replace src/components/VaultOpening.astro with a broad typographic constellation; curate source-backed relationships in src/data/vault-constellation.ts. Verify current entry identifiers against getCollection at build time; unpublished subjects get plain labels, never invented article links.
+2. Keep src/pages/vault/index.astro search, directory and features; add an anchor for the search jump. Update tests/vault-opening.spec.ts for the corrected intent, relationship scope, future coverage and search.
+3. Run repository checks/build, one batched desktop/phone/320px inspection and accessibility/overflow checks. Apply one correction batch, confirm, obtain independent finish/documentation reviews.
+4. Push an additive correction to existing PR810, rewrite its title/body around the final change, retain screenshot evidence and clean task workspaces/processes. Publish the approved specification clarification as a separate docs PR.
 
-## Source and boundaries
+## Source scope
 
-C64 photograph: Evan-Amos, public domain, exact source and hashes in the existing Systems provenance record. The approved hardware-photo policy applies. No portrait, borrowed software capture, scanned artwork or generated hardware. No new historical claims or editorial feature selections.
+Ada Lovelace’s 1843 notes: Computer History Museum’s institutional account. Hamilton/MIT/Apollo: NASA institutional account. Dartmouth/BASIC/Kemeny/Kurtz: Dartmouth history. Contemporary article sources already cited by the reviewed Vault entries support Pajitnov/Tetris, Tramiel/Commodore/Atari, and Xenon 2/Bitmap Brothers/Bomb the Bass/David Whittaker. Credit shared work accurately; do not imply Hamilton worked for NASA, that the Bitmap Brothers wrote Xenon 2’s code, or that musicians directly composed every game arrangement. Full source URLs/locators belong with the curated data and rendered source notes.
 
-## Verification and review
+## Review corrections
 
-- Repository checks: 33 test files, 239 passed and 9 skipped; content, imagery, links and prepared browser tools pass. Production build: 2,459 pages and shared-frame validation pass.
-- The new opening test fails against the previously published page, confirming it exercises the change. Production browser checks: 22 passed, 6 expected device-specific skips. The development-only component catalogue passes its separate check (1 passed); it is intentionally absent from production builds.
-- Batched desktop, Pixel 7 and 320px captures, under light and dark browser preferences: no accessibility violations or horizontal overflow after correcting the rotated photo containment and background blend. The established paper palette remains the same under both preferences.
-- Independent finish review: `ship`, no material fixes. Documentation review confirms inherited DESIGN remains appropriate and existing photo provenance is complete. Applied its label-weight correction against the current binding family identity §4 at umbrella main commit `47dab618b56fbb6a84d917ff3e29b22e84e36cd1`; the unrelated local umbrella branch carries an older copy.
-- Final reviewed build and 22 production browser checks pass after the semibold correction. Documentation re-review confirms the finding is resolved, with no remaining source or documentation gaps.
+- Independent finish review: `fix` for relationship labels covered by node backgrounds. Reserve clear label coordinates and route each line through its own label so its association remains explicit.
+- Documentation/source review: convert all opening font sizes and clamp endpoints to rem; use a font-relative container threshold so enlarged text receives the narrative layout. Remove the unsourced extra claim about the Engine never being built; the remaining Lovelace statement is directly supported by the linked CHM account.
+- Confirm desktop, phone and 320px views plus medium width, 950px narrative adaptation and enlarged root text. Keep search directly available and all six source-backed paths intact.
+
+## Final evidence
+
+- Production build: 2,459 pages, 41 shared-frame families, search index complete. Repository checks: 33 test files, 239 passed and 9 skipped; content, imagery, links and prepared tools pass.
+- Browser suite: 25 passed, 7 intentional device-specific skips. Existing Vault native capture/frame checks remain; new checks cover broad scope, no invented future links, source availability, title search, 150% root text and label clearance at 1200/1440px.
+- Nine rendered cases: desktop, Pixel 7, 320px in both colour preferences, 1200px diagram, 950px narrative and 1440px with 24px root text. No accessibility violations or horizontal overflow. Label/node and label/label checks pass. An isolated browser fault injection confirms the clearance detector fails when a label is moved over a node.
+- Independent full finish review identified label masking; post-fix verdict: `ship`, that finding resolved with no material regressions. All 18 supplied captures were valid. Documentation/source findings on font scaling and the extra Engine claim are resolved; final disposition: pass. Inherited DESIGN.md remains unchanged.
+- Approved scope rule recorded in companion https://github.com/code198x/docs/pull/104. Website work updates existing PR810. No images, dependencies or new backlog issues were introduced.
