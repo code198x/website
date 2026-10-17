@@ -35,6 +35,7 @@ function tapeMachine() {
     free: vi.fn(), load: vi.fn(), autoload: vi.fn(), tick: vi.fn(), audioDrain: vi.fn(),
     query: (path: string) => JSON.stringify(answers[path]()),
     transport: vi.fn((_slot: string, playing: boolean) => {tape.playing = playing;}),
+    rewind: vi.fn(() => {tape.playing = false; tape.progress = 0;}),
   };
   return {machine, tape};
 }
@@ -94,5 +95,27 @@ it('reports a build without tape transport rather than failing silently', async 
   const {runner} = await tapeRunner(older);
   expect(runner.hasTapeControls).toBe(false);
   expect(() => runner.setTapePlaying(false)).toThrow('Tape controls are unavailable');
+  runner.dispose();
+});
+
+it('holds its verdict after a rewind until the reloaded tape has finished', async () => {
+  const {machine, tape} = tapeMachine();
+  const {runner, onVerdict, run} = await tapeRunner(machine);
+  run(2);
+  // Straight from playing: REWIND stops the tape itself.
+  runner.rewindTape();
+  expect(machine.rewind).toHaveBeenCalledWith('tape-1');
+  expect(runner.tapeState()).toMatchObject({playing: false, position: 0});
+  run(10);
+  expect(onVerdict).not.toHaveBeenCalled();
+  runner.dispose();
+});
+
+it('reports a build without rewind rather than failing silently', async () => {
+  const {machine} = tapeMachine();
+  const {rewind: _, ...older} = machine;
+  const {runner} = await tapeRunner(older);
+  expect(runner.hasTapeRewind).toBe(false);
+  expect(() => runner.rewindTape()).toThrow('Tape rewind is unavailable');
   runner.dispose();
 });
