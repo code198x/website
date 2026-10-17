@@ -12,39 +12,33 @@ Version 0.1, 17 October 2026. A classroom pilot adapted from the maintained firs
 
 The starting listing comes from [the code-samples repository](https://github.com/code198x/code-samples/blob/51297ac3196a990286b0d21a4dedd4653c0168f0/sinclair-zx-spectrum/basic/meet-basic/opening/unit-01/steps/step-04.bas). The maintained [BASIC activity](https://code198x.com/try/spectrum-basic/), [lesson](https://code198x.com/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer/) and [first-session companion](https://code198x.com/try/parents-and-teachers/) supply the teaching and tool workflows. Check those sources before updating a command, control name or expected result.
 
-## Rebuild
+## Edit and regenerate
 
-Use the website’s existing supported Node/npm environment, dependencies and Playwright Chromium installation. No separate PDF dependency is required. Run commands from the website repository root.
+Edit the learner and teacher Astro sources listed above; change `workbook.css` for print layout. Update the visible version/date in both editions and `sources.json` when the content changes. The generated manifest takes its version from `sources.json`.
 
-First build the HTML sources:
-
-```sh
-npm run build
-```
-
-In a second terminal, serve that build:
+From the website repository, run:
 
 ```sh
-npm run preview -- --host 127.0.0.1 --port 4466
+npm run workbook:build
 ```
 
-With the preview running, generate both editions:
+This builds fresh HTML, starts its own loopback preview on a free port, regenerates both PDFs and their hash manifest, updates the built site's copies and closes the preview. No second terminal or second build is needed. A failed PDF generation leaves the previous learner PDF, teacher PDF and manifest intact. The command exits with an error if the site build fails, fonts cannot load or content overflows a page.
+
+The outputs are `learner.pdf`, `teacher.pdf` and `pdf-manifest.json` in this folder. Review them, then commit the edited sources and all three generated files together. Publishing follows the normal website pull-request process; regeneration itself does not publish anything.
+
+Use the website's supported Node/npm environment and prepared build inputs, as for `npm run build`. Playwright Chromium must already be installed; if it is missing, run `npx playwright install chromium` once. No new project dependency is required.
+
+For an existing preview, the lower-level command remains available:
 
 ```sh
 node scripts/build-first-workbook.mjs --base-url http://127.0.0.1:4466
 ```
 
-The script loads the HTML editions, waits for workbook fonts, checks each authored sheet for overflow, rewrites internal PDF links to the public site and requests tagged PDFs with outlines. It writes both PDFs and the manifest in this folder. Tags alone do not establish accessible reading order.
-
-Rebuild the website again so `dist` contains the newly generated files:
-
-```sh
-npm run build
-```
-
-Stop the task-owned preview when finished. Review the generated PDF changes alongside their HTML/CSS sources before committing.
+That lower-level command updates `public` only; rebuild the site afterwards before previewing the new downloads. The generator waits for fonts, checks authored sheets for overflow, uses public HTTPS links, and requests tagged PDFs with outlines. Tags alone do not establish accessible reading order.
 
 ## Check an updated edition
+
+The generator’s recovery checks can be run with `node --test scripts/build-first-workbook.test.mjs`. They deliberately break the teacher edition and verify that all three previous output files survive unchanged.
 
 Inspect all seven rendered pages, not only the HTML or a successful generation message. Confirm A4 page size, four learner pages and three teacher pages, readable type, complete code, usable writing space, clear footer separation, black-and-white output and no clipped or split content. Check PDF text extraction, embedded fonts, reading order and working public links. Compare the manifest hashes with the actual files.
 

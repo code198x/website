@@ -63,6 +63,7 @@ Run commands from this directory:
 | `npm run dev` | Start the Astro dev server at `localhost:4321`. |
 | `npm run build` | Build the production site, run redirect noindex marking, and index with Pagefind. |
 | `npm run build:wasm` | Build the `play198x-web` decoder that `NativeImage.astro` reads at build time. Run before `npm run build` on any page using `<NativeImage>`. |
+| `npm run workbook:build` | Rebuild the first-session learner and teacher PDFs; see [workbook editing instructions](public/workbooks/spectrum-basic-first-session/README.md). |
 | `npm run preview` | Preview the production build locally. |
 | `npm run check:content` | Run quick template, catalogue, imagery and Vault-link checks (also the small CI smoke check). |
 | `npm run check` | Run local unit, content and prepared-player/assembler checks. |
