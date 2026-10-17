@@ -45,15 +45,16 @@ other instructions in place. If something differs from your prediction, use
 
 ## Keep your greeting and stop
 
-In the editor, open **Listing options**, then choose **Download tape**. Keep the
-`.tap` file somewhere you can find again. Also copy your three lines into a text
-file or your session notes so that you have the readable instructions.
+Copy your complete three-line listing into a plain text file, such as
+`greeting.txt`, and save it somewhere you can find again. Reload the lesson,
+replace the whole editable listing with the text from your saved file and choose
+**Run this code**. Check that your chosen words reappear. This tests your own
+kept source, rather than a fresh example.
 
-A tape file is a program the Spectrum can load; it is different from a picture
-of the screen. To check your saved program, follow **Reopen your saved greeting**
-in [Remember a name; keep the program](/systems/sinclair-zx-spectrum/basic/meet-basic/unit-02-remember-and-save/#reopen-your-saved-greeting).
-Use your downloaded tape, not a new example tape. Check that your chosen words
-reappear. You can return to the rest of that lesson another day.
+You can also open **Listing options** and choose **Download tape** to keep a
+`.tap` file for an emulator with tape-loading controls. A tape image is a
+loadable program, not a picture of the screen. The current editable browser
+panel reopens readable source by pasting it into the listing.
 
 You have reached a stopping point when your changed greeting runs, you can
 explain the change and you have kept a copy. Before using **Reset to original**,
