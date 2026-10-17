@@ -71,6 +71,9 @@ import { inlineMarkdown } from '../lib/inline-markdown';
     #canvas!: HTMLCanvasElement;
     #poster: HTMLImageElement | null = null;
     #status!: HTMLParagraphElement;
+    #tapeButtons: {stop: HTMLButtonElement; play: HTMLButtonElement} | null = null;
+    #tapeState: HTMLSpanElement | null = null;
+    #sinceTapeCheck = 0;
     /** Only run while on screen: a lesson page may hold several of these. */
     #observer: IntersectionObserver | null = null;
 
@@ -141,12 +144,71 @@ import { inlineMarkdown } from '../lib/inline-markdown';
           else if (this.#runner) this.#runner.wanted = false;
         });
 
-        bar.append(run, this.#status);
+        bar.append(run);
+        if (/\.(tap|tzx)$/i.test(this.dataset.src ?? '')) bar.append(this.#tapeControls());
+        bar.append(this.#status);
         this.append(bar);
       } else {
         this.append(this.#status);
       }
 
+    }
+
+    /**
+     * Stop and Play for the tape, as on a cassette deck.
+     *
+     * A 48K owner stopped the tape to change a loader before the game came in:
+     * `MERGE ""`, stop at `0 OK`, add a POKE, `RUN`, and play the rest. Stop
+     * keeps the tape's place and Play resumes from it.
+     */
+    #tapeControls(): HTMLElement {
+      const group = document.createElement('div');
+      group.className = 'emulator-tape';
+      group.setAttribute('role', 'group');
+      group.setAttribute('aria-label', 'Tape');
+
+      const stop = document.createElement('button');
+      stop.type = 'button';
+      stop.textContent = 'Stop tape';
+      const play = document.createElement('button');
+      play.type = 'button';
+      play.textContent = 'Play tape';
+      this.#tapeState = document.createElement('span');
+      this.#tapeState.className = 'emulator-tape-state';
+
+      this.#tapeButtons = {stop, play};
+      stop.disabled = play.disabled = true;
+      const press = (playing: boolean) => {
+        try {
+          this.#runner?.setTapePlaying(playing);
+          this.#showTape();
+        } catch (error) {
+          this.#fail(String(error));
+        }
+      };
+      stop.addEventListener('click', () => press(false));
+      play.addEventListener('click', () => press(true));
+
+      group.append(stop, play, this.#tapeState);
+      return group;
+    }
+
+    /** Shows the tape's state, changing the text only when the state changes. */
+    #showTape() {
+      const runner = this.#runner;
+      if (!runner || !this.#tapeButtons || !this.#tapeState) return;
+      if (!runner.hasTapeControls) {
+        this.#tapeButtons.stop.disabled = this.#tapeButtons.play.disabled = true;
+        return;
+      }
+      const {loaded, playing, position} = runner.tapeState();
+      const finished = position >= 1;
+      this.#tapeButtons.stop.disabled = !loaded || !playing;
+      this.#tapeButtons.play.disabled = !loaded || playing || finished;
+      const text = !loaded ? '' : playing ? 'Tape playing'
+        : finished ? 'Tape at the end'
+        : `Tape stopped, ${Math.floor(position * 100)}% through`;
+      if (this.#tapeState.textContent !== text) this.#tapeState.textContent = text;
     }
 
     #fail(message: string) {
@@ -168,6 +230,15 @@ import { inlineMarkdown } from '../lib/inline-markdown';
 
         const src = this.dataset.src;
         if (src) await this.#load(src);
+        if (this.#tapeButtons) {
+          // The tape stops by itself at the end; a few checks a second catch it.
+          this.#runner.observeFrame(() => {
+            if (++this.#sinceTapeCheck < 10) return;
+            this.#sinceTapeCheck = 0;
+            this.#showTape();
+          });
+          this.#showTape();
+        }
 
         this.#poster?.remove();
         this.#canvas.hidden = false;
@@ -231,6 +302,41 @@ import { inlineMarkdown } from '../lib/inline-markdown';
     align-items: center;
     gap: 0.75rem;
     margin-top: 0.5rem;
+  }
+  .emulator-controls {
+    flex-wrap: wrap;
+  }
+  .emulator-controls button {
+    min-height: 44px;
+    padding: 0.35rem 0.75rem;
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--h-ink, #1a1a1a);
+    background: var(--h-ground, #f6f4ee);
+    border: 1px solid var(--h-line, #444);
+    border-radius: 0;
+    cursor: pointer;
+  }
+  .emulator-controls button:hover:not(:disabled) {
+    border-color: var(--h-ink, #1a1a1a);
+  }
+  .emulator-controls button:focus-visible {
+    outline: 2px solid var(--color-accent, #6cf);
+    outline-offset: 2px;
+  }
+  .emulator-controls button:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  .emulator-tape {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .emulator-tape-state {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary, #555);
   }
   .emulator-status {
     margin: 0;
