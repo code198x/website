@@ -16,8 +16,8 @@ Previous programming experience can inform that choice without deciding it.
 
 Choose one [activity](/try/#choose-your-first-activity) and try its
 exact steps yourself on the devices and network you will use. Check the editor,
-run control, visible result and download. For BASIC, also check reopening the
-saved tape through the linked lesson instructions. Keep the session sheet or
+run control, visible result and download. For BASIC, also check reopening a
+saved text listing by replacing the whole editor contents and running it. Keep the session sheet or
 paper available for predictions and notes.
 
 The browser activities use an embedded Spectrum and require no local tool
@@ -73,11 +73,15 @@ number order, not the order the text lines were edited. This instruction is for
 the editable source listing. Typing `25 ...` into an existing Spectrum session
 would add a line and leave line 15 in place until separately deleted.
 
-For keeping work, **Listing options → Download tape** saves the editor's
-program. Copying the listing also keeps a readable version. The second lesson's
-**Reopen your saved greeting** instructions test the downloaded tape. Its
-separate explanation of typing BASIC `SAVE` into the browser Spectrum is not
-a substitute: that screen has no recorder attached to retain the signal.
+For keeping work, copy the complete listing into a saved plain text file.
+Reload the lesson, replace the whole editable listing with the saved text and
+run it again. Check for the learner's chosen words. A successful save report
+alone does not establish that the kept source can be recovered.
+
+**Listing options → Download tape** also saves a `.tap` program for an emulator
+with tape-loading controls. The current editable browser panel does not offer
+a tape file picker. Typing BASIC `SAVE` into it is a separate workflow: that
+screen has no recorder attached to retain the signal.
 
 ## Assembly hints and expected results
 

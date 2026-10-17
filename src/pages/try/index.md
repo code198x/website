@@ -46,6 +46,19 @@ score. Save work you want to keep before resetting a program or closing its page
 If the tools will not run, use the activity's paper alternative. You can predict
 and explain a program on paper; return to the machine later to test that account.
 
+## Download a classroom workbook
+
+For the BASIC greeting activity, the first classroom pack has a
+[learner booklet (PDF, 4 pages)](/workbooks/spectrum-basic-first-session/learner.pdf)
+and separate [teacher notes (PDF, 3 pages; contains answers)](/workbooks/spectrum-basic-first-session/teacher.pdf).
+Both use A4 pages and work in black and white. The booklet adds space for
+predictions and observations, pair activities and a save-and-reopen check.
+
+[Read the learner booklet as HTML](/try/workbook/learner/)
+or [read the teacher notes as HTML](/try/workbook/teacher/).
+This initial pack adapts one BASIC activity; the assembly activity remains an
+independent starting point. You can still use the existing session sheet with either.
+
 ## Learning with someone else
 
 Take turns making a prediction and operating the keyboard. Give each person a
