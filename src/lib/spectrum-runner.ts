@@ -162,13 +162,43 @@ export class SpectrumRunner {
     this.#tapeHeld = true;
   }
 
-  /** The tape's state for a page to show: loaded, playing, and how far through (0–1). */
-  tapeState(): {loaded: boolean; playing: boolean; position: number} {
+  /** Whether this emulator build can search the tape for blocks. */
+  get hasTapeBlockSearch(): boolean {
+    return typeof (this.#spectrum as unknown as {nextBlock?: unknown}).nextBlock === 'function';
+  }
+
+  /**
+   * Searches the tape for the previous or next block, by the gaps between
+   * blocks, and returns whether it moved. Previous goes to the start of the
+   * block playing first, as a CD player's back button does.
+   */
+  seekTapeBlock(direction: 'previous' | 'next'): boolean {
+    const machine = this.#spectrum as unknown as {
+      previousBlock?: (slot: string) => boolean;
+      nextBlock?: (slot: string) => boolean;
+    };
+    const seek = direction === 'next' ? machine.nextBlock : machine.previousBlock;
+    if (!seek) throw Error('Tape block search is unavailable in this emulator build.');
+    const moved = seek.call(this.#spectrum, 'tape-1');
+    // A stopped tape put somewhere new is still being loaded.
+    if (!this.tapeState().playing) this.#tapeHeld = true;
+    return moved;
+  }
+
+  /**
+   * The tape's state for a page to show: loaded, playing, how far through
+   * (0–1), and which block of how many (0 blocks on a build without search).
+   */
+  tapeState(): {loaded: boolean; playing: boolean; position: number; block: number; blocks: number} {
     const position = this.#ask('tape.progress');
+    const block = this.#ask('tape.block');
+    const blocks = this.#ask('tape.blocks');
     return {
       loaded: this.#ask('tape.loaded') === true,
       playing: this.#ask('tape.playing') === true,
       position: typeof position === 'number' ? position : 0,
+      block: typeof block === 'number' ? block : 0,
+      blocks: typeof blocks === 'number' ? blocks : 0,
     };
   }
 

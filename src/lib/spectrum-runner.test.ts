@@ -21,11 +21,13 @@ it('retries a failed WASM download and shares a successful initialization', asyn
 
 /** A machine whose tape a test drives, sitting in the ROM editor once the tape stops. */
 function tapeMachine() {
-  const tape = {playing: true, progress: 0.1};
+  const tape = {playing: true, progress: 0.1, block: 0};
   const answers: Record<string, () => unknown> = {
     'tape.loaded': () => true,
     'tape.playing': () => tape.playing,
     'tape.progress': () => tape.progress,
+    'tape.block': () => tape.block,
+    'tape.blocks': () => 4,
     'cpu.pc': () => 0x10b0,
     'cpu.halted': () => false,
     'cpu.iff1': () => true,
@@ -36,6 +38,8 @@ function tapeMachine() {
     query: (path: string) => JSON.stringify(answers[path]()),
     transport: vi.fn((_slot: string, playing: boolean) => {tape.playing = playing;}),
     rewind: vi.fn(() => {tape.playing = false; tape.progress = 0;}),
+    nextBlock: vi.fn(() => {tape.block += 1; tape.progress = 0.5; return true;}),
+    previousBlock: vi.fn(() => {tape.block -= 1; return true;}),
   };
   return {machine, tape};
 }
@@ -117,5 +121,31 @@ it('reports a build without rewind rather than failing silently', async () => {
   const {runner} = await tapeRunner(older);
   expect(runner.hasTapeRewind).toBe(false);
   expect(() => runner.rewindTape()).toThrow('Tape rewind is unavailable');
+  runner.dispose();
+});
+
+it('searches blocks, and holds its verdict while a stopped tape is moved', async () => {
+  const {machine, tape} = tapeMachine();
+  const {runner, onVerdict, run} = await tapeRunner(machine);
+  run(2);
+  tape.playing = false;
+  tape.progress = 0.3;
+  expect(runner.seekTapeBlock('next')).toBe(true);
+  expect(machine.nextBlock).toHaveBeenCalledWith('tape-1');
+  expect(runner.tapeState()).toMatchObject({block: 1, blocks: 4});
+  run(10);
+  expect(onVerdict).not.toHaveBeenCalled();
+  runner.seekTapeBlock('previous');
+  expect(machine.previousBlock).toHaveBeenCalledWith('tape-1');
+  expect(runner.tapeState().block).toBe(0);
+  runner.dispose();
+});
+
+it('reports a build without block search rather than failing silently', async () => {
+  const {machine} = tapeMachine();
+  const {nextBlock: _next, previousBlock: _previous, ...older} = machine;
+  const {runner} = await tapeRunner(older);
+  expect(runner.hasTapeBlockSearch).toBe(false);
+  expect(() => runner.seekTapeBlock('next')).toThrow('Tape block search is unavailable');
   runner.dispose();
 });
