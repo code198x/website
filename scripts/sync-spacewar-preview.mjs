@@ -30,6 +30,8 @@ for (const [name, output] of files) {
  const title = markdown.match(/^# (.+)$/m)?.[1];
  if (!title) throw new Error(`Missing title: ${name}`);
  markdown = markdown.replace(/^# .+\n+/, '');
+ // Keep published-site destinations local while reviewing newly drafted entries.
+ markdown = markdown.replaceAll('](https://code198x.com/', '](/');
  if (name === 'study.md') {
   let figures = 0;
   markdown = markdown.replace(/!\[([^\]]+)\]\(([^)]+)\)\n\n\*([^\n]+)\*/g, (_, alt, src, caption) => {
