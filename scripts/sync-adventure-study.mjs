@@ -30,7 +30,7 @@ markdown=markdown.replace(/!\[([^\]]+)\]\((figures\/[^)]+\.svg)\)\n\n\*([^\n]+)\
 });
 if(figures!==3)throw Error(`Expected three diagram subjects, found ${figures}`);
 for(const [anchor,text] of [
- ['## Which Adventure are we playing?','The computer has remembered a change in the world.'],
+ ['<span id="which-adventure-are-we-playing"></span>','The computer has remembered a change in the world.'],
  ['## The cave is data with rules attached','A good response lets a failed experiment narrow the field.'],
  ['## What does 350 measure?','The character may have lost everything, but the player remembers.'],
 ]){
@@ -41,7 +41,7 @@ const sourceMarker='## Sources and further reading';
 const split=markdown.indexOf(sourceMarker);if(split<0)throw Error('Missing sources');
 let body=markdown.slice(0,split).replace(/\[(\d+)\](?!\()/g,(_,n)=>`[${n}](#source-${n})`);
 const bibliography=markdown.slice(split).replace(/^(\d+)\. /gm,(_,n)=>`${n}. <span id="source-${n}"></span>`);
-if((bibliography.match(/id="source-/g)??[]).length!==16)throw Error('Expected sixteen numbered sources');
+if((bibliography.match(/id="source-/g)??[]).length!==17)throw Error('Expected seventeen numbered sources');
 markdown=body+bibliography;
 markdown=markdown.replace(/\]\(([^)]+)\)/g,(all,href)=>/^(https?:|\/|#)/.test(href)?all:`](https://github.com/code198x/docs/blob/${revision}/studies/adventure/${href})`);
 outputs.set('src/previews/adventure/study.mdx',Buffer.from(`---\ntitle: ${JSON.stringify(title)}\n---\n\nimport ArticleFigure from '@components/editorial/ArticleFigure.astro';\nimport ArticlePullQuote from '@components/editorial/ArticlePullQuote.astro';\n\n${markdown}`));
