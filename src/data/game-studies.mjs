@@ -54,6 +54,24 @@ export const gameStudies = [{
   image: '/images/studies/lemmings/header-2172.webp',
   reviewed: false,
   companions: [],
+}, {
+  slug: 'boulder-dash',
+  title: 'Boulder Dash',
+  subtitle: 'The cave you make for yourself',
+  description: 'A jewel, a falling rock, and the pleasure of surviving your own bright ideas.',
+  context: 'Atari 8-bit · 1984',
+  image: '/images/studies/boulder-dash/header-2172.webp',
+  reviewed: false,
+  companions: [],
+}, {
+  slug: 'mule',
+  title: 'M.U.L.E.',
+  subtitle: 'Your neighbour has all the food',
+  description: 'Four settlers, some unreliable robots, and a colony which needs everyone to keep playing.',
+  context: 'Atari 8-bit · 1983',
+  image: '/images/studies/mule/header-2172.webp',
+  reviewed: false,
+  companions: [],
 }];
 export function studyPath(slug, page = '') {
   return `${GAME_STUDIES_ROOT}${slug}/${page ? page + '/' : ''}`;
