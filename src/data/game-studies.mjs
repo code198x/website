@@ -36,6 +36,24 @@ export const gameStudies = [{
   image: '/images/studies/elite/header-2172.webp',
   reviewed: false,
   companions: [],
+}, {
+  slug: 'manic-miner',
+  title: 'Manic Miner',
+  subtitle: 'A whole world in one room',
+  description: 'Twenty caverns, a jump to commit to, and a very strange place to work.',
+  context: 'ZX Spectrum · 1983',
+  image: '/images/studies/manic-miner/header-2172.webp',
+  reviewed: false,
+  companions: [],
+}, {
+  slug: 'lemmings',
+  title: 'Lemmings',
+  subtitle: 'Looking after a small disaster',
+  description: 'A few tools, a crowd that keeps walking, and the pleasure of getting everyone home.',
+  context: 'Amiga · 1991',
+  image: '/images/studies/lemmings/header-2172.webp',
+  reviewed: false,
+  companions: [],
 }];
 export function studyPath(slug, page = '') {
   return `${GAME_STUDIES_ROOT}${slug}/${page ? page + '/' : ''}`;

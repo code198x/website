@@ -28,6 +28,11 @@ markdown=markdown.replace(/!\[([^\]]+)\]\((figures\/[^)]+\.svg)\)\n\n\*([^\n]+)\
  const attrs={src:'/images/studies/adventure/'+src,phoneSrc:'/images/studies/adventure/'+phone,alt,width,height,phoneWidth,phoneHeight,caption,size:'wide'};
  return '<ArticleFigure '+Object.entries(attrs).map(([key,value])=>`${key}={${JSON.stringify(value)}}`).join(' ')+' />';
 });
+markdown=markdown.replace(/!\[([^\]]+)\]\((photos\/[^)]+\.png)\)\n\n\*([^\n]+)\*/g,(_,alt,src,caption)=>{
+ const image=execFileSync('git',['-C',source,'show',`${revision}:studies/adventure/${src}`]);
+ const attrs={src:'/images/studies/adventure/'+src,alt,width:image.readUInt32BE(16),height:image.readUInt32BE(20),caption,size:'aside',nativeSize:true};
+ return '<ArticleFigure '+Object.entries(attrs).map(([key,value])=>`${key}={${JSON.stringify(value)}}`).join(' ')+' />';
+});
 if(figures!==3)throw Error(`Expected three diagram subjects, found ${figures}`);
 for(const [anchor,text] of [
  ['<span id="which-adventure-are-we-playing"></span>','The computer has remembered a change in the world.'],
@@ -51,6 +56,11 @@ for(const name of (await fs.readdir(path.join(source,'figures'))).sort()){
  const bytes=await fs.readFile(path.join(source,'figures',name));
  outputs.set(`public/images/studies/adventure/figures/${name}`,bytes);
  records.push({source:`figures/${name}`,sha256:digest(bytes)});
+}
+for(const name of (await fs.readdir(path.join(source,'photos'))).sort()){
+ const bytes=await fs.readFile(path.join(source,'photos',name));
+ outputs.set(`public/images/studies/adventure/photos/${name}`,bytes);
+ records.push({source:`photos/${name}`,sha256:digest(bytes)});
 }
 outputs.set('src/previews/adventure/source.json',Buffer.from(JSON.stringify({revision,canonical:`https://github.com/code198x/docs/blob/${revision}/studies/adventure/study.md`,records},null,2)+'\n'));
 const mismatches=[];
