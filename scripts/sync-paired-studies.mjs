@@ -8,7 +8,7 @@ const option=name=>{const i=args.indexOf(name);if(i<0||!args[i+1])throw Error(`P
 const slug=option('--slug');
 const settings={
  'monty-mole':{sources:6,figures:3,quotes:[['## The crusher problem','Knowing where to jump is only part of knowing what to do.'],['## Coal was not an abstract collectible','A game can grow out of hardship and still be funny.']]},
- elite:{sources:11,figures:4,quotes:[['The historical table also lists enslaved people as a commodity.','We have not earned anything by buying cheaply. We have exchanged cash for a possibility.'],['## What does “Elite” actually measure?','An upgrade can have value because of what it lets us stop doing.']]},
+ elite:{sources:20,figures:4,quotes:[['The historical table also lists enslaved people as a commodity.','We have not earned anything by buying cheaply. We have exchanged cash for a possibility.'],['## What does “Elite” actually measure?','An upgrade can have value because of what it lets us stop doing.']]},
 }[slug];
 if(!settings)throw Error('Choose monty-mole or elite');
 const source=path.resolve(option('--source-dir'));const check=args.includes('--check');

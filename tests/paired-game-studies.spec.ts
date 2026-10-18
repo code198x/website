@@ -1,7 +1,7 @@
 import {expect,test} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-for(const [slug,figures,sources] of [['monty-mole',3,6],['elite',4,11]] as const){
+for(const [slug,figures,sources] of [['monty-mole',3,6],['elite',4,20]] as const){
  test(`${slug} preserves evidence, navigation and readable responsive figures`,async({page})=>{
   await page.goto(`/vault/studies/${slug}/`);
   await page.evaluate(()=>document.fonts.ready);
