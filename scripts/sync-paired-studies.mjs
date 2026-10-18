@@ -7,6 +7,8 @@ const args=process.argv.slice(2);
 const option=name=>{const i=args.indexOf(name);if(i<0||!args[i+1])throw Error(`Pass ${name}`);return args[i+1]};
 const slug=option('--slug');
 const settings={
+ 'boulder-dash':{sources:9,figures:4,quotes:[['## Enemies worth keeping alive','The controls stay compact. The decisions do not.'],['## A different Boulder Dash at school','For some players, the version which defines a game is not the one its original publisher sold.']]},
+ mule:{sources:13,figures:5,quotes:[["## You can sell tomorrow's turn",'It is a graph you can argue with.'],['## The tune came before the robot','The value of the extra ports was the other people they could bring into the room.']]},
  'monty-mole':{sources:7,figures:4,quotes:[['## The crusher problem','Knowing where to jump is only part of knowing what to do.'],['## Coal was not an abstract collectible','A game can grow out of hardship and still be funny.']]},
  elite:{sources:20,figures:5,quotes:[['The historical table also lists enslaved people as a commodity.','We have not earned anything by buying cheaply. We have exchanged cash for a possibility.'],['## What does “Elite” actually measure?','An upgrade can have value because of what it lets us stop doing.']]},
  'manic-miner':{sources:9,figures:4,quotes:[['## A jump is a commitment','Drawing an imaginary line across the screen is the easy part.'],['## When the audience starts making rooms','A room editor can change the latter without requiring someone to rewrite the former.']]},

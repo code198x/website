@@ -1,7 +1,7 @@
 import {expect,test} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-for(const [slug,figures,sources] of [['monty-mole',4,7],['elite',5,20],['manic-miner',4,9],['lemmings',5,12]] as const){
+for(const [slug,figures,sources] of [['monty-mole',4,7],['elite',5,20],['manic-miner',4,9],['lemmings',5,12],['boulder-dash',4,9],['mule',5,13]] as const){
  test(`${slug} preserves evidence, navigation and readable responsive figures`,async({page})=>{
   await page.goto(`/vault/studies/${slug}/`);
   await page.evaluate(()=>document.fonts.ready);
@@ -18,7 +18,7 @@ for(const [slug,figures,sources] of [['monty-mole',4,7],['elite',5,20],['manic-m
    const pixels=await image.locator('..').locator('..').getAttribute('data-pixels');
    if(pixels)expect((await image.boundingBox())!.width).toBeLessThanOrEqual(512);
   }
-  const diagram=page.locator('.article-figure picture img');await expect(diagram).toHaveCount(slug==='manic-miner'||slug==='lemmings'?2:1);
+  const diagram=page.locator('.article-figure picture img');await expect(diagram).toHaveCount(slug==='mule'?3:slug==='monty-mole'||slug==='elite'?1:2);
   for(const image of await diagram.all()){
    expect(await image.evaluate(i=>(i as HTMLImageElement).currentSrc.endsWith('-phone.svg'))).toBe(page.viewportSize()!.width<=760);
    const diagramBox=await image.boundingBox();const pictureBox=await image.locator('..').boundingBox();
