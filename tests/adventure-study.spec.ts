@@ -16,11 +16,12 @@ test('Adventure preserves readable diagrams, optional puzzles and source navigat
   await expect(page.locator(href!)).toHaveCount(1);
  }
  const figures=page.locator('.article-figure');
- await expect(figures).toHaveCount(3);
+ await expect(figures).toHaveCount(4);
  for(const image of await figures.locator('img').all()){
   await image.scrollIntoViewIfNeeded();
   await expect.poll(()=>image.evaluate(i=>(i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
-  expect(await image.evaluate(i=>(i as HTMLImageElement).currentSrc.endsWith('-phone.svg'))).toBe(page.viewportSize()!.width<=760);
+  if(await image.locator('..').evaluate(p=>p.tagName==='PICTURE'))expect(await image.evaluate(i=>(i as HTMLImageElement).currentSrc.endsWith('-phone.svg'))).toBe(page.viewportSize()!.width<=760);
+  else expect((await image.boundingBox())!.width).toBeLessThanOrEqual(await image.evaluate(i=>(i as HTMLImageElement).naturalWidth));
  }
  const reveals=page.locator('.feature-prose details');
  await expect(reveals).toHaveCount(3);

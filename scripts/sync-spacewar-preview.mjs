@@ -40,7 +40,9 @@ for (const [name, output] of files) {
    const base = path.basename(src);
    const pixels = src.startsWith('captures/');
    const attrs = {src:'/images/studies/spacewar/'+src, alt, width:512, height:512, caption, title:figureTitles[base], size:pixels?'aside':'wide'};
-   if (!pixels) {
+   if(src.startsWith('photos/')) {
+    const image=execFileSync('git',['-C',source,'show',`${revision}:studies/spacewar/${src}`]);attrs.width=image.readUInt32BE(16);attrs.height=image.readUInt32BE(20);attrs.size='aside';attrs.nativeSize=true;
+   } else if (!pixels) {
     const svg = execFileSync('git',['-C',source,'show',`${revision}:studies/spacewar/${src}`],{encoding:'utf8'});
     const width = svg.match(/<svg[^>]*\bwidth="([0-9]+)"/);const height = svg.match(/<svg[^>]*\bheight="([0-9]+)"/);
     if (!width || !height) throw new Error(`Missing SVG dimensions: ${src}`);
@@ -49,7 +51,7 @@ for (const [name, output] of files) {
    const props=Object.entries(attrs).map(([key,value])=>`${key}={${JSON.stringify(value)}}`).join(' ');
    return `<ArticleFigure ${props}${pixels?' pixels={true}':''} />`;
   });
-  if (figures!==7) throw new Error(`Expected seven curated figures, found ${figures}; review the mapping.`);
+  if (figures!==8) throw new Error(`Expected eight curated figures, found ${figures}; review the mapping.`);
   const sentence="That's why escaping takes more thought than pointing away from trouble.";
   if (!markdown.includes(sentence)) throw new Error('Motion anchor changed; review pull quote placement.');
   markdown = markdown.replace(sentence, `<ArticlePullQuote text="Facing and moving are different things." duplicate={true} />\n\n${sentence}`);
@@ -71,9 +73,9 @@ for (const [name, output] of files) {
  outputs.set('src/previews/spacewar/'+output,Buffer.from(text));
  records.push({source:name,output,sha256:digest(bytes)});
 }
-for (const dir of ['captures','figures']) {
+for (const dir of ['captures','figures','photos']) {
  for (const name of await fs.readdir(path.join(source,dir))) {
-  if (!/\.(png|svg)$/.test(name)) continue;
+  if (!(dir==='photos' ? /\.(png|md|json)$/.test(name) : /\.(png|svg)$/.test(name))) continue;
   const bytes=await fs.readFile(path.join(source,dir,name));
   outputs.set(`public/images/studies/spacewar/${dir}/${name}`,bytes);
   records.push({source:`${dir}/${name}`,sha256:digest(bytes)});

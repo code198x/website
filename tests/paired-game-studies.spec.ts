@@ -1,7 +1,7 @@
 import {expect,test} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-for(const [slug,figures,sources] of [['monty-mole',3,6],['elite',4,20]] as const){
+for(const [slug,figures,sources] of [['monty-mole',4,7],['elite',5,20],['manic-miner',4,9],['lemmings',5,12]] as const){
  test(`${slug} preserves evidence, navigation and readable responsive figures`,async({page})=>{
   await page.goto(`/vault/studies/${slug}/`);
   await page.evaluate(()=>document.fonts.ready);
@@ -18,10 +18,12 @@ for(const [slug,figures,sources] of [['monty-mole',3,6],['elite',4,20]] as const
    const pixels=await image.locator('..').locator('..').getAttribute('data-pixels');
    if(pixels)expect((await image.boundingBox())!.width).toBeLessThanOrEqual(512);
   }
-  const diagram=page.locator('.article-figure picture img');await expect(diagram).toHaveCount(1);
-  expect(await diagram.evaluate(i=>(i as HTMLImageElement).currentSrc.endsWith('-phone.svg'))).toBe(page.viewportSize()!.width<=760);
-  const diagramBox=await diagram.boundingBox();const pictureBox=await diagram.locator('..').boundingBox();
-  expect(diagramBox!.width).toBeCloseTo(pictureBox!.width,1);
+  const diagram=page.locator('.article-figure picture img');await expect(diagram).toHaveCount(slug==='manic-miner'||slug==='lemmings'?2:1);
+  for(const image of await diagram.all()){
+   expect(await image.evaluate(i=>(i as HTMLImageElement).currentSrc.endsWith('-phone.svg'))).toBe(page.viewportSize()!.width<=760);
+   const diagramBox=await image.boundingBox();const pictureBox=await image.locator('..').boundingBox();
+   expect(diagramBox!.width).toBeCloseTo(pictureBox!.width,1);
+  }
   const prose=(await page.locator('.feature-prose>p').allTextContents()).join(' ').replace(/\s+/g,' ');
   await expect(page.locator('.article-pullquote')).toHaveCount(2);
   for(const quote of await page.locator('.article-pullquote').all()){
