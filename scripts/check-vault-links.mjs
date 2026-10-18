@@ -27,6 +27,7 @@
  * how merged and renamed entries keep their old URLs working.
  */
 
+import { gameStudyPaths } from '../src/data/game-studies.mjs';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -65,7 +66,7 @@ function resolves(path) {
   if (path === '/vault' || path === '/vault/') return true;
   if (isCategory(path)) return true;
   if (redirects.has(path)) return true;
-  return entries.has(path);
+  return entries.has(path) || gameStudyPaths.some(studyPath=>studyPath.replace(/\/$/,'')===path);
 }
 
 // --- what is referenced ----------------------------------------------------

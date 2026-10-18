@@ -1,8 +1,9 @@
-/** Sync a committed documentation study into the development-only specimen. */
+/** Sync a committed documentation study into the Vault study and development specimen. */
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
+import {studyPath} from '../src/data/game-studies.mjs';
 const args = process.argv.slice(2);
 const sourceIndex = args.indexOf('--source-dir');
 if (sourceIndex < 0 || !args[sourceIndex + 1]) throw new Error('Pass --source-dir <documentation studies/spacewar directory>');
@@ -20,8 +21,8 @@ const files = [
  ['captures/README.md','capture-credits.mdx'],
 ];
 const routeMap = {
- 'companions/shooting-from-a-moving-ship.md':'/catalogue/editorial-study/moving-shot/',
- 'companions/designing-a-duel.md':'/catalogue/editorial-study/duel-design/',
+ 'companions/shooting-from-a-moving-ship.md':studyPath('spacewar','moving-shot'),
+ 'companions/designing-a-duel.md':studyPath('spacewar','duel-design'),
 };
 const figureTitles = {'opening.png':'Meet the two ships','exchange.png':'A shot crosses the duel','destruction.png':'Both ships lost','coast.svg':'Facing and moving','thrust.svg':'Add thrust to existing motion','gravity.svg':'Gravity changes velocity','control-response.svg':'From a control to a change of position'};
 for (const [name, output] of files) {
@@ -62,7 +63,7 @@ for (const [name, output] of files) {
   if (/^(https?:|\/|#)/.test(href)) return all;
   const target = path.posix.normalize(path.posix.join(path.posix.dirname(name),href));
   if (routeMap[target]) return `](${routeMap[target]})`;
-  if (target==='study.md') return '](/catalogue/editorial-study/)';
+  if (target==='study.md') return `](${studyPath('spacewar')})`;
   return `](https://github.com/code198x/docs/blob/${revision}/studies/spacewar/${target})`;
  });
  const imports='import ArticleFigure from \'@components/editorial/ArticleFigure.astro\';\nimport ArticlePullQuote from \'@components/editorial/ArticlePullQuote.astro\';\n\n';
