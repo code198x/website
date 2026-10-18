@@ -1,6 +1,6 @@
-# Feature article prototype
+# Feature articles and Game Studies
 
-The opt-in components in `src/components/editorial/` extend the existing site identity and PageFrame geometry. The current long-form specimen is development-only at `/catalogue/editorial-study/`; its companion, capture-credit and second-specimen routes are also omitted from production. They do not establish a public Studies collection. Product and editorial authority remain in [code198x/docs](https://github.com/code198x/docs/blob/main/PROJECT.md).
+The opt-in components in `src/components/editorial/` extend the existing site identity and PageFrame geometry. Game Studies now has its agreed initial home in the Vault: `/vault/studies/` lists Spacewar!, whose study and three companions are built at `/vault/studies/spacewar/`. The `/catalogue/editorial-study/` family remains development-only aliases and a reusable second specimen; it is omitted from production. Product and editorial authority remain in [code198x/docs](https://github.com/code198x/docs/blob/main/PROJECT.md).
 
 ## Relationship to the existing site
 
@@ -53,10 +53,30 @@ node scripts/sync-spacewar-preview.mjs --source-dir ../docs/studies/spacewar --c
 
 Use a checkout containing the study (currently docs PR #106). Commit text changes first. The sync records its revision, source hashes and copied asset hashes; it fails on uncommitted source or changed figure/pull-quote anchors. Check mode exits nonzero on drift. Do not edit generated MDX independently. The three PNGs and four SVGs are copied byte for byte; header artwork has its own prompt and provenance in `public/images/studies/spacewar/`.
 
+## Vault placement and route ownership
+
+`src/data/game-studies.mjs` owns stable study identities, current paths, companion slugs and review flags. The current built family is:
+
+- `/vault/studies/`
+- `/vault/studies/spacewar/`
+- `/vault/studies/spacewar/moving-shot/`
+- `/vault/studies/spacewar/duel-design/`
+- `/vault/studies/spacewar/capture-credits/`
+
+`src/components/SpacewarStudy.astro` renders the study, companions and development specimen with the approved article composition. Generated bodies remain in `src/previews/spacewar/`; that directory name does not make the Vault routes development-only. The documentation study remains canonical. Its source and generated bodies do not depend on Vault category membership or URL ancestry, so a later move can update central route metadata and add redirects without rewriting the study.
+
+The Vault directory links to Game Studies, and Vault search includes both the index and Spacewar! study. The `space-war-apple-ii` and `star-control` game entries link to the study. The index uses the paper opening, house ground/type/frame and one illustrated available study, with an explicit original-art credit and review status. It adds no primary navigation item, Vault subject category or future-study placeholders.
+
+Spacewar! currently has `reviewed: false`. The index, study and companions carry `noindex`; `unreviewedStudyPaths` also excludes those exact paths from the sitemap. `scripts/check-game-studies.mjs` checks the production artefact for all five declared routes, one title per route, review/indexing/sitemap agreement and absence of catalogue links/routes. `scripts/check-vault-links.mjs` accepts exact metadata-declared study paths rather than allowing an arbitrary `/vault/studies/` prefix.
+
 ## Review evidence and limits
 
 The capture script writes its check record to `.impeccable/review/editorial-checks.json`. It contains 15 route/viewport observations: the study, second specimen, moving-shot companion, duel-design companion and capture credits, each at 1440px, 390px and 320px. The record shows one title, one integrated breadcrumb trail, `noindex`, loaded images and no horizontal overflow for those observations. The study has seven figures and two duplicate-hidden emphasis pulls. These are recorded observations, not a claim about every possible viewport or future article.
 
 The same script writes visual evidence alongside the record: `desktop.png`, `mobile.png`, `user-320.png`, their `-opening`, `-figure` and `-quote` crops, and `specimen-1440.png` / `specimen-390.png`. The initial full-composition review accepted the approved composition across the three viewport classes and the second specimen. A later narrow review confirmed that the desktop bleed inset discrepancy was resolved, with no remaining finding for that fix. The study crops and specimen captures were refreshed after the correction; the 15-view evidence pass and eight desktop/phone browser tests passed, including exact frame-edge agreement and the native capture ceiling. The paper opening, reading and bleed figures in the second specimen demonstrate reuse without Spacewar-specific CSS selectors.
 
-This is a draft composition. Publication needs human source/editorial review, placement agreement and website checks. No new dependency or automatic deployment is part of it; visual acceptance does not constitute historical sign-off or authorise publication.
+The later Vault-placement pass has separate evidence: `studies-index-{1440,390,320}.png`, `vault-study-opening-{1440,390,320}.png`, `vault-study-{1440,390,320}.png` and `vault-discovery-{1440,390,320}.png`. `vault-placement-checks.json` records six production index/article observations at those three widths, each with one title, integrated breadcrumbs, loaded images, `noindex`, zero horizontal overflow and zero axe findings. The pass also verified Vault search and companion navigation at all three widths and a 404 for an unknown study route. These checks extend the evidence to the real Vault placement; they do not replace or widen the earlier development-specimen review.
+
+The Vault-placement finish review disposition was ship for the authorised draft scope, with all five direction-contract sections passing and no material fixes required. The production build produced 2,468 pages across 47 system families; eight article browser tests and 239 unit tests passed, with nine existing skips. These results describe the reviewed build and observed viewports. The final built-route check passed for all five declared paths, and the built study footer links to canonical documentation revision `355bb36`.
+
+The initial placement is agreed and implemented. Human source/editorial review, merge and deployment approval remain open. No new dependency or automatic deployment is part of this extension; visual acceptance does not constitute historical sign-off or authorise publication.

@@ -1,6 +1,6 @@
 import {expect,test} from '@playwright/test';
 
-const preview='/catalogue/editorial-study/';
+const preview='/vault/studies/spacewar/';
 
 test('figures leave the reading column without stretching the capture',async({page})=>{
  await page.goto(preview);

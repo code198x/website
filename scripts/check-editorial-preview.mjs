@@ -11,7 +11,7 @@ try{
  for(const width of [1440,390,320]){
   const page=await browser.newPage({viewport:{width,height:1000},reducedMotion:'reduce'});const errors=[];page.on('pageerror',e=>errors.push(e.message));
   for(const slug of ['', 'specimen/', 'moving-shot/', 'duel-design/', 'capture-credits/']){
-   const route='/catalogue/editorial-study/'+slug;const response=await page.goto(base+route);await page.evaluate(()=>document.fonts.ready);
+   const route=slug==='specimen/'?'/catalogue/editorial-study/specimen/':'/vault/studies/spacewar/'+slug;const response=await page.goto(base+route);await page.evaluate(()=>document.fonts.ready);
    await page.locator('astro-dev-toolbar').evaluateAll(es=>es.forEach(e=>e.remove()));
    if(!response?.ok())throw Error(`${route}: ${response?.status()}`);
    await page.locator('.article-figure img').evaluateAll(async es=>Promise.all(es.map(i=>{i.loading='eager';return i.decode()})));

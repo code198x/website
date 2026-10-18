@@ -16,7 +16,7 @@ Explore games, computing, creativity and their human history. The current charte
 
 ## Operating Context
 
-The existing Astro site supplies system lessons, shared Craft material, the Vault and editorial writing. Vintage systems remain the current delivery focus. Whole-game studies are being developed in documentation; their eventual site home remains undecided.
+The existing Astro site supplies system lessons, shared Craft material, the Vault and editorial writing. Vintage systems remain the current delivery focus. Whole-game studies are being developed in documentation; their agreed initial site home is Game Studies within the Vault, with later extraction possible.
 
 ## Capabilities and Constraints
 
@@ -28,7 +28,7 @@ Play · Build · Understand. Enthusiastic, concrete British English; explain unf
 
 ## Evidence on Hand
 
-The Spacewar study, its primary-source research notes, three verified emulator captures and four original movement diagrams are retained in documentation draft PR #106. The user confirmed full-bleed openings, quiet integrated breadcrumbs, wider figures and selective pull quotes as the prototype direction. Historical/editorial human review and the publication home remain open.
+The Spacewar study, its primary-source research notes, three verified emulator captures and four original movement diagrams are retained in documentation draft PR #106. The user confirmed full-bleed openings, quiet integrated breadcrumbs, wider figures and selective pull quotes as the prototype direction. Historical/editorial human review and deployment approval remain open.
 
 ## Accessibility & Inclusion
 
