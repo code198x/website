@@ -18,6 +18,24 @@ export const gameStudies = [{
   image: '/images/studies/adventure/header-2172.webp',
   reviewed: false,
   companions: [],
+}, {
+  slug: 'monty-mole',
+  title: 'Wanted: Monty Mole',
+  subtitle: 'A bucket of coal and a very bad idea',
+  description: 'A little mole, a dangerous mine, and a game shaped by life above ground.',
+  context: 'ZX Spectrum · 1984',
+  image: '/images/studies/monty-mole/header-2172.webp',
+  reviewed: false,
+  companions: [],
+}, {
+  slug: 'elite',
+  title: 'Elite',
+  subtitle: 'Now make a living',
+  description: 'A spaceship, a hundred credits, and a universe which leaves the next move to you.',
+  context: 'BBC Micro · 1984',
+  image: '/images/studies/elite/header-2172.webp',
+  reviewed: false,
+  companions: [],
 }];
 export function studyPath(slug, page = '') {
   return `${GAME_STUDIES_ROOT}${slug}/${page ? page + '/' : ''}`;
