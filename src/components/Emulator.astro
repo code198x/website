@@ -71,7 +71,13 @@ import { inlineMarkdown } from '../lib/inline-markdown';
     #canvas!: HTMLCanvasElement;
     #poster: HTMLImageElement | null = null;
     #status!: HTMLParagraphElement;
-    #tapeButtons: {stop: HTMLButtonElement; play: HTMLButtonElement; rewind: HTMLButtonElement} | null = null;
+    #tapeButtons: {
+      stop: HTMLButtonElement;
+      play: HTMLButtonElement;
+      rewind: HTMLButtonElement;
+      previous: HTMLButtonElement;
+      next: HTMLButtonElement;
+    } | null = null;
     #tapeState: HTMLSpanElement | null = null;
     #sinceTapeCheck = 0;
     /** Only run while on screen: a lesson page may hold several of these. */
@@ -176,11 +182,17 @@ import { inlineMarkdown } from '../lib/inline-markdown';
       const rewind = document.createElement('button');
       rewind.type = 'button';
       rewind.textContent = 'Rewind tape';
+      const previous = document.createElement('button');
+      previous.type = 'button';
+      previous.textContent = 'Previous block';
+      const next = document.createElement('button');
+      next.type = 'button';
+      next.textContent = 'Next block';
       this.#tapeState = document.createElement('span');
       this.#tapeState.className = 'emulator-tape-state';
 
-      this.#tapeButtons = {stop, play, rewind};
-      stop.disabled = play.disabled = rewind.disabled = true;
+      this.#tapeButtons = {stop, play, rewind, previous, next};
+      for (const button of Object.values(this.#tapeButtons)) button.disabled = true;
       const press = (playing: boolean) => {
         try {
           this.#runner?.setTapePlaying(playing);
@@ -191,16 +203,19 @@ import { inlineMarkdown } from '../lib/inline-markdown';
       };
       stop.addEventListener('click', () => press(false));
       play.addEventListener('click', () => press(true));
-      rewind.addEventListener('click', () => {
+      const act = (action: (runner: SpectrumRunner) => unknown) => () => {
         try {
-          this.#runner?.rewindTape();
+          if (this.#runner) action(this.#runner);
           this.#showTape();
         } catch (error) {
           this.#fail(String(error));
         }
-      });
+      };
+      rewind.addEventListener('click', act(runner => runner.rewindTape()));
+      previous.addEventListener('click', act(runner => runner.seekTapeBlock('previous')));
+      next.addEventListener('click', act(runner => runner.seekTapeBlock('next')));
 
-      group.append(stop, play, rewind, this.#tapeState);
+      group.append(stop, play, rewind, previous, next, this.#tapeState);
       return group;
     }
 
@@ -210,18 +225,23 @@ import { inlineMarkdown } from '../lib/inline-markdown';
       if (!runner || !this.#tapeButtons || !this.#tapeState) return;
       const buttons = this.#tapeButtons;
       if (!runner.hasTapeControls) {
-        buttons.stop.disabled = buttons.play.disabled = buttons.rewind.disabled = true;
+        for (const button of Object.values(buttons)) button.disabled = true;
         return;
       }
-      const {loaded, playing, position} = runner.tapeState();
+      const {loaded, playing, position, block, blocks} = runner.tapeState();
       const finished = position >= 1;
+      const search = loaded && runner.hasTapeBlockSearch && blocks > 0;
       buttons.stop.disabled = !loaded || !playing;
       buttons.play.disabled = !loaded || playing || finished;
       buttons.rewind.disabled = !loaded || !runner.hasTapeRewind || position === 0;
-      const text = !loaded ? '' : playing ? 'Tape playing'
+      buttons.previous.disabled = !search || position === 0;
+      buttons.next.disabled = !search || block >= blocks - 1;
+      const where = blocks > 1 ? `block ${block + 1} of ${blocks}`
+        : `${Math.floor(position * 100)}% through`;
+      const text = !loaded ? '' : playing ? (blocks > 1 ? `Tape playing, ${where}` : 'Tape playing')
         : finished ? 'Tape at the end'
         : position === 0 ? 'Tape at the start'
-        : `Tape stopped, ${Math.floor(position * 100)}% through`;
+        : `Tape stopped, ${where}`;
       if (this.#tapeState.textContent !== text) this.#tapeState.textContent = text;
     }
 
