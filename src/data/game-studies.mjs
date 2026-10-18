@@ -9,6 +9,15 @@ export const gameStudies = [{
   image: '/images/studies/spacewar/header-2172.webp',
   reviewed: false,
   companions: ['moving-shot', 'duel-design', 'capture-credits'],
+}, {
+  slug: 'adventure',
+  title: 'Adventure',
+  subtitle: 'A world at the other end of a sentence',
+  description: 'A lamp, a cave, and a conversation that changed what a game could be.',
+  context: 'PDP-10 · 1970s',
+  image: '/images/studies/adventure/header-2172.webp',
+  reviewed: false,
+  companions: [],
 }];
 export function studyPath(slug, page = '') {
   return `${GAME_STUDIES_ROOT}${slug}/${page ? page + '/' : ''}`;

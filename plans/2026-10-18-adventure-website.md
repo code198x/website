@@ -1,0 +1,15 @@
+# Adventure study website integration
+
+Approved: integrate the expanded Adventure study with the existing full-bleed article opening and pull quotes. Prepare a draft website change and desktop/phone previews for review before merge/deployment. No new dependencies or interactive game.
+
+1. Reuse `src/components/editorial/` and add `src/components/AdventureStudy.astro`, `src/pages/vault/studies/adventure/index.astro`, and the Adventure record in `src/data/game-studies.mjs`.
+2. Add `scripts/sync-adventure-study.mjs` to copy committed docs study/figures, record source hashes and revision, turn figures into shared responsive components, link source citations and insert three duplicate editorial pull quotes. Verify deterministic sync with `--check` and a deliberate mismatch probe.
+3. Add original labelled cave illustration and its prompt/provenance under `public/images/studies/adventure/`; publish responsive WebP derivatives. Extend ArticleFigure with optional phone artwork; preserve existing callers. Keep three explanatory diagram subjects, three puzzle disclosures and a short contents navigation. Add links from the existing game and genre entries.
+4. Verify source sync, content/unit checks, production build, study route/noindex/sitemap checks, local links, desktop/phone keyboard/accessibility/overflow, responsive diagrams and shared-layout regressions. Inspect screenshots together and obtain the skill's independent finish review; document the extension without changing the design system.
+5. Commit and push, open/attach draft PR, retain user previews in the chat outputs, and remove task worktrees/builds/processes after verifying remote refs. No merge or deployment in this task.
+
+## Verification and review
+
+Canonical docs revision: `45ee69935bf94726a1cf6cbee383d8dc5336f7af`. Source sync and deliberate mismatch probe passed. Unit/content check: 239 passed, 9 existing skips. Announcement checks: 7 passed. Production build: 2,469 pages; all six declared study routes agree on title, review and sitemap state. Browser verification: 446 general checks, six existing Spacewar regressions and two native-image checks passed; final Adventure desktop/phone checks passed again after the source diagram fix. Rendered checks at 1440/390/320px showed zero overflow/axe violations. Local study links: zero errors. The native-image test needed both documented local source/decoder environment variables; unchanged assertions passed after supplying them.
+
+Independent full visual review matched the approved editorial world and requested one maze-arrow/label spacing correction. That correction was made in the canonical SVG, committed and pushed, then resynced; the verdict pass scored it resolved and returned ship for the fix. Full-page screenshots were recaptured as stitched painted browser viewports after a single oversized capture produced invalid blank tails. Owner previews and review/check evidence are retained outside the repository in the chat outputs. Historical sign-off, merge and deployment remain pending.
