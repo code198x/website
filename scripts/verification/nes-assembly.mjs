@@ -17,7 +17,7 @@ for(const name of (process.env.PLAYER_BROWSERS || 'chrome,webkit').split(',')) {
   const root=page.locator('code198x-nes-editor').first(),editor=root.locator('.nes-source'),status=root.locator('.editor-status');
   const button=name=>root.getByRole('button',{name,exact:true});
   const original=readFileSync(path.join(sourceRoot,sourcePath),'utf8');assert.equal(await editor.inputValue(),original);
-  await button('Assemble & run').waitFor();await root.locator('.assembly-editor-colours span').first().waitFor();assert.equal(await root.locator('.emulator-panel').isVisible(),false);assert(!requests.some(url=>url.endsWith('.wasm')),'No assembler or emulator WASM should load until requested');
+  await root.locator('summary').click();await button('Assemble & run').waitFor();await root.locator('.assembly-editor-colours span').first().waitFor();assert.equal(await root.locator('.emulator-panel').isVisible(),false);assert(!requests.some(url=>url.endsWith('.wasm')),'No assembler or emulator WASM should load until requested');
   assert.equal(await page.locator('.lesson-player').count(),0,'The lesson has one integrated player');
   async function colour(rgb) {
    await page.waitForFunction(rgb=>{
@@ -48,7 +48,9 @@ for(const name of (process.env.PLAYER_BROWSERS || 'chrome,webkit').split(',')) {
   assert.match(await root.locator('.editor-diagnostics').textContent(),new RegExp(`Line ${blue.split('\n').findIndex(line=>line.includes('lda #$11'))+1}:.*range`,'i'));
   assert.deepEqual(await root.locator('emu198x-player').locator('#screen').evaluate(c=>Array.from(c.getContext('2d').getImageData(128,120,1,1).data)),before);
   await button('Revert source').click();assert.equal(await editor.inputValue(),original);await button('Assemble & run').click();await status.filter({hasText:'Running your build'}).waitFor();await colour([181,49,32]);
+  await button('Close emulator').click();
   pending=page.waitForEvent('download');await button('Download source').click();download=await pending;assert.equal(readFileSync(await download.path(),'utf8'),original);
+  await button('Show emulator').click();
   await page.setViewportSize({width:390,height:844});await root.locator('.emulator-panel').screenshot({path:path.join(output,name+'-mobile.png')});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
   await button('Close emulator').click();await root.screenshot({path:path.join(output,name+'-editor.png')});await page.setViewportSize({width:1440,height:1000});
   await root.evaluate(el=>{
