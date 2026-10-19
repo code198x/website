@@ -117,3 +117,26 @@ test('loop pages retain accessible reading and code controls',async({page})=>{
   expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
  }
 });
+
+// Turn progression and optional time must stay independently reusable.
+test('turn callers are discoverable with usable code and explicit timing choices',async({page})=>{
+ for(const system of ['sega-master-system','sega-game-gear','sega-sg-1000']) {
+  await page.goto('/patterns/');
+  await page.getByRole('combobox',{name:'Machine',exact:true}).selectOption(system);
+  const rows=page.locator('[data-pattern]:visible');
+  await expect(rows).toHaveCount(1);
+  await rows.getByRole('link').first().click();
+  await expect(page).toHaveURL(new RegExp(system+'/assembly/framework/turn-deadline'));
+  await expect(page.locator('.lesson-listing:has(.ll-label:text-is("turn.inc"))')).toContainText('commit_turn:');
+  await expect(page.locator('.lesson-listing:has(.ll-label:text-is("demo.asm"))')).toContainText('read_actions:');
+  await expect(page.locator('.lesson-listing:has(.ll-label:text-is("frame.inc"))')).toContainText('wait_frame:');
+  await expect(page.locator('.pattern-prose')).toContainText('120 accepted ticks');
+  await expect(page.getByRole('link',{name:'retained record'})).toHaveAttribute('href',/\/blob\/[0-9a-f]{40}\/.*\/verification\/results\.json$/);
+  await expect(page.locator('.pattern-prose')).toContainText('assembled and emulator-executed');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+ }
+ await page.goto('/patterns/cross-platform/framework/game-loop-choices/');
+ await expect(page.locator('.pattern-prose')).toContainText('A turn-based game can certainly have a timer');
+ await expect(page.locator('.pattern-prose')).toContainText('A display refresh need not advance the rules');
+});
