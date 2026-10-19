@@ -7,6 +7,7 @@ const args=process.argv.slice(2);
 const option=name=>{const i=args.indexOf(name);if(i<0||!args[i+1])throw Error(`Pass ${name}`);return args[i+1]};
 const slug=option('--slug');
 const settings={
+ 'pac-man':{sources:16,figures:5,quotes:[['## A dot that changes the argument','A familiar route can become dangerous in seconds.'],['## Finding room for something different','A game has to survive being built repeatedly before it can become a familiar cabinet in thousands of locations.']]},
  'boulder-dash':{sources:9,figures:4,quotes:[['## Enemies worth keeping alive','The controls stay compact. The decisions do not.'],['## A different Boulder Dash at school','For some players, the version which defines a game is not the one its original publisher sold.']]},
  mule:{sources:13,figures:9,quotes:[["## You can sell tomorrow's turn",'It is a graph you can argue with.'],['## The tune came before the robot','The value of the extra ports was the other people they could bring into the room.']]},
  'monty-mole':{sources:7,figures:4,quotes:[['## The crusher problem','Knowing where to jump is only part of knowing what to do.'],['## Coal was not an abstract collectible','A game can grow out of hardship and still be funny.']]},

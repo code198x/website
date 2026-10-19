@@ -72,6 +72,15 @@ export const gameStudies = [{
   image: '/images/studies/mule/header-2172.webp',
   reviewed: false,
   companions: [],
+}, {
+  slug: 'pac-man',
+  title: 'Pac-Man',
+  subtitle: 'One more corner',
+  description: 'A maze full of work, four different pursuers, and the moment the chase changes direction.',
+  context: 'Arcade · 1980',
+  image: '/images/studies/pac-man/header-2172.webp',
+  reviewed: false,
+  companions: [],
 }];
 export function studyPath(slug, page = '') {
   return `${GAME_STUDIES_ROOT}${slug}/${page ? page + '/' : ''}`;
