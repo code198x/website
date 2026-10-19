@@ -1,122 +1,47 @@
 ---
-title: "Game Loop (HALT)"
-summary: "Frame-synchronised game loop using the HALT instruction. Locks to 50Hz for consistent timing across all Spectrums."
+title: "A game loop on the ROM clock"
+summary: "Use the 48K ROM interrupt clock to accept one update at a time, including when game work takes longer."
 platform: "sinclair-zx-spectrum"
 category: "framework"
 difficulty: "beginner"
-taught_in: "Game 1, Unit 1"
-tags: ["game-loop", "timing", "halt", "interrupt"]
-evolution:
-  previous: null
-  next: "state-machine-loop"
-related:
-  patterns: ["keyboard-reading"]
-  vault: ["sinclair-zx-spectrum"]
+tags: ["game-loop", "timing", "ownership", "interrupts"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
 
-## Overview
+Watch the border change, then hold Space. The deliberate CPU workload slows the updates. The ROM clock keeps advancing while that work runs, so the next update can see that more than one frame passed.
 
-The simplest way to achieve consistent timing on the ZX Spectrum. The `HALT` instruction pauses execution until the next interrupt fires (50 times per second on PAL systems). This gives you exactly one frame to process input, update game state, and render.
+## Use the wait in your project
 
-## Code
+Call `initialise_clock` once, then `wait_frame` once per update. AF and B change; other registers survive. Interrupts must be enabled on entry and are enabled on return. The helper briefly disables them to sample state safely. `last_frame` belongs to this consumer. `frame_delta` is the number of serviced ROM interrupts since its previous accepted sample.
 
-```z80
-; =============================================================================
-; GAME LOOP - HALT SYNCHRONISED
-; 50Hz frame-locked game loop for ZX Spectrum
-; Taught: Game 1 (Ink War), Unit 1
-; CPU: Variable | Memory: ~20 bytes
-; =============================================================================
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/game-loop/frame.inc" lang="z80" />
 
-; Main game loop structure
-main_loop:
-    halt                        ; Wait for next interrupt (50Hz)
+## Start the complete example
 
-    call    read_input          ; Check keyboard/joystick
-    call    update_game         ; Update game state
-    call    draw_screen         ; Render graphics
+Load the TAP through the 48K ROM or open the SNA. The complete caller uses IM1, keeps ROM interrupts enabled, sets its stack in high RAM and reads QAOP/Space with the existing reader. It owns the border. Reset to leave. The ROM keyboard and timing service remains active; this is not the custom-IM2 approach used later in Meteor Storm.
 
-    jp      main_loop           ; Repeat forever
+With Asm198x available, keep the sample folders together and run:
 
-; Placeholder routines (replace with your game code)
-read_input:
-    ret
-
-update_game:
-    ret
-
-draw_screen:
-    ret
+```sh
+make -C sinclair-zx-spectrum/patterns/assembly/framework/game-loop
 ```
+The Amiga Makefile also needs Build198x. Open the generated file under build using the machine’s normal loading route.
 
-**Minimal working example:**
+The loop keeps four jobs visible: wait, read input, update state, draw. `expensive_work` is an optional CPU workload to expose missed deadlines; remove it when building your own game. The changing colour or digit is a small observable result, not a rendering engine.
 
-```z80
-            org     32768
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/game-loop/demo.asm" />
 
-start:
-            call    init_game
+## What happens when work runs late
 
-main_loop:
-            halt                ; Sync to 50Hz
-            call    read_keyboard
-            call    move_player
-            jp      main_loop
+The clock uses the low byte of ROM FRAMES and wraps modulo 256. Fewer than 256 frames may pass between samples. A delay of exactly 256 would be indistinguishable from no change. The example counts one game update for the accepted sample; it does not replay every missed update or automatically multiply motion by `frame_delta`. A HALT with interrupts disabled would wait forever.
 
-init_game:
-            ; Your initialisation here
-            ret
+## Check this combination
 
-read_keyboard:
-            ; Your input code here
-            ret
+**Code status: assembled and emulator-executed.** 48K PAL Spectrum. The [recorded checks](https://github.com/code198x/code-samples/blob/9d6018a66f2788df3fa4d983fcb2dfb27621210b/sinclair-zx-spectrum/patterns/assembly/framework/game-loop/verification/results.json) identify sources, firmware and observer. In three 30-frame windows the caller made 30 normal, 9 deliberately slowed and 30 recovered updates. An unpaced negative control is rejected by the same rate guard. This is configuration-specific emulator evidence, not an original-hardware or whole-emulator claim.
 
-move_player:
-            ; Your movement code here
-            ret
+The [loop comparison](/patterns/cross-platform/framework/game-loop-choices/) puts the ownership choices side by side. Each implementation keeps its own timing and resource contract.
 
-            end     start
-```
+[See the idea inside a complete game](/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-07/).
 
-## Trade-offs
-
-| Aspect | Cost |
-|--------|------|
-| CPU | Free (waits for interrupt) |
-| Memory | 1 byte (`halt` = $76) |
-| Limitation | Tied to 50Hz - can't run faster or slower |
-
-**When to use:** Most games. Simple, reliable, works on all Spectrums.
-
-**When to avoid:** When you need sub-frame timing (scrollers, raster effects) or variable frame rates.
-
-## How It Works
-
-1. The Z80's `HALT` instruction suspends the CPU
-2. The ULA generates an interrupt 50 times per second (the standard ZX Spectrum is PAL — rare 60Hz NTSC variants existed but aren't what most coders target)
-3. When the interrupt fires, `HALT` releases and execution continues
-4. Your game code runs, then hits `HALT` again to wait for the next frame
-
-This guarantees your game runs at a consistent speed regardless of how fast your code executes (as long as it completes within one frame).
-
-## Frame Budget
-
-At 50 Hz on a 3.5 MHz Z80, you have exactly:
-
-- **69,888 T-states** per frame (3,500,000 ÷ 50.0801)
-- ~17,472 instructions if every instruction averages 4 T-states
-- Enough for most games — but watch contended memory
-
-### ULA contention
-
-When the beam draws the visible display (lines 64-255), the ULA periodically halts CPU access to memory in `$4000-$7FFF` (display memory). This contention adds ~6 T-states per access during display, and **your code costs more if it lives in contended memory**.
-
-To avoid the penalty: place game code at `$8000+` (uncontended), or run timing-critical code only during the border / vblank period when the ULA isn't competing for memory access.
-
-## Related
-
-**Patterns:** [Keyboard Reading](/patterns/sinclair-zx-spectrum/assembly/input/keyboard-reading)
-
-**Vault:** [ULA](/vault/hardware/ula) — frame timing and memory contention | [Z80](/vault/hardware/z80) — HALT instruction | [ZX Spectrum](/vault/systems/sinclair-zx-spectrum)
+The separate fresh-ROM tape load also reaches the loop and sustains 30 updates in 30 native frames; the record distinguishes that from snapshot startup.

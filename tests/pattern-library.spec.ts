@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 
 test('find a technique across combined filters and recover from no results',async({page})=>{
  await page.goto('/patterns/');
@@ -67,7 +68,7 @@ test('code status distinguishes execution evidence from maintained and illustrat
   ['commodore-64/assembly/physics/sprite-movement-bounds','assembled and emulator-executed'],
   ['commodore-64/assembly/rendering/raster-splits','assembled and emulator-executed'],
   ['commodore-64/assembly/input/joystick-reading','assembled and emulator-executed'],
-  ['commodore-64/assembly/framework/game-loop-basic','illustrative code'],
+  ['commodore-64/assembly/framework/game-loop-basic','assembled and emulator-executed'],
  ]) {
   await page.goto(`/patterns/${path}/`);
   const statement=page.locator('.pattern-prose > p').filter({hasText:'Code status:'});
@@ -75,10 +76,44 @@ test('code status distinguishes execution evidence from maintained and illustrat
   await expect(statement).toContainText(status);
   if(status==='assembled and emulator-executed') {
    await expect(statement.getByRole('link',{name:'recorded checks'})).toHaveAttribute('href',/\/blob\/[0-9a-f]{40}\/.*\/verification\/results\.json$/);
-   await expect(statement).toContainText('PAL and NTSC');
+   await expect(statement).toContainText(path.includes('game-loop-basic')?'PAL C64':'PAL and NTSC');
   } else {
    await expect(statement.getByRole('link',{name:'recorded checks'})).toHaveCount(0);
   }
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ }
+});
+
+
+test('next-tier BBC patterns are discoverable without claiming a curriculum track',async({page})=>{
+ await page.goto('/patterns/');
+ await page.getByRole('combobox',{name:'Machine',exact:true}).selectOption('bbc-micro');
+ const rows=page.locator('[data-pattern]:visible');
+ await expect(rows).toHaveCount(1);
+ await rows.getByRole('link',{name:'A game loop using MOS',exact:true}).click();
+ await expect(page).toHaveURL(/bbc-micro\/assembly\/framework\/mos-game-loop/);
+ await expect(page.locator('.pattern-prose')).toContainText('MODE 6');
+ await expect(page.locator('.pattern-prose')).toContainText('OSBYTE');
+ await page.getByRole('link',{name:'More BBC Micro patterns'}).click();
+ await expect(page).toHaveURL(/patterns\/platform\/bbc-micro/);
+ await expect(page.locator('[data-pattern]:visible')).toHaveCount(1);
+});
+
+test('loop contracts and maintained callers fit narrow and wide pages',async({page})=>{
+ for(const path of ['commodore-64/assembly/framework/game-loop-basic','sinclair-zx-spectrum/assembly/framework/game-loop-halt','commodore-amiga/assembly/framework/vblank-game-loop','nintendo-nes/assembly/framework/nmi-game-loop','bbc-micro/assembly/framework/mos-game-loop','acorn-electron/assembly/framework/mos-game-loop']){
+  await page.goto('/patterns/'+path+'/');
+  await expect(page.locator('.pattern-prose')).toContainText('wait_frame');
+  await expect(page.locator('.pattern-prose')).toContainText('What happens when work runs late');
+  await expect(page.locator('.lesson-listing:has(.ll-label:text-is("frame.inc"))')).toContainText('wait_frame:');
+  await expect(page.locator('.lesson-listing:has(.ll-label:text-is("demo.asm"))')).toContainText('expensive_work:');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width+1);
+ }
+});
+
+
+test('loop pages retain accessible reading and code controls',async({page})=>{
+ for(const path of ['commodore-64/assembly/framework/game-loop-basic','sinclair-zx-spectrum/assembly/framework/game-loop-halt','commodore-amiga/assembly/framework/vblank-game-loop','nintendo-nes/assembly/framework/nmi-game-loop','bbc-micro/assembly/framework/mos-game-loop','acorn-electron/assembly/framework/mos-game-loop','cross-platform/framework/game-loop-choices']){
+  await page.goto('/patterns/'+path+'/');
+  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
  }
 });
