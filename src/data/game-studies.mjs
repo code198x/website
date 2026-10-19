@@ -81,6 +81,15 @@ export const gameStudies = [{
   image: '/images/studies/pac-man/header-2172.webp',
   reviewed: false,
   companions: [],
+}, {
+  slug: 'simcity',
+  title: 'SimCity',
+  subtitle: 'Now let the city answer',
+  description: 'A few streets, a power station, and a place that begins to make demands of its own.',
+  context: 'Amiga · 1989',
+  image: '/images/studies/simcity/header-2172.webp',
+  reviewed: false,
+  companions: [],
 }];
 export function studyPath(slug, page = '') {
   return `${GAME_STUDIES_ROOT}${slug}/${page ? page + '/' : ''}`;
