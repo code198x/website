@@ -14,7 +14,12 @@ related:
   vault: ["sinclair-zx-spectrum"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+
+**Code status: the maintained matrix reader is reused by executed 48K callers.** The single-code adapter is an additional caller; its priority and state contracts are shown here.
+
+[Audit execution record](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/z80.json) · [Scope and remaining checks](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/README.md)
 
 ## Overview
 
@@ -22,70 +27,12 @@ Read keyboard input by polling the I/O ports directly. The Spectrum's keyboard i
 
 ## Code
 
-```z80
-; =============================================================================
-; KEYBOARD READING - ZX SPECTRUM
-; Read keyboard matrix via I/O ports
-; Taught: Game 1 (Ink War), Unit 1
-; CPU: ~50 cycles | Memory: ~40 bytes
-; =============================================================================
 
-KEY_PORT    equ     $fe
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/input-to-sound/input.inc" lang="z80" />
 
-; Keyboard row addresses (active low)
-ROW_QAOP    equ     $fb             ; Q W E R T (bits: T R E W Q)
-ROW_ASDF    equ     $fd             ; A S D F G (bits: G F D S A)
-ROW_YUIOP   equ     $df             ; Y U I O P (bits: P O I U Y)
-ROW_12345   equ     $f7             ; 1 2 3 4 5 (bits: 5 4 3 2 1)
-ROW_09876   equ     $ef             ; 0 9 8 7 6 (bits: 6 7 8 9 0)
-ROW_SPACE   equ     $7f             ; Space, Sym, M, N, B
+For a menu that wants one code rather than simultaneous bits, include this adapter as well:
 
-; Read keyboard and return direction code
-; Returns: A = 0 (none), 1 (up), 2 (down), 3 (left), 4 (right)
-read_keyboard:
-    xor     a
-    ld      (key_pressed), a    ; Clear previous
-
-    ; Check Q (up)
-    ld      a, ROW_QAOP
-    in      a, (KEY_PORT)
-    bit     0, a                ; Q is bit 0
-    jr      nz, .not_q
-    ld      a, 1
-    ld      (key_pressed), a
-    ret
-.not_q:
-    ; Check A (down)
-    ld      a, ROW_ASDF
-    in      a, (KEY_PORT)
-    bit     0, a                ; A is bit 0
-    jr      nz, .not_a
-    ld      a, 2
-    ld      (key_pressed), a
-    ret
-.not_a:
-    ; Check O (left)
-    ld      a, ROW_YUIOP
-    in      a, (KEY_PORT)
-    bit     1, a                ; O is bit 1
-    jr      nz, .not_o
-    ld      a, 3
-    ld      (key_pressed), a
-    ret
-.not_o:
-    ; Check P (right)
-    ld      a, ROW_YUIOP
-    in      a, (KEY_PORT)
-    bit     0, a                ; P is bit 0
-    jr      nz, .not_p
-    ld      a, 4
-    ld      (key_pressed), a
-.not_p:
-    ret
-
-key_pressed:
-    defb    0
-```
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/input/keyboard-reading/keyboard-code.inc" lang="z80" />
 
 **Usage:**
 
@@ -164,3 +111,9 @@ key_state:  defb    0       ; Bit 0=up, 1=down, 2=left, 3=right, 4=fire
 **Patterns:** [Game Loop (HALT)](/patterns/sinclair-zx-spectrum/assembly/framework/game-loop-halt)
 
 **Vault:** [ULA](/vault/hardware/ula) — port $FE keyboard matrix | [ZX Spectrum](/vault/systems/sinclair-zx-spectrum)
+
+## One sample, two representations
+
+`read_controls` returns A and `controls` as simultaneous held bits: Q/A/O/P/Space are 1/2/4/8/16. `read_keyboard` calls it once and returns A plus `key_pressed` as 0 for none, 1/2/3/4 for directions and 5 for Space. If several are held, its priority is Q, A, O, P, Space. A no-key result is explicitly zero, never the last raw port value.
+
+Both change AF/BC and preserve DE/HL/IX/IY. State must be writable; a valid stack is required. The result is held state, not a new press. Use the [edge detector](/patterns/cross-platform/input/edge-detection/) for one action per press. If the frame already sampled input, adapt its stored `controls` rather than reading the matrix again.

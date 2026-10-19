@@ -1,6 +1,6 @@
 ---
 title: "System Takeover"
-summary: "Disable AmigaOS interrupts and DMA to take full control of the hardware. Required for bare-metal game programming."
+summary: "Understand the resources an exclusive Amiga caller owns, using the executed boot example and an explicit reset-to-leave lifetime."
 platform: "commodore-amiga"
 category: "framework"
 difficulty: "beginner"
@@ -14,145 +14,39 @@ related:
   vault: ["commodore-amiga"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
 
-## Overview
 
-To program the Amiga's custom chips directly, you must first disable AmigaOS. This means turning off all interrupts and DMA channels, then selectively enabling only what your program needs. Without this, the OS will interfere with your hardware access.
 
-## Code
+Direct hardware access needs an owner. If AmigaOS and a game both replace the Copper list, change DMA or consume the same interrupt, neither can rely on its setup staying in place.
 
-```m68k
-; =============================================================================
-; SYSTEM TAKEOVER - AMIGA
-; Disable OS and take control of hardware
-; Taught: Game 1 (Signal), Unit 1
-; CPU: ~50 cycles | Memory: ~30 bytes
-; =============================================================================
+Our small [game-loop caller](/patterns/commodore-amiga/assembly/framework/vblank-game-loop/) uses an **exclusive, reset-to-leave** arrangement on an A500 OCS PAL boot ADF. This is its executed startup:
 
-CUSTOM      equ $dff000
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/game-loop/demo.asm" from="start:" to="main_loop:" lang="m68k" title="Exclusive caller startup" />
 
-; Register offsets from CUSTOM base
-DMACON      equ $096            ; DMA control
-DMACONR     equ $002            ; DMA control read
-INTENA      equ $09a            ; Interrupt enable
-INTENAR     equ $01c            ; Interrupt enable read
-INTREQ      equ $09c            ; Interrupt request
+It sets A5 to the custom register base, clears custom interrupt enables and pending requests, stops DMA, and configures the joystick's CIA input. The surrounding program then establishes its own display or audio state. These instructions are not a complete AmigaOS save/restore routine, and must not be pasted into a shared desktop program followed by `RTS`.
 
-            section code,code_c
+## Choose the lifetime first
 
-start:
-            lea     CUSTOM,a5           ; Custom chip base in A5
+For a bootable game, resetting to leave is a simple, explicit contract. The [complete caller](/patterns/commodore-amiga/assembly/framework/collect-and-respond/) shows display setup, input and sound under that contract.
 
-            ; === Save system state (for clean exit) ===
-            move.w  DMACONR(a5),d0
-            or.w    #$8000,d0           ; Set bit 15 for later restore
-            move.w  d0,saved_dmacon
+For an application that coexists with AmigaOS, obtain the relevant resources through the OS. An application that temporarily takes over and later returns also needs a real restoration plan: task scheduling, display view/Copper state, interrupt servers or vectors it changes, CIA state and every resource it borrowed. Restoring two enable words cannot reconstruct all of that.
 
-            move.w  INTENAR(a5),d0
-            or.w    #$8000,d0
-            move.w  d0,saved_intena
+Keep any changed vectors associated with the CPU's actual vector base. A plain 68000 fixes it at zero; later CPUs may use VBR and require privileged access to inspect it. A handler needs the correct exception return and acknowledgement as well as its address in a vector slot.
 
-            ; === Disable everything ===
-            move.w  #$7fff,INTENA(a5)   ; Disable all interrupts
-            move.w  #$7fff,INTREQ(a5)   ; Clear pending interrupts
-            move.w  #$7fff,DMACON(a5)   ; Disable all DMA
+## Read set/clear writes as operations
 
-            ; === Your game setup here ===
-            ; Install copper list, set up sprites, etc.
+For DMACON and INTENA, bit 15 selects set or clear. One bits identify the controls to change; zero bits leave other controls alone.
 
-            ; === Enable only what you need ===
-            move.w  #$83a0,DMACON(a5)   ; Master + Copper + Sprites + Bitplanes
+| Write to DMACON | Effect |
+| --- | --- |
+| `$0001` | Clear channel 0 audio DMA |
+| `$8001` | Set channel 0 audio DMA; master DMA must also be enabled |
+| `$8201` | Set master DMA and channel 0 audio DMA |
+| `$8380` | Set master, Copper and bitplane DMA |
+| `$83E0` | Also set blitter and sprite DMA |
+| `$7FFF` | Clear all writable enables; read-only status bits are unaffected |
 
-            ; ... game code ...
+Enable a display or audio consumer only after its pointers, lengths and data are valid. Disable it and wait for outstanding activity before freeing or repurposing that memory. Blitter priority can reduce the CPU's available bus slots; it does not make every CPU cycle disappear.
 
-            ; === Restore system before exit ===
-            move.w  #$7fff,DMACON(a5)
-            move.w  #$7fff,INTENA(a5)
-            move.w  saved_dmacon,DMACON(a5)
-            move.w  saved_intena,INTENA(a5)
-
-            rts
-
-saved_dmacon:   dc.w    0
-saved_intena:   dc.w    0
-```
-
-## Trade-offs
-
-| Aspect | Cost |
-|--------|------|
-| CPU | ~50 cycles |
-| Memory | ~30 bytes + 4 bytes for saved state |
-| Limitation | Must restore before returning to OS |
-
-**When to use:** Every Amiga game or demo that accesses hardware directly.
-
-**When to avoid:** Programs that want to coexist with the OS (use system-friendly methods instead).
-
-## How DMACON/INTENA Work
-
-These registers use a SET/CLEAR mechanism controlled by bit 15:
-
-- **Bit 15 = 0:** CLEAR the specified bits (disable)
-- **Bit 15 = 1:** SET the specified bits (enable)
-
-```m68k
-move.w  #$7fff,DMACON(a5)   ; Clear bits 0-14 (disable all)
-move.w  #$83a0,DMACON(a5)   ; Set bits 5,7,8,9,15 (enable selected)
-```
-
-## DMACON Bit Reference
-
-| Bit | Name | Purpose |
-|-----|------|---------|
-| 15 | SET/CLR | 1=set bits, 0=clear bits |
-| 9 | DMAEN | Master DMA enable |
-| 8 | BPLEN | Bitplane DMA |
-| 7 | COPEN | Copper DMA |
-| 6 | BLTEN | Blitter DMA |
-| 5 | SPREN | Sprite DMA |
-| 4 | DSKEN | Disk DMA |
-| 3-0 | AUDxEN | Audio channels 0-3 |
-
-## Common DMACON Values
-
-| Value | Bits set | Enables |
-|-------|----------|---------|
-| `$83a0` | 15, 9, 8, 7, 5 | Master + Copper + Sprites + Bitplanes |
-| `$8380` | 15, 9, 8, 7 | Master + Copper + Bitplanes (no sprites) |
-| `$83e0` | 15, 9, 8, 7, 6, 5 | Master + Copper + Sprites + Bitplanes + Blitter |
-| `$87e0` | 15, 10, 9, 8, 7, 6, 5 | Above + **BLITHOG** (Blitter takes all CPU cycles when running, faster but starves CPU) |
-| `$83ef` | 15, 9, 8, 7, 6, 5, 3-0 | Above + all four audio channels |
-
-The bit-15 SET/CLR protocol means a single value writes only the bits you want to change:
-
-- Write `$0001` → clears AUD0EN (disables audio channel 0). Other bits unaffected.
-- Write `$8001` → sets AUD0EN (enables audio channel 0). Other bits unaffected.
-- Write `$7FFF` → clears bits 14-0 (disables everything). Atomic full-disable.
-- Write `$BFFF` → sets bits 14-0 (enables everything including reserved bits — usually wrong).
-
-## Saving and restoring exception vectors
-
-For thorough takeover (especially on 68010+ machines that may have a relocated vector base via VBR), save and restore the exception vectors you change. AmigaOS uses level-3 (VBlank) and level-6 (CIA timers) interrupts; if your handlers replace those, save the old vectors before installing yours and restore on exit.
-
-```m68k
-; Save the level-3 vector (VBlank IRQ, autovector at $6c)
-        move.l  $6c.w,saved_vbl_vector
-
-        ; ... install our handler ...
-        move.l  #my_vbl_handler,$6c.w
-
-        ; ... game runs ...
-
-        ; Restore on exit
-        move.l  saved_vbl_vector,$6c.w
-```
-
-On a plain 68000 the vector table is fixed at $0–$3FF, so direct address writes work. On 68010+ with a movable VBR, fetch VBR first via `MOVEC.L VBR,A0`. Most Amiga games target 68000 and skip the VBR step.
-
-## Related
-
-**Patterns:** [VBlank Game Loop](/patterns/commodore-amiga/assembly/framework/vblank-game-loop), [Copper List Basics](/patterns/commodore-amiga/assembly/rendering/copper-list-basics)
-
-**Vault:** [Commodore Amiga](/vault/systems/commodore-amiga) | [Amiga Chipset](/vault/hardware/amiga-chipset)
+**Code status: an excerpt from an executed exclusive caller.** Its record establishes the named A500 boot configuration. It does not establish a general OS takeover, compatibility with every Amiga model or a clean return to the desktop.

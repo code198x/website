@@ -42,7 +42,8 @@ col_buf:     .res 30       ; the 30 tiles, prepared in the main loop
 
 ; --- Call in the NMI when a new column is due ---
 feed_column:
-    lda #%10000100         ; NMI on + VRAM increment = 32 (step DOWN a column)
+    lda ppu_ctrl_shadow
+    ora #%00000100         ; preserve other settings; increment32
     sta PPUCTRL
 
     bit PPUSTATUS          ; reset the write latch
@@ -58,9 +59,9 @@ feed_column:
     cpx #30
     bne :-
 
-    ; ... write this column's attribute bytes too (one per 2 columns / 4 tiles) ...
+    ; ... write this column's attribute bytes too (each attribute byte covers4x4 tiles; each quadrant covers2x2) ...
 
-    lda #%10000000         ; restore VRAM increment = 1 for normal writes
+    lda ppu_ctrl_shadow    ; restore the caller's original increment and modes
     sta PPUCTRL
     rts
 ```
@@ -83,14 +84,16 @@ Tiles in a nametable are stored row by row, so consecutive addresses run *across
 
 ## Where the column goes
 
-The address is the leading edge translated into nametable space. As the view scrolls right, the column entering from the right belongs 32 tiles (one screen) ahead of the left edge — which, once you pass the nametable's width, **wraps** into the other nametable. So the target address cycles through both nametables' column slots as you travel, always writing into the strip that's offscreen. Getting this wrap right — and matching the attribute writes, which cover a coarser 32×32-pixel grid so they update only every *four* tile-columns — is the fiddly heart of a scroll engine.
+The address is the leading edge translated into nametable space. As the view scrolls right, the column entering from the right belongs 32 tiles (one screen) ahead of the left edge — which, once you pass the nametable's width, **wraps** into the other nametable. So the target address cycles through both nametables' column slots as you travel, always writing into the strip that's offscreen. Getting this wrap right — and matching the attribute writes, which cover a coarser 32×32-pixel grid with2×2-tile quadrants inside each byte; a newly exposed quadrant can need an update before four columns have passed — is the fiddly heart of a scroll engine.
 
 ## Prepare in the frame, write in vblank
 
-There isn't time to *decide* what to draw during vblank — only to draw it. So the pattern splits in two: during the visible frame the main loop reads the level map, works out the next column's 30 tiles and its attributes, and stashes them in a buffer; then the NMI does nothing but stream that buffer to the PPU. Vblank is roughly 2270 cycles, enough for a column and its attributes with room to spare — but decode work done there instead of in the buffer is how a scroll engine runs out of vblank and tears.
+There isn't time to *decide* what to draw during vblank — only to draw it. So the pattern splits in two: during the visible frame the main loop reads the level map, works out the next column's 30 tiles and its attributes, and stashes them in a buffer; then the NMI does nothing but stream that buffer to the PPU. Vblank is roughly 2270 cycles, enough for a column and its attributes before accounting for OAM DMA, audio, the NMI wrapper and other queued writes — but decode work done there instead of in the buffer is how a scroll engine runs out of vblank and tears.
 
 ## Related
 
 **Patterns:** [Nametables and Scrolling](/patterns/nintendo-nes/assembly/rendering/nametable-scrolling), [Sprite 0 Split](/patterns/nintendo-nes/assembly/rendering/sprite-zero-split)
 
 **Vault:** [PPU](/vault/hardware/ppu) | [Nintendo Entertainment System](/vault/systems/nintendo-entertainment-system)
+
+The caller supplies one shared `ppu_ctrl_shadow`, a valid top-of-column VRAM address and a complete30-byte buffer. Main prepares data and address first, then publishes a ready byte last; NMI consumes only a published buffer and acknowledges it. Reuse or double-buffer it after that acknowledgement. The tile loop does not supply attribute updates; merge each changed2×2 quadrant without destroying the other bits. Restore scroll after all `$2006/$2007` writes. Measure the whole NMI budget rather than assuming this loop can be added for free.
