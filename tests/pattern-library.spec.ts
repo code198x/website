@@ -160,3 +160,23 @@ test('collection callers expose reusable code, captures and verified sources',as
  await expect(page.locator('.pattern-prose')).toContainText('BBC');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
+
+test('audited examples show maintained code, caller contracts and honest limits',async({page})=>{
+ for(const [path,code,explanation] of [
+  ['commodore-64/assembly/rendering/smooth-scrolling','coarse_left:','does not prove tear-free'],
+  ['sinclair-zx-spectrum/assembly/framework/state-machine-loop','state_paused:','history survives transitions'],
+  ['sinclair-zx-spectrum/assembly/rendering/character-printing','print_char:','leaves attributes alone'],
+  ['commodore-amiga/assembly/audio/four-channel-music','music_init:','MOD'],
+  ['nintendo-nes/assembly/physics/sprite-movement-bounds','move_player:','inclusive'],
+ ]) {
+  await page.goto(`/patterns/${path}/`);
+  const article=page.locator('.pattern-prose');
+  await expect(article).toContainText(code);
+  await expect(article).toContainText(explanation);
+  await expect(article).not.toContainText('Code sample unavailable');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ }
+ await page.goto('/patterns/nintendo-nes/assembly/rendering/sprite-zero-split/');
+ await expect(page.locator('.pattern-prose')).toContainText('no execution record');
+ await expect(page.locator('.pattern-prose')).toContainText('missed_split:');
+});

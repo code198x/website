@@ -14,172 +14,30 @@ related:
   vault: ["sinclair-zx-spectrum"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
 
-## Overview
 
-Instead of one monolithic game loop, use a state machine to separate different phases of your game. Each state has its own update logic, and transitions happen when conditions are met. This makes code cleaner, easier to debug, and simpler to extend.
+**Code status: complete maintained caller, executed through the 48K ROM.** The automated check drives real Q and Space events through title, play, pause, resume and game over. It checks held-key behaviour and the session clock; it does not establish an entire game's frame budget.
 
-**Note on `key_pressed` values:** this pattern uses an extended keyboard reader that returns:
+[Audit execution record](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/spectrum-states.json) · [Scope and remaining checks](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/README.md)
 
-| Value | Key | Used for |
-|------:|-----|----------|
-| 0 | (none) | No input |
-| 1-4 | Up/Down/Left/Right | Movement (per [keyboard-reading](/patterns/sinclair-zx-spectrum/assembly/input/keyboard-reading)) |
-| 5 | Space | State transitions (start, restart, pause toggle) |
 
-The basic `keyboard-reading` pattern only returns 0-4. Extend it to also check port `$7FFE` bit 0 (Space) and return 5 when pressed.
+## Four states, one update loop
 
-## Code
+A title screen should not keep moving the player behind the menu. Pausing should freeze the current game, then resume it rather than start another one. This small caller makes those choices visible with the border: blue for title, green for play, yellow for pause and red for game over.
 
-```z80
-; =============================================================================
-; STATE MACHINE LOOP - ZX SPECTRUM
-; Game flow with distinct states
-; Taught: Game 1 (Ink War), Unit 7
-; CPU: Variable | Memory: ~50 bytes
-; =============================================================================
+Build `demo.tap` with the adjacent Makefile and load it on a 48K Spectrum. Space starts, pauses and resumes; Q ends a running game; Space returns from game over to the title. Reset the machine to leave. The caller starts at `$8000`, owns its stack at `$FF00`, keeps the 48K ROM visible for IM 1 interrupts, and uses the maintained QAOP/Space reader and frame waiter.
 
-; Game states
-GS_TITLE    equ     0           ; Title screen
-GS_PLAYING  equ     1           ; Main gameplay
-GS_GAMEOVER equ     2           ; Game over screen
-GS_PAUSED   equ     3           ; Paused (optional)
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/state-machine-loop/demo.asm" lang="z80" title="A complete state-machine caller" />
 
-main_loop:
-    halt                        ; Wait for frame
+## Fit it into a game
 
-    ; Dispatch based on current state
-    ld      a, (game_state)
+Sample controls once per update. Compute new presses from that sample and the previous sample, then dispatch the current state. The history survives transitions: holding Space must not start a game and immediately pause it on the next update. Seeding history on entry also prevents a key held during loading from becoming a new press.
 
-    or      a                   ; State 0? (title)
-    jr      z, state_title
+`update_state` changes AF, BC and HL, preserves DE, IX and IY, and consumes writable `game_state`, `pressed` and `game_ticks`. States are 0–3; an invalid value deliberately halts for diagnosis. Q takes priority if loss and pause arrive together. Replace those demo actions with your game's rules.
 
-    cp      GS_PLAYING
-    jr      z, state_playing
+`game_ticks` increments only in play. Starting a fresh session clears it; resuming preserves it. It is a wrapping 16-bit demonstration counter, not a permanent score or wall clock. The transition update counts as a playing update before entering pause or game over. `draw_state` also changes DE and writes the border/MIC/beeper port; replace it if another routine owns that output.
 
-    cp      GS_GAMEOVER
-    jr      z, state_gameover
+Keep drawing separate from state updates. Menus, play and pause can share drawing without sharing movement. Add work incrementally and measure the complete update before assuming it fits the frame.
 
-    cp      GS_PAUSED
-    jr      z, state_paused
-
-    jp      main_loop           ; Unknown state, skip
-
-; === TITLE STATE ===
-state_title:
-    call    read_keyboard
-    ld      a, (key_pressed)
-    cp      5                   ; Space pressed?
-    jr      nz, main_loop
-
-    ; Start game
-    call    init_game
-    ld      a, GS_PLAYING
-    ld      (game_state), a
-    jp      main_loop
-
-; === PLAYING STATE ===
-state_playing:
-    call    read_keyboard
-    call    handle_input
-    call    update_game
-    call    check_game_over
-
-    ld      a, (is_game_over)
-    or      a
-    jr      z, main_loop
-
-    ; Transition to game over
-    ld      a, GS_GAMEOVER
-    ld      (game_state), a
-    call    show_game_over
-    jp      main_loop
-
-; === GAME OVER STATE ===
-state_gameover:
-    call    read_keyboard
-    ld      a, (key_pressed)
-    cp      5                   ; Space to restart?
-    jr      nz, main_loop
-
-    ; Return to title
-    ld      a, GS_TITLE
-    ld      (game_state), a
-    call    show_title
-    jp      main_loop
-
-; === PAUSED STATE ===
-state_paused:
-    call    read_keyboard
-    ld      a, (key_pressed)
-    cp      5                   ; Space to unpause?
-    jr      nz, main_loop
-
-    ld      a, GS_PLAYING
-    ld      (game_state), a
-    jp      main_loop
-
-; Placeholder routines
-init_game:      ret
-update_game:    ret
-check_game_over: ret
-show_game_over: ret
-show_title:     ret
-handle_input:   ret
-read_keyboard:  ret
-
-; Variables
-game_state:     defb    GS_TITLE
-is_game_over:   defb    0
-key_pressed:    defb    0
-```
-
-## Trade-offs
-
-| Aspect | Cost |
-|--------|------|
-| CPU | Small overhead for state dispatch |
-| Memory | ~50 bytes for framework |
-| Limitation | None - this is good practice |
-
-**When to use:** Any game with multiple screens or phases.
-
-**When to avoid:** Very simple single-screen games where it's overkill.
-
-## State Transition Diagram
-
-```
-         ┌─────────────┐
-         │             │
-    ┌────▶   TITLE     │
-    │    │             │
-    │    └──────┬──────┘
-    │           │ Space
-    │           ▼
-    │    ┌─────────────┐
-    │    │             │◀────┐
-    │    │   PLAYING   │     │ Space
-    │    │             │─────▶ PAUSED
-    │    └──────┬──────┘◀────┘
-    │           │ Game Over
-    │           ▼
-    │    ┌─────────────┐
-    │    │             │
-    └────│  GAMEOVER   │
-  Space  │             │
-         └─────────────┘
-```
-
-## Benefits
-
-1. **Separation of concerns:** Each state is self-contained
-2. **Easy to add states:** New screens just need new state code
-3. **Clear transitions:** State changes are explicit
-4. **Debuggable:** Easy to trace which state caused issues
-
-## Related
-
-**Patterns:** [Game Loop (HALT)](/patterns/sinclair-zx-spectrum/assembly/framework/game-loop-halt), [Keyboard Reading](/patterns/sinclair-zx-spectrum/assembly/input/keyboard-reading)
-
-**Vault:** [ULA](/vault/hardware/ula) | [ZX Spectrum](/vault/systems/sinclair-zx-spectrum)
+**Related:** [Game loop](/patterns/sinclair-zx-spectrum/assembly/framework/game-loop-halt/), [Input to sound](/patterns/sinclair-zx-spectrum/assembly/framework/input-to-sound/).
