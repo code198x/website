@@ -89,14 +89,14 @@ test('next-tier BBC patterns are discoverable without claiming a curriculum trac
  await page.goto('/patterns/');
  await page.getByRole('combobox',{name:'Machine',exact:true}).selectOption('bbc-micro');
  const rows=page.locator('[data-pattern]:visible');
- await expect(rows).toHaveCount(1);
+ await expect(rows).toHaveCount(2);
  await rows.getByRole('link',{name:'A game loop using MOS',exact:true}).click();
  await expect(page).toHaveURL(/bbc-micro\/assembly\/framework\/mos-game-loop/);
  await expect(page.locator('.pattern-prose')).toContainText('MODE 6');
  await expect(page.locator('.pattern-prose')).toContainText('OSBYTE');
  await page.getByRole('link',{name:'More BBC Micro patterns'}).click();
  await expect(page).toHaveURL(/patterns\/platform\/bbc-micro/);
- await expect(page.locator('[data-pattern]:visible')).toHaveCount(1);
+ await expect(page.locator('[data-pattern]:visible')).toHaveCount(2);
 });
 
 test('loop contracts and maintained callers fit narrow and wide pages',async({page})=>{
@@ -139,4 +139,24 @@ test('turn callers are discoverable with usable code and explicit timing choices
  await page.goto('/patterns/cross-platform/framework/game-loop-choices/');
  await expect(page.locator('.pattern-prose')).toContainText('A turn-based game can certainly have a timer');
  await expect(page.locator('.pattern-prose')).toContainText('A display refresh need not advance the rules');
+});
+
+
+test('collection callers expose reusable code, captures and verified sources',async({page})=>{
+ for(const system of ['commodore-64','sinclair-zx-spectrum','commodore-amiga','nintendo-nes','bbc-micro']) {
+  await page.goto(`/patterns/${system}/assembly/framework/collect-and-respond/`);
+  for(const text of ['boxes_overlap:','item_active','draw_screen:','trigger_sound:']) {
+   await expect(page.locator('.lesson-listing').filter({hasText:text}).first()).toBeVisible();
+  }
+  const image=page.locator('.pattern-prose figure img').first();
+  await expect(image).toBeVisible();
+  expect(await image.evaluate((img:HTMLImageElement)=>img.complete && img.naturalWidth>0)).toBe(true);
+  await expect(page.getByRole('link',{name:'Read the execution record',exact:true})).toHaveAttribute('href',/\/blob\/[0-9a-f]{40}\/.*\/verification\/results\.json$/);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+ }
+ await page.goto('/patterns/cross-platform/framework/collect-and-respond/');
+ await expect(page.locator('.pattern-prose')).toContainText('Spectrum');
+ await expect(page.locator('.pattern-prose')).toContainText('BBC');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
 });
