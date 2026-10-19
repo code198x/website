@@ -89,15 +89,16 @@ test('next-tier BBC patterns are discoverable without claiming a curriculum trac
  await page.goto('/patterns/');
  await page.getByRole('combobox',{name:'Machine',exact:true}).selectOption('bbc-micro');
  const rows=page.locator('[data-pattern]:visible');
- await expect(rows).toHaveCount(3);
+ await expect(rows).toHaveCount(4);
  await expect(rows.getByRole('link',{name:'Masked Sprites with Background Restoration',exact:true})).toHaveCount(1);
+ await expect(rows.getByRole('link',{name:'Separate Background Buffers for Overlapping Objects',exact:true})).toHaveCount(1);
  await rows.getByRole('link',{name:'A game loop using MOS',exact:true}).click();
  await expect(page).toHaveURL(/bbc-micro\/assembly\/framework\/mos-game-loop/);
  await expect(page.locator('.pattern-prose')).toContainText('MODE 6');
  await expect(page.locator('.pattern-prose')).toContainText('OSBYTE');
  await page.getByRole('link',{name:'More BBC Micro patterns'}).click();
  await expect(page).toHaveURL(/patterns\/platform\/bbc-micro/);
- await expect(page.locator('[data-pattern]:visible')).toHaveCount(3);
+ await expect(page.locator('[data-pattern]:visible')).toHaveCount(4);
 });
 
 test('loop contracts and maintained callers fit narrow and wide pages',async({page})=>{
@@ -254,5 +255,41 @@ test('rendering families and components remain accessible',async({page})=>{
   await page.goto(`/patterns/${path}/`);
   expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
  }
+ }
+});
+
+
+test('sprite lifecycle connects machine-specific reusable implementations',async({page})=>{
+ await page.goto('/patterns/cross-platform/rendering/sprite-lifecycle/');
+ const prose=page.locator('.pattern-prose');
+ for(const system of ['sinclair-zx-spectrum','commodore-amiga','bbc-micro']){
+  await expect(prose.locator(`table a[href="/patterns/${system}/assembly/rendering/sprite-lifecycle/"]`)).toHaveCount(1);
+ }
+ await expect(prose).toContainText('reverse');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('sprite lifecycle routines publish code, pinned evidence and genuine captures',async({page})=>{
+ for(const system of ['sinclair-zx-spectrum','commodore-amiga','bbc-micro']){
+  await page.goto(`/patterns/${system}/assembly/rendering/sprite-lifecycle/`);
+  const prose=page.locator('.pattern-prose');
+  await expect(prose).not.toContainText('Code sample unavailable');
+  expect(await prose.locator('.lesson-listing').count()).toBeGreaterThanOrEqual(2);
+  await expect(prose.getByRole('link',{name:'Execution record',exact:true})).toHaveAttribute('href',/\/blob\/[0-9a-f]{40}\/docs\/sprite-lifecycle\/verification\/results.json$/);
+  const img=prose.locator('img[src*="sprite-lifecycle"]');
+  await img.scrollIntoViewIfNeeded();
+  await expect.poll(()=>img.evaluate((e:HTMLImageElement)=>e.complete&&e.naturalWidth>0)).toBe(true);
+  expect(await img.evaluate((e:HTMLImageElement)=>Number(e.getAttribute('width'))/Number(e.getAttribute('height'))===e.naturalWidth/e.naturalHeight)).toBe(true);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ }
+});
+
+test('sprite lifecycle pages remain accessible with either colour preference',async({page})=>{
+ for(const colorScheme of ['light','dark'] as const){
+  await page.emulateMedia({colorScheme});
+  for(const path of ['cross-platform/rendering/sprite-lifecycle','sinclair-zx-spectrum/assembly/rendering/sprite-lifecycle','commodore-amiga/assembly/rendering/sprite-lifecycle','bbc-micro/assembly/rendering/sprite-lifecycle']){
+   await page.goto(`/patterns/${path}/`);
+   expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+  }
  }
 });

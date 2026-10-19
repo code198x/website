@@ -1,0 +1,53 @@
+---
+title: "Separate Background Buffers for Overlapping Objects"
+summary: "Extend BBC MODE4 masked drawing beyond one save slot. Each object gets its own background buffer and old cell address, with a running two-object caller."
+platform: "bbc-micro"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["sprites", "save-under", "mask", "overlap", "mode4"]
+related:
+  patterns: ["sprite-lifecycle", "masked-sprites", "mos-game-loop"]
+  vault: ["sprites", "bbc-micro"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+One object can use one saved cell. A second object needs its own saved bytes, particularly when the two occupy the same cell. These helpers take an explicit buffer pointer while reusing the existing masked drawing routine.
+
+<img src="/images/patterns/sprite-lifecycle/bbc.png" alt="Two original BBC MODE4 software objects moving through a patterned strip" width="640" height="512" loading="lazy" />
+
+*Original Code198x program captured in Emu198x. Objects are 8×8 and byte aligned.*
+
+**Code status: maintained helpers and a running BBC Model B MOS1.20/BASICII caller.** [Execution record](https://github.com/code198x/code-samples/blob/df5b3ae5bc07ffc82336908b5dd9aee3bc2045c4/docs/sprite-lifecycle/verification/results.json). See the [shared lifecycle](/patterns/cross-platform/rendering/sprite-lifecycle/) for the same restoration problem on Spectrum and Amiga.
+
+## Select the cell and its buffer
+
+Include `background.inc` with the existing `masked-sprites/masked.inc`. `screen_ptr` (`&70/&71`) selects a complete byte-aligned character cell in the ordinary MODE4 bitmap. `back_ptr` (`&74/&75`) selects eight caller-owned saved bytes, separate from the bitmap, source, stack, code and other live buffers. `pairs_ptr` (`&72/&73`) still selects the interleaved keep-mask/image data for `draw_masked_cell`.
+
+A/Y/flags change; X survives. IRQ code must preserve the working registers and owned zero-page. Separate buffers support sequential objects; shared pointer bytes still require exclusive use.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/sprite-lifecycle/background.inc" lang="asm" title="Copy a MODE4 cell to and from an explicit buffer" />
+
+The helpers remember neither an address nor an object. Keep the old cell address with the corresponding buffer. Restore at that address before selecting the new one.
+
+```asm
+    ; Select A's cell and under_a buffer.
+    jsr save_cell_to_buffer
+    jsr draw_masked_cell
+    ; Select B and under_b, then save/draw B.
+    ; Next update: restore OLD B, then OLD A; only then choose new positions.
+```
+
+The earlier [single-object entry](/patterns/bbc-micro/assembly/rendering/masked-sprites/) keeps its original interface. Its one global save slot is not used by this caller; its masked drawing routine is. The unused single-slot helpers remain in that include, a small code/state cost of keeping the existing component intact.
+
+## Run two objects together
+
+`make` produces `build/loader.bas`. Load or type it and `RUN`. The loader selects MODE4, reserves `HIMEM=&3000` and installs the original code. MOS IRQ remains active; OSBYTE19 supplies vertical sync. Reset to leave.
+
+The moving object crosses the fixed object's cell. Save/draw A then B, restore B then A. When they share a cell, B's buffer contains part of A; restoring in the opposite order brings those pixels back.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/sprite-lifecycle/demo.asm" lang="asm" title="Two cells, two save buffers and explicit old addresses" />
+
+Three independent composition/restoration cases cover shared cells, adjacent cells and the bitmap end. The wrong-order version must fail the same byte comparison, and image sources must survive unchanged. A separate displayed caller check observes progression. This is not an original-hardware or deadline qualification.
+
+The component remains 8×8 and byte aligned. It does not clip or translate a CRTC-scrolled screen. Different modes and arbitrary pixel positions need further implementations. A changing background also makes saved bytes stale: remove objects before changing the scenery, or rebuild damaged tiles from the world. The [shared lifecycle](/patterns/cross-platform/rendering/sprite-lifecycle/) explains those choices.
