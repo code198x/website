@@ -6,14 +6,18 @@ export const machines = [
   {id:'nintendo-nes',name:'NES',cpu:'6502 · ca65'},
 ] as const;
 export type Machine = typeof machines[number]['id'];
-export const sampleBase=(machine:Machine)=>`${machine}/patterns/assembly/framework/input-to-sound`;
-export const sourceRoot='https://github.com/code198x/code-samples/blob/prototype/pattern-library-usable-code/';
+export const sampleBase=(machine:Machine)=>`${machine==='nintendo-nes'?'nintendo-entertainment-system':machine}/patterns/assembly/framework/input-to-sound`;
+export const sourceRevision='ca95c288b071f307a925b03d208473441fbf9629';
+export const sourceRoot=`https://github.com/code198x/code-samples/blob/${sourceRevision}/`;
 export const codeVersions = {
  'commodore-64': {
   read:'commodore-64/patterns/assembly/input/joystick-reading/joystick.inc',
   presses:'commodore-64/patterns/assembly/input/joystick-reading/joystick.inc',
   sound:'commodore-64/patterns/assembly/audio/sid-note-trigger/sid-note.inc',
   usage:sampleBase('commodore-64')+'/demo.asm',
+  demo:sampleBase('commodore-64')+'/demo.asm',
+  evidenceRecord:'scripts/evidence/pattern-library-prototype.json',
+  run:'Load demo.prg on a PAL C64 and type RUN. Use joystick port 2 with keyboard keys released. Reset to leave.',
   held:'joy2',fresh:'joy2_new',fire:'$10',
   result:'Both ports return pressed bits: Up=1, Down=2, Left=4, Right=8, Fire=16. This caller uses case-labelled port 2.',
   init:'Call joy_init once, with I/O visible, CIA1 keyboard scanning stopped and timer port outputs disabled. It clears both held masks, new-press masks and counters. The complete caller below performs the takeover.',
@@ -25,33 +29,42 @@ export const codeVersions = {
  'sinclair-zx-spectrum': {
   read:sampleBase('sinclair-zx-spectrum')+'/input.inc',presses:sampleBase('sinclair-zx-spectrum')+'/presses.inc',
   sound:'sinclair-zx-spectrum/patterns/assembly/audio/sound-beep/sound-beep.inc',
-  usage:sampleBase('sinclair-zx-spectrum')+'/use.asm',held:'controls',fresh:'new_presses',fire:'$10',
+  usage:sampleBase('sinclair-zx-spectrum')+'/use.inc',
+  demo:sampleBase('sinclair-zx-spectrum')+'/demo.asm',
+  evidenceRecord:'scripts/evidence/pattern-library-spectrum.json',
+  run:'Load demo.tap through the 48K ROM, or open demo.sna. Use QAOP and Space. A new Space press changes the border and plays one click. Reset to leave.',held:'controls',fresh:'new_presses',fire:'$10',
   result:'QAOP and Space return simultaneous held bits: Up=1, Down=2, Left=4, Right=8, Fire=16. This differs from the older single-direction example.',
   init:'Call initialise_input once. The fragment disables interrupts and clears previous_controls and the shared ULA output byte. Include input.inc, presses.inc and sound-beep.inc once in your own program.',
   update:'Call update_input once from your update loop. read_controls samples QAOP and Space; detect_presses compares the stored byte with the previous sample. Both held controls and new presses remain available to the rest of the update.',
   owns:'The reader changes AF, B and C; detect_presses changes AF and B. The beep changes AF, B, D and L. Keep the state in writable RAM and agree a shared ula_output byte with all border, MIC and speaker writers.',
-  timing:'This 48K beeper routine blocks until its click finishes, with interrupts disabled. The rest of the game pauses during it. It is suitable for a short click; continuous music needs a different design. Do not add HALT to this interrupt-disabled caller.',
-  evidence:'The new reader, edge routine and integration fragment have been assembled together. They have not been execution-tested as a combined program. The reused sound-beep routine has a separate published 48K PAL Emu198x execution record.',
+  timing:'This 48K beeper routine blocks until its click finishes, with interrupts disabled. The rest of the game pauses during it. It is suitable for a short click; continuous music needs a different design. Do not HALT while interrupts are disabled. The complete demo enables the ROM interrupt around its frame wait and disables it again before the update.',
+  evidence:'Executed on a 48K PAL Spectrum in Emu198x 0.32.5: 39 input stages, all 32 QAOP/Space masks, sound captures and held/released/repressed events. A fresh ROM tape load also responds correctly. The negative control rejects an unwanted extra trigger. No original-hardware claim.',
  },
  'commodore-amiga': {
   read:sampleBase('commodore-amiga')+'/input.inc',presses:sampleBase('commodore-amiga')+'/presses.inc',
   sound:'commodore-amiga/patterns/assembly/audio/playing-a-sample/paula-sample.inc',
-  usage:sampleBase('commodore-amiga')+'/use.asm',held:'controls',fresh:'new_presses',fire:'$0010',
+  usage:sampleBase('commodore-amiga')+'/use.inc',
+  demo:sampleBase('commodore-amiga')+'/demo.asm',
+  evidenceRecord:'scripts/evidence/pattern-library-amiga.json',
+  run:'Boot demo.adf on an A500 OCS PAL with Kickstart 1.3. Port 2 Fire starts the looping sample and changes the background; release stops DMA. Reset to leave.',held:'controls',fresh:'new_presses',fire:'$0010',
   result:'Physical port 2: directions from JOY1DAT, Fire from CIA-A bit 7. The stored word uses Up=$0100, Down=$0001, Left=$0200, Right=$0002, Fire=$0010.',
   init:'Start inside a program that owns the controller and audio channel 0. Put $DFF000 in A5 and call initialise_input. Keep the channel off for at least a frame before the first update; the shown period is 424.',
   update:'Call update_input once per PAL frame. The caller starts the looping sample on a new Fire press and stops it on release. BTST on memory is byte-sized, so the fragment tests bit 4 in controls+1, the low byte of the word.',
   owns:'Reader and edge routines change D0/D1 and condition codes. A5 must remain the custom-chip base. The sound driver preserves registers but needs caller-supplied A0/D0/D1/D2. State must be writable; sample data must be even-aligned chip RAM. This is a hardware-owning caller, not an AmigaDOS-safe channel allocator.',
-  timing:'Paula fetches samples while the CPU continues. This driver repeats its sample until stop_sample; it is not a one-shot effect. The channel must remain off for more than two sample periods before restarting. The caller’s once-per-frame policy and period 424 provide that gap.',
-  evidence:'The new reader, edge routine, caller and sample data have been assembled together as a Hunk executable. The combined program has not been executed. The reused Paula driver has its own published A500 OCS PAL cold-boot execution record.',
+  timing:'Paula fetches samples while the CPU continues. This driver repeats its sample until stop_sample; it is not a one-shot effect. The channel must remain off for more than two sample periods before restarting. The caller’s frame wait and period 424 provide that gap. The recorded emulator output has a short decaying tail after DMA stops.',
+  evidence:'Cold-booted from ADF on an A500 OCS PAL with Kickstart 1.3 in Emu198x 0.34.2: 25 input stages, all nine normal stick positions with/without Fire, per-bit edge counts and captured sound. The emulator resolves opposing directions before the port read. The negative control rejects an extra trigger; silence is checked after the recorded filter tail settles. No original-hardware claim.',
  },
  'nintendo-nes': {
   read:sampleBase('nintendo-nes')+'/input.inc',presses:sampleBase('nintendo-nes')+'/presses.inc',sound:sampleBase('nintendo-nes')+'/tone.inc',
-  usage:sampleBase('nintendo-nes')+'/use.asm',held:'controls',fresh:'new_presses',fire:'$80',
+  usage:sampleBase('nintendo-nes')+'/use.inc',
+  demo:sampleBase('nintendo-nes')+'/demo.asm',
+  evidenceRecord:'scripts/evidence/pattern-library-nes.json',
+  run:'Load demo.nes on an NTSC NES configuration. Controller 1 A starts pulse 1 and changes the background once; release A to stop the tone. Reset to leave.',held:'controls',fresh:'new_presses',fire:'$80',
   result:'The NES keeps its own layout: A=$80, B=$40, Select=$20, Start=$10, Up=$08, Down=$04, Left=$02, Right=$01. A is the action button here.',
   init:'Include the three .inc files once in a ca65 program with writable BSS. Call initialise_input from your startup code. .res allocates RAM; it does not clear it. This bounded caller starts with the other audio channels disabled and no DMC playback.',
   update:'Call update_input once per update, after your normal frame synchronisation. read_controls latches and shifts eight controller bits. detect_presses keeps the previous byte. A new A press starts pulse 1; releasing A stops it.',
   owns:'The reader changes A/X and flags; edge and tone routines change A and flags. Y survives. The caller owns pulse 1 and the shared $4015 enable mask. Do not also write these registers in an NMI or music driver. This simple controller reader assumes no DMC sample DMA.',
   timing:'Pulse 1 continues after tone_on returns; tone_off disables that channel. The fixed timer $0FD is about 440 Hz on NTSC. PAL needs a different value. This is a bounded pulse caller, not a music engine or DMC-safe input routine.',
-  evidence:'Reader, edge routine, pulse driver and caller have been assembled and linked together. They have not been executed as a cartridge. The fragment assumes an existing NES reset, frame synchronisation, memory map and vectors; it is not a complete bootable game.',
+  evidence:'Booted as an NTSC NROM cartridge in Emu198x 0.34.2: 263 input stages, all 256 controller masks, new-press counts, pulse status and captured audio through press/hold/release/repress. Updates continue while the tone plays; the negative control rejects an extra event. DMC is disabled. No original-hardware claim.',
  },
 } satisfies Record<Machine,Record<string,string>>;
