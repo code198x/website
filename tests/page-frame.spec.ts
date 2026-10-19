@@ -59,7 +59,7 @@ for (const width of [390, 1440, 1920]) {
 import {execFileSync} from 'node:child_process';
 const families: Record<string, string[]> = JSON.parse(execFileSync('python3', ['scripts/check-page-frames.py', '--json'], {encoding: 'utf8'}));
 // Approved section openings span the viewport; their reading frames remain bounded.
-const fullBleedRoutes = new Set(['/about/','/curriculum/','/demoscene/','/family/','/family/asm198x/','/field-notes/','/from-the-metal/','/setup/','/start-here/','/systems/','/teaching/','/updates/','/vault/']);
+const fullBleedRoutes = new Set(['/about/','/curriculum/','/demoscene/','/family/','/family/asm198x/','/field-notes/','/from-the-metal/','/setup/','/start-here/','/systems/','/teaching/','/updates/','/vault/','/vault/studies/adventure/','/vault/studies/boulder-dash/','/vault/studies/spacewar/']);
 for (const routes of Object.values(families)) for (const width of [390, 1440, 1920]) {
   const route = routes[0] === '/404.html' ? '/not-a-real-page/' : routes[0];
   test(`one outer frame: ${route} at ${width}px`, async ({page}) => {
