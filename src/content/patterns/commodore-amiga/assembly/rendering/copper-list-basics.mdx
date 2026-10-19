@@ -18,7 +18,7 @@ related:
 
 ## Overview
 
-The Copper is a coprocessor that executes a list of instructions in sync with the display beam. It can wait for specific scanlines and write to custom chip registers, enabling per-scanline colour changes, sprite multiplexing, and complex visual effects. Every Amiga program needs a copper list.
+The Copper is a coprocessor that executes a list of instructions in sync with the display beam. It can wait for specific scanlines and write to custom chip registers, enabling per-scanline colour changes, sprite multiplexing, and complex visual effects. A dedicated graphics program can use its own list; an OS-managed application can leave display setup to the system.
 
 ## Code
 
@@ -43,6 +43,11 @@ SPR0PTL     equ $122            ; Sprite 0 pointer low
 start:
             lea     CUSTOM,a5
 
+            move.w  #$7fff,$09a(a5)    ; exclusive, reset-to-leave caller
+            move.w  #$7fff,$09c(a5)
+            move.w  #$7fff,DMACON(a5)
+            move.w  #$0200,$100(a5)     ; colour display, zero bitplanes
+
             ; --- Set sprite pointer in copper list ---
             lea     sprite_data,a0
             move.l  a0,d0
@@ -53,13 +58,23 @@ start:
             lea     sprptl_val,a1
             move.w  d0,(a1)             ; Store low word
 
+            ; Disabled sprite blocks for the other seven DMA channels.
+            lea     disabled_sprite,a0
+            move.l  a0,d0
+            lea     $dff128,a0
+            moveq   #6,d1
+.clear_other_sprites:
+            move.l  d0,(a0)
+            addq.l  #8,a0
+            dbra    d1,.clear_other_sprites
+
             ; --- Install copper list ---
             lea     copperlist,a0
             move.l  a0,COP1LC(a5)       ; Set copper list address
             move.w  d0,COPJMP1(a5)      ; Strobe to start copper
 
             ; --- Enable DMA ---
-            move.w  #$83a0,DMACON(a5)   ; Master + copper + sprites + bitplanes
+            move.w  #$82a0,DMACON(a5)   ; Master + copper + sprites
 
 mainloop:
             bra.s   mainloop
@@ -90,15 +105,17 @@ sprptl_val: dc.w    $0000
             ; End copper list
             dc.w    $ffff,$fffe         ; WAIT forever (end marker)
 
+disabled_sprite: dc.w 0,0
+
 ; === SPRITE DATA ===
             even
 sprite_data:
-            dc.w    $6050,$7000         ; Control words (Y=96, X=80, height=16)
-            ; 16 lines of sprite graphics
-            dc.w    $0000,$0000
-            dc.w    $07e0,$0000
-            dc.w    $1ff8,$0420
-            ; ... more sprite data ...
+            dc.w    $6050,$7000         ; Control words (beam Y=96, beam X=160, height=16)
+            ; Sixteen rows, two words per row.
+            dc.w $0000,0,$07e0,0,$1ff8,0,$3ffc,0
+            dc.w $7ffe,0,$ffff,0,$ffff,0,$ffff,0
+            dc.w $ffff,0,$ffff,0,$ffff,0,$7ffe,0
+            dc.w $3ffc,0,$1ff8,0,$07e0,0,$0000,0
             dc.w    $0000,$0000         ; End marker
 ```
 
@@ -106,17 +123,17 @@ sprite_data:
 
 | Aspect | Cost |
 |--------|------|
-| CPU | None (copper runs independently) |
+| CPU | No per-line polling; list setup and patching still cost CPU time |
 | Memory | 4 bytes per MOVE, 4 bytes per WAIT |
 | Limitation | Can only write to custom chip registers |
 
-**When to use:** All Amiga programs. You need a copper list for any graphics.
+**When to use:** A dedicated display needing beam-synchronised custom-register writes.
 
-**When to avoid:** Never - it's mandatory for display setup.
+**When to avoid:** An OS-managed window where the graphics system owns the display.
 
 ## Copper Instructions
 
-The copper understands only two instructions:
+MOVE and WAIT are the main instructions used here; SKIP is described below.
 
 ### WAIT
 
@@ -135,7 +152,7 @@ Write a value to a register:
 dc.w    REGISTER,VALUE
 ```
 - Register must be in range `$000-$1FE`
-- Writes happen instantly when the beam reaches that position
+- A MOVE needs available Copper bus slots; earlier WAITs and DMA load affect its timing.
 
 ## Colour Register Reference
 
@@ -192,3 +209,5 @@ SKIP enables limited conditional branching. Standard idiom: SKIP followed by a "
 **Patterns:** [Copper Colour Bars](/patterns/commodore-amiga/assembly/rendering/copper-colour-bars), [VBlank Game Loop](/patterns/commodore-amiga/assembly/framework/vblank-game-loop), [Sprite Control Words](/patterns/commodore-amiga/assembly/rendering/sprite-control-words)
 
 **Vault:** [Commodore Amiga](/vault/systems/commodore-amiga) | [Copper](/vault/hardware/copper)
+
+The list and complete sprite block must be word-aligned Chip RAM and remain valid during DMA. This exclusive boot example has no OS-return path. It changes A0/A1/A5/D0/D1 and condition codes and owns all eight sprite channels, its palette entries, the Copper and background colour. A reusable application must establish its display window/fetch configuration.
