@@ -9,12 +9,14 @@ for (const route of ['about', 'standards', 'press', 'teaching']) {
       const style = getComputedStyle(element);
       const box = element.getBoundingClientRect();
       const heading = element.querySelector('h1')!.getBoundingClientRect();
-      return { left: box.x, right: innerWidth - box.right, gutter: parseFloat(style.paddingLeft), opening: parseFloat(style.paddingTop), ending: parseFloat(style.paddingBottom), headingInset: heading.x - box.x };
+      const bar = document.querySelector('.breadcrumbs')!.getBoundingClientRect();
+      return { left: box.x, right: innerWidth - box.right, gutter: parseFloat(style.paddingLeft), opening: box.top + parseFloat(style.paddingTop) - bar.bottom, ending: parseFloat(style.paddingBottom), headingInset: heading.x - box.x };
     });
     expect(spacing.left).toBeCloseTo(spacing.right, 0);
     expect(spacing.gutter).toBeGreaterThanOrEqual(16);
     expect(spacing.headingInset).toBeCloseTo(spacing.gutter, 0);
-    expect(spacing.opening).toBe(route === 'press' ? 0 : 40);
+    // The bar owns the space under it: 48px, 32px on a phone (umbrella identity §7).
+    expect(spacing.opening).toBeCloseTo(page.viewportSize()!.width <= 600 ? 32 : 48, 0);
     expect(spacing.ending).toBeGreaterThanOrEqual(64);
     const body = page.locator('.reading-body');
     const rail = page.locator('.reading-toc');

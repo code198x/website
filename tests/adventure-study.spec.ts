@@ -6,7 +6,8 @@ test('Adventure preserves readable diagrams, optional puzzles and source navigat
  await page.goto(route);
  await page.evaluate(()=>document.fonts.ready);
  await expect(page.locator('main h1')).toHaveCount(1);
- await expect(page.locator('.article-opening .breadcrumbs')).toHaveCount(1);
+ await expect(page.locator('.article-opening .breadcrumbs')).toHaveCount(0);
+ await expect.poll(async()=>(await page.locator('.breadcrumbs').boundingBox())!.y+(await page.locator('.breadcrumbs').boundingBox())!.height).toBeLessThanOrEqual((await page.locator('.article-opening').boundingBox())!.y+1);
  const opening=await page.locator('.article-opening').boundingBox();
  const frame=await page.locator('main').boundingBox();
  expect(opening!.x).toBeCloseTo(frame!.x,1);
