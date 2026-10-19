@@ -6,7 +6,7 @@ test('figures leave the reading column without stretching the capture',async({pa
  await page.goto(preview);
  await expect(page.locator('main h1')).toHaveCount(1);
  await expect(page.locator('nav[aria-label="Breadcrumb"]')).toHaveCount(1);
- await expect(page.locator('.article-opening nav')).toHaveCount(1);
+ await expect(page.locator('.article-opening nav')).toHaveCount(0);
  const figure=page.locator('.article-figure').first();
  const image=figure.locator('img');
  await image.scrollIntoViewIfNeeded();
@@ -41,8 +41,10 @@ test('breadcrumb geometry recovers when soft navigation enters and leaves an ope
   await page.locator('#test-navigation').click();await page.waitForURL(`**${href}`);
  };
  await move(preview);
- await expect(page.locator('.article-opening .breadcrumbs')).toHaveCount(1);
- await expect.poll(()=>page.evaluate(()=>getComputedStyle(document.documentElement).getPropertyValue('--crumbs-height').trim())).toBe('0px');
+ await expect(page.locator('.article-opening .breadcrumbs')).toHaveCount(0);
+ const bar=await page.locator('.breadcrumbs').evaluate(e=>e.getBoundingClientRect().height);
+ expect(bar).toBeGreaterThan(0);
+ await expect.poll(()=>page.evaluate(()=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--crumbs-height')))).toBe(bar);
  await move('/vault/games/thrust/');
  await expect(page.locator('.breadcrumbs')).toHaveCount(1);
  await expect.poll(()=>page.locator('.breadcrumbs').evaluate(e=>e.getBoundingClientRect().height)).toBe(before);
