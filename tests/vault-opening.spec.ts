@@ -5,17 +5,18 @@ test('Vault opens with full-bleed illustrative collage and live title', async ({
   await page.evaluate(() => document.fonts.ready);
   await expect(page.locator('main h1')).toHaveCount(1);
   await expect(page.locator('main h1')).toHaveText('The Vault.');
-  const image = page.locator('.collage-stage img');
+  const image = page.locator('.vault-atlas .band-art img');
   await image.evaluate((element: HTMLImageElement) => element.decode());
   const source = await image.evaluate((element: HTMLImageElement) => element.currentSrc);
   expect(source).toContain(testInfo.project.name === 'mobile' ? 'portrait-' : 'landscape-');
-  const geometry = await page.locator('.collage-stage').evaluate(element => {
+  const geometry = await page.locator('.vault-atlas .band').evaluate(element => {
     const box = element.getBoundingClientRect();
     return { left: box.left, right: box.right, viewport: innerWidth };
   });
   expect(Math.abs(geometry.left)).toBeLessThanOrEqual(1);
   expect(Math.abs(geometry.right - geometry.viewport)).toBeLessThanOrEqual(1);
-  await expect(page.locator('.collage-caption')).toContainText('Original AI-generated illustration');
+  await expect(page.locator('.band-caption')).toContainText('imagined as a collage');
+  await expect(page.locator('.band-caption')).not.toContainText('AI-generated');
   await expect(page.locator('.constellation-node, .constellation-lines, .constellation-reading')).toHaveCount(0);
 });
 
@@ -37,10 +38,10 @@ test('Vault search remains directly reachable after the collage', async ({ page 
 test('Collage title and search remain usable without artwork and with enlarged text', async ({ page }) => {
   await page.route('**/images/vault-opening/**', route => route.abort());
   await page.goto('/vault/');
-  const before = await page.locator('.collage-caption').evaluate(element => parseFloat(getComputedStyle(element).fontSize));
+  const before = await page.locator('.band-caption').evaluate(element => parseFloat(getComputedStyle(element).fontSize));
   await page.addStyleTag({ content: 'html { font-size: 150% !important; }' });
   await expect(page.locator('main h1')).toBeVisible();
-  const after = await page.locator('.collage-caption').evaluate(element => parseFloat(getComputedStyle(element).fontSize));
+  const after = await page.locator('.band-caption').evaluate(element => parseFloat(getComputedStyle(element).fontSize));
   expect(after).toBeGreaterThan(before * 1.4);
   await page.getByRole('link', { name: 'Search the Vault', exact: true }).click();
   await expect(page.getByRole('searchbox', { name: 'Search article titles' })).toBeInViewport();

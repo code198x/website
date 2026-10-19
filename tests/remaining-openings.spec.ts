@@ -6,12 +6,13 @@ for (const route of routes) {
     await page.goto(`/${route}/`);
     await page.evaluate(() => document.fonts.ready);
     await expect(page.locator('main h1')).toHaveCount(1);
-    const art = page.locator('main .opening img');
+    const art = page.locator('main .opening-band .band-art img');
     if (route !== 'updates') {
       await expect.poll(() => art.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
       await art.evaluate((image: HTMLImageElement) => image.decode());
-      await expect(page.locator('.artwork-caption')).toContainText('Original AI-generated illustration');
-      const geometry = await page.locator('main .scene').evaluate(scene => {
+      await expect(page.locator('.band-caption')).toBeVisible();
+      await expect(page.locator('.band-caption')).not.toContainText('AI-generated');
+      const geometry = await page.locator('main .opening-band .band').evaluate(scene => {
         const bounds = scene.getBoundingClientRect();
         return {left: bounds.left, right: bounds.right, viewport: document.documentElement.clientWidth};
       });
@@ -25,7 +26,7 @@ for (const route of routes) {
     await page.addStyleTag({content: 'html { font-size: 200% !important; }'});
     expect(await page.locator('main').evaluate(main => main.scrollWidth <= main.clientWidth)).toBe(true);
     if (route !== 'updates') {
-      const geometry = await page.locator('main .opening').evaluate(opening => ({title: opening.querySelector('h1')!.getBoundingClientRect().bottom, picture: opening.querySelector('picture')!.getBoundingClientRect().top, caption: opening.querySelector('.artwork-caption')!.getBoundingClientRect().top}));
+      const geometry = await page.locator('main .opening-band').evaluate(opening => ({title: opening.querySelector('h1')!.getBoundingClientRect().bottom, picture: opening.querySelector('picture')!.getBoundingClientRect().top, caption: opening.querySelector('.band-caption')!.getBoundingClientRect().top}));
       expect(geometry.title).toBeLessThanOrEqual(geometry.picture + 1);
       expect(geometry.title).toBeLessThan(geometry.caption);
     }

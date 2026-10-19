@@ -19,7 +19,7 @@ for (const width of [1504, 1280, 512, 390, 320]) {
     }
     await page.evaluate(() => scrollTo(0, 0));
     const geometry = await page.evaluate(() => {
-      const frame = document.querySelector('.vault-mast')!.getBoundingClientRect();
+      const frame = document.querySelector('.vault-atlas .band-below')!.getBoundingClientRect();
       const header = document.querySelector('.site-bar')!.getBoundingClientRect();
       return {
         viewport: innerWidth, document: document.documentElement.scrollWidth,

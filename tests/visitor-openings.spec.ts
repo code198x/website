@@ -5,14 +5,14 @@ for (const route of ['start-here', 'about']) {
     await page.goto(`/${route}/`);
     await page.evaluate(() => document.fonts.ready);
     await expect(page.locator('main h1')).toHaveCount(1);
-    const image = page.locator(`.${route}-opening img`);
+    const image = page.locator(`.${route}-opening .band-art img`);
     await image.evaluate((element: HTMLImageElement) => element.decode());
     expect(await image.evaluate((element: HTMLImageElement) => element.currentSrc))
       .toContain(testInfo.project.name === 'mobile' ? 'phone-' : 'landscape-');
-    await expect(page.locator('.artwork-caption')).toContainText('Original AI-generated illustration');
+    await expect(page.locator('.band-caption')).not.toContainText('AI-generated');
     for (const width of [320, 390, 700, 701, 768, 1440, 1920]) {
       await page.setViewportSize({ width, height: 1000 });
-      const geometry = await page.locator(route === 'about' ? '.opened-machine' : '.making-kit').evaluate(element => {
+      const geometry = await page.locator(`.${route}-opening .band`).evaluate(element => {
         const box = element.getBoundingClientRect(), title = element.querySelector('h1')!.getBoundingClientRect();
         return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, titleLeft: title.left, titleRight: title.right, titleTop: title.top, titleBottom: title.bottom, viewport: document.documentElement.clientWidth, document: document.documentElement.scrollWidth };
       });
@@ -62,7 +62,7 @@ test('both openings remain usable without artwork and with enlarged narrow text'
     await page.setViewportSize({ width: 320, height: 1000 });
     await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
     await expect(page.locator('main h1')).toBeVisible();
-    await expect(page.locator('.artwork-caption')).toBeVisible();
+    await expect(page.locator('.band-caption')).toBeVisible();
     expect(await page.locator('main').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
     if (route === 'start-here') {
       await page.getByRole('link', { name: 'Try a first session', exact: true }).click();
@@ -82,7 +82,7 @@ for (const route of ['start-here', 'about']) {
     const geometry = await page.locator(`.${route}-opening`).evaluate(element => {
       const title = element.querySelector('h1')!.getBoundingClientRect();
       const picture = element.querySelector('picture')!.getBoundingClientRect();
-      const caption = element.querySelector('.artwork-caption')!.getBoundingClientRect();
+      const caption = element.querySelector('.band-caption')!.getBoundingClientRect();
       // Art-directed phone images reserve their upper area for live lettering.
       const quietFraction = element.classList.contains('about-opening') ? .45 : .5;
       return { titleBottom: title.bottom, subjectTop: picture.top + picture.height * quietFraction, captionTop: caption.top };
