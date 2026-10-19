@@ -180,3 +180,36 @@ test('audited examples show maintained code, caller contracts and honest limits'
  await expect(page.locator('.pattern-prose')).toContainText('no execution record');
  await expect(page.locator('.pattern-prose')).toContainText('missed_split:');
 });
+
+test('adventure parser entries expose usable code, boundaries and richer alternatives',async({page})=>{
+ for(const track of ['basic','assembly']){
+  await page.goto(`/patterns/sinclair-zx-spectrum/${track}/input/two-word-parser/`);
+  const prose=page.locator('.pattern-prose');
+  await expect(prose).toContainText('noun');
+  await expect(prose.getByRole('link',{name:'Parser execution record',exact:true})).toHaveAttribute('href',/\/blob\/[0-9a-f]{40}\/.*\/verification\/results.json$/);
+  await expect(prose).not.toContainText('Code sample unavailable');
+  await expect(prose.locator('.lesson-listing')).not.toHaveCount(0);
+  const capture=prose.locator('img[src*="/images/patterns/adventure-parser/"]');
+  await expect(capture).toHaveCount(1);
+  await capture.scrollIntoViewIfNeeded();
+  await expect.poll(()=>capture.evaluate((e:HTMLImageElement)=>e.complete&&e.naturalWidth>0)).toBe(true);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+  if(track==='basic'){
+   await expect(prose).toContainText('READ errors');
+   await expect(prose).toContainText('quoted text');
+   await expect(prose).toContainText('GO SUB 5000');
+  }else{
+   await expect(prose).toContainText('borrowed');
+   await expect(prose).toContainText('parse_command:');
+   await expect(prose).toContainText('342');
+  }
+ }
+});
+
+test('adventure parser pages retain accessible reading and code controls',async({page})=>{
+ for(const track of ['basic','assembly']){
+  await page.goto(`/patterns/sinclair-zx-spectrum/${track}/input/two-word-parser/`);
+  const result=await new AxeBuilder({page}).analyze();
+  expect(result.violations).toEqual([]);
+ }
+});

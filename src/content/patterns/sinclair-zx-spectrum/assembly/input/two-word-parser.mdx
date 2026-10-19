@@ -1,0 +1,138 @@
+---
+title: "A Counted-Byte Adventure Parser"
+summary: "Recognise two-word commands without changing the input buffer. Reusable Z80 code, checked vocabulary tables and a working keyboard caller."
+platform: "sinclair-zx-spectrum"
+category: "input"
+difficulty: "intermediate"
+tags: ["parser", "text-adventure", "strings", "buffers", "vocabulary"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["character-printing", "numeric-display", "game-loop-halt"]
+  vault: ["text-adventure", "colossal-cave-adventure"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+A command does not need to become a new string every time you examine a word. Give this parser a pointer and a byte count. It finds the words, looks up their meanings and returns IDs, leaving the original input untouched.
+
+The [BASIC companion](/patterns/sinclair-zx-spectrum/basic/input/two-word-parser/) explains the grammar, error policies, world-object resolution and branches toward richer parsers. This version keeps that behaviour while choosing a representation that suits assembly: borrowed spans, static tables and an explicit state block.
+
+**Code status: maintained Z80 component with bounded CPU execution checks.** Independent command rules check counted inputs, output reset, aliases, custom dictionaries and guard bytes. A separate ROM-loaded caller check exercises real paced keyboard input and editor overflow. Snapshot checks alone do not establish ROM input, contention or original-hardware behaviour.
+
+[Parser execution record](https://github.com/code198x/code-samples/blob/6d4552948aa17fd575f1c5f87b6aa31753c799c8/sinclair-zx-spectrum/patterns/assembly/input/two-word-parser/verification/results.json) · [Keyboard caller checks](https://github.com/code198x/code-samples/blob/6d4552948aa17fd575f1c5f87b6aa31753c799c8/sinclair-zx-spectrum/patterns/basic/input/two-word-parser/verification/callers/results.json)
+
+## Try the command inspector
+
+Build the sample folder with `make`, using Python and Asm198x on your path. Load `build/demo.tap` on a 48K Spectrum. Type `TAKE LAMP` and press Enter: the inspector shows status **0**, verb **3** and noun **1**. `LOOK` has noun zero, `TAKE` reports a missing noun, and a third word is rejected.
+
+Delete edits the line. The submitted command stays visible until the next key starts another entry. At capacity, an extra character makes the border red and latches overflow. Enter then reports status 2 instead of executing a truncated prefix. Delete clears an overflowed entry so you can start again. Reset the machine to leave.
+
+This caller demonstrates the parser and editor. The complete three-room adventure is in BASIC; the assembly library does not secretly include a room engine.
+
+![Spectrum command inspector showing TAKE LAMP and its status, verb and noun IDs.](/images/patterns/adventure-parser/z80-inspector.png)
+
+*Capture from the original Code198x sample in Emu198x on the recorded 48K configuration.*
+
+## Include, initialise, call
+
+Include `parser.inc` once and the generated vocabulary tables once. Give the program a valid stack and writable parser state, then:
+
+```z80
+    call parser_init
+
+    ; Run this part once per submitted command.
+    ld hl,buffer
+    ld a,(input_count)
+    ld c,a
+    ld b,0
+    call parse_command
+    or a
+    jr nz,rejected
+    ld a,(verb_id)
+    ; Dispatch an action. noun_id is a concept, not an object address.
+```
+
+The snippet uses the editor’s `buffer` and `input_count`; supply equivalent storage and length in your own caller. The normal input has 0–63 bytes. HL points to readable memory; BC is its exact 16-bit count. The valid span must fit the address space without wrapping. Larger counts are rejected before reading input, including any count with nonzero B. No zero terminator is required, and the parser writes nothing to the input.
+
+A returns status, mirrored in `parse_status`. `verb_id` and `noun_id` reset to zero on every call, including every failure. A recognised command returns status zero. A missing noun for a verb that takes none is represented by noun ID zero, not by an old value left over from another command.
+
+| Status | Meaning |
+| --- | --- |
+| 0 | Recognised command |
+| 1 | Empty or spaces only |
+| 2 | Over 63 bytes |
+| 3 | Unsupported byte |
+| 4 | More than two words |
+| 5 / 6 | Unknown verb / noun |
+| 7 / 8 | Required noun missing / unexpected noun |
+| 9 | Not initialised |
+
+Initialise once at the start of a session, not before each command. `parser_init` clears the status and IDs, then sets readiness. Diagnostic scratch fields become meaningful after a parse; do not interpret uninitialised token state as a command.
+
+## Keep the input alive
+
+`word1_ptr`, `word2_ptr` and their length bytes describe spans inside your input. They are cleared at the beginning of each parse; an early rejection can leave them empty. Their bytes keep the player's original case. Lookup folds ASCII case during comparison rather than rewriting the buffer.
+
+Those pointers are borrowed. If you replace the editor's input, the old spans no longer describe the old command. Copy text you need to retain. Never pass a counted span to a zero-terminated printer without copying or respecting its length; there may be another command or unrelated memory immediately after it.
+
+The grammar accepts ASCII letters, digits and ordinary spaces, folding lowercase to uppercase. It ignores repeated/leading/trailing spaces and uses exact aliases of 1–12 characters. Tabs, punctuation, quoted phrases and other bytes are rejected. The BASIC page explains the defined error precedence: validate the whole line before looking up its words.
+
+## The parser
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/input/two-word-parser/parser.inc" lang="z80" title="Counted input, word spans and exact lookup" />
+
+AF, BC, DE and HL change. IX and IY survive. The longest parser path needs ten additional stack bytes, excluding its caller's two-byte return address and any interrupt handler's needs. The 16-byte state block must remain writable and exclusively owned.
+
+The component is not reentrant. Do not call it from an interrupt while another call is active, and preserve the interrupted registers in your ISR. It makes no ROM, keyboard, display, sound, frame-wait or interrupt-mode call of its own. A port to another Z80 machine still needs checks for that environment; sharing a CPU does not establish an executed port.
+
+## Checked vocabulary tables
+
+Edit the JSON, then rebuild:
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/input/two-word-parser/vocabulary.json" lang="json" title="Author-supplied words and IDs" />
+
+Each verb alias requires `word`, `id` and `noun_policy`: 0 takes no noun, 1 requires one and 2 permits one. Each noun requires `word` and `id`. IDs are integers 1–255. There are 1–32 verb aliases and 0–32 noun aliases; counts refer to aliases, not distinct meanings.
+
+The generator rejects duplicate spellings, conflicting policies for aliases of one verb ID, overlong/invalid words, booleans in integer fields and missing or misspelt fields. An invalid configuration cannot replace a previously generated output. The Makefile stops if generation fails.
+
+The compiled representation is simple:
+
+```text
+length, ID, noun policy, that many uppercase word bytes
+...
+0                         end of table
+```
+
+Noun records use policy zero. Both table sentinels are included. Lookup requires equal lengths, so GETTER cannot match GET. The tables can be read-only; only the state block changes during parsing.
+
+This is a deliberate difference from BASIC's runtime DATA validation. The assembly routine assumes validated tables and does not return BASIC's configuration status 10. Hand-editing or corrupting a record length breaks that precondition; use the generator rather than bypassing it. The generator source and Makefile are included in the sample folder.
+
+### Costs and choices
+
+The recorded Asm198x build produces **342 code bytes and 16 writable state bytes** for the parser. The supplied dictionaries occupy **157 bytes**, including both sentinels. The editor, frame wait, font routines, stack and input buffer are additional costs.
+
+There is no universal cycle count. Input length, alias order, misses and the number of lookups affect the work. A small linear table is easy to inspect and extend. A larger dictionary might justify sorted lookup or a prefix tree; that changes code/data costs and needs its own complete caller and measurements.
+
+The point is not that assembly is automatically the right answer. BASIC makes the control flow and tables easy to change. This representation avoids its temporary word strings and runtime dictionary allocation, while making buffer lifetime and byte layout your responsibility.
+
+## A complete keyboard caller
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/input/two-word-parser/demo.asm" lang="z80" title="Editor, parser and result display" />
+
+The caller supplies a 64-byte buffer: 63 input bytes and a spare displayed space. It reuses the maintained frame wait, character printer and number printer. Standard 48K ROM IM1 interrupts and IY system variables remain available. The ROM key latch is consumed once per frame; it is a latch, not a queue, so the verification types at a deliberate pace.
+
+This executable owns the stack, display bitmap, attributes, key latch and port `$FE` output, including its border, MIC and beeper bits, and resets to leave. Those are the caller's choices, not requirements of the parser library. Keep that distinction when putting the parser into a different program.
+
+## From IDs to an adventure
+
+The returned noun is a concept. Your resolver finds objects of that concept that are visible or carried, handles none/one/several candidates, and passes the result to game rules. A recognised `TAKE KEY` can still fail because the key is elsewhere. A successful parse need not consume a turn.
+
+For the complete BASIC game and detailed branches into aliases, noun phrases, clarification, prepositions, pronouns, lists and quoted text, see [the companion's expansion section](/patterns/sinclair-zx-spectrum/basic/input/two-word-parser/#where-a-richer-parser-can-go). Those richer grammars are design options, not implemented features here. They need a structured result, clear ownership and meaningful failures rather than simply a larger input buffer.
+
+The [Adventure study](/vault/studies/adventure/) and [text-adventure genre](/vault/genres/text-adventure/) give the wider context. This component does not claim to reproduce a historical game's parser.
+
+## Verify your changes
+
+The sample README gives the commands. CPU fixtures check independent command rules, stale outputs, counted spans crossing a page boundary, input/guard preservation, custom vocabulary and a deliberately broken extra-word check. The ROM-loaded inspector is exercised separately through actual keys, including overflow and recovery. Neither check qualifies arbitrary keyboard timing, interrupt coexistence or an entire composed game.

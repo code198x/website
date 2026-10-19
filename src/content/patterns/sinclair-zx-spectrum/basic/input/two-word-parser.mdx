@@ -1,0 +1,170 @@
+---
+title: "A Two-Word Adventure Parser"
+summary: "Turn the player's words into commands your game can understand. A reusable, vocabulary-driven parser with a complete tiny adventure."
+platform: "sinclair-zx-spectrum"
+category: "input"
+difficulty: "intermediate"
+tags: ["parser", "text-adventure", "vocabulary", "strings", "commands"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["text-utilities"]
+  vault: ["colossal-cave-adventure", "text-adventure", "zork"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Type `GET LIGHT`. The game recognises the action, finds the lamp and puts it in your inventory. Type `TAKE ROCK` and it understands the words just as well—but there is no rock here to pick up. Those are different jobs. Keeping them apart makes both easier to reuse.
+
+This component turns a line into **a verb ID and an optional noun-concept ID**. You supply the vocabulary; your game supplies the world and decides what the command does. There is no room map, inventory limit or fixed set of English verbs hidden in the parser.
+
+**Code status: maintained BASIC component with configuration-specific ROM execution checks.** Parser fixtures compare results with independent command rules and reject a deliberately broken extra-word check. A separate check types into the adventure and examines its displayed replies. These are paced 48K emulator checks, not original-hardware certification.
+
+[Parser execution record](https://github.com/code198x/code-samples/blob/6d4552948aa17fd575f1c5f87b6aa31753c799c8/sinclair-zx-spectrum/patterns/basic/input/two-word-parser/verification/results.json) · [Keyboard caller checks](https://github.com/code198x/code-samples/blob/6d4552948aa17fd575f1c5f87b6aa31753c799c8/sinclair-zx-spectrum/patterns/basic/input/two-word-parser/verification/callers/results.json)
+
+## Play the small example
+
+The original sample has three rooms, a lamp, a key and a door. Try `GET LIGHT`, `GO NORTH`, `GO NORTH`, `TAKE KEY`, `GO NORTH`. The first attempt at the door fails; carrying the key opens it, and it stays open. `LOOK`, `INVENTORY`, `EXAMINE LAMP` and `HELP` give you other ways to explore. `QUIT` stops the program.
+
+Build the sample folder with `make`, using Build198x on your path, then load `build/demo.tap` on a 48K Spectrum. It runs from line 10. Enter commands without quotes. The reply stays visible until the next submission; the caller clears the display between submissions rather than accumulating a BASIC `scroll?` prompt.
+
+The three files are `demo.bas`, `parser.bas` and `vocabulary.bas`. The Makefile joins them in line-number order, checks their listed form and builds the tape. The [assembly companion](/patterns/sinclair-zx-spectrum/assembly/input/two-word-parser/) implements the same grammar using counted bytes and static tables.
+
+![Original three-room adventure running on a Spectrum; the player has reached the courtyard.](/images/patterns/adventure-parser/basic-adventure.png)
+
+*Capture from the original Code198x sample in Emu198x on the recorded 48K configuration.*
+
+## Include, initialise, call
+
+Lift `parser.bas` and `vocabulary.bas` into another program, keeping their line numbers clear of your own. This is the smallest calling sequence:
+
+```basic
+  10 GO SUB 6000
+  20 IF s<>0 THEN PRINT "Vocabulary error": STOP
+  30 INPUT "> "; LINE a$
+  40 GO SUB 5000
+  50 IF s=0 THEN PRINT "Verb ";v;" noun ";n
+  60 GO TO 30
+```
+
+Initialise once with `GO SUB 6000` and check its status. Then supply `a$` and call `GO SUB 5000` once per submitted command. The parser does not change `a$` and needs no timer or frame loop.
+
+| Value | Meaning after parsing |
+| --- | --- |
+| `s` | Status; zero means a recognised command |
+| `v` | Canonical verb ID |
+| `n` | Canonical noun-concept ID, or zero when absent |
+| `w$`, `o$` | Normalised first and second words for messages |
+
+Both IDs reset to zero at the start of **every** parse. An unknown command after `TAKE LAMP` must not accidentally take something using yesterday's IDs. Copy anything you need before another call. Diagnostic strings can be empty on an early rejection; they are not source-span records.
+
+Initialisation defines the state, sets readiness to zero, and marks it ready only after validation. Parsing after a failed initialisation returns status 9. Calling the routine in a cold BASIC environment without defining its variables is still an interpreter error: call 6000 first.
+
+## Make the vocabulary yours
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/input/two-word-parser/vocabulary.bas" lang="sinclair-basic" title="Editable vocabulary DATA" />
+
+The first DATA pair counts **aliases**, not distinct actions. Each verb record supplies a spelling, ID and noun policy: **0** takes no noun, **1** requires a noun, and **2** permits an optional noun. Thus `LOOK`, `TAKE LAMP`, `SEARCH` and `SEARCH LAMP` can share the component.
+
+`GET` and `TAKE` share verb ID 3. `LIGHT` and `LAMP` share noun ID 1. Your game handles each meaning once. Verb and noun IDs have separate namespaces.
+
+Add records and update the alias counts to extend the vocabulary. A custom `OPEN`/`BOX` dictionary is tested without changing the parser. You still need to connect the new verb ID to an action in your game. Recognising a verb does not implement it.
+
+Aliases are exact: `GETTER` is not `GET`, and `LAM` is not `LAMP`. Short forms exist only when listed. The sample accepts `GO N`; bare `N` is an unknown verb, because the parser does not invent a missing GO. Keep IDs stable if action dispatch, object classes or saved data depend on them.
+
+## Grammar and failures
+
+Input is at most **63 characters** of ASCII letters, digits and ordinary spaces. Lowercase folds to uppercase. Leading, trailing and repeated spaces are ignored. There are at most two tokens, and dictionary aliases are 1–12 uppercase letters/digits.
+
+Numbers are vocabulary words here, not automatically numeric arguments. Tabs, punctuation, quoted phrases and non-ASCII characters are rejected. This is a bounded starting grammar, not a claim to interpret every Spectrum character.
+
+Checks run in this order: readiness, total length, all character values, word count, verb lookup, verb argument policy, noun lookup. A three-word line returns 4 even if its first word is unknown. `LOOK MYSTERY` reports that LOOK takes no noun rather than searching the noun table.
+
+| `s` | Meaning | Caller response |
+| --- | --- | --- |
+| 0 | Recognised command | Dispatch it to the game |
+| 1 | Empty or spaces only | Prompt again |
+| 2 | Over 63 characters | Ask for a shorter command |
+| 3 | Unsupported character | Explain the accepted input |
+| 4 | More than two words | Ask for a shorter construction |
+| 5 | Unknown verb | Use `w$` in a helpful message |
+| 6 | Unknown noun | Use `o$` in a helpful message |
+| 7 | Required noun missing | Ask “TAKE what?” |
+| 8 | Unexpected noun | Explain that this verb stands alone |
+| 9 | Not ready after failed initialisation | Repair the program's setup |
+| 10 | Invalid dictionary at initialisation | Repair the author-supplied DATA |
+
+Parsing success need not spend a turn. LOOK might be free, WAIT might advance time, and a failed action might have another policy. The caller owns that decision.
+
+## The reusable implementation
+
+The scanner validates the whole line, collects two normalised strings, then searches the appropriate tables. Stored alias lengths prevent fixed-width padding or short prefixes from becoming false matches.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/input/two-word-parser/parser.bas" lang="sinclair-basic" title="Parser, initialisation and validation" />
+
+This bounded version uses a 32-alias budget per table. That is a configurable implementation choice, not the size of every adventure vocabulary or a limit on the Pattern Library. Raising it needs a new memory/startup-cost check as well as changes to the validation bound.
+
+Initialisation accepts 1–32 verb aliases and 0–32 noun aliases, with integer IDs from 1 to 255. It rejects duplicate spellings within a table, invalid lengths/characters, and aliases of one verb ID with conflicting argument policies. A spare noun row permits a zero-noun dictionary.
+
+It does not trap BASIC's own READ errors. Missing DATA, wrong types or too few records can stop the interpreter. Those are authoring errors; run the build and execution checks after vocabulary changes.
+
+### State and line numbers
+
+Sinclair BASIC has no local-variable namespace. Reserve numeric scalars `pr`, `s`, `v`, `n`, `ll`, `tc`, `wc`, `iv`, `ni`, `f`, `kk`, `jj`, `ok`, `nv`, `nn`, `i`, `p`, `b`, `q`; strings `w$`, `o$`, `t$`; string arrays `d$`, `e$`; and numeric arrays `u`, `r`, `m`, `z`, `h`. The caller supplies `a$`.
+
+Do not reuse this state during a call. The demo uses `j` for its object loops. Rename consistently if your program already owns these names; Sinclair FOR control variables must stay single letters.
+
+The supplied routine ranges are 5000–5360, 6000–6220 and 6500–6560, with vocabulary DATA from 7000. Renumber GO TO, GO SUB and RESTORE references together. Initialisation changes the DATA pointer, so restore your own DATA before your next READ. The component is not reentrant.
+
+### What it costs
+
+Each fixed dictionary row reserves 12 characters. Separate numeric arrays hold lengths, IDs and policies. Scanning also creates temporary strings. Initialisation compares earlier aliases to detect duplicates, so its work grows faster than one lookup; initialise at startup or after changing the vocabulary.
+
+This is readable BASIC for submitted commands. Variable lookup, substring operations and allocation cost work. There is no constant-time, per-frame or universal response-time claim. Build198x reports the full demonstration's stored size, which is not the parser's working-memory bill. The assembly companion makes the storage trade-off explicit.
+
+## Recognition, resolution, rules
+
+The parser returns a **noun concept**. A particular brass key in the north room is a world object. A second brass key could share the same concept without being the same physical thing.
+
+The caller keeps an object's concept in `c(j)` and its room in `l(j)`; zero means carried. Its resolver checks both concept and location. No match produces “not here”; two matches produce an ambiguity response rather than choosing whichever object is stored first. A separate two-matching-objects variation is tested. The current demo cannot answer that ambiguity with an adjective yet.
+
+Follow `GET LIGHT`: the parser returns verb 3 and noun 1. The TAKE handler asks the resolver for an accessible object of that concept. It refuses an already-carried object or changes its location to zero. DROP performs the inverse rule. The door checks for a carried key and remembers its unlocked state. None of those rules belongs in the word lookup.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/input/two-word-parser/demo.bas" lang="sinclair-basic" title="Complete three-room adventure caller" />
+
+## Where a richer parser can go
+
+These are **design branches**, not implemented features. A carefully chosen two-word vocabulary can be the right finished interface. More complexity should earn its cost through something the player can do.
+
+### More words, with the same grammar
+
+Add explicit aliases and keep the IDs. More table data and lookup work need not change the command structure. A large dictionary might justify sorted lookup or a prefix tree; those alternatives spend code and representation complexity to change lookup cost.
+
+Automatic abbreviation is another policy. Several words may share a prefix, so choosing the first silently makes commands depend on table order. Ask for a longer spelling or report ambiguity. Exact aliases avoid that problem at this scale.
+
+### Noun phrases and clarification
+
+`TAKE BLUE LAMP` needs a noun phrase rather than another fixed word slot. A resolver can intersect candidates: blue things, lamps, and things currently in scope. Zero, one and several candidates need different replies.
+
+“The blue lamp or the brass lamp?” introduces conversation state. The next input may answer a question rather than begin another command. Provide a way to cancel or replace that pending request. A bare noun after this parser's “TAKE what?” does not automatically do that.
+
+### Prepositions and two objects
+
+`UNLOCK DOOR WITH KEY` needs an action, target and instrument. `PUT KEY IN BOX` describes another relationship. Grammar assigns those roles; it does more than count extra words. Return a structured command instead of making every action recover roles from raw strings.
+
+Whether the key fits or the box is open still belongs to the world and rules. Grammar should not become a second, contradictory version of those rules.
+
+### Pronouns, lists and quoted text
+
+`TAKE IT` needs a remembered referent and a policy when it leaves scope. `TAKE KEY AND LAMP` needs an object list; `TAKE KEY AND GO NORTH` could contain two commands. Splitting every AND before understanding the construction confuses those cases.
+
+`SAY "OPEN SESAME"` adds quoted text whose internal spaces matter. That changes tokenisation, representation and buffer ownership. Preserve useful error positions and explicit limits; never quietly discard an overlong command's tail.
+
+Each extension should bring a working caller, representative failures and storage/work costs on its target system. A richer parser can be useful on one machine without needing thirty ports.
+
+## Connections and verification
+
+The [Adventure study](/vault/studies/adventure/) explores how described places and interpreted commands create a world larger than its display. The [text-adventure genre](/vault/genres/text-adventure/) and [Zork](/vault/games/zork/) provide further context. This component does not claim to reproduce their parsers.
+
+The sample README gives the build and verification commands. Tests cover aliases, exact matches, whitespace, stale results, invalid/custom/boundary dictionaries and extra words. A mutation that accepts a third word must fail the independent oracle. Actual keyboard interaction and the complete caller are checked separately from the parser fixtures.
