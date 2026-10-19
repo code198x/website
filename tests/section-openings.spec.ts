@@ -4,7 +4,8 @@ test('layered Demoscene artwork fills the viewport without losing its title or r
   await page.goto('/demoscene/');
   const banner = page.locator('.demoscene-opening');
   await expect(banner).toBeVisible();
-  await expect(banner.locator('figcaption')).toContainText('not captures of historical productions');
+  await expect(banner.locator('.band-caption')).toContainText('not captures of historical productions');
+  await expect(banner.locator('.band-caption')).not.toContainText('AI-generated');
   const layers = banner.locator('img');
   await expect(layers).toHaveCount(3);
   for (const image of await layers.all()) {
@@ -13,7 +14,7 @@ test('layered Demoscene artwork fills the viewport without losing its title or r
   for (const width of [320, 390, 768, 1440, 1920]) {
     await page.setViewportSize({ width, height: 1000 });
     const geometry = await banner.evaluate(banner => {
-      const scene = banner.querySelector('.scene')!.getBoundingClientRect();
+      const scene = banner.querySelector('.band')!.getBoundingClientRect();
       const title = banner.querySelector('.scene-title')!.getBoundingClientRect();
       const reading = document.querySelector('.wrap')!.getBoundingClientRect();
       return { scene: { left: scene.left, right: scene.right },

@@ -5,14 +5,15 @@ test('Field Notes serves artwork appropriate to the viewport and retains one liv
   await page.evaluate(() => document.fonts.ready);
   await expect(page.locator('main h1')).toHaveCount(1);
   await expect(page.locator('main h1')).toHaveText('Field Notes.');
-  const image = page.locator('.workbench img');
+  const image = page.locator('.field-notes-opening .band-art img');
   await image.evaluate((element: HTMLImageElement) => element.decode());
   expect(await image.evaluate((element: HTMLImageElement) => element.currentSrc))
     .toContain(testInfo.project.name === 'mobile' ? 'portrait-' : 'landscape-');
-  await expect(page.locator('.artwork-caption')).toContainText('Original AI-generated illustration');
+  await expect(page.locator('.band-caption')).toContainText('An imagined investigation workbench.');
+  await expect(page.locator('.band-caption')).not.toContainText('AI-generated');
   for (const width of [320, 390, 768, 1440, 1920]) {
     await page.setViewportSize({ width, height: 1000 });
-    const geometry = await page.locator('.workbench').evaluate(element => {
+    const geometry = await page.locator('.field-notes-opening .band').evaluate(element => {
       const box = element.getBoundingClientRect();
       const title = element.querySelector('h1')!.getBoundingClientRect();
       return { left: box.left, right: box.right, top: box.top, bottom: box.bottom,
@@ -32,7 +33,7 @@ test('Field Notes keeps its story list reachable with failed artwork and enlarge
   await page.goto('/field-notes/');
   await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
   await expect(page.locator('main h1')).toBeVisible();
-  const bounds = await page.locator('.workbench').evaluate(element => {
+  const bounds = await page.locator('.field-notes-opening .band').evaluate(element => {
     const workbench = element.getBoundingClientRect(), title = element.querySelector('h1')!.getBoundingClientRect();
     return { workbenchBottom: workbench.bottom, titleBottom: title.bottom };
   });
