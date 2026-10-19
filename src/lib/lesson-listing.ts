@@ -24,7 +24,7 @@ const keys: Record<string, (el: HTMLElement) => number> = {
 let observer: ResizeObserver | undefined;
 
 function fit(el: HTMLElement) {
-  if (el.scrollWidth > el.clientWidth + 1) {
+  if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) {
     el.tabIndex = 0;
     el.setAttribute('role', 'region');
     el.setAttribute('aria-label', el.dataset.label || 'Listing');
