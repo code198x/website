@@ -89,14 +89,15 @@ test('next-tier BBC patterns are discoverable without claiming a curriculum trac
  await page.goto('/patterns/');
  await page.getByRole('combobox',{name:'Machine',exact:true}).selectOption('bbc-micro');
  const rows=page.locator('[data-pattern]:visible');
- await expect(rows).toHaveCount(2);
+ await expect(rows).toHaveCount(3);
+ await expect(rows.getByRole('link',{name:'Masked Sprites with Background Restoration',exact:true})).toHaveCount(1);
  await rows.getByRole('link',{name:'A game loop using MOS',exact:true}).click();
  await expect(page).toHaveURL(/bbc-micro\/assembly\/framework\/mos-game-loop/);
  await expect(page.locator('.pattern-prose')).toContainText('MODE 6');
  await expect(page.locator('.pattern-prose')).toContainText('OSBYTE');
  await page.getByRole('link',{name:'More BBC Micro patterns'}).click();
  await expect(page).toHaveURL(/patterns\/platform\/bbc-micro/);
- await expect(page.locator('[data-pattern]:visible')).toHaveCount(2);
+ await expect(page.locator('[data-pattern]:visible')).toHaveCount(3);
 });
 
 test('loop contracts and maintained callers fit narrow and wide pages',async({page})=>{
@@ -211,5 +212,47 @@ test('adventure parser pages retain accessible reading and code controls',async(
   await page.goto(`/patterns/sinclair-zx-spectrum/${track}/input/two-word-parser/`);
   const result=await new AxeBuilder({page}).analyze();
   expect(result.violations).toEqual([]);
+ }
+});
+
+test('scrolling and sprite families lead to distinct machine implementations',async({page})=>{
+ for(const family of ['scrolling','sprites']){
+  await page.goto(`/patterns/cross-platform/rendering/${family}/`);
+  const prose=page.locator('.pattern-prose');
+  for(const system of ['sinclair-zx-spectrum','commodore-64','commodore-amiga','nintendo-nes','bbc-micro']){
+   expect(await prose.locator(`a[href^="/patterns/${system}/"]`).count()).toBeGreaterThan(0);
+  }
+  await expect(prose).toContainText('illustrative');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ }
+});
+
+test('rendering components expose working code, source evidence and loaded captures',async({page})=>{
+ for(const path of [
+  'sinclair-zx-spectrum/assembly/rendering/software-scrolling',
+  'bbc-micro/assembly/rendering/masked-sprites',
+  'nintendo-nes/assembly/rendering/nametable-scrolling',
+  'nintendo-nes/assembly/rendering/multi-sprite-oam',
+ ]){
+  await page.goto(`/patterns/${path}/`);
+  const prose=page.locator('.pattern-prose');
+  await expect(prose).not.toContainText('Code sample unavailable');
+  expect(await prose.locator('.lesson-listing').count()).toBeGreaterThan(0);
+  await expect(prose.getByRole('link',{name:'Execution record',exact:true})).toHaveAttribute('href',/\/blob\/[0-9a-f]{40}\/docs\/rendering-families\/verification\/results.json$/);
+  for(const img of await prose.locator('img[src*="rendering-families"]').all()){
+   await img.scrollIntoViewIfNeeded();
+   await expect.poll(()=>img.evaluate((e:HTMLImageElement)=>e.complete&&e.naturalWidth>0)).toBe(true);
+  }
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ }
+});
+
+test('rendering families and components remain accessible',async({page})=>{
+ for(const colorScheme of ['light','dark'] as const){
+ await page.emulateMedia({colorScheme});
+ for(const path of ['cross-platform/rendering/scrolling','cross-platform/rendering/sprites','sinclair-zx-spectrum/assembly/rendering/software-scrolling','bbc-micro/assembly/rendering/masked-sprites','nintendo-nes/assembly/rendering/nametable-scrolling','nintendo-nes/assembly/rendering/multi-sprite-oam']){
+  await page.goto(`/patterns/${path}/`);
+  expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+ }
  }
 });

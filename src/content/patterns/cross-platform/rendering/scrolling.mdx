@@ -1,0 +1,105 @@
+---
+title: "Scrolling a World"
+summary: "Move the camera, expose new scenery and keep objects attached to the world. Choose software shifts, hardware offsets and streaming for the machine you are using."
+platform: "cross-platform"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["scrolling", "camera", "tiles", "streaming", "rendering"]
+related:
+  patterns: ["sprites", "smooth-scrolling", "nametable-scrolling", "software-scrolling"]
+  vault: ["scrolling", "hardware-scroll", "software-scroll", "multidirectional-scrolling", "parallax-scrolling"]
+---
+
+A cave wall slips left. The player stays near the middle of the screen. Ahead, a new ledge comes into view. The player has moved through the world; scrolling decides which part of that world we can see.
+
+Some machines move the view by changing a few display registers. Others make the CPU move the picture. Either way, the same jobs remain: choose a camera position, display the right scenery, prepare the newly exposed edge, and place objects relative to that camera.
+
+**Start with code for your machine.** This family joins the implementations below; it does not impose one graphics interface on their hardware.
+
+| Machine | Take into your project | Current boundary |
+| --- | --- | --- |
+| <span style="white-space: nowrap">Spectrum</span> | [Shift a bitmap band one pixel](/patterns/sinclair-zx-spectrum/assembly/rendering/software-scrolling/) | Maintained routine and running caller; fixed full width, configurable height, pixels only |
+| C64 | [Fine scroll plus character/colour shift](/patterns/commodore-64/assembly/rendering/smooth-scrolling/) | Memory and register effects executed; costly coarse step needs a measured presentation budget |
+| NES | [Move through two nametables](/patterns/nintendo-nes/assembly/rendering/nametable-scrolling/) | Maintained routine and complete NTSC cartridge; finite repeating world |
+| Amiga | [Copy a bitmap rectangle](/patterns/commodore-amiga/assembly/rendering/blitter-copy/), then consider playfield pointers and fine offsets | Copy is an existing illustrative building block; a complete scrolling implementation remains a gap |
+| BBC Micro | [MOS-facing game loop](/patterns/bbc-micro/assembly/framework/mos-game-loop/) for scheduling | Character/bitmap shifts and CRTC start-address scrolling need their own implementations and checks |
+
+## Keep world position separate from screen position
+
+Suppose a pickup is at world X=640 and the camera is at X=512. Draw it at screen X=128. Move the camera to 520 and draw the same pickup at 120. Its world position has not changed.
+
+```text
+screen_x = object_world_x - camera_world_x
+screen_y = object_world_y - camera_world_y
+```
+
+Keep those calculations wide enough for your world, and retain signed results until you have clipped against the viewport. Converting −4 to an unsigned byte first can make a half-visible object reappear at the opposite edge. Hardware coordinates may need another offset or encoding after clipping: an Amiga beam position and a NES OAM Y byte are not interchangeable screen coordinates.
+
+Collision belongs in world space. If the camera moves, a stationary wall should not suddenly move into the player as far as the game rules are concerned. [Sprites and moving objects](/patterns/cross-platform/rendering/sprites/) handle the drawing side of this distinction.
+
+A useful first camera follows the player but clamps at the map edges. Later variants can add a central region in which the player moves freely, a look-ahead offset, or eased motion. Those are camera policies; they do not replace the machine's display routine. A world smaller than the viewport needs an explicit policy too: centre it, pad it, or keep the camera at zero rather than producing a negative maximum.
+
+## Three ways to move the picture
+
+### Shift the pixels
+
+A software scroll rewrites the bitmap. Our Spectrum routine visits every byte in the chosen band, rotating the bits left and carrying the exposed edge bit into the rightmost byte. The Spectrum's interleaved screen layout changes how we find each scanline, not what the operation means.
+
+```z80
+    ; Include scroll.inc and bitmap-addressing.inc once.
+    ; next_edge holds one byte per scanline; bit 0 is the incoming pixel.
+    ld hl,next_edge
+    ld d,72
+    ld b,48
+    call scroll_band_left
+```
+
+See the [complete implementation and caller](/patterns/sinclair-zx-spectrum/assembly/rendering/software-scrolling/). It has no map format or camera hidden inside it. Your game supplies the edge pixels. Reducing the band height reduces the work directly; scrolling an entire bitmap every frame is a different workload.
+
+### Move whole cells
+
+A character or tile scroll copies cell numbers and inserts a new row or column. It is less work than shifting every pixel, but movement occurs in visible jumps unless something else supplies the intermediate positions.
+
+This can be exactly the right choice for a turn-based maze, a terminal log or a game whose moves are one square at a time. A text window scrolling when a message arrives does not need a continuous frame loop.
+
+### Move the display window
+
+Hardware offsets can move the visible picture without rewriting it all. But the offset has a range. When it wraps, you must arrange for the correct next piece of the world to be there.
+
+The [C64 implementation](/patterns/commodore-64/assembly/rendering/smooth-scrolling/) combines fine positions with a coarse character-and-colour shift. The [NES implementation](/patterns/nintendo-nes/assembly/rendering/nametable-scrolling/) combines the scroll bytes with nametable-select bits. Neither operation creates new map data for free.
+
+## The seam is where the work arrives
+
+The view may move every pixel while the map is stored in eight-pixel tiles. Prepare a new tile column when the camera crosses a tile boundary, rather than decoding the entire world every update.
+
+A practical division is:
+
+1. Game logic chooses the next camera position.
+2. The map reader prepares any newly needed tiles and colours.
+3. A renderer receives a complete update, including its target address.
+4. Display code commits it in its allowed interval and applies the matching scroll position.
+
+Publish the ready flag **after** the data. A display interrupt must see either the old complete update or the new complete update. On the NES, restore scroll after VRAM writes because the address and scroll registers share internal state. Our complete caller demonstrates acknowledgement before the main thread reuses its staging state.
+
+[Feeding new NES columns](/patterns/nintendo-nes/assembly/rendering/column-feeding/) describes the next stage, including palette attribute quadrants. It remains an illustrative entry: the finite-world cartridge does not implement an endless map streamer. Faster cameras may expose more than one column in an update, so a queue sized for exactly one column needs a speed limit or an overflow policy.
+
+## Beyond a single moving background
+
+| Further technique | What it buys | What must be paid for |
+| --- | --- | --- |
+| Vertical and multidirectional scrolling | Worlds that extend in both axes | Row and column seams, corner updates, coordinate and memory wrap |
+| Split playfield and status panel | A moving world beneath a fixed HUD | Separate regions or timed register changes, shared interrupt ownership |
+| Parallax | Layers appear to move at different depths | Extra layers, redraw work or raster scheduling; each layer may have its own colour restrictions |
+| Double buffering | Prepare a complete picture away from the visible one | Another buffer and a correct swap; drawing still has to finish |
+| Pre-shifted graphics | Reduce work needed for fine pixel positions | More stored graphics and a larger working set |
+| Ring-buffered maps | Recycle a smaller display buffer across a larger world | Address translation and careful handling of both wrap boundaries |
+
+These are onward techniques, not a claim that each linked machine already implements them. The [coverage inventory](https://github.com/code198x/code-samples/blob/a5eadba064d1b9de63b69dbb58fdc033a0baf2c6/docs/rendering-families.md) tracks the gaps, including the other currently emulated systems and eventual catalogue coverage.
+
+## Share a frame with moving objects
+
+With software sprites, restore the old objects **before** scrolling their background, then draw them at their new screen positions. Otherwise you can scroll a player into the scenery, or restore old saved bytes into the newly moved world. Dirty-tile redraw and a clean back buffer offer other ways to organise that work.
+
+Hardware sprites do not become part of the bitmap, but still need updated screen coordinates and clipping. A player can use a hardware sprite while enemies use software objects; the two renderers must agree about the camera and overlap policy.
+
+Budget the coarse step, object drawing, input, audio and game logic together. A fast fine-scroll register write says very little about the heaviest update in the game.
