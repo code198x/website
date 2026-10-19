@@ -73,7 +73,11 @@ test('machine code leads, can be copied, and explains how to call it',async({pag
  await expect(page).toHaveURL(/read-input\/sinclair-zx-spectrum\//);
  await expect(page.locator('.routine-listing .code-container')).toContainText('read_controls:');
  await expect(page.locator('.integration-example')).toContainText('call detect_presses');
- await expect(page.locator('.execution-evidence')).toContainText('not been execution-tested');
+ await expect(page.locator('.execution-evidence')).toContainText('39 input stages');
+ await page.getByText('Build and run the complete example',{exact:true}).click();
+ await expect(page.locator('.integration-example details .code-container')).toContainText('wait_frame:');
+ await expect(page.locator('.integration-example details .ll-scroll')).toHaveAttribute('tabindex','0');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(page.viewportSize()!.width+1);
  await page.locator('.machine-choices a').filter({hasText:'NES'}).click();
  await expect(page.locator('.integration-example')).toContainText('and #$80');
  await expect(page.locator('.caller-contract')).toContainText('DMC');
