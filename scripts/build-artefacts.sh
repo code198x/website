@@ -17,7 +17,7 @@
 
 set -euo pipefail
 
-ASM198X_VERSION="${ASM198X_VERSION:-v0.0.57}"
+ASM198X_VERSION="${ASM198X_VERSION:-v0.0.65}"
 # code-samples lints and builds the same BASIC Makefiles in CI with its own
 # pin, BUILD198X_VERSION in code198x/code-samples
 # .github/workflows/basic-listings.yml. Keep the two equal: bump them together.
