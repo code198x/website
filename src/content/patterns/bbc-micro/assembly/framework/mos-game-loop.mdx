@@ -1,0 +1,45 @@
+---
+title: "A game loop using MOS"
+summary: "Wait for display sync through MOS, keeping the system keyboard, display and interrupt services running."
+platform: "bbc-micro"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "timing", "ownership", "interrupts"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Enter the generated BASIC loader and RUN it. A digit changes on the screen as the update counter advances. Hold Space to give the CPU too much work for one display frame; release it and the normal pace returns.
+
+## Use the wait in your project
+
+Call `wait_frame` once per update. It invokes OSBYTE 19 through the documented entry point. A becomes 19; X/Y/flags are not preserved by this wrapper. The caller uses OSBYTE 129 to scan Space and OSWRCH to update a text position. That leaves hardware ownership with MOS, unlike the C64 and Amiga takeover examples.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/framework/game-loop/frame.inc" lang="6502" />
+
+## Start the complete example
+
+The tested Model B has MOS 1.20 and BASIC II. The loader selects MODE 6 and reserves memory above `HIMEM=&3000` for the assembled program. Its DATA statements install our own bytes at `&3000`; no ROM is supplied. Keep MOS interrupts and the IRQ service intact. Reset to leave this bounded demonstration.
+
+With Asm198x available, keep the sample folders together and run:
+
+```sh
+make -C bbc-micro/patterns/assembly/framework/game-loop
+```
+The Amiga Makefile also needs Build198x. The BBC Makefile produces both the binary and a numbered BASIC loader; enter build/loader.bas and RUN it.
+
+The loop keeps four jobs visible: wait, read input, update state, draw. `expensive_work` is an optional CPU workload to expose missed deadlines; remove it when building your own game. The changing colour or digit is a small observable result, not a rendering engine.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/framework/game-loop/demo.asm" />
+
+## What happens when work runs late
+
+Waiting does not make the game work faster. When work exceeds the display interval, update frequency falls. The helper does not supply an elapsed-frame count or replay missed updates. A replacement IRQ handler that stops MOS processing display sync can break the wait. The [Electron example](/patterns/acorn-electron/assembly/framework/mos-game-loop/) executes this same service-facing source with its own OS/BASIC and workload record.
+
+## Check this combination
+
+**Code status: assembled and emulator-executed.** BBC Model B, pinned MOS/BASIC. The [recorded checks](https://github.com/code198x/code-samples/blob/9d6018a66f2788df3fa4d983fcb2dfb27621210b/bbc-micro/patterns/assembly/framework/game-loop/verification/results.json) identify sources, firmware and observer. In three 30-frame windows the caller made 30 normal, 10 deliberately slowed and 30 recovered updates. An unpaced negative control is rejected by the same rate guard. This is configuration-specific emulator evidence, not an original-hardware or whole-emulator claim.
+
+The [loop comparison](/patterns/cross-platform/framework/game-loop-choices/) puts the ownership choices side by side. Each implementation keeps its own timing and resource contract.
+
+The original [BBC Micro Advanced User Guide](https://basic.barrybks.co.uk/downloads/manuals/originals/BBCAdvancedUserGuide.pdf), printed page 135, documents OSBYTE 19 and its dependence on IRQ1 handling; page 153 covers keyboard scanning with OSBYTE 129.

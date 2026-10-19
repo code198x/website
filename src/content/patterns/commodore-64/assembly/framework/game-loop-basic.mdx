@@ -1,88 +1,45 @@
 ---
-title: "Game Loop (Basic)"
-summary: "Simple frame-synchronised game loop using the raster register. Foundation for all C64 games."
+title: "A game loop on the raster clock"
+summary: "Wait for a fresh raster boundary, then read, update and draw. Keep timing separate from the work your game does."
 platform: "commodore-64"
 category: "framework"
 difficulty: "beginner"
-taught_in: "Game 6, Unit 3"
-tags: ["game-loop", "raster", "vic-ii", "timing"]
-evolution:
-  previous: null
-  next: null
-related:
-  patterns: ["joystick-reading", "raster-interrupts"]
-  vault: ["vic-ii", "commodore-64"]
+tags: ["game-loop", "timing", "ownership", "interrupts"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
 
-## Overview
+The border changes as the update counter advances. Hold Fire on joystick port 2 and the colour changes slow down: we have deliberately given the CPU more work than fits in a frame. Release it and the normal pace returns.
 
-Synchronise your game to the display by waiting for a specific raster line. This prevents tearing and gives consistent timing at 50fps (PAL) or 60fps (NTSC). Use for simple games; graduate to IRQ-driven loops for more complex timing needs.
+## Use the wait in your project
 
-## Code
+No clock initialisation is needed for the wait itself. Call `wait_frame` once per update. It changes flags and preserves A/X/Y. It first waits for raster bit 8 to be low, then for it to become high. Both phases matter: a short update cannot consume the same high interval repeatedly.
 
-```asm
-; =============================================================================
-; GAME LOOP - BASIC (RASTER SYNC)
-; Wait for vertical blank, then run game logic
-; Taught: Game 6 (SID Symphony), Unit 3
-; CPU: Variable (waits for raster) | Memory: ~40 bytes
-; =============================================================================
+<CodeFromFile src="commodore-64/patterns/assembly/framework/game-loop/frame.inc" lang="6502" />
 
-VIC_RASTER  = $D012     ; Current raster line (low 8 bits)
-VIC_CTRL1   = $D011     ; VIC control register 1 (bit 7 = raster bit 8)
+## Start the complete example
 
-SYNC_LINE   = 250       ; Line to sync on (in lower border)
+This caller takes over CIA1 and the border, disables IRQs, banks out the ROMs and supplies a minimal NMI return. Keep I/O visible and keyboard keys released. Reset to leave. The joystick reader is the existing maintained routine, not another incompatible input format.
 
-; Main game loop with raster sync
-game_loop:
-    ; Wait for raster to reach sync line
--   lda VIC_RASTER
-    cmp #SYNC_LINE
-    bne -
+With Asm198x available, keep the sample folders together and run:
 
-    ; Optional: wait for raster to leave sync line
-    ; (prevents running twice if loop is very fast)
--   lda VIC_RASTER
-    cmp #SYNC_LINE
-    beq -
-
-    ; === GAME LOGIC GOES HERE ===
-    jsr read_input
-    jsr update_game
-    jsr draw_screen
-    ; ============================
-
-    jmp game_loop
+```sh
+make -C commodore-64/patterns/assembly/framework/game-loop
 ```
+The Amiga Makefile also needs Build198x. Open the generated file under build using the machine’s normal loading route.
 
-**Usage:**
+The loop keeps four jobs visible: wait, read input, update state, draw. `expensive_work` is an optional CPU workload to expose missed deadlines; remove it when building your own game. The changing colour or digit is a small observable result, not a rendering engine.
 
-```asm
-    ; Initialisation
-    jsr init_game
+<CodeFromFile src="commodore-64/patterns/assembly/framework/game-loop/demo.asm" />
 
-    ; Enter main loop
-    jmp game_loop
-```
+## What happens when work runs late
 
-## Trade-offs
+This is a fixed-step loop. Work that overruns a display interval reduces the update rate; missed updates are not replayed. The sample checks PAL only. NTSC has different timing and needs its own measurements. Reaching the lower part of the screen does not guarantee that arbitrary drawing will avoid tearing.
 
-| Aspect | Cost |
-|--------|------|
-| CPU | Burns cycles waiting for raster |
-| Memory | ~40 bytes |
-| Limitation | Can't do work during wait; no badline handling |
+## Check this combination
 
-**When to use:** Simple games, prototypes, learning projects.
+**Code status: assembled and emulator-executed.** PAL C64. The [recorded checks](https://github.com/code198x/code-samples/blob/9d6018a66f2788df3fa4d983fcb2dfb27621210b/commodore-64/patterns/assembly/framework/game-loop/verification/results.json) identify sources, firmware and observer. In three 30-frame windows the caller made 30 normal, 8 deliberately slowed and 30 recovered updates. An unpaced negative control is rejected by the same rate guard. This is configuration-specific emulator evidence, not an original-hardware or whole-emulator claim.
 
-**When to avoid:** Games needing precise timing, raster effects, or maximum CPU utilisation.
+The [loop comparison](/patterns/cross-platform/framework/game-loop-choices/) puts the ownership choices side by side. Each implementation keeps its own timing and resource contract.
 
-## Related
-
-**Patterns:** [Joystick Reading](/patterns/commodore-64/assembly/input/joystick-reading)
-
-**Vault:** [Inside the VIC-II](/vault/hardware/vic-ii) | [Commodore 64](/vault/systems/commodore-64)
-
-**Evolution:** Basic → IRQ-Driven → Double-Buffered
+[See the idea inside a complete game](/systems/commodore-64/assembly/starfield/unit-02/).

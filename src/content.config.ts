@@ -368,6 +368,8 @@ const patterns = defineCollection({
       'sinclair-zx-spectrum',
       'commodore-amiga',
       'nintendo-nes',
+      'bbc-micro',
+      'acorn-electron',
       'cross-platform'
     ]),
     category: z.enum([
