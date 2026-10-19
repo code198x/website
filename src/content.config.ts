@@ -370,6 +370,9 @@ const patterns = defineCollection({
       'nintendo-nes',
       'bbc-micro',
       'acorn-electron',
+      'sega-master-system',
+      'sega-game-gear',
+      'sega-sg-1000',
       'cross-platform'
     ]),
     category: z.enum([
