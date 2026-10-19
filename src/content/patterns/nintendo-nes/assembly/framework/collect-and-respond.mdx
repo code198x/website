@@ -1,0 +1,85 @@
+---
+title: "Move, collect and respond on the NES"
+summary: "Combine input, bounded movement, box collision, drawing and sound in a small program you can take apart."
+platform: "nintendo-nes"
+category: "framework"
+difficulty: "beginner"
+tags: ["composition", "game-loop", "input", "collision", "drawing", "sound"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Move onto the star. The count changes from **0 to 1**, and you hear a short sound. Stay there: the star has gone, so it cannot score again. Press restart and it returns.
+
+Those few seconds bring several useful routines together. Here is the NES version, with each part kept small enough to lift into a project of your own.
+
+<figure>
+  <img src="/images/patterns/collect-and-respond/nes-ready.png" alt="The NES example at its starting position, with the player, collectible and zero count." width="256" height="240" loading="lazy" />
+  <figcaption>Captured from the running Emu198x example.</figcaption>
+</figure>
+
+## Run it first
+
+Target: **NTSC NES, NROM cartridge**. Controls: **controller 1 D-pad; A restarts**. Reset the machine to leave.
+
+With Asm198x available, keep the code-sample folders together and build:
+
+```sh
+make -C nintendo-entertainment-system/patterns/assembly/framework/collect-and-respond
+```
+
+Start the generated NROM cartridge. The [sample folder](https://github.com/code198x/code-samples/tree/e8e445b7d51e7292edb1a8503db467f032a1fee1/nintendo-entertainment-system/patterns/assembly/framework/collect-and-respond) contains the complete program, build recipe and integration notes. The [comparison](/patterns/cross-platform/framework/collect-and-respond/) explains the choices across all five versions.
+
+The player moves one cell per six accepted updates. Hold a direction to keep moving. Restart reacts to a **new press**, so holding it will not trap the player at the starting position.
+
+## Connect the pieces
+
+Read the controls once. Calculate the new and released bits from that sample. Update the world, then draw its new state. Call `service_sound` before the new update so an effect gets its full first frame. That order is visible in the caller:
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/collect-and-respond/demo.asm" from="main_loop:" to="frame_done:" title="The jobs in one update" />
+
+Startup owns the machine-specific work. It establishes the memory and hardware assumptions that the smaller routines rely on:
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/collect-and-respond/demo.asm" from="reset:" to="main_loop:" title="Initialise this caller" />
+
+This program owns the nametable, CHR tiles 0–4, background palette, pulse channel 1, $4015 and controller 1. DMC stays disabled. NMI only increments the frame clock. The routines together change A/X/Y and flags. Keep competing writers out of those resources; adding a music player or IRQ handler requires an explicit agreement about who writes what.
+
+## Move, test and consume
+
+The playfield is **16 × 10 cells**. The player begins at (2,5); the star occupies (10,5). The rules keep X between 0 and 15 and Y between 0 and 9. Diagonals move on both axes. Opposing directions are processed left/right, then up/down; choose cancellation or last-direction priority if that better suits your game.
+
+`previous`, `pressed` and `released` belong to input sampling. `player_x/player_y`, `move_delay`, `item_active` and `score` belong to the rules. Reset preserves input history: clearing it while a button is held would invent another press.
+
+The collision uses half-open boxes. A cell at (x,y) has edges (x,y,x+1,y+1), so merely touching the star's edge leaves it alone. The routine can also compare larger rectangles or pixel coordinates, provided both boxes use the same units and edge arithmetic does not wrap.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/collect-and-respond/collision.inc" lang="6502" title="Reusable box overlap" />
+
+The update consumes the star **before** starting feedback. That single state change is what prevents the next frame from collecting it again.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/collect-and-respond/rules.inc" lang="6502" title="Input edges, movement and collection" />
+
+For this exact one-cell scene, coordinate equality would do less work. The general box routine earns its extra comparisons when objects have different sizes. [Box collision and its alternatives](/patterns/cross-platform/physics/aabb-collision/) explains when a more precise second test helps. A fast object can skip over a target between samples; that calls for a path or swept test as well.
+
+## Show the new state
+
+This version uses background tiles written into a nametable during vblank. `old_x/old_y` remember which cell to erase. The item is drawn before the player, so the player wins the draw order when they overlap.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/collect-and-respond/draw.inc" lang="6502" title="Draw, erase and show the count" />
+
+Painting a blank over the old position works because the background is empty. With a map behind the player, restore its tile. With overlapping objects, redraw the affected scene or choose another renderer. Keep that decision in the drawing routine so the rules can stay useful.
+
+## Make the event audible
+
+On this machine, pulse channel 1 plays while the loop continues; a frame counter disables it. The count also changes visibly, so sound carries useful feedback without being the only signal.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/collect-and-respond/sound.inc" lang="6502" title="Collection sound" />
+
+## Take it into your game
+
+Copy the routine you need, its state and its maintained includes. Read the declaration and caller together: the caller shows initialisation, call frequency and ownership. The sample README lists register effects and resource limits. Preserve the relative include layout, or update those paths deliberately when moving files.
+
+These examples use whole-cell movement and a frame-based repeat counter. Fractional motion, scrolling, multiple items and sound priorities are useful next steps when a game needs them. A 50 Hz and a 60 Hz machine give this counter different wall-clock speeds.
+
+**Code status: assembled and emulator-executed for the named configuration.** Checks drive real input, exercise all four bounds, reject edge-only contact, collect once, restart while held and capture the picture and PCM. A broken collection caller must fail the same guard. The execution record identifies the exact sources, binary, emulator and firmware; it establishes this caller rather than every feature of the machine.
+
+[Read the execution record](https://github.com/code198x/code-samples/blob/e8e445b7d51e7292edb1a8503db467f032a1fee1/nintendo-entertainment-system/patterns/assembly/framework/collect-and-respond/verification/results.json) · [Understand the frame wait](/patterns/nintendo-nes/assembly/framework/nmi-game-loop/) · [Read the controls](/patterns/nintendo-nes/assembly/input/controller-reading/) · [Explore the sound routine](/patterns/nintendo-nes/assembly/audio/square-wave/)
