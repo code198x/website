@@ -1,0 +1,71 @@
+---
+title: "Draw a Native Region on Mattel Aquarius"
+summary: "Reusable Mattel Aquarius code for a room, changed tile or strip of scenery, with its display layout and ownership explicit."
+platform: "mattel-aquarius"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["tilemaps", "regions", "native", "assembly", "characters"]
+related:
+  patterns: ["tile-region", "tile-map-queries"]
+  vault: ["tile-maps"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A door opens, and one map cell changes. This routine redraws its picture without rebuilding the whole screen. The same call can paint a room or the strip of scenery revealed by a camera: choose a source rectangle and a destination, then let the machine's renderer do the copying.
+
+<Figure src="/images/mattel-aquarius/patterns/tile-region.png" kind="capture" alt="Mattel Aquarius native diagnostic showing a small patterned region, a single-cell redraw and a separate corner tile" caption="Original reset diagnostic in Emu198x 0.39.0: unexpanded character and colour screen. Complete display memory and every native pixel are checked separately." />
+
+The capture uses an **original diagnostic font ROM**, supplied by the test fixture for repeatable glyph checks. It is not the stock font and does not show software-redefinable characters on this machine. Set your game's descriptors to codes in its installed ROM.
+
+## A picture has two screen bytes
+
+Aquarius stores character codes at `$3000–$33FF` and matching colour bytes at `$3400–$37FF`. The active **40×25** display uses 1,000 entries from each; the remaining 24 bytes in each allocation stay unchanged.
+
+`glyph_codes` maps each logical ID to a code in the fixed character ROM. The example uses the deliberately non-identity mapping 0,3,1,2. `tile_colours` supplies `$F0,$F0,$10,$80`: the high nibble selects foreground and the low nibble selects background.
+
+The surround repeats **cell zero** and its colour attribute. Changing (0,0) can change the border as well. BASIC normally uses rows 1–24; direct hardware drawing can use all 25. A game sharing the editor needs an explicit rule for that first row, clearing and scrolling.
+
+## Reserve your workspace
+
+Define `NR`, `MAP`, `MAP_W`, `MAP_H`, `TILE_COUNT`, `SCREEN`, `COLOUR`, `SCREEN_COLS=40`, `SCREEN_ROWS=25`, plus the glyph and colour descriptor tables. Include `character-regions/z80.inc` once. The context needs 32 writable bytes; no scratch initialisation call is needed.
+
+The example source map is twelve bytes wide and eight high. Context, results, source map, guards and stack all fit in the unexpanded `$3800–$3FFF` RAM. Map dimensions and tile count are nonzero bytes; every allocation must fit mapped memory without wrapping or overlapping the overwritten screen.
+
+AF/BC/DE/HL and flags are clobbered. Six stack bytes cover the direct CALL, paint helper and saved pointer, beyond your own caller/interrupt use. A 5×3 patch writes fifteen character bytes and fifteen colour bytes, plus preflight/address work.
+
+Choose glyphs which exist in the installed ROM. The routine cannot redefine this fixed font in software. Combining available characters into larger scenery or objects gives you more options; a custom bitmap is not a hidden feature of the screen-code copy.
+
+## Draw the rectangle
+
+The constants belong to the original caller's working memory plan. Choose allocations which fit your own project, keeping setup and drawing separate.
+
+<CodeFromFile src="mattel-aquarius/patterns/assembly/rendering/tile-region/demo.asm" from="NR EQU" to="start:" lang="z80" title="Caller-owned memory and display constants" />
+
+<CodeFromFile src="mattel-aquarius/patterns/assembly/rendering/tile-region/demo.asm" from="glyph_codes:" to="INCLUDE" lang="z80" title="Translate logical IDs into native screen codes and colours" />
+
+Supply six unsigned bytes at `NR+0..5`: source column, source row, destination column, destination row, width and height. Call `region_draw`; `NR+6` is one for completion or zero for rejection. The six request bytes survive.
+
+<CodeFromFile src="mattel-aquarius/patterns/assembly/rendering/tile-region/demo.asm" from="case_0:" to="case_1:" lang="z80" title="Draw a 5×3 patch from map cell (2,1) at display cell (4,3)" />
+
+The result store after the call belongs to the diagnostic. In a game, read the completion flag and carry on with your own logic. The routine rejects zero sizes, invalid starts, source/destination overruns and IDs outside the configured table. Every selected ID is checked before painting begins, so a bad tile cannot leave half a patch behind. This variant rejects rather than clips.
+
+## Keep the routine
+
+<CodeFromFile src="cross-platform/patterns/rendering/character-regions/z80.inc" lang="z80" title="Checked character and colour region drawing" />
+
+The context is private and non-re-entrant. Keep the request, map, descriptors or picture data, and display configuration stable throughout the call. Your caller owns video setup, allocations and interrupt policy; the routine does not disable interrupts or negotiate with an OS. Interrupt handlers must preserve the used registers and must not change those resources halfway through drawing.
+
+## What was checked
+
+All **18 calls** completed: three accepted draws and fifteen map/bounds/ID rejections. Each rejected request also ran **in isolation** after the same three accepted draws, preserving complete destination allocations and both mapped guards. The source selection crosses a CPU page boundary.
+
+The observer compares every destination byte, unused allocation tails and stored colour bits where present, with an independent model. It compares every native capture pixel with a separate composition, including borders and scaling. Completed wrong-layout and unsafe-destination controls fail the same memory checks; wrong-layout pictures also fail the pixel check.
+
+These results qualify the selected Emu198x 0.39.0 configuration with Asm198x 0.0.71 and the original reset fixture. They do not establish stock-OS loading, original-hardware timing, interrupt coexistence, tear-free updates or throughput.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/15f3b795e75e88c505bf47b020c3aa6555414643/mattel-aquarius/patterns/assembly/rendering/tile-region)
+- [Calling contracts, costs and sources](https://github.com/code198x/code-samples/blob/15f3b795e75e88c505bf47b020c3aa6555414643/cross-platform/patterns/rendering/character-regions/README.md)
+- [Other native region routines](/patterns/cross-platform/rendering/tile-region/)
+- [Map storage and queries](/patterns/cross-platform/rendering/tile-map-queries/)
