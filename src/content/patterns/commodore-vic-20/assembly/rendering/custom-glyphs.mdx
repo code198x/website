@@ -1,0 +1,88 @@
+---
+title: "Install and Replace Characters on VIC-20"
+summary: "Reusable glyph uploads and cell selection on VIC-20; keep pictures, character numbers and placement separate."
+platform: "commodore-vic-20"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["characters", "glyphs", "fonts", "udg", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Draw a door once and show it in several rooms. Change its glyph, and every cell using that code changes together. Change one cell’s code, and only that instance changes. These routines give you both operations without a whole renderer.
+
+<Figure src="/images/patterns/shared-glyph.svg" kind="image" rendering="smooth" alt="An eight-row cross in slot one, shared by two screen cells containing code one" caption="The picture lives in a slot; screen cells hold its number. Replacement and placement have different effects and different costs." />
+
+## Include, initialise and call
+
+Define `G` at 24 private zero-page bytes and include `glyphs.inc`. Clear decimal mode and establish the caller’s unexpanded PAL hi-res configuration first. It sets $9005=$FC and $9002=$96: RAM glyphs at $1000, screen at $1E00. Set each cell’s colour at $9600 with bit 3 clear. The component does not set colours.
+
+Call `glyph_init` once to blank the owned glyph and name ranges. It destroys their previous contents. Then install the original sketches and select code 1 in two cells:
+
+<CodeFromFile src="commodore-vic-20/patterns/assembly/rendering/custom-glyphs/demo.asm" from="; Install two original glyphs" to="mailbox:" lang="6502" title="Install two pictures; display the first twice" />
+
+The complete caller includes video setup and boot structure. Its mailbox is verification transport; your project calls these entries directly.
+
+## The calling contract
+
+All three glyph backends use little-endian words in a 24-byte context at G.
+
+| Offset | Supply or read |
+| --- | --- |
+| 0 | Word: readable source address |
+| 2, 3 | First slot, nonzero count |
+| 4 | Code to select in a cell |
+| 5 | Word: linear cell index |
+| 7 | Output: 1 accepted, 0 rejected |
+| 8 | Word: destination bytes written |
+
+`glyph_install` uploads a range; `glyph_replace` uploads one picture and ignores count. `glyph_select` writes one name entry. `glyph_init` blanks all owned patterns and cells. Inputs 0–6 survive. Counts reset on rejection. The source must be readable, long enough and non-overlapping with destination/context; it is a trusted pointer, not an arbitrary-memory validator.
+
+Valid slots are 0–127; cell indices are 0–505. Counts run 1–128. Zero counts, ranges past the final slot and invalid cells reject before writing. Codes 128–255 reject in this allocation too.
+
+## Make the picture into bytes
+
+Row `10000001` lights the outer two dots: bit weights 128+1 give byte **129**. Sketch eight rows like that and you have an 8×8 picture. The source sketches are original Code198x assets under MIT, not ripped game art or a copied ROM font.
+
+One byte stores each row. Row r in slot n is `base + n*8 + r`; slot 1 begins eight bytes after slot 0.
+
+The [Crates opening lesson](/systems/sinclair-zx-spectrum/basic/crates/unit-01-draw-a-wooden-crate/) builds larger artwork from four 8×8 sketches. Its method of turning dots into byte weights applies here too, even though the upload and colour rules differ.
+
+## Respect this machine’s display
+
+The font allocation is $1000–$13FF (128 slots); the screen is $1E00–$1FF9 (22×23 cells). The hardware can address more codes: **128 is this routine’s RAM reservation**, leaving room for other data on an unexpanded VIC. A 256-code variant needs more reserved RAM and adapted bounds/init. Character codes are screen codes, not PETSCII. Colour bit 3 enables multicolour, changing the interpretation of row bits; this is the high-resolution variant.
+
+## Replace a picture; select a different instance
+
+After the example, point G+0 at a new sketch, set G+2=1 and call `glyph_replace`. Both cells still contain code 1, so both show the new picture. To change only the first, put code 2 in G+4 and its cell index in G+5, then call `glyph_select`. The second cell keeps code 1.
+
+For a cell at column 2, row 2, the row-major index is `2*22+2 = 46`. Local dot (3,5) in that cell appears at screen pixel `(2*8+3, 2*8+5) = (19,21)`. [Place a point](/craft/maths-for-games/unit-06/) explores origin and coordinates; here the top-left screen origin makes Y increase downwards. Grid placement does not imply arbitrary-position or scaled text support.
+
+<Figure src="/images/commodore-vic-20/patterns/custom-glyphs.png" kind="capture" alt="VIC-20 native output with both shared cells showing the replacement pattern" caption="The first replacement in the native check changes both cells. A later single-cell selection changes only one. Complete pattern/name memory and selected native frames are checked separately." />
+
+<details>
+<summary>Open the complete reusable 6502 include</summary>
+<CodeFromFile src="commodore-vic-20/patterns/assembly/rendering/custom-glyphs/glyphs.inc" lang="6502" title="Upload, replace and select without a whole game renderer" />
+</details>
+
+## Pay for what changes
+
+Changing one name costs **one destination byte**; replacing one picture costs **8**.  A full init writes 1,530 bytes; that clears the font plus the entire owned name table. Installing every glyph just to change one is wasted work.
+
+The assembled component takes 203 code bytes and 24 context bytes; glyph assets take 8 bytes each. These counts exclude the reset caller, video setup. They are storage and write counts, not measured frame budgets. The font reservation itself is 1 KB.
+
+A/X/Y and flags are clobbered; clear decimal mode and allow four stack bytes including the direct call. Add space for your other code and interrupts. The context is non-re-entrant. The routines do not change interrupt state or banks, and must not race a font cache, other renderer or OS using the same resources.
+
+A font cache, proportional layout, arbitrary-position text and live transfer queue are useful further components. PET and Aquarius ROM characters need a different strategy; an upload routine cannot make fixed ROM writable.
+
+## What was verified
+
+All 17 calls completed on this VIC-20 configuration with Asm198x 0.0.71 and Emu198x 0.39.0. Checks compare full pattern/name memory, nonzero neighbours, public inputs, accepted/rejected status and destination-write counts after each request. They include shared replacement, single-cell selection, first/last slots, largest legal uploads, zero/overflow counts, invalid cells and reset. Selected whole native frames match a separate compositor. A completed wrong-slot build fails both memory and visible-output checks.
+
+This is an original reset caller, qualified independently on this machine. It does not establish stock-OS loading, interrupt coexistence, hardware timing.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/db7d12fbc08d12fcf3ccdd7830bf016c46e9e5ae/commodore-vic-20/patterns/assembly/rendering/custom-glyphs)
+- [Reusable include](https://github.com/code198x/code-samples/blob/db7d12fbc08d12fcf3ccdd7830bf016c46e9e5ae/commodore-vic-20/patterns/assembly/rendering/custom-glyphs/glyphs.inc)
+- [Full contracts, costs and primary references](https://github.com/code198x/code-samples/blob/db7d12fbc08d12fcf3ccdd7830bf016c46e9e5ae/cross-platform/patterns/rendering/drawing-foundations/README.md)
+- [Compare writable character systems](/patterns/cross-platform/rendering/custom-glyphs/)
