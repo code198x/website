@@ -1,0 +1,65 @@
+---
+title: "Move a glyph, keep its shape"
+game: 3
+unit: 13
+sequence: "Drawing on a grid"
+---
+
+import Figure from '@components/Figure.astro';
+import Question from '@components/Question.astro';
+
+Draw a number above an enemy and let it rise. The digits keep their shape while their position changes. That little effect gives us translation, clipping and byte boundaries in one useful example.
+
+The Pattern Library's [bitmap text routines](/patterns/cross-platform/rendering/bitmap-text/) already do the drawing on Spectrum, BBC Micro, Dragon and CPC. Here we’ll work through the maths you use to place a label and understand what it costs.
+
+<Figure src="/images/patterns/glyph-translation.svg" kind="image" rendering="smooth" alt="An eight-by-eight glyph cell at (21,37), highlighting local dot (3,5) which lands at screen (24,42); the next origin is X29" caption="Add the same displacement to every local point. The picture moves without changing its internal distances." />
+
+## Add an origin
+
+A font describes dots relative to the character's own top-left corner. Our highlighted dot is three pixels right and five down: local (3,5). Put the cell at (21,37), and add:
+
+`screenX = 21+3 = 24`
+
+`screenY = 37+5 = 42`
+
+Move the origin to (25,35), and that dot lands at (28,40). Every dot moves four right and two up. Distances between dots stay the same because each received the same displacement. That is translation.
+
+These are screen coordinates, with Y increasing downwards. [Place a point](/craft/maths-for-games/unit-06/) uses an upwards world Y; convert deliberately when moving between them. The glyph's origin is its cell corner, not a typographic baseline.
+
+## The picture is not its advance
+
+The supplied design has five columns of ink inside an eight-pixel cell. The next glyph begins eight pixels after the previous origin: 21, 29, 37, 45. A space has no ink, but it still takes one cell.
+
+For n characters, `nextX = startX + 8*n`. A ten-code label starting at 21 ends at 101. That is the position after the label, not necessarily the rightmost lit dot. To centre its cell bounds around X160, choose `startX = 160 - (10*8)/2 = 120`.
+
+A proportional font would have a different advance for each character, so we would add those advances instead. Scaling, word wrapping and baseline alignment need their own rules. The current reusable component is deliberately fixed-width.
+
+<Question prompt="A three-character string begins at X21. Its middle character is a blank space. Where does the third cell begin, and what is nextX?">
+
+The cell origins are 21, 29 and 37. The third begins at 37, and nextX is 45. Invisible ink does not remove the middle cell's advance.
+
+</Question>
+
+## Find the byte and protect its neighbours
+
+On an eight-pixel-per-byte bitmap, X21 gives `21 div 8 = 2` and `21 mod 8 = 5`. Division selects byte-column 2; remainder says the cell begins five pixels into it. Its eight columns cross into byte-column 3.
+
+The highlighted dot at X24 instead has quotient 3 and remainder 0, so its mask is bit 7: `128 >> 0 = 128`. On a CPC MODE 1 display, divide by four: X21 selects byte-column 5, phase 1. An eight-pixel cell can touch three CPC bytes. Each pixel has two separated pen bits, so the actual mask comes from that backend rather than an eight-bit mono formula.
+
+The machine page calculates the row address. BBC interleaving, Spectrum scanline ordering and CPC packing are different problems from translation. Keep those decisions in the backend, which [pixels and spans](/patterns/cross-platform/rendering/pixels-and-boxes/) already expose.
+
+## Clip the drawing, keep the layout
+
+A scissor [0,32) across and [0,24) down allows X0..31 and Y0..23. Put a cell at X−3: only its local columns 3..7 can appear. A second cell still starts at X5. Clipping discards outside ink; it does not squeeze the layout sideways.
+
+For a foreground run [−1,4), the intersection is `[max(−1,0), min(4,32)) = [0,4)`. Draw only if the new start is less than the new end. A completely clipped glyph still advances by eight. The text routine accepts negative origins within its documented range and clips each row/run before calling its strict span backend.
+
+## Count useful work
+
+An eight-row opaque glyph first paints eight background spans, then its foreground runs. Transparent mode draws only the foreground. The sample ten-code PIXEL TEXT has 77 foreground spans; opaque adds 80 backgrounds. Partial edge bytes may be visited by several runs.
+
+On the mono backends, moving that label from X24 to X31 changes opaque byte writes from 157 to 237. Transparent writes remain 77 in this workload. CPC's counts are 250 to 324 opaque and 90 to 84 transparent. Blank columns and ink runs matter: alignment alone cannot predict every count.
+
+A masked blitter could combine background and foreground in fewer passes. Pre-shifted phases spend font storage to save draw-time work. A ten-digit font needs 80 bytes; 64 glyphs need 512; 256 need 2,048. Those choices let a game fit its own limits instead of assuming one renderer is best everywhere.
+
+These are observed writes and storage sizes, not elapsed time. Measure the routine inside your actual frame before promising a frame rate. Use the [machine-specific text entries](/patterns/cross-platform/rendering/bitmap-text/) for the real calls, ownership rules and separately verified results.
