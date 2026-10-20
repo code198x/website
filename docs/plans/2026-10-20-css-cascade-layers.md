@@ -1,19 +1,31 @@
-# CSS cascade layers
+# CSS cascade layers and layout composition
 
 Restructure the site's CSS so rules win by an explicit layer order instead of
-specificity tricks. Then remove the tricks, merge the two token vocabularies,
-settle the breakpoints and name files by purpose. Every step except the two
-marked **intended change** must leave every page looking exactly as it did.
+specificity tricks, then remove the tricks and merge the two token
+vocabularies. After that, rebuild layout from a small set of Every Layout
+primitives, so pages compose layout instead of writing it, and name files by
+purpose. The layer steps must leave every page looking exactly as it did; the
+composition steps are **intended changes**, reviewed by screenshot.
 
-Agreed with Steve on 2026-10-20 as approach 1 of three (layers first; not
-component-scoping everything, not a rewrite from the kit).
+Agreed with Steve on 2026-10-20:
+
+- Approach 1 of three: layers first. The alternatives were moving every global
+  rule into its component, and a rewrite from the kit.
+- Layout composition from Every Layout primitives, organised by CUBE CSS
+  (Composition, Utility, Block, Exception). Chosen over container queries on
+  each component (a technique that complements this but doesn't replace it)
+  and utility-first CSS (a new dependency, every template rewritten, and a
+  second token system beside the kit's).
+- The primitives are Astro components in the site first, and move to 198x-ui
+  once they have settled across the page families.
 
 **Target: half the CSS.** On 2026-10-20 the source held 502 KB of CSS: 174 KB
 in stylesheets and 329 KB in component `<style>` blocks (1,981 + 8,002 lines).
 Steve's target is 250 KB or less. Layers alone save little (the `body.magazine`
-prefixes are about 9 KB); most of the cut has to come from rules no page uses
-(step 1) and from duplicated rules (steps 4 and 5). Measure the source size at
-the end of every step and record it here.
+prefixes are about 9 KB). Most of the cut has to come from rules no page uses
+(step 1), duplicated rules (steps 3 and 4) and hand-written layout that the
+primitives replace (step 6). Measure the source size, and the number of layout
+media queries, at the end of every step and record them here.
 
 ## Progress
 
@@ -24,6 +36,10 @@ CSS source size (stylesheets plus `<style>` blocks under `src/`):
 | 2026-10-20 | Starting point (main at 7d2dba5) | 502,150 | |
 | 2026-10-20 | Removed 18 components no page renders | 481,253 | −4.2% |
 | 2026-10-20 | Removed selectors for 56 classes nothing renders | 457,216 | −8.9% |
+
+Layout media queries (an `@media` block that changes `grid-template-columns`,
+`grid-column`, `flex-direction` or `display`): 113 of 195 media queries on
+2026-10-20, across 62 files and no file with more than nine.
 
 ## Where it stands (main at 7d2dba5)
 
@@ -45,81 +61,123 @@ CSS source size (stylesheets plus `<style>` blocks under `src/`):
   (`--color-text` is `--h-ink-body` in one place and `--h-ink` in another).
 - 328 raw hex colours; 210 media queries over about twenty breakpoints (600,
   740, 760, 767, 768, 860, 900, 1000, 1100 …).
+- Layout is written per component: 258 `grid-template-columns`, 254
+  `display: flex`, 1,209 `margin` and 581 `max-width` declarations, and one
+  container query. The only shared layout piece is `PageFrame`, which is
+  effectively a Center. The kit has no layout primitives (`Shell`, `Tile` and
+  `Plate` are components).
 - Light only: the kit sets `color-scheme: light`.
 - The kit (`_198x-ui/`, pinned by `scripts/fetch-ui.sh`) is unlayered. So are
   `pagefind-ui.css` and any CSS the editor or player injects at runtime.
   **Unlayered CSS beats every layer**, so each of these needs a decision in
-  step 1. The kit itself is not edited here; it is Steve's release.
+  step 2. The kit itself is not edited here; it is Steve's release.
 
 ## Target
 
 ```css
-@layer kit, base, layout, components, pages, legacy;
+@layer kit, base, composition, utilities, blocks, exceptions, legacy;
 ```
 
 - `kit`: `_198x-ui` tokens and fonts, imported with `layer(kit)`.
 - `base`: site tokens, element defaults, typography.
-- `layout`: page frame, header, footer, breadcrumbs, grids.
-- `components`: shared components' styles.
-- `pages`: page- and section-specific rules.
-- `legacy`: the starting bucket. Everything goes in here first and leaves
-  as it is sorted, and it is deleted when empty.
+- `composition`: the layout primitives (step 5), plus the page frame, header
+  and footer. Nothing else sets layout.
+- `utilities`: single-purpose classes generated from tokens, added only where
+  a pattern repeats.
+- `blocks`: components. A block styles its own look (colour, type, borders)
+  and leaves its layout to composition.
+- `exceptions`: variations of a block, expressed as data attributes
+  (`[data-state="open"]`) rather than modifier classes.
+- `legacy`: the starting bucket. Everything goes in here first and leaves as it
+  is sorted, and it is deleted when empty.
 
 The order statement goes in the first inline `<style>` in `Layout.astro`'s head.
 The built pages already put that before every bundled stylesheet, which a test
 will assert.
 
+## Layout primitives
+
+From Every Layout, as Astro components in `src/components/layout/`, each
+rendering one element with a class and custom properties. The classes are the
+single implementation and live in the `composition` layer.
+
+| Primitive | Does | Replaces |
+|---|---|---|
+| `Stack` | Vertical rhythm between siblings | Most per-element `margin` declarations |
+| `Box` | Padding and a border around content | Ad hoc padded panels |
+| `Center` | A capped, centred measure | Scattered `max-width` + `margin-inline: auto`; `PageFrame` builds on it |
+| `Cluster` | Wrapping rows of items (tags, buttons, links) | `flex-wrap` rows |
+| `Sidebar` | Two panes that stack when the main pane gets too narrow | Two-column grids with a breakpoint |
+| `Switcher` | Rows that become a column below a threshold, all at once | Grids that drop to one column at a breakpoint |
+| `Grid` | Auto-filling columns with a minimum width | Fixed-column grids and their breakpoints |
+| `Cover` | Vertically centred content in a minimum height | Hero and opening bands |
+| `Reel` | A horizontal scroller | Hand-built overflow rows |
+| `Frame` | Media cropped to an aspect ratio | Illustrations only (see below) |
+
+- Spacing props take a step of the kit's scale (`space="4"` →
+  `var(--h-space-4)`), so the primitives add no new tokens.
+- Props are typed, so a wrong value fails the build.
+- **`Frame` never holds a capture.** Captures render at a whole multiple of
+  their native pixels, uncropped (`decisions/family-visual-identity.md`); they
+  keep their existing components.
+- Each primitive gets a specimen in the development catalogue and a browser
+  test at 320, 768 and 1440 px.
+
 ## How each step is checked
 
-A computed-style snapshot is the gate. A script serves the built site, visits a
-fixed route set and records `getComputedStyle` for every element and its
-`::before`/`::after`. Two snapshots are compared, and a pure-restructure step
-must produce **zero differences**. Screenshots back it up for a person to look
-at, and they are the main evidence for the two intended-change steps.
+- **Layer steps (2–4, 7):** a computed-style snapshot is the gate. A script
+  serves the built site, visits a fixed route set and records
+  `getComputedStyle` for every element and its `::before`/`::after`. Two
+  snapshots are compared, and a step must produce **zero differences**.
+- **Composition steps (5–6) and any value change in step 4:** these change
+  geometry slightly, on purpose. Before and after screenshots at 320, 768 and
+  1440 px of every route in the affected family, for Steve to review, plus the
+  browser tests. The snapshot diff lists what moved, so nothing changes
+  unseen.
 
-Each step also runs `npm run check:release`, and its PR runs the browser CI.
+Every step also runs `npm run check:release`, and its PR runs the browser CI.
 
 ## Steps
 
-### 0. Measurement tools (PR 1, with this plan)
+### 0. Measurement tools (done, #872)
 
-1. Add `scripts/css-snapshot.mjs`: built site via `astro preview` on its own
-   port, Chromium, desktop 1440×900 and Pixel 7, animations frozen, fonts
-   awaited. Writes one JSON per route and viewport.
-2. Add `scripts/css-diff.mjs`: compares two snapshot directories and prints
-   the route, element path, property, before and after. Exits non-zero on any
+1. `scripts/css-snapshot.mjs`: built site via `astro preview` on its own
+   port, Chromium, desktop 1440×900 and Pixel 7, animations finished, every
+   font face loaded, and the layout left to settle. Writes one JSON per route
+   and viewport.
+2. `scripts/css-diff.mjs`: compares two snapshot directories and prints the
+   route, element path, property, before and after. Exits non-zero on any
    difference.
-3. Add `scripts/css-routes.mjs`, which writes the route set
-   (`scripts/css-routes.json`) from the build. It takes a greedy cover, the
-   fewest pages that between them render every scoped component (by
-   `data-astro-cid-*`) and every class the global stylesheets name. On
-   2026-10-20 that was 82 of 3,866 pages covering 599 features. Hand-written
-   entries with `steps` add the states a page load misses: mobile menu open,
-   search open, a lesson with its editor open. This replaces "one route per
-   template", which would miss components used on only a few lessons.
-4. Add `npm run css:routes`, `css:snapshot` and `css:diff`, and document them
-   in `docs/page-layouts.md`.
-5. Verify the gate. Two full snapshots of one build (169 page snapshots)
-   matched except for the search box's focus ring, which Pagefind sets
-   asynchronously. The search state now waits for focus, and four repeats then
-   matched. Changing one property in a built page (Field Notes card titles,
-   `letter-spacing: 0` → `1px`) was reported with its layout knock-on effects
-   (49 differences), and the diff exited 1.
+3. `scripts/css-routes.mjs` writes the route set (`scripts/css-routes.json`)
+   from the build. It takes a greedy cover, the fewest pages that between them
+   render every scoped component (by `data-astro-cid-*`) and every class the
+   global stylesheets name. On 2026-10-20 that was 82 of 3,866 pages covering
+   599 features. Hand-written entries with `steps` add the states a page load
+   misses: mobile menu open, search open, a lesson with its editor open.
+4. `npm run css:routes`, `css:snapshot` and `css:diff`, documented in
+   `docs/page-layouts.md`.
+5. The gate was verified both ways:
+   - It can fail: changing one property in a built page (Field Notes card
+     titles, `letter-spacing: 0` → `1px`) was reported with its layout
+     knock-on effects (49 differences), and the diff exited 1.
+   - It is deterministic: snapshots of separate builds of the same source
+     match on all 169. This needed four fixes: Pagefind focusing its input
+     late, random diagram marker ids, the Game Feel iframe resizing after load,
+     and a display face still loading when `document.fonts.ready` resolved.
 
 Not covered: `:hover` and `:focus` states. Add a forced-state pass through
-CDP `CSS.forcePseudoState` if step 4 turns up rules that only show under them.
+CDP `CSS.forcePseudoState` if step 3 turns up rules that only show under them.
 
-### 1. Remove CSS no page uses
+### 1. Remove CSS no page uses (in progress: #874, #875)
 
-1. Add `scripts/css-coverage.mjs`: load every built page at 1440, 768 and
-   Pixel 7 widths with Chromium's CSS coverage on, and report each rule that
-   never matched anything.
-2. Group the unused rules by source file. Before deleting one, search `src/`
-   for its classes and attributes: rules for `:hover`, `:focus`, open
-   disclosures and classes added by scripts report as unused too.
-3. Delete in PRs by area. Gate: `css:diff` shows zero differences, the browser
-   CI passes, and a fresh coverage run shows the rule gone without new unused
-   rules appearing.
+1. `scripts/css-coverage.mjs` loads every built page at 1440, 768 and Pixel 7
+   widths with Chromium's CSS coverage on, and reports each rule that never
+   matched anything. On 2026-10-20: 202 KB of 573 KB of distinct shipped CSS.
+2. Removed 18 components nothing renders (#874), and selectors for 56 classes
+   that nothing renders, no script adds and no source markup names (#875).
+3. Left: rules that never matched although every class exists (about 108 KB
+   shipped, mostly combinations that never occur). Telling those apart needs a
+   selector-matching pass over every page.
 
 ### 2. Everything into `legacy`
 
@@ -137,22 +195,13 @@ CDP `CSS.forcePseudoState` if step 4 turns up rules that only show under them.
    components). Fix each one by layering that CSS, or record why it stays
    unlayered. Finish at zero differences.
 
-### 3. Sort `legacy` into layers, lowest first (one PR per layer)
-
-Moving a rule to a lower layer makes it lose to everything still in `legacy`,
-so sort from the bottom up: `base` (site tokens, `lesson.css` defaults, the
-global element rules in `Layout.astro`), then `layout`, `components`, `pages`.
-When a move produces differences, the gate names the rule pair that competed.
-Either move the competitor in the same PR, or leave both in `legacy` and list
-them for step 4. Delete `legacy` when it is empty.
-
-### 4. Remove the specificity boosts (PRs by area)
+### 3. Remove the specificity boosts (PRs by area)
 
 Strip `body.magazine` prefixes, unnecessary `:global()` wrappers and
 `!important`, one area at a time (Vault, lessons, patterns, editorial, family,
 setup, shell). Zero differences per PR.
 
-### 5. One token vocabulary (PRs by token group)
+### 4. One token vocabulary (PRs by token group)
 
 1. Replace site tokens that alias a kit token everywhere with the kit token.
    Zero differences.
@@ -163,23 +212,47 @@ setup, shell). Zero differences per PR.
    for Steve. Any change of value is an **intended change** and needs
    screenshots and approval.
 
-### 6. Breakpoints (intended change)
+### 5. Build the primitives
 
-Propose a scale (for example 600 / 900 / 1100) with screenshots of every page
-whose layout shifts. Steve approves the scale before any code changes.
+Add the ten primitives above to `src/components/layout/`, their classes to the
+`composition` layer, a catalogue specimen each and their browser tests.
+Rebuild `PageFrame` on `Center`, which must leave its pages unchanged (zero
+differences). No other page changes in this step.
+
+### 6. Recompose page families (intended change, one PR per family)
+
+Starting with the Vault (index, category and article templates, with their
+own stylesheets, serving thousands of pages), then lessons, patterns,
+editorial, system pages, family pages and setup. Per family:
+
+1. Replace hand-written layout with primitives, and move what remains of the
+   family's CSS from `legacy` into `blocks` and `exceptions`.
+2. Delete the layout media queries the primitives make unnecessary.
+3. Screenshots at 320, 768 and 1440 px before and after for Steve, and the
+   source size and layout-media-query count for the progress table.
+
+This replaces the earlier "settle a breakpoint scale" step: most breakpoints
+go rather than being standardised. Any that remain (navigation, say) are
+listed for Steve with a proposed scale.
 
 ### 7. Files by purpose
 
 Rename or merge the files named after rollouts (`design-rollout.css`,
 `approved-pages.css`, `approved-learning.css`) into files named for what they
-style, one per layer where that helps. Update `docs/page-layouts.md` and the
-README's "Magazine presentation" section to describe the layers. Zero
-differences.
+style, one per layer where that helps. Delete `legacy`. Update
+`docs/page-layouts.md` and the README's "Magazine presentation" section to
+describe the layers and primitives. Zero differences.
+
+### 8. Move the primitives to 198x-ui
+
+Once step 6 has used them across every family, propose them to the kit as a
+release for the other family sites, and switch the website to the kit's copy.
+Steve owns the kit's releases.
 
 ## Risks
 
 - **Runtime CSS outside our control** (editor, player, pagefind) is unlayered
-  and will now beat site overrides. Step 1 finds every case on the route set;
+  and will now beat site overrides. Step 2 finds every case on the route set;
   routes outside the set rely on the browser CI and the release checks.
 - **Route set coverage.** The cover guarantees every component and every
   global class appears at least once, but not every combination. An element
@@ -187,6 +260,11 @@ differences.
   only if some chosen page happens to have one. The browser CI and release
   checks are the backstop.
 - **Parallel work.** Other branches edit the same `<style>` blocks
-  (`website-preview`, `design-system-v1`, `lesson-page-redesign` worktrees).
-  Step 1 touches all 141 files and will conflict with them. Land it quickly,
-  and tell Steve before it merges.
+  (`website-preview`, `design-system-v1`, `lesson-page-redesign` worktrees),
+  and main moves under this work (the Pattern Library prototype landed during
+  step 1). Step 2 touches all 141 files and will conflict with them. Land it
+  quickly, and tell Steve before it merges. Recheck any rebased branch against
+  main's new markup before merging.
+- **Intended changes hide in volume.** A family recomposition moves many
+  values at once. The screenshot review is the gate, so each PR stays to one
+  family.
