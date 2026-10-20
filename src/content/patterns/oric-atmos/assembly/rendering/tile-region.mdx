@@ -1,0 +1,67 @@
+---
+title: "Draw a Native Region on Oric Atmos"
+summary: "Reusable Oric Atmos code for drawing a room, changed tile or strip of scenery, with explicit display ownership."
+platform: "oric-atmos"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["tilemaps", "regions", "native", "assembly"]
+related:
+  patterns: ["tile-region", "tile-map-queries"]
+  vault: ["tile-maps"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Open a door, break a wall, reveal the next stretch of scenery. The map changes first; this routine makes the picture catch up. Give it a rectangle of byte-map IDs and a destination, and it draws just that part of the world.
+
+<Figure src="/images/oric-atmos/patterns/tile-region.png" kind="capture" alt="Oric Atmos native output showing a patterned map patch and a single-cell redraw" caption="Original diagnostic in Emu198x 0.39.0. A 5×3 patch and a single-cell erase are visible; a separate logical bottom-right write is also checked in memory." />
+
+## Six pixels, then a colour decision
+
+Oric HIRES packs six pixels into each bitmap byte. Bit 6 must stay set for these picture bytes; clearing it can turn a byte into a serial attribute which changes how the rest of the line is displayed. Even a blank tile therefore contains `$40`, rather than zero.
+
+This caller reserves the first two physical columns of every line for PAPER and INK. That leaves **38 drawable columns**, each six pixels wide, and 25 eight-scanline rows. The scanline tables start at `$A002+y*40`, safely beyond those attribute slots. Do not use an eight-pixel X conversion from another machine's map example: a cell here is **6×8**.
+
+The full bitmap occupies `$A000–$BF3F`: 200 lines of forty bytes. The separate bottom text window is blanked by the driver and left alone by the renderer. Its video setup selects HIRES and provides the attributes; the routine only copies encoded picture bytes.
+
+## Make it part of your project
+
+Reserve the complete 32-byte `NR` context in zero page and clear decimal mode before calling. Define `MAP`, its width and height, `TILES`, `TILE_COUNT`, screen dimensions, `CELL_BYTES=1`, `X_STEP=1` and the `bitmap_lo`/`bitmap_hi` tables, then include the maintained 6502 routine once. No scratch initialisation call is needed.
+
+This example's source map is twelve bytes wide and eight high. Each of its four pictures takes eight bytes. ID zero is an opaque blank, so it erases a cell rather than skipping it. Keep assets, tables and the map stable throughout the call. The complete caller below supplies working assets and setup; its absolute addresses are allocations to adapt, not addresses every game must adopt.
+
+A/X/Y and flags are clobbered. Allow four stack bytes for the direct JSR and paint helper, plus your caller and interrupt work. The two address tables cost 400 bytes. Each accepted cell copies eight picture bytes; a 5×3 patch copies 120, in addition to the full ID preflight.
+
+For more colour, design an attribute-aware renderer with a clear rule for which cells own colour changes. Copying arbitrary colour bytes through this pixel-only variant would break that rule. Masked sprites, clipped cameras and timed updates need their own contracts.
+
+## Draw the patch
+
+These are the example caller's allocations and constants. Use addresses which fit your own memory plan.
+
+<CodeFromFile src="oric-atmos/patterns/assembly/rendering/tile-region/demo.asm" from="NR" to="start:" lang="6502" title="The caller owns its memory and display configuration" />
+
+Supply six unsigned bytes: source column, source row, destination column, destination row, width and height. Then call `region_draw`. `NR+6` is one for a completed draw or zero for rejection. The six request bytes survive.
+
+<CodeFromFile src="oric-atmos/patterns/assembly/rendering/tile-region/demo.asm" from="case_0:" to="case_1:" lang="6502" title="Draw a 5×3 patch from map cell (2,1) at display cell (4,3)" />
+
+The result store after the call belongs to the diagnostic. In a game, inspect the completion flag and continue with your own logic. The routine rejects zero sizes, invalid starts, source/destination overruns and IDs outside the configured tile set. It checks every selected ID before writing any destination bytes, so a bad ID cannot leave half a patch behind. It rejects rather than clips.
+
+## Keep the reusable code
+
+<CodeFromFile src="cross-platform/patterns/rendering/bitmap-regions/6502.inc" lang="6502" title="Checked native region drawing" />
+
+The context is non-re-entrant. Your caller owns its memory, video setup and interrupt policy. Keep all inputs and display resources stable throughout the call. Drawing an opaque zero tile erases a cell; transparent sprites need masking or background restoration instead.
+
+## What was checked
+
+All **18 calls** completed on this machine in the original reset diagnostic. Fifteen rejected map/bounds/ID requests were also executed **in isolation**, each after the same three accepted draws. The complete destination and both mapped guards were compared with an independent model, and every native capture pixel was compared with a separate composition. Completed wrong-layout and unsafe-destination controls fail those checks.
+
+The source selection crosses a CPU page boundary. Reserved attributes and allocation gaps are included in the memory comparison.
+
+These results qualify the selected Emu198x 0.39.0 configuration and Asm198x 0.0.71 fixture. They do not establish original-hardware timing, stock-OS loading, interrupt coexistence or a whole-game frame budget. The complete caller keeps reset setup separate from reusable drawing. Copy counts above are not measured timing claims.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/bc9c51d81b6c11b2e6393072f0e2f1776f27d2eb/oric-atmos/patterns/assembly/rendering/tile-region)
+- [Calling contracts, costs and primary references](https://github.com/code198x/code-samples/blob/bc9c51d81b6c11b2e6393072f0e2f1776f27d2eb/cross-platform/patterns/rendering/region-architectures/README.md)
+- [Other native region routines](/patterns/cross-platform/rendering/tile-region/)
+- [Map storage and queries](/patterns/cross-platform/rendering/tile-map-queries/)
