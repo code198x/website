@@ -24,10 +24,19 @@ import { defineConfig, devices } from '@playwright/test';
  * the wrong thing, with nothing in the output to say so.
  */
 const SWEEP = Boolean(process.env.A11Y_SWEEP);
+/**
+ * Tests tagged @built need the production build: search, for one, loads
+ * Pagefind's index, which only `astro build` writes. The everyday run serves
+ * `astro dev` (catalogue previews exist only there) and leaves them out;
+ * PLAYWRIGHT_BUILT=1 runs just those, against `astro preview` on its own port.
+ * CI runs both, so every test meets the server it was written for.
+ */
+const BUILT = Boolean(process.env.PLAYWRIGHT_BUILT);
+const PREVIEW = SWEEP || BUILT;
 // PLAYWRIGHT_PORT moves the server when another project already holds the
 // default: the non-sweep run reuses any server it finds on its port, so a
 // foreign site there would be tested in place of this one.
-const PORT = Number(process.env.PLAYWRIGHT_PORT) || (SWEEP ? 4322 : 4321);
+const PORT = Number(process.env.PLAYWRIGHT_PORT) || (SWEEP ? 4322 : BUILT ? 4323 : 4321);
 
 export default defineConfig({
   testDir: './tests',
@@ -35,6 +44,7 @@ export default defineConfig({
   // audit, not a gate, so it is excluded unless asked for by name — testIgnore
   // is global, so the opt-in has to lift it rather than override it per run.
   testIgnore: process.env.A11Y_SWEEP ? [] : ['**/a11y-sweep.spec.ts'],
+  ...(BUILT ? { grep: /@built/ } : SWEEP ? {} : { grepInvert: /@built/ }),
   fullyParallel: true,
   reporter: 'list',
   use: {
@@ -59,11 +69,11 @@ export default defineConfig({
     // they are separate switches, and preview daemonises under its own. Left
     // backgrounded, `astro preview` prints a pid and returns, Playwright sees
     // its web server exit immediately, and the whole sweep fails to start.
-    command: SWEEP
+    command: PREVIEW
       ? `ASTRO_PREVIEW_BACKGROUND=0 npm run preview -- --port ${PORT} --ignore-lock`
       : `ASTRO_DEV_BACKGROUND=0 npm run dev -- --port ${PORT} --ignore-lock`,
     url: `http://localhost:${PORT}`,
-    reuseExistingServer: !SWEEP && !process.env.CI,
+    reuseExistingServer: !PREVIEW && !process.env.CI,
     timeout: 120_000,
   },
 });
