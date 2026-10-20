@@ -1,0 +1,83 @@
+---
+title: "Draw Pixels, Spans and Boxes on Atari 800XL"
+summary: "Reusable 6502 bitmap primitives with explicit ANTIC display-list and 4 KiB screen addressing."
+platform: "atari-800"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["pixels", "spans", "rectangles", "bitmap", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Draw a life bar, outline a room or inspect one pixel. These six callable routines change the bitmap you own, with set, clear and XOR operations. The hardware layout stays visible: it is part of using the routine safely.
+
+<Figure src="/images/atari-800/patterns/pixels-and-boxes.png" kind="capture" alt="Native Atari 800XL output showing filled and outlined boxes and spans" caption="Original caller captured unchanged in Emu198x 0.39.0; the full bitmap and selected whole native images are independently checked." />
+
+## Include it and make a call
+
+Reserve **48 zero-page bytes at BP**; the caller uses $70. Define `PIXEL_WIDTH=320` and `PIXEL_HEIGHT=192` and include `antic.inc` once. Keep the complete caller's `bitmap_lo/hi` tables too. Code, tables, stack, bitmap and BP must not alias. Scratch needs no initialisation; public inputs do.
+
+After video setup, this is a normal direct call. Your game does not need the diagnostic mailbox that follows it.
+
+<CodeFromFile src="atari-800xl/patterns/assembly/rendering/pixels-and-boxes/demo.asm" from="; A normal game call:" to="mailbox:" lang="6502" title="Outline [13,91) across and [27,53) down" />
+
+Read BP+9 for acceptance. Call again with another request; no drawing list or hidden game loop is retained.
+
+## The calling contract
+
+Words are unsigned little-endian. Origin is top left, Y downwards. Call `bp_pixel`, `bp_read`, `bp_hspan`, `bp_vspan`, `bp_fill` or `bp_box`.
+
+| BP offset | Supply or read |
+| --- | --- |
+| 0,2 | x0,y0 words |
+| 4,6 | Exclusive x1,y1 words |
+| 8 | 0 set, 1 clear, 2 XOR; read requires 0 |
+| 9 | Output: accepted 1, rejected 0 |
+| 10 | Output: stored bit for read; otherwise 0 |
+| 11 | Ignored and preserved |
+| 12–39,42–47 | Private scratch |
+| 40 | Output word: destination-byte writes |
+
+Pixel/read ignore both ends; hspan ignores y1; vspan ignores x1. Fill and box use [x0,x1)×[y0,y1). A box [5,13)×[20,24) is eight pixels wide and four high. The entire effective rectangle must be nonempty, ordered and within 320×192. Bad requests reject before destination writes, with zero read/write outputs. Public inputs 0–8 and 11 survive. This is strict rejection, not clipping; intersect with the display first when partial shapes are wanted.
+
+Spans mask their edges and write full interior bytes. Outlines visit corners once, including a 1×1 box, so XOR does not erase a shared corner. Reading does not change memory.
+
+## ANTIC must read the same bytes the CPU draws
+
+ANTIC mode F is a 320×192 monochrome bitmap: forty eight-pixel bytes per scanline. Bit 7 is leftmost. The display's screen counter wraps at a **4 KiB boundary**, so a naive consecutive 7,680-byte CPU bitmap would eventually disagree with ANTIC.
+
+Here 102 complete scanlines occupy 4,080 bytes. Skip sixteen bytes, then begin row 102 at the next 4 KiB boundary:
+
+`address = base + (y div 102)*4096 + (y mod 102)*40 + (x div 8)`
+
+The base is **$4000**. At (13,102), the address is **$5001**, mask **$04**. The caller reserves 8,192 bytes, of which 512 are padding. The routine preserves those gaps.
+
+The display list begins with three eight-line blanks, then an explicit LMS ($4F plus address) for each scanline, ending with JVB. It uses **582 meaningful bytes in a 768-byte reservation** at $3000, wholly inside a 1 KiB boundary. Per-row LMS is larger than a two-LMS list but keeps the layout easy to inspect. The 384-byte CPU row tables must agree with it.
+
+The caller owns DMA, NMI policy, palette and stable RAM mappings. GTIA registers are at $D000, ANTIC at $D400. The executable is an original reset OS image with an original zero-filled BASIC image; it is not Atari firmware or an OS-loaded application.
+
+
+## The maths under the call
+
+Division chooses a byte; remainder chooses a bit. Eight pixels share that byte, so a point must preserve the other seven. OR sets the mask, AND with its inverse clears it, and XOR toggles it. Writing only the mask over the old byte would erase neighbours.
+
+[Place a point](/craft/maths-for-games/unit-06/) connects the coordinates to position; [Draw with integer error](/craft/maths-for-games/unit-12/) explains how pixels and spans build larger shapes. The current clipped geometry adapters have their own qualified backends; adding these primitive entries does not silently qualify geometry or text on these machines.
+
+<details>
+<summary>Open the reusable 6502 backend</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/extended-primitives/antic.inc" lang="6502" title="Include this backend once" />
+</details>
+
+## Resources and proof
+
+The backend is **528 assembled bytes**, plus 384 bytes of CPU row tables and 48 zero-page context bytes. Reset setup, bitmap and stack are additional. The display list adds 582 meaningful bytes, with 768 reserved. Full-byte spans save repeated per-pixel addressing. A smaller display list could trade construction simplicity for space. These are storage/write counts, not cycles or a frame-budget promise.
+
+Clobbers A/X/Y/P; clears decimal mode. Reserve a conservative 64-byte stack budget beyond your own calls/interrupts. BP is non-re-entrant; the routine does not change interrupt enables, arrange OS ownership or synchronise display access.
+
+**155 calls completed** with Asm198x 0.0.71 and native Emu198x 0.39.0. Each compares full bitmap, guards, public inputs, acceptance, read and write counts against an independent selected-pixel model. The display list, every padding byte and the row 101/102 split are included. Selected whole native frames match independently composed pixels. Two faulty builds completed accepted draws and failed both memory and picture checks. Real-hardware timing, stock firmware loading and live-rendering coexistence remain separate checks.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/ff68dcb33c316532b6d6b2f577bc95a31c86ba83/atari-800xl/patterns/assembly/rendering/pixels-and-boxes)
+- [Full contract, costs and primary hardware references](https://github.com/code198x/code-samples/blob/ff68dcb33c316532b6d6b2f577bc95a31c86ba83/cross-platform/patterns/rendering/extended-primitives/README.md)
+- [Compare pixel backends](/patterns/cross-platform/rendering/pixels-and-boxes/)
+- [Native map regions](/patterns/atari-800/assembly/rendering/tile-region/)
