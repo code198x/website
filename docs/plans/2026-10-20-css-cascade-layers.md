@@ -19,27 +19,41 @@ Agreed with Steve on 2026-10-20:
 - The primitives are Astro components in the site first, and move to 198x-ui
   once they have settled across the page families.
 
-**Target: half the CSS.** On 2026-10-20 the source held 502 KB of CSS: 174 KB
-in stylesheets and 329 KB in component `<style>` blocks (1,981 + 8,002 lines).
-Steve's target is 250 KB or less. Layers alone save little (the `body.magazine`
-prefixes are about 9 KB). Most of the cut has to come from rules no page uses
-(step 1), duplicated rules (steps 3 and 4) and hand-written layout that the
-primitives replace (step 6). Measure the source size, and the number of layout
-media queries, at the end of every step and record them here.
+**Target: half the CSS.** On 2026-10-20 the source held 476 KB of CSS
+(`npm run css:size` at 7d2dba5: 173,510 bytes in stylesheets and 302,477 in
+component `<style>` blocks). Steve's target is 238 KB or less. Layers alone
+save little (the `body.magazine` prefixes are about 9 KB). Most of the cut has
+to come from rules no page uses (step 1), duplicated rules (steps 3 and 4) and
+hand-written layout that the primitives replace (step 6). Record each step's
+change in size, measured against its own parent commit, and the number of
+layout media queries.
 
 ## Progress
 
-CSS source size (stylesheets plus `<style>` blocks under `src/`):
+CSS source size from `npm run css:size`: every `.css` file under `src/` plus
+the full contents of every `<style>` block. Each change is measured against
+its own parent commit, because other work lands on main in between.
 
-| Date | After | Bytes | Change |
-|---|---|---|---|
-| 2026-10-20 | Starting point (main at 7d2dba5) | 502,150 | |
-| 2026-10-20 | Removed 18 components no page renders | 481,253 | −4.2% |
-| 2026-10-20 | Removed selectors for 56 classes nothing renders | 457,216 | −8.9% |
+| Change | Bytes | Running total |
+|---|---|---|
+| Starting point (7d2dba5) | | 475,987 |
+| Removed 18 components no page renders (#874) | −32,356 | |
+| Removed selectors for 56 classes nothing renders (#875) | −24,037 | |
+| Other work: the Pattern Library prototype (#837 and follow-ups) | +9,189 | |
+| Wrapped every rule in a layer (step 2) | +5,982 | 434,765 |
+
+Removals so far: 56,393 bytes, 11.8% of the starting point.
+
+**Correction.** Until 2026-10-20 evening this table used a line-based count
+that missed one-line `<style>` blocks and counted script text after a
+`<style>` mentioned in a comment. It put the start at 502,150 and #874 at
+−20.9 KB; the commit messages and PR descriptions of #874 and #875 quote
+those figures.
 
 Layout media queries (an `@media` block that changes `grid-template-columns`,
 `grid-column`, `flex-direction` or `display`): 113 of 195 media queries on
-2026-10-20, across 62 files and no file with more than nine.
+2026-10-20, across 62 files and no file with more than nine; 114 of 201 after
+the Pattern Library prototype landed.
 
 ## Where it stands (main at 7d2dba5)
 
@@ -179,7 +193,7 @@ CDP `CSS.forcePseudoState` if step 3 turns up rules that only show under them.
    shipped, mostly combinations that never occur). Telling those apart needs a
    selector-matching pass over every page.
 
-### 2. Everything into `legacy`
+### 2. Everything into `legacy` (done, this PR)
 
 1. Add the order statement to the head's first inline style, and a browser
    test that it comes before every stylesheet in the built page.
@@ -194,6 +208,15 @@ CDP `CSS.forcePseudoState` if step 3 turns up rules that only show under them.
    used to beat by specificity (pagefind, runtime-injected CSS, kit
    components). Fix each one by layering that CSS, or record why it stays
    unlayered. Finish at zero differences.
+
+Outcome: zero differences on all 167 snapshots. The first attempt changed
+31,666 computed values, all from the kit's component styles, which are
+unlayered and so beat every layered override. 38 selectors that override a
+kit component stay unlayered, after each layer block, with a note. These are
+the ones that name a kit class, or whose subject carries a class the site
+passes to a kit component. Pagefind and the editor's runtime CSS caused no
+differences. **Proposed kit change:** wrap 198x-ui's component styles in
+`@layer kit`, so the overrides can join the layers.
 
 ### 3. Remove the specificity boosts (PRs by area)
 
