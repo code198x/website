@@ -41,9 +41,9 @@ its own parent commit, because other work lands on main in between.
 | Removed selectors for 56 classes nothing renders (#875) | −24,037 | |
 | Other work: the Pattern Library prototype (#837 and follow-ups) | +9,189 | |
 | Wrapped every rule in a layer (step 2, #877) | +5,982 | 434,765 |
-| Dropped 383 `body.magazine` prefixes (step 3) | −5,362 | 429,403 |
+| Dropped 382 `body.magazine` prefixes (step 3, #879) | −5,348 | 429,417 |
 
-Removals so far: 61,755 bytes, 13.0% of the starting point.
+Removals so far: 61,741 bytes, 13.0% of the starting point.
 
 **Correction.** Until 2026-10-20 evening this table used a line-based count
 that missed one-line `<style>` blocks and counted script text after a
@@ -176,7 +176,12 @@ Every step also runs `npm run check:release`, and its PR runs the browser CI.
      titles, `letter-spacing: 0` → `1px`) was reported with its layout
      knock-on effects (49 differences), and the diff exited 1.
    - It is deterministic: snapshots of separate builds of the same source
-     match on all 169. This needed four fixes: Pagefind focusing its input
+     match on all 169.
+   - It measures at 320px too, since 2026-10-20. Until then it measured 1440px
+     and a Pixel 7 (412px) only. The browser CI caught a Field Notes overflow
+     at 320px that the gate had passed (#879). Seven media blocks apply only
+     below 412px. None of them styles a kit component, so the earlier steps
+     (#874, #875, #877) could not have changed them. This needed four fixes: Pagefind focusing its input
      late, random diagram marker ids, the Game Feel iframe resizing after load,
      and a display face still loading when `document.fonts.ready` resolved.
 
@@ -239,7 +244,8 @@ names the rule that supplied it. Rank candidates by layer, then specificity,
 then order. Count longhands of a shorthand that holds `var()`, which Chromium
 reports with empty values. Those prefixed selectors are kept, and the loop
 repeats until the gate is clean. Eleven rounds kept 138 selectors (95
-distinct) and removed 383. The kept ones go in step 6, when their rules move
+distinct) and removed 383. A twelfth, at 320px, kept one more (139 kept,
+382 removed). The kept ones go in step 6, when their rules move
 from `legacy` into `blocks` and `exceptions`. `:global()` and `!important` follow the same way.
 
 ### 4. One token vocabulary (PRs by token group)
