@@ -218,6 +218,13 @@ passes to a kit component. Pagefind and the editor's runtime CSS caused no
 differences. **Proposed kit change:** wrap 198x-ui's component styles in
 `@layer kit`, so the overrides can join the layers.
 
+The release checks then caught what the gate missed:
+`public/workbooks/…/workbook.css` is served as-is, so the wrap skipped it, and
+unlayered it beat the page frame on the workbook pages. It is now in `legacy`
+too. The route cover had dropped those pages because it counted only `src/`
+stylesheets; it now counts `public/` ones, and main and this branch match on
+all 169 snapshots of the new set.
+
 ### 3. Remove the specificity boosts (PRs by area)
 
 Strip `body.magazine` prefixes, unnecessary `:global()` wrappers and
@@ -277,6 +284,11 @@ Steve owns the kit's releases.
 - **Runtime CSS outside our control** (editor, player, pagefind) is unlayered
   and will now beat site overrides. Step 2 finds every case on the route set;
   routes outside the set rely on the browser CI and the release checks.
+- **The player's own CSS** (`public/emulators/player.css`, from
+  `@emu198x/player`) is unlayered, like the kit's components. Its browser
+  tests pass, but a site rule that overrides the player now loses to it.
+  Override it from outside the layers, as with the kit, or ask Emu198x to
+  layer it.
 - **Route set coverage.** The cover guarantees every component and every
   global class appears at least once, but not every combination. An element
   selector in a particular context (a `table` inside `.prose`, say) is checked
