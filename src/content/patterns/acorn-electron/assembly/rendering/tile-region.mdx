@@ -1,0 +1,66 @@
+---
+title: "Draw a Native Region on Acorn Electron"
+summary: "Reusable Acorn Electron code for a room, changed tile or strip of scenery, with its display layout and ownership explicit."
+platform: "acorn-electron"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["tilemaps", "regions", "native", "assembly", "bitmap"]
+related:
+  patterns: ["tile-region", "tile-map-queries"]
+  vault: ["tile-maps"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A door opens, and one map cell changes. This routine redraws its picture without rebuilding the whole screen. The same call can paint a room or the strip of scenery revealed by a camera: choose a source rectangle and a destination, then let the machine's renderer do the copying.
+
+<Figure src="/images/acorn-electron/patterns/tile-region.png" kind="capture" alt="Acorn Electron native diagnostic showing a small patterned region, a single-cell redraw and a separate corner tile" caption="Original reset diagnostic in Emu198x 0.39.0: MODE 4 bitmap. Complete display memory and every native pixel are checked separately." />
+
+
+## Eight lines together
+
+Electron MODE 4 gives you 320×256 logical pixels: forty 8×8 cells across and thirty-two down. The bitmap occupies `$5800–$7FFF`. Eight scanlines of a cell sit together; the next cell starts eight bytes later. Move down a character row and the address advances by 320 bytes.
+
+The low/high scanline tables therefore hold `$5800 + (y/8)*320 + (y mod 8)`. Set `CELL_BYTES=1` and `X_STEP=8`. This is the same maintained 6502 bitmap renderer used on other machines, with Electron's addresses made explicit. Its two 256-byte tables cost 512 bytes.
+
+The original caller copies four eight-byte pictures to `$0800`, sets ULA mode/base/palette, and then draws. A zero tile is an opaque blank picture, so it erases a cell. A different screen base, mode or hardware-scroll layout needs matching tables; changing just one address constant is insufficient.
+
+## Reserve your workspace
+
+Put all 32 bytes of `NR` in zero page and clear decimal mode before calling. Define the map, tile table, dimensions and scanline tables before including `bitmap-regions/6502.inc` once. The map has twelve byte IDs per row and eight rows; this readable bitmap variant allows 1–16 tile pictures. Allocations must fit accessible memory without wrapping or aliasing the destination.
+
+A/X/Y and flags are clobbered. Four stack bytes cover the direct JSR and its paint helper, beyond your caller and interrupt needs. The six request bytes survive; scratch may change. No context initialisation call is needed.
+
+A 5×3 patch copies 120 bitmap bytes, plus a complete ID preflight and address work. Cached map rows or longer span copies can save work; masks and clipping change the job. The native capture duplicates pixels horizontally into 640×256 output, while game coordinates remain 320×256. These counts are not measured cycle budgets.
+
+## Draw the rectangle
+
+The constants belong to the original caller's working memory plan. Choose allocations which fit your own project, keeping setup and drawing separate.
+
+<CodeFromFile src="acorn-electron/patterns/assembly/rendering/tile-region/demo.asm" from="NR=" to="start:" lang="6502" title="Caller-owned memory and display constants" />
+
+Supply six unsigned bytes at `NR+0..5`: source column, source row, destination column, destination row, width and height. Call `region_draw`; `NR+6` is one for completion or zero for rejection. The six request bytes survive.
+
+<CodeFromFile src="acorn-electron/patterns/assembly/rendering/tile-region/demo.asm" from="case_0:" to="case_1:" lang="6502" title="Draw a 5×3 patch from map cell (2,1) at display cell (4,3)" />
+
+The result store after the call belongs to the diagnostic. In a game, read the completion flag and carry on with your own logic. The routine rejects zero sizes, invalid starts, source/destination overruns and IDs outside the configured table. Every selected ID is checked before painting begins, so a bad tile cannot leave half a patch behind. This variant rejects rather than clips.
+
+## Keep the routine
+
+<CodeFromFile src="cross-platform/patterns/rendering/bitmap-regions/6502.inc" lang="6502" title="Checked bitmap region drawing" />
+
+The context is private and non-re-entrant. Keep the request, map, descriptors or picture data, and display configuration stable throughout the call. Your caller owns video setup, allocations and interrupt policy; the routine does not disable interrupts or negotiate with an OS. Interrupt handlers must preserve the used registers and must not change those resources halfway through drawing.
+
+## What was checked
+
+All **18 calls** completed: three accepted draws and fifteen map/bounds/ID rejections. Each rejected request also ran **in isolation** after the same three accepted draws, preserving complete destination allocations and both mapped guards. The source selection crosses a CPU page boundary.
+
+The observer compares every destination byte, including all bitmap bytes, with an independent model. It compares every native capture pixel with a separate composition, including borders and scaling. Completed wrong-layout and unsafe-destination controls fail the same memory checks; wrong-layout pictures also fail the pixel check.
+
+These results qualify the selected Emu198x 0.39.0 configuration with Asm198x 0.0.71 and the original reset fixture. They do not establish stock-OS loading, original-hardware timing, interrupt coexistence, tear-free updates or throughput.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/15f3b795e75e88c505bf47b020c3aa6555414643/acorn-electron/patterns/assembly/rendering/tile-region)
+- [Calling contracts, costs and sources](https://github.com/code198x/code-samples/blob/15f3b795e75e88c505bf47b020c3aa6555414643/cross-platform/patterns/rendering/character-regions/README.md)
+- [Other native region routines](/patterns/cross-platform/rendering/tile-region/)
+- [Map storage and queries](/patterns/cross-platform/rendering/tile-map-queries/)

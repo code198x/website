@@ -1,0 +1,69 @@
+---
+title: "Draw a Native Region on Commodore PET"
+summary: "Reusable Commodore PET code for a room, changed tile or strip of scenery, with its display layout and ownership explicit."
+platform: "commodore-pet"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["tilemaps", "regions", "native", "assembly", "characters"]
+related:
+  patterns: ["tile-region", "tile-map-queries"]
+  vault: ["tile-maps"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A door opens, and one map cell changes. This routine redraws its picture without rebuilding the whole screen. The same call can paint a room or the strip of scenery revealed by a camera: choose a source rectangle and a destination, then let the machine's renderer do the copying.
+
+<Figure src="/images/commodore-pet/patterns/tile-region.png" kind="capture" alt="Commodore PET native diagnostic showing a small patterned region, a single-cell redraw and a separate corner tile" caption="Original reset diagnostic in Emu198x 0.39.0: 40-column character screen. Complete display memory and every native pixel are checked separately." />
+
+The capture uses an **original diagnostic font ROM**, supplied by the test fixture for repeatable glyph checks. It is not the stock font and does not show software-redefinable characters on this machine. Set your game's descriptors to codes in its installed ROM.
+
+## Give the map a screen vocabulary
+
+On the 40-column PET, one screen byte selects a picture from the installed character ROM. A logical wall ID can select any appropriate screen code through `glyph_codes`; it need not equal that code. The example deliberately maps IDs 0,1,2,3 to codes 0,3,1,2.
+
+The active screen is 40×25 cells at `$8000–$83E7`. The checked allocation includes all 1,024 bytes through `$83FF`, including its unused 24-byte tail. This configuration has **no per-cell colour RAM**: define `HAS_COLOUR=0` so the shared 6502 include omits colour writes.
+
+A screen code is not necessarily the byte you would print through the editor. Choose descriptors for the installed ROM and character set. This component does not make the fixed character ROM writable. Build scenery from its available glyphs, perhaps combining several cells into a larger object.
+
+## Reserve your workspace
+
+Define `NR`, `MAP`, `MAP_W`, `MAP_H`, `TILE_COUNT`, `SCREEN`, `SCREEN_COLS=40`, `SCREEN_ROWS=25`, `HAS_COLOUR=0`, and a `glyph_codes` byte per ID. Include `character-regions/6502.inc` once. All 32 bytes of context must be in zero page; clear decimal mode before calling. No scratch initialisation call is needed.
+
+The source map has twelve byte IDs per row and eight rows. Source width is 1–128 and height 1–255; allocations must not wrap or overlap the destination. A/X/Y and flags are clobbered. Four stack bytes cover the direct JSR and paint helper, beyond your own caller/interrupt use.
+
+A 5×3 patch writes fifteen screen bytes plus preflight/address work. There is no eight-byte picture copy per cell. The installed font saves picture RAM and copy work, while limiting which shapes can appear. The original reset caller disables the cursor and owns the display; an editor-sharing program needs its own ownership agreement.
+
+## Draw the rectangle
+
+The constants belong to the original caller's working memory plan. Choose allocations which fit your own project, keeping setup and drawing separate.
+
+<CodeFromFile src="commodore-pet/patterns/assembly/rendering/tile-region/demo.asm" from="NR=" to="start:" lang="6502" title="Caller-owned memory and display constants" />
+
+<CodeFromFile src="commodore-pet/patterns/assembly/rendering/tile-region/demo.asm" from="glyph_codes:" to="!source" lang="6502" title="Translate logical IDs into native screen codes and colours" />
+
+Supply six unsigned bytes at `NR+0..5`: source column, source row, destination column, destination row, width and height. Call `region_draw`; `NR+6` is one for completion or zero for rejection. The six request bytes survive.
+
+<CodeFromFile src="commodore-pet/patterns/assembly/rendering/tile-region/demo.asm" from="case_0:" to="case_1:" lang="6502" title="Draw a 5×3 patch from map cell (2,1) at display cell (4,3)" />
+
+The result store after the call belongs to the diagnostic. In a game, read the completion flag and carry on with your own logic. The routine rejects zero sizes, invalid starts, source/destination overruns and IDs outside the configured table. Every selected ID is checked before painting begins, so a bad tile cannot leave half a patch behind. This variant rejects rather than clips.
+
+## Keep the routine
+
+<CodeFromFile src="cross-platform/patterns/rendering/character-regions/6502.inc" lang="6502" title="Checked character and colour region drawing" />
+
+The context is private and non-re-entrant. Keep the request, map, descriptors or picture data, and display configuration stable throughout the call. Your caller owns video setup, allocations and interrupt policy; the routine does not disable interrupts or negotiate with an OS. Interrupt handlers must preserve the used registers and must not change those resources halfway through drawing.
+
+## What was checked
+
+All **18 calls** completed: three accepted draws and fifteen map/bounds/ID rejections. Each rejected request also ran **in isolation** after the same three accepted draws, preserving complete destination allocations and both mapped guards. The source selection crosses a CPU page boundary.
+
+The observer compares every destination byte, unused allocation tails and stored colour bits where present, with an independent model. It compares every native capture pixel with a separate composition, including borders and scaling. Completed wrong-layout and unsafe-destination controls fail the same memory checks; wrong-layout pictures also fail the pixel check.
+
+These results qualify the selected Emu198x 0.39.0 configuration with Asm198x 0.0.71 and the original reset fixture. They do not establish stock-OS loading, original-hardware timing, interrupt coexistence, tear-free updates or throughput.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/15f3b795e75e88c505bf47b020c3aa6555414643/commodore-pet/patterns/assembly/rendering/tile-region)
+- [Calling contracts, costs and sources](https://github.com/code198x/code-samples/blob/15f3b795e75e88c505bf47b020c3aa6555414643/cross-platform/patterns/rendering/character-regions/README.md)
+- [Other native region routines](/patterns/cross-platform/rendering/tile-region/)
+- [Map storage and queries](/patterns/cross-platform/rendering/tile-map-queries/)
