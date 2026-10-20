@@ -90,7 +90,8 @@ test('next-tier BBC patterns are discoverable without claiming a curriculum trac
  await page.getByRole('combobox',{name:'Machine',exact:true}).selectOption('bbc-micro');
  const rows=page.locator('[data-pattern]:visible');
  await expect(rows.locator('a[href="/patterns/bbc-micro/assembly/rendering/tile-region/"]')).toHaveCount(1);
- await expect(rows).toHaveCount(8);
+ await expect(rows).toHaveCount(9);
+ await expect(rows.locator('a[href="/patterns/bbc-micro/assembly/rendering/pixels-and-boxes/"]')).toHaveCount(1);
  await expect(rows.locator('a[href="/patterns/bbc-micro/assembly/framework/collect-and-respond/"]')).toHaveCount(1);
  await expect(rows.locator('a[href="/patterns/bbc-micro/assembly/rendering/tile-map/"]')).toHaveCount(1);
  await expect(rows.getByRole('link',{name:'Masked Sprites with Background Restoration',exact:true})).toHaveCount(1);
@@ -103,7 +104,8 @@ test('next-tier BBC patterns are discoverable without claiming a curriculum trac
  await expect(page.locator('.pattern-prose')).toContainText('OSBYTE');
  await page.getByRole('link',{name:'More BBC Micro patterns'}).click();
  await expect(page).toHaveURL(/patterns\/platform\/bbc-micro/);
- await expect(page.locator('[data-pattern]:visible')).toHaveCount(8);
+ await expect(page.locator('[data-pattern]:visible')).toHaveCount(9);
+ await expect(page.locator('[data-pattern]:visible a[href="/patterns/bbc-micro/assembly/rendering/pixels-and-boxes/"]')).toHaveCount(1);
  await expect(page.locator('[data-pattern]:visible a[href="/patterns/bbc-micro/assembly/rendering/tile-map/"]')).toHaveCount(1);
 });
 
