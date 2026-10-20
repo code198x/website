@@ -53,11 +53,17 @@ function collect() {
     }
     return defaults.get(tag);
   };
+  // Some components generate a fresh id on every build (a diagram's arrowhead
+  // marker, say), so record what a url(#id) points at rather than the id.
+  const target = value => value.replace(/url\("#([^"]+)"\)/g, (whole, id) => {
+    const element = document.getElementById(id);
+    return element ? `url(${key(element)})` : whole;
+  });
   const differences = (style, base) => {
     const values = {};
     for (const name of style) {
       const value = style.getPropertyValue(name);
-      if (base[name] !== value) values[name] = value;
+      if (base[name] !== value) values[name] = value.includes('url("#') ? target(value) : value;
     }
     return values;
   };
@@ -98,6 +104,18 @@ async function settle(page) {
       const { iterations } = animation.effect.getComputedTiming();
       if (Number.isFinite(iterations)) animation.finish();
       else animation.cancel();
+    }
+  });
+  // Wait for scripts that size things after load (an iframe that reports its
+  // content height, say) until the page and its frames hold still.
+  await page.evaluate(async () => {
+    const measure = () => [document.documentElement.scrollHeight, ...[...document.querySelectorAll('iframe')].map(frame => frame.offsetHeight)].join();
+    let last = measure();
+    for (let still = 0, tries = 0; still < 3 && tries < 40; tries++) {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      const now = measure();
+      still = now === last ? still + 1 : 0;
+      last = now;
     }
   });
 }
