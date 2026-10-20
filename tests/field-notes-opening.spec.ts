@@ -44,6 +44,9 @@ test('Field Notes keeps its story list reachable with failed artwork and enlarge
   await page.setViewportSize({ width: 320, height: 1000 });
   // Name what overflows, not just that something does: rendering differs by
   // platform, so a failure on Linux CI has to say which element to fix.
+  // Text that runs out of its own element is checked too. An unbreakable word
+  // leaves its element's box where it was, and can stop a fraction of a pixel
+  // inside main on one platform and cross it on another.
   const overflowing = await page.locator('main').evaluate(main => {
     const edge = main.getBoundingClientRect().right + 1;
     const clipped = (el: Element) => {
@@ -53,12 +56,24 @@ test('Field Notes keeps its story list reachable with failed artwork and enlarge
       }
       return false;
     };
-    return [...main.querySelectorAll('*')]
+    const describe = (el: Element, right: number) =>
+      `${el.tagName.toLowerCase()}${el.className ? '.' + String(el.className).trim().split(/\s+/).join('.') : ''} right=${Math.round(right)} text=${(el.textContent ?? '').trim().slice(0, 40)}`;
+    const boxes = [...main.querySelectorAll('*')]
       .filter(el => el.getBoundingClientRect().right > edge && !clipped(el))
-      .map(el => `${el.tagName.toLowerCase()}${el.className ? '.' + String(el.className).trim().split(/\s+/).join('.') : ''} right=${Math.round(el.getBoundingClientRect().right)} text=${(el.textContent ?? '').trim().slice(0, 40)}`)
-      .slice(0, 8);
+      .map(el => describe(el, el.getBoundingClientRect().right));
+    const text: string[] = [];
+    const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const parent = node.parentElement!;
+      if (!node.textContent!.trim() || clipped(node)) continue;
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const right = Math.max(...[...range.getClientRects()].map(rect => rect.right));
+      if (right > Math.min(edge, parent.getBoundingClientRect().right + 1)) text.push(describe(parent, right));
+    }
+    return [...boxes, ...text].slice(0, 8);
   });
-  expect(overflowing, 'elements wider than main at 320px with 200% text').toEqual([]);
+  expect(overflowing, 'elements or text wider than their box at 320px with 200% text').toEqual([]);
   expect(await page.locator('main').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   const intro = await page.locator('.opening-introduction').evaluate(element => {
     const text = element.querySelector('div')!.getBoundingClientRect();
