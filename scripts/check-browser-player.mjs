@@ -1,14 +1,14 @@
 import {existsSync, readFileSync, readdirSync} from 'node:fs';
 const root=new URL('../public/emulators/',import.meta.url);
 for(const file of ['index.html','catalog.json','worker.js','player.js','embed.js','template.html','player.css','audio.js','mouse.js','session-controls.js','storage.js','save-file.js','preferences.js','player-extras.js']) {
-  if(!existsSync(new URL(file,root)))throw new Error('Browser player missing. Run npm run build:player with an Emu198x checkout available.');
+  if(!existsSync(new URL(file,root)))throw new Error('Browser player missing. Run npm ci, then npm run bundles.');
 }
 const build=JSON.parse(readFileSync(new URL('build.json',root),'utf8'));
 for(const family of build.families) {
   const name=`emu198x_${family.replaceAll('-','_')}_web`;
   for(const ext of ['js','wasm']) {
     const file=`modules/${family}/${name}${ext==='wasm'?'_bg':''}.${ext}`;
-    if(!existsSync(new URL(file,root)))throw new Error(`Player module missing: ${file}. Run npm run build:player.`);
+    if(!existsSync(new URL(file,root)))throw new Error(`Player module missing: ${file}. Is the pinned @emu198x/player complete?`);
   }
 }
 
