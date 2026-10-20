@@ -17,6 +17,8 @@ const PORT = Number(process.env.CSS_SNAPSHOT_PORT) || 4394;
 const VIEWPORTS = {
   desktop: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
   mobile: devices['Pixel 7'],
+  // The narrowest width the site supports; tests check overflow here.
+  narrow: { ...devices['Desktop Chrome'], viewport: { width: 320, height: 800 } },
 };
 
 const [outDir, ...rest] = process.argv.slice(2);
