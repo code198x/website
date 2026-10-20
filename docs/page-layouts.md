@@ -48,3 +48,26 @@ at narrow, desktop and wide widths in both themes. Also inspect the production
 build: stylesheet ordering can differ from development. Compare screenshots
 of the affected pages and the homepage, a lesson and a Vault article before
 publishing shared CSS changes.
+
+## Checking that a CSS change changes nothing
+
+For a change that should not alter any page, such as moving rules between
+files or layers, compare computed styles before and after:
+
+```sh
+npm run build && npm run css:snapshot -- /tmp/css-before
+# make the change
+npm run build && npm run css:snapshot -- /tmp/css-after
+npm run css:diff -- /tmp/css-before /tmp/css-after
+```
+
+`css:snapshot` serves the build and records, for every element and its
+`::before` and `::after`, each computed property that differs from the browser
+default. It does this at desktop and Pixel 7 sizes on the routes in
+`scripts/css-routes.json`. `css:diff` lists every property that moved and exits
+non-zero if any did. Hover and focus states are not recorded.
+
+`npm run css:routes` regenerates the route list from the build: the fewest pages
+that between them render every scoped component and use every class the global
+stylesheets name. Re-run it after adding a component. Entries with `steps` open
+states a page load does not show, such as the mobile menu; edit those by hand.
