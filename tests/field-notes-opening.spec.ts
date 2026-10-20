@@ -42,6 +42,23 @@ test('Field Notes keeps its story list reachable with failed artwork and enlarge
   // Keep the new introduction usable at the narrowest checked width too.
   // The shared footer has separate pre-existing overflow at this text size.
   await page.setViewportSize({ width: 320, height: 1000 });
+  // Name what overflows, not just that something does: rendering differs by
+  // platform, so a failure on Linux CI has to say which element to fix.
+  const overflowing = await page.locator('main').evaluate(main => {
+    const edge = main.getBoundingClientRect().right + 1;
+    const clipped = (el: Element) => {
+      for (let node = el.parentElement; node && node !== main; node = node.parentElement) {
+        const { overflowX } = getComputedStyle(node);
+        if (overflowX === 'hidden' || overflowX === 'clip' || overflowX === 'auto' || overflowX === 'scroll') return true;
+      }
+      return false;
+    };
+    return [...main.querySelectorAll('*')]
+      .filter(el => el.getBoundingClientRect().right > edge && !clipped(el))
+      .map(el => `${el.tagName.toLowerCase()}${el.className ? '.' + String(el.className).trim().split(/\s+/).join('.') : ''} right=${Math.round(el.getBoundingClientRect().right)} text=${(el.textContent ?? '').trim().slice(0, 40)}`)
+      .slice(0, 8);
+  });
+  expect(overflowing, 'elements wider than main at 320px with 200% text').toEqual([]);
   expect(await page.locator('main').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   const intro = await page.locator('.opening-introduction').evaluate(element => {
     const text = element.querySelector('div')!.getBoundingClientRect();

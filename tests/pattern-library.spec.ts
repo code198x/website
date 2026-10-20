@@ -370,6 +370,8 @@ test('pixel positioning exposes usable routines, callers and captures',async({pa
 });
 
 test('prepared phase pages remain accessible with either colour preference',async({page})=>{
+ // Eight pages, each loaded and scanned in full: more than the default budget on a CI runner.
+ test.slow();
  for(const colorScheme of ['light','dark'] as const){
   await page.emulateMedia({colorScheme});
   for(const path of ['cross-platform/rendering/pre-shifted-sprites','sinclair-zx-spectrum/assembly/rendering/pre-shifted-sprites','bbc-micro/assembly/rendering/pre-shifted-sprites','commodore-amiga/assembly/rendering/pre-shifted-sprites']){
