@@ -40,7 +40,7 @@ export function posterFor(familyId: string, machineName: string): Poster | null 
 
 /**
  * The stage's target width: the poster's native width × its ceiling, the
- * largest size `PixelFrame` will ever render it at. `null` when the system
+ * largest size a stage will ever render it at. `null` when the system
  * has no catalogue entry, so no stage renders at all. Falls back to
  * `FALLBACK_STAGE_WIDTH` for the empty frame, when a family has an entry but
  * no poster file yet.
