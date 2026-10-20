@@ -10,8 +10,9 @@ export function resolveTechniques<T extends PatternEntry>(entries: T[]) {
     const implementations = technique.implementations.map(implementation => {
       const entry = patterns.get(implementation.id);
       if (!entry) throw Error(`Missing pattern: ${implementation.id}`);
-      const expected = implementation.evidence === 'emulator-executed'
-        ? '**Code status: assembled and emulator-executed.**' : '**Code status: illustrative';
+      if (implementation.evidence === 'verified-component' && !implementation.evidenceStatement) throw Error(`Missing component qualification: ${entry.id}`);
+      const expected = implementation.evidenceStatement ?? (implementation.evidence === 'emulator-executed'
+        ? '**Code status: assembled and emulator-executed.**' : '**Code status: illustrative');
       if (!entry.body?.includes(expected)) throw Error(`Evidence summary needs review: ${entry.id}`);
       return {...implementation, entry, language: entry.id.includes('/assembly/') ? 'Assembly' : entry.id.includes('/basic/') ? 'BASIC' : 'Pseudocode'};
     });
