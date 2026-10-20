@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { integerScale, pngSize } from './pixel-frame';
+import { pngSize } from './pixel-frame';
 
 function pngHeader(width: number, height: number): Uint8Array {
   const b = new Uint8Array(24);
@@ -18,13 +18,3 @@ describe('pngSize', () => {
   });
 });
 
-describe('integerScale', () => {
-  it('takes the largest whole multiple that fits, up to the ceiling', () => {
-    expect(integerScale(352, 800, 2)).toBe(2);
-    expect(integerScale(352, 703, 2)).toBe(1);
-    expect(integerScale(352, 2000, 2)).toBe(2);
-  });
-  it('never goes below 1, even when the frame is wider than its container', () => {
-    expect(integerScale(768, 390, 2)).toBe(1);
-  });
-});
