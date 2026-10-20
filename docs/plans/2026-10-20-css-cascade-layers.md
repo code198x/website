@@ -15,6 +15,15 @@ prefixes are about 9 KB); most of the cut has to come from rules no page uses
 (step 1) and from duplicated rules (steps 4 and 5). Measure the source size at
 the end of every step and record it here.
 
+## Progress
+
+CSS source size (stylesheets plus `<style>` blocks under `src/`):
+
+| Date | After | Bytes | Change |
+|---|---|---|---|
+| 2026-10-20 | Starting point (main at 7d2dba5) | 502,150 | |
+| 2026-10-20 | Removed 18 components no page renders | 481,253 | −4.2% |
+
 ## Where it stands (main at 7d2dba5)
 
 - 25 stylesheets in `src/styles/` and `src/lib/` (176 KB, mostly one-line
