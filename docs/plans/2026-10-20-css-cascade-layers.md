@@ -40,9 +40,10 @@ its own parent commit, because other work lands on main in between.
 | Removed 18 components no page renders (#874) | −32,356 | |
 | Removed selectors for 56 classes nothing renders (#875) | −24,037 | |
 | Other work: the Pattern Library prototype (#837 and follow-ups) | +9,189 | |
-| Wrapped every rule in a layer (step 2) | +5,982 | 434,765 |
+| Wrapped every rule in a layer (step 2, #877) | +5,982 | 434,765 |
+| Dropped 383 `body.magazine` prefixes (step 3) | −5,362 | 429,403 |
 
-Removals so far: 56,393 bytes, 11.8% of the starting point.
+Removals so far: 61,755 bytes, 13.0% of the starting point.
 
 **Correction.** Until 2026-10-20 evening this table used a line-based count
 that missed one-line `<style>` blocks and counted script text after a
@@ -230,6 +231,16 @@ all 169 snapshots of the new set.
 Strip `body.magazine` prefixes, unnecessary `:global()` wrappers and
 `!important`, one area at a time (Vault, lessons, patterns, editorial, family,
 setup, shell). Zero differences per PR.
+
+`body.magazine` (in progress): the prefix came off all 521 selectors at once,
+and the gate showed which ones still decide a conflict by their weight. For
+each changed value, Chromium's `CSS.getMatchedStylesForNode` on the main build
+names the rule that supplied it. Rank candidates by layer, then specificity,
+then order. Count longhands of a shorthand that holds `var()`, which Chromium
+reports with empty values. Those prefixed selectors are kept, and the loop
+repeats until the gate is clean. Eleven rounds kept 138 selectors (95
+distinct) and removed 383. The kept ones go in step 6, when their rules move
+from `legacy` into `blocks` and `exceptions`. `:global()` and `!important` follow the same way.
 
 ### 4. One token vocabulary (PRs by token group)
 
