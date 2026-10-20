@@ -93,3 +93,13 @@ test('@built bitmap text and backend readers are accessible in both colour prefe
     }
   }
 });
+
+
+test('@built bitmap readers retain the 320px frame', async ({page}) => {
+  await page.setViewportSize({width:320,height:900});
+  for (const route of routes) {
+    await page.goto(route);
+    await page.evaluate(() => document.fonts.ready);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth-innerWidth),route).toBeLessThanOrEqual(1);
+  }
+});
