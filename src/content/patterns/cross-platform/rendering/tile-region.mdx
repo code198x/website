@@ -1,0 +1,72 @@
+---
+title: "Draw the Part of the Map You Need"
+summary: "Turn logical map cells into a native picture. Start with checked rectangles across nine machines, while keeping patterns, colours and video ownership explicit."
+platform: "cross-platform"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["tilemaps", "regions", "native", "vdp"]
+related:
+  patterns: ["tile-map-queries", "scrolling"]
+  vault: ["tile-maps"]
+---
+
+import Figure from '@components/Figure.astro';
+
+Changing a tile in your map does not change the picture. Something has to turn that logical ID into the bytes the display understands. A region routine gives that job a clear boundary: take this rectangle of the world and draw it here.
+
+Start with a room. Then try a door opening, a wall breaking or the strip of scenery revealed by a moving camera. The map/query routines answer what is there; this component writes its appearance. Neither needs to know the game's whole main loop.
+
+## Choose your machine
+
+- [ColecoVision](/patterns/colecovision/assembly/rendering/tile-region/) — Graphics I
+- [Sord M5](/patterns/sord-m5/assembly/rendering/tile-region/) — Graphics I
+- [MTX](/patterns/memotech-mtx/assembly/rendering/tile-region/) — Graphics I
+- [Einstein TC01](/patterns/tatung-einstein/assembly/rendering/tile-region/) — Graphics I
+- [MSX1](/patterns/msx/assembly/rendering/tile-region/) — Graphics I
+- [SVI-328](/patterns/spectravideo-svi-328/assembly/rendering/tile-region/) — Graphics I
+- [SG-1000](/patterns/sega-sg-1000/assembly/rendering/tile-region/) — Graphics I
+- [Master System](/patterns/sega-master-system/assembly/rendering/tile-region/) — Mode 4
+- [Game Gear](/patterns/sega-game-gear/assembly/rendering/tile-region/) — Mode 4
+
+These nine implementations deliberately reach beyond the launch machines. Seven use a TMS-family Graphics I name table; Master System and Game Gear use Mode 4 entries. Each machine was executed independently. Shared hardware makes code reusable; it does not transfer a result from one target to another.
+
+## Follow a rectangle
+
+The example world is twelve cells wide and eight high. It selects a 7×5 patch at (2,1) and puts it at logical screen cell (8,5). Moving to the next source row means advancing by twelve map bytes. Moving to the next destination row means advancing by thirty-two native entries. Mixing those strides makes a recognisable but increasingly misplaced picture.
+
+<Figure src="/images/colecovision/patterns/tile-region.png" kind="capture" alt="ColecoVision diagnostic showing a partial region, isolated corner tiles and a single-cell redraw" caption="The selected patch drawn through real VDP writes in Emu198x. A changed cell and separate edge writes are checked alongside it." />
+
+The checked variant rejects a source or destination rectangle that does not fit. It also scans all selected IDs before drawing: one invalid tile must not leave half a patch on screen. That guarantee assumes the caller keeps the map and descriptor table stable during the call.
+
+## IDs are not display bytes
+
+The game can call ID 1 a wall without saying how it is drawn. A descriptor table makes that choice for the current renderer.
+
+| Logical ID | Graphics I example | Sega Mode 4 example |
+| --- | --- | --- |
+| 0, empty | Pattern 0 | Pattern 0, no flags |
+| 1, wall | Pattern 8 | Pattern 1, no flags |
+| 2, hazard | Pattern 16 | Pattern 2, no flags |
+| 3, goal | Pattern 24 | Pattern 3, horizontal flip |
+
+Graphics I uses one name byte per cell, and its colours are shared across groups of eight patterns. Mode 4 uses two bytes: a pattern number and attributes for the ninth pattern bit, flips, palette and priority. Loading patterns and colours/palettes is separate from copying name entries. Those assets and the descriptor table must agree.
+
+## A valid write can be off screen
+
+<Figure src="/images/sega-game-gear/patterns/tile-region.png" kind="capture" alt="Game Gear crop of the same logical tile-region diagnostic, including its bottom-right visible arrow" caption="Game Gear shows a 20×18-cell window from the larger 32×24 logical name table. Its visible edge and the logical table's edge are different tests." />
+
+The handheld displays logical columns 6–25 and rows 3–20. The same data can sit safely in VRAM yet be outside that view. Treat camera coordinates, logical name-table coordinates and visible pixels as separate spaces. The diagnostic checks both VRAM and the picture so neither can stand in for the other.
+
+## Own the video access
+
+The caller reserves the map and region contexts, VRAM table, patterns, palette/colours and stack. It also owns the VDP address latch during the call. An interrupt handler changing that latch between two address bytes would send subsequent data somewhere else.
+
+The original callers take over the machine and blank the display while updating. They establish native output; they do not establish stock-OS coexistence or a whole-game frame budget. The routine itself does not disable interrupts. The machine entries show the actual initialisation and CALL contract.
+
+Port wiring also matters. MTX uses separate configured addresses for data and control, MSX obtains fast-access ports from its BIOS, and SVI reads video data from a different port to the one it writes. Keeping those bytes explicit makes a shared routine useful without hiding the machines.
+
+## Choose the next variant when you need it
+
+Bounds checking and a complete ID preflight cost CPU time. Cached row pointers, pretranslated buffers or a trusted-map variant can save work at the cost of memory or a weaker checking contract. A camera that reaches the map's edge needs clipping of source and destination together. A running game may need a bounded VBlank queue rather than one large synchronous transfer.
+
+Those are useful next components. This first one keeps the copy readable and its ownership clear. All nine implementations have retained VDP readback, raw captures and completed failure controls; the [coverage inventory](https://github.com/code198x/code-samples/blob/237689796fb73baa4a42526b7f1da683fa21790e/docs/tilemaps/coverage.json) leaves the other twenty-one machines awaiting their own native adapters.
