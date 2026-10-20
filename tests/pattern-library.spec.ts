@@ -131,7 +131,8 @@ test('turn callers are discoverable with usable code and explicit timing choices
   await page.goto('/patterns/');
   await page.getByRole('combobox',{name:'Machine',exact:true}).selectOption(system);
   const rows=page.locator('[data-pattern]:visible');
-  await expect(rows).toHaveCount(2);
+  await expect(rows).toHaveCount(3);
+  await expect(rows.locator(`a[href="/patterns/${system}/assembly/rendering/tile-region/"]`)).toHaveCount(1);
   await expect(rows.locator(`a[href="/patterns/${system}/assembly/rendering/tile-map/"]`)).toHaveCount(1);
   const turnLink=rows.locator(`a[href="/patterns/${system}/assembly/framework/turn-deadline/"]`);
   await expect(turnLink).toHaveCount(1);
