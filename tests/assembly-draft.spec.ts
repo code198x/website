@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 const lesson = '/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-01/';
 const draftKeys = (page: Page) => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('code198x:assembly-draft:')));
 
-test('late syntax highlighting preserves focus, selection and the next edit', async ({ page }) => {
+test('late syntax highlighting preserves focus, selection and the next edit @built', async ({ page }) => {
   let release!: () => void;
   const ready = new Promise<void>(resolve => { release = resolve; });
   await page.route('**/_astro/assembly-editor.*.js', async route => { await ready; await route.continue(); });
@@ -26,7 +26,7 @@ test('late syntax highlighting preserves focus, selection and the next edit', as
   expect(JSON.parse((await page.evaluate(key => localStorage.getItem(key), key))!).source).toBe(expected);
 });
 
-test('values restored before scripts initialise are saved against the maintained starter', async ({ page }) => {
+test('values restored before scripts initialise are saved against the maintained starter @built', async ({ page }) => {
   let release!: () => void;
   const ready = new Promise<void>(resolve => { release = resolve; });
   await page.route('**/_astro/*.js', async route => { await ready; await route.continue(); });
