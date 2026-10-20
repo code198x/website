@@ -89,17 +89,18 @@ test('next-tier BBC patterns are discoverable without claiming a curriculum trac
  await page.goto('/patterns/');
  await page.getByRole('combobox',{name:'Machine',exact:true}).selectOption('bbc-micro');
  const rows=page.locator('[data-pattern]:visible');
- await expect(rows).toHaveCount(5);
+ await expect(rows).toHaveCount(6);
  await expect(rows.getByRole('link',{name:'Masked Sprites with Background Restoration',exact:true})).toHaveCount(1);
  await expect(rows.getByRole('link',{name:'Separate Background Buffers for Overlapping Objects',exact:true})).toHaveCount(1);
  await expect(rows.getByRole('link',{name:'Clip Masked Sprites in BBC MODE4',exact:true})).toHaveCount(1);
+ await expect(rows.getByRole('link',{name:'Place BBC MODE4 Sprites at Pixel Positions',exact:true})).toHaveCount(1);
  await rows.getByRole('link',{name:'A game loop using MOS',exact:true}).click();
  await expect(page).toHaveURL(/bbc-micro\/assembly\/framework\/mos-game-loop/);
  await expect(page.locator('.pattern-prose')).toContainText('MODE 6');
  await expect(page.locator('.pattern-prose')).toContainText('OSBYTE');
  await page.getByRole('link',{name:'More BBC Micro patterns'}).click();
  await expect(page).toHaveURL(/patterns\/platform\/bbc-micro/);
- await expect(page.locator('[data-pattern]:visible')).toHaveCount(5);
+ await expect(page.locator('[data-pattern]:visible')).toHaveCount(6);
 });
 
 test('loop contracts and maintained callers fit narrow and wide pages',async({page})=>{
@@ -326,6 +327,44 @@ test('clipping pages retain accessible controls and text for either colour prefe
  for(const colorScheme of ['light','dark'] as const){
   await page.emulateMedia({colorScheme});
   for(const path of ['cross-platform/rendering/clipping','sinclair-zx-spectrum/assembly/rendering/clipped-sprites','bbc-micro/assembly/rendering/clipped-sprites','commodore-amiga/assembly/rendering/clipped-sprites']){
+   await page.goto(`/patterns/${path}/`);
+   expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
+  }
+ }
+});
+
+
+test('prepared phases connect real machine code and show memory costs',async({page})=>{
+ await page.goto('/patterns/cross-platform/rendering/pre-shifted-sprites/');
+ const prose=page.locator('.pattern-prose');
+ for(const system of ['sinclair-zx-spectrum','bbc-micro','commodore-amiga']){
+  await expect(prose.locator(`table a[href="/patterns/${system}/assembly/rendering/pre-shifted-sprites/"]`)).toHaveCount(1);
+ }
+ await expect(prose).toContainText('784 bytes');
+ await expect(prose).toContainText('2,176 bytes');
+ await expect(prose).not.toContainText('Code sample unavailable');
+ expect(await prose.locator('.lesson-listing').count()).toBeGreaterThan(0);
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+});
+
+test('pixel positioning exposes usable routines, callers and captures',async({page})=>{
+ for(const system of ['sinclair-zx-spectrum','bbc-micro','commodore-amiga']){
+  await page.goto(`/patterns/${system}/assembly/rendering/pre-shifted-sprites/`);
+  const prose=page.locator('.pattern-prose');
+  await expect(prose).not.toContainText('Code sample unavailable');
+  expect(await prose.locator('.lesson-listing').count()).toBeGreaterThanOrEqual(2);
+  await expect(prose.getByRole('link',{name:'Execution record',exact:true})).toHaveAttribute('href',/\/blob\/[0-9a-f]{40}\/docs\/sprite-phases\/verification\/results.json$/);
+  const img=prose.locator('img[src*="sprite-phases"]');await img.scrollIntoViewIfNeeded();
+  await expect.poll(()=>img.evaluate((e:HTMLImageElement)=>e.complete&&e.naturalWidth>0)).toBe(true);
+  expect(await img.evaluate((e:HTMLImageElement)=>Number(e.getAttribute('width'))/Number(e.getAttribute('height'))===e.naturalWidth/e.naturalHeight)).toBe(true);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ }
+});
+
+test('prepared phase pages remain accessible with either colour preference',async({page})=>{
+ for(const colorScheme of ['light','dark'] as const){
+  await page.emulateMedia({colorScheme});
+  for(const path of ['cross-platform/rendering/pre-shifted-sprites','sinclair-zx-spectrum/assembly/rendering/pre-shifted-sprites','bbc-micro/assembly/rendering/pre-shifted-sprites','commodore-amiga/assembly/rendering/pre-shifted-sprites']){
    await page.goto(`/patterns/${path}/`);
    expect((await new AxeBuilder({page}).analyze()).violations).toEqual([]);
   }

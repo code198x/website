@@ -1,0 +1,51 @@
+---
+title: "Place Amiga Bobs with Prepared Pixel Phases"
+summary: "Trade chip RAM for sixteen prepared mask/image phases, reusing the checked word-aligned clipped blitter renderer at individual pixel positions."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["sprites", "shifting", "mask", "assets"]
+related:
+  patterns: ["pre-shifted-sprites", "clipped-sprites", "sprite-lifecycle"]
+  vault: ["sprites", "sprite-animation"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+<img src="/images/patterns/sprite-phases/amiga.png" alt="Original amiga sprite gallery with prepared pixel phases on a sparse background grid, including cropped screen edges" width="768" height="576" loading="lazy" />
+
+*Original Code198x program and artwork captured in Emu198x.*
+
+**Code status: maintained routines and an emulator-executed phase gallery.** [Execution record](https://github.com/code198x/code-samples/blob/9ebc7a16fba087f6e6211d0286a6d9dfac8a9599/docs/sprite-phases/verification/results.json).
+
+The Amiga's blitter can shift images itself. This implementation explores another useful trade-off: store prepared phases and reuse the existing bounded word-aligned renderer. It spends chip RAM to keep phase selection small and the clipped drawing path familiar.
+
+## Pass pixel X and the phase table
+
+Include `phase.inc`, the existing `clipped-sprites/clip.inc`, `clipped-sprites/draw.inc` and a generated bank in chip RAM. `draw_pixel_sprite` takes signed pixel X in D0.w, Y in D1.w, screen base in A2 and a sixteen-entry table in A3. Each table entry contains an opaque-mask pointer followed by an image pointer.
+
+D0-D7 and A0-A5 survive; CCR changes. The wrapper saves 36 stack bytes in addition to the nested renderer's 68, plus call-return and interrupt requirements. All pointers must be even; source, table, screen, code and stack must be separate owned chip-RAM spans. Enable blitter DMA and exclude other blitter users for the entire synchronous call. The include sets up no copper list, OS ownership or interrupts.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/pre-shifted-sprites/phase.inc" lang="m68k" title="Select prepared mask/image pointers from signed pixel X" />
+
+The low four X bits select the phase; arithmetic division finds the word column. At X = −1, word −1 and phase 15 place the surviving pixels correctly at the left edge. The [existing clipped renderer](/patterns/commodore-amiga/assembly/rendering/clipped-sprites/) then handles both axes and preserves original source and screen strides.
+
+## Account for the chip RAM
+
+Original artwork is 16×16. Each phase is padded to 32×16, using sixty-four bytes of opaque mask and sixty-four of image. Mask 1 selects image; mask 0 preserves the bitplane. That polarity differs from the Spectrum/BBC keep masks.
+
+Sixteen prepared phases use 2,048 bytes. Add 128 bytes of pointer pairs and the whole bank is **2,176 bytes**, compared with 64 unshifted mask/image bytes. Pointers are relocated by the normal assembler/loader; the preparation tool does not guess runtime addresses.
+
+Use `make regenerate` after changing the original artwork and `make check-assets` to verify the bank. A distinct generation prefix gives another sprite its own labels and table for the same runtime routine.
+
+## Boot the complete caller
+
+Build with `make ASM198X=/path/to/asm198x BUILD198X=/path/to/build198x-adf`, or use the publishing toolchain's default `build198x adf` interface. Boot `build/demo.adf` on A500 OCS PAL/Kickstart1.3. The caller owns custom chips and one 320×256 bitplane, draws all sixteen phases against interior and edge positions, then continues frame servicing. Reset to leave.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/pre-shifted-sprites/demo.asm" lang="m68k" title="Original ADF phase gallery using the existing clipped blitter path" />
+
+This is a static placement gallery, not a measured animation cadence or whole-game frame budget. A moving object still needs its previous padded/clipped footprint removed. The existing [save/draw/restore routines](/patterns/commodore-amiga/assembly/rendering/sprite-lifecycle/) can cover up to sixty-four saved background bytes here; retain the old address and dimensions with each buffer.
+
+## Compare the next branch
+
+The hardware A/B shifters are the natural onward implementation when stored phase data is expensive. Their source carry, edge masks and source width need careful treatment; the [Amiga Hardware Reference Manual, chapter 6](https://www.theflatnet.de/pub/cbm/amiga/AmigaDevDocs/hard_6.html) describes those mechanisms. The [shared phase article](/patterns/cross-platform/rendering/pre-shifted-sprites/) compares preparation, runtime work and memory without hiding the machine's alternatives.

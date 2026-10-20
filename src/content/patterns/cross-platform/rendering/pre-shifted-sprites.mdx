@@ -1,0 +1,65 @@
+---
+title: "Place Sprites Between Byte Boundaries"
+summary: "Prepare shifted mask/image phases once, then choose the right one for a pixel position. Working Spectrum, BBC and Amiga code makes the memory and integration costs explicit."
+platform: "cross-platform"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["sprites", "shifting", "mask", "assets"]
+related:
+  patterns: ["clipping", "sprite-lifecycle", "sprites"]
+  vault: ["sprites", "sprite-animation"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Moving eight pixels at a time is quite a leap for a little spaceship. A byte-aligned renderer can be useful, but eventually you want the object one pixel further right. Then another. The memory still comes in bytes or words; the player should not have to care.
+
+One answer is **pre-shifting**: prepare several copies of the mask and image, each starting one pixel further into its first byte or word. At runtime, split the pixel position into an aligned address and a phase. Select that prepared image and feed it to a bounded renderer.
+
+The code here does exactly that, including objects crossing the screen edges. The complete callers draw a static gallery of phases and keep servicing frame waits. They demonstrate placement and cropping; animation and removal of old pixels remain the surrounding program's job.
+
+| Implementation | Prepared phases | Bank size, including pointers | Renderer |
+| --- | --- | --- | --- |
+| [Spectrum](/patterns/sinclair-zx-spectrum/assembly/rendering/pre-shifted-sprites/) | Eight | 784 bytes | Three-byte masked rows; bitmap attributes stay alone |
+| [BBC Micro](/patterns/bbc-micro/assembly/rendering/pre-shifted-sprites/) | Eight | 784 bytes | Three-byte masked rows in normal MODE4 |
+| [Amiga](/patterns/commodore-amiga/assembly/rendering/pre-shifted-sprites/) | Sixteen | 2,176 bytes | The existing two-word clipped blitter renderer |
+
+All three start from the same original 16×16 artwork. The runtime interfaces and mask representations remain machine-specific. C64 and NES already expose pixel positions for hardware sprites; their [sprite entries](/patterns/cross-platform/rendering/sprites/) take that different route.
+
+## Keep the address and the phase together
+
+On Spectrum and BBC, divide pixel X by eight to find its byte column. The low three bits select a phase from zero to seven. A pixel position of 13 therefore uses byte column 1 and phase 5.
+
+Negative positions need a little care. At X = −1, the object starts in byte column −1, shifted seven pixels into that byte. Its visible pixels continue into column zero. Dividing towards zero would give the wrong column. The wrappers use arithmetic right shifts, which round the signed position down.
+
+Amiga uses the same reasoning with sixteen-pixel words: X = 19 becomes word 1, phase 3; X = −1 becomes word −1, phase 15. Only after that split does the existing [clipping calculation](/patterns/cross-platform/rendering/clipping/) select the surviving source region and form screen addresses.
+
+<img src="/images/patterns/sprite-phases/phases.svg" alt="The same image row prepared at phases zero, one and seven inside three bytes. Transparent padding moves around the original ink and opaque-off pixels." width="900" height="350" loading="lazy" />
+
+## Prepare masks as well as pixels
+
+The original image has three useful states: transparent, opaque off and opaque ink. An opaque off pixel matters: it clears a lit background pixel. A transparent pixel leaves that background alone.
+
+The small preparation tool reads sixteen rows of sixteen `.`, `0` or `1` samples. It shifts both coverage and ink, then writes the target representation. Spectrum/BBC use interleaved **keep-mask/image** bytes. Amiga uses separate **opaque-mask/image** planes, with the opposite mask polarity.
+
+Use each machine folder's `make regenerate` command after changing the art. `make check-assets` rejects stale generated assembly. The generated `phases.inc` file is also included in the source repository, so ordinary builds do not need image packages or a separate graphics editor. An optional prefix gives each sprite bank distinct labels; the runtime routine takes a table pointer, so it can serve several banks.
+
+<CodeFromFile src="cross-platform/patterns/rendering/pre-shifted-sprites/prepare.py" lang="python" title="Prepare and validate the target-specific phase banks" />
+
+## The extra column is part of the cost
+
+A sixteen-pixel image shifted into a byte can spill into a third byte. The Spectrum/BBC prepared rows therefore occupy three byte columns, with a keep-mask and image byte for each: six bytes per row, ninety-six per phase. Eight phases and a sixteen-byte pointer table total **784 bytes**, compared with 64 unshifted mask/image bytes.
+
+All phases use that same stride, even phase zero with its transparent padding. Cropping a side does not shrink the original source row. Both renderers preserve the six-byte stride when advancing to the next row.
+
+For Amiga, each phase is padded to two words across. A mask and image occupy 128 bytes per phase; sixteen phases and 128 pointer-table bytes total **2,176 bytes**, compared with 64 unshifted bytes. This buys reuse of the already checked word-aligned clipping path, at a clear chip-RAM cost.
+
+The [Amiga hardware shifter](https://www.theflatnet.de/pub/cbm/amiga/AmigaDevDocs/hard_6.html) is an important alternative. A runtime-shifted implementation needs its own source-width, carry and edge-mask checks. On other machines, shifting while drawing can save stored phases while adding runtime work. Fewer prepared phases can also be a deliberate movement-style choice. None of these choices establishes a frame budget on its own.
+
+## Fit the padded footprint into the game
+
+Keep logical position and animation state in the object. Reload the wrapper's inputs before each draw. A phase bank is read-only; each active call needs exclusive working state and the machine's required resources.
+
+For movement over scenery, [background restoration](/patterns/cross-platform/rendering/sprite-lifecycle/) must cover the **old padded and clipped footprint**, including its old dimensions and address. Spectrum's largest prepared footprint needs 48 background bytes, separate from the source bank. Amiga's needs 64. BBC's existing 8×8 cell-save helper is too small for this job; use a larger backing store or redraw from world/tile data.
+
+This is a useful component to combine with input, movement, clipping and animation. The native gallery and [execution record](https://github.com/code198x/code-samples/blob/9ebc7a16fba087f6e6211d0286a6d9dfac8a9599/docs/sprite-phases/verification/results.json) show the bounded implementations, their actual outputs and deliberate failure controls. The machine entries give the calling contracts and complete programs.
