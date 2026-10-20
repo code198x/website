@@ -1,7 +1,7 @@
 /** Curated review prototype. Does not replace the pattern collection or its URLs. */
 export const prototypeRoot = '/catalogue/pattern-library/';
-export type Evidence = 'illustrative' | 'emulator-executed';
-export interface Implementation { id: string; evidence: Evidence; note: string }
+export type Evidence = 'illustrative' | 'emulator-executed' | 'verified-component';
+export interface Implementation { id: string; evidence: Evidence; evidenceStatement?: string; note: string }
 export interface Technique {
   slug: string; title: string; task: string; summary: string; terms: string;
   explanation: string; contract: string; next: string[]; implementations: Implementation[];
@@ -16,10 +16,10 @@ export const techniques: Technique[] = [
     contract: 'The machine reader owns the details of its interface. Agree a logical button format before passing its result onwards. One reader can return a direction code; another can return several pressed bits. They need an explicit adapter, not an assumption that their bytes mean the same thing.',
     next: ['detect-presses'], experiment: 'input',
     implementations: [
-      {id: 'sinclair-zx-spectrum/assembly/input/keyboard-reading', evidence: 'illustrative', note: 'Direct keyboard example returning a direction code. It is not the pressed-bit format used in this experiment.'},
+      {id: 'sinclair-zx-spectrum/assembly/input/keyboard-reading', evidence: 'verified-component', evidenceStatement: '**Code status: the maintained matrix reader is reused by executed 48K callers.**', note: 'The maintained matrix reader has executed 48K callers. The single-code adapter adds priority and state rules; read those before using it.'},
       {id: 'commodore-64/assembly/input/joystick-reading', evidence: 'emulator-executed', note: 'Both joystick ports, PAL and NTSC, in Emu198x and VICE. Caller owns CIA1; keyboard keys were released. Keyboard coexistence and hardware checks are separate.'},
-      {id: 'nintendo-nes/assembly/input/controller-reading', evidence: 'illustrative', note: 'Serial controller example. Read its chosen button layout before connecting another routine.'},
-      {id: 'commodore-amiga/assembly/input/joystick-reading', evidence: 'illustrative', note: 'A machine-specific joystick listing, without an execution record for the listing itself.'},
+      {id: 'nintendo-nes/assembly/input/controller-reading', evidence: 'verified-component', evidenceStatement: '**Code status: maintained reader reused by executed NTSC NROM callers.**', note: 'Executed NTSC NROM callers check press, hold and release with DMC disabled. Read the button layout and DMC limits before connecting another routine.'},
+      {id: 'commodore-amiga/assembly/input/joystick-reading', evidence: 'verified-component', evidenceStatement: '**Code status: the maintained reader is reused by executed Amiga callers.**', note: 'The maintained reader has executed A500 callers using physical port 2. Movement examples are adapters with their own bounds and frame-wait requirements.'},
     ],
   },
   {
@@ -32,7 +32,7 @@ export const techniques: Technique[] = [
     implementations: [
       {id: 'cross-platform/input/edge-detection', evidence: 'illustrative', note: 'Pseudocode and integration fragments. Explains normalisation, sampling and held-input transitions; not a tested driver for every machine.'},
       {id: 'commodore-64/assembly/input/joystick-reading', evidence: 'emulator-executed', note: 'The same executed C64 example displays held controls and counts new Fire presses. One implementation can serve more than one technique.'},
-      {id: 'commodore-amiga/assembly/input/joystick-edge-detection', evidence: 'illustrative', note: 'Amiga-specific listing. Its illustrative status remains visible alongside the executed C64 example.'},
+      {id: 'commodore-amiga/assembly/input/joystick-edge-detection', evidence: 'verified-component', evidenceStatement: '**Code status: the maintained reader is reused by executed Amiga callers; the edge adapter has a 1,024-case CPU/state check.**', note: 'The edge adapter has 1,024 synthetic CPU/state cases. Joystick decoding uses the reader’s separate A500 port-2 evidence; movement adapters need their own checks.'},
     ],
   },
   {
