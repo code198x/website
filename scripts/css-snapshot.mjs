@@ -96,7 +96,14 @@ function collect() {
 }
 
 async function settle(page) {
-  await page.evaluate(() => document.fonts.ready);
+  // Load every declared face, not just those already requested: a face first
+  // needed late (a display heading's italic, say) can still be loading when
+  // document.fonts.ready resolves, and `ch` and line breaks then use the
+  // fallback's metrics.
+  await page.evaluate(async () => {
+    await Promise.all([...document.fonts].map(face => face.load().catch(() => {})));
+    await document.fonts.ready;
+  });
   // Jump finite animations and transitions to their end and drop endless ones.
   // This avoids injecting CSS, which would itself take part in the cascade.
   await page.evaluate(() => {
