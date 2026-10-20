@@ -28,6 +28,8 @@ async function* walk(dir, test) {
 const globalClasses = new Set();
 const addClasses = css => { for (const [, name] of css.matchAll(/\.(-?[a-zA-Z_][\w-]*)/g)) globalClasses.add(name); };
 for await (const file of walk(path.join(root, 'src'), name => name.endsWith('.css'))) addClasses(await fs.readFile(file, 'utf8'));
+// Stylesheets served as-is from public/ (the classroom workbook's, say) style pages too.
+for await (const file of walk(path.join(root, 'public'), name => name.endsWith('.css'))) addClasses(await fs.readFile(file, 'utf8'));
 for await (const file of walk(path.join(root, 'src'), name => name.endsWith('.astro'))) {
   for (const [, css] of (await fs.readFile(file, 'utf8')).matchAll(/<style[^>]*\bis:global\b[^>]*>([\s\S]*?)<\/style>/g)) addClasses(css);
   for (const [, css] of (await fs.readFile(file, 'utf8')).matchAll(/:global\(([^)]*)\)/g)) addClasses(css);
