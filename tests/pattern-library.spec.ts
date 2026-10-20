@@ -89,7 +89,9 @@ test('next-tier BBC patterns are discoverable without claiming a curriculum trac
  await page.goto('/patterns/');
  await page.getByRole('combobox',{name:'Machine',exact:true}).selectOption('bbc-micro');
  const rows=page.locator('[data-pattern]:visible');
- await expect(rows).toHaveCount(6);
+ await expect(rows).toHaveCount(7);
+ await expect(rows.locator('a[href="/patterns/bbc-micro/assembly/framework/collect-and-respond/"]')).toHaveCount(1);
+ await expect(rows.locator('a[href="/patterns/bbc-micro/assembly/rendering/tile-map/"]')).toHaveCount(1);
  await expect(rows.getByRole('link',{name:'Masked Sprites with Background Restoration',exact:true})).toHaveCount(1);
  await expect(rows.getByRole('link',{name:'Separate Background Buffers for Overlapping Objects',exact:true})).toHaveCount(1);
  await expect(rows.getByRole('link',{name:'Clip Masked Sprites in BBC MODE4',exact:true})).toHaveCount(1);
@@ -100,7 +102,8 @@ test('next-tier BBC patterns are discoverable without claiming a curriculum trac
  await expect(page.locator('.pattern-prose')).toContainText('OSBYTE');
  await page.getByRole('link',{name:'More BBC Micro patterns'}).click();
  await expect(page).toHaveURL(/patterns\/platform\/bbc-micro/);
- await expect(page.locator('[data-pattern]:visible')).toHaveCount(6);
+ await expect(page.locator('[data-pattern]:visible')).toHaveCount(7);
+ await expect(page.locator('[data-pattern]:visible a[href="/patterns/bbc-micro/assembly/rendering/tile-map/"]')).toHaveCount(1);
 });
 
 test('loop contracts and maintained callers fit narrow and wide pages',async({page})=>{
@@ -128,8 +131,11 @@ test('turn callers are discoverable with usable code and explicit timing choices
   await page.goto('/patterns/');
   await page.getByRole('combobox',{name:'Machine',exact:true}).selectOption(system);
   const rows=page.locator('[data-pattern]:visible');
-  await expect(rows).toHaveCount(1);
-  await rows.getByRole('link').first().click();
+  await expect(rows).toHaveCount(2);
+  await expect(rows.locator(`a[href="/patterns/${system}/assembly/rendering/tile-map/"]`)).toHaveCount(1);
+  const turnLink=rows.locator(`a[href="/patterns/${system}/assembly/framework/turn-deadline/"]`);
+  await expect(turnLink).toHaveCount(1);
+  await turnLink.click();
   await expect(page).toHaveURL(new RegExp(system+'/assembly/framework/turn-deadline'));
   await expect(page.locator('.lesson-listing:has(.ll-label:text-is("turn.inc"))')).toContainText('commit_turn:');
   await expect(page.locator('.lesson-listing:has(.ll-label:text-is("demo.asm"))')).toContainText('read_actions:');
