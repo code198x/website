@@ -1,0 +1,89 @@
+---
+title: "Install and Replace Characters on Game Boy"
+summary: "Reusable glyph uploads and cell selection on Game Boy; keep pictures, character numbers and placement separate."
+platform: "game-boy"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["characters", "glyphs", "fonts", "udg", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Draw a door once and show it in several rooms. Change its glyph, and every cell using that code changes together. Change one cell’s code, and only that instance changes. These routines give you both operations without a whole renderer.
+
+<Figure src="/images/patterns/shared-glyph.svg" kind="image" rendering="smooth" alt="An eight-row cross in slot one, shared by two screen cells containing code one" caption="The picture lives in a slot; screen cells hold its number. Replacement and placement have different effects and different costs." />
+
+## Include, initialise and call
+
+Define `G` at 24 private WRAM bytes and include `glyphs.inc` in your ROM section. Configure unsigned background tiles at $8000 and the background map at $9800. **Every entry requires the LCD off.** The complete caller’s `lcd_off` helper waits until LY≥145 before stopping a running LCD; after updating it selects LCDC=$91 and BGP=$E4. Keep scrolling at zero for this example.
+
+Call `glyph_init` once to blank the owned glyph and name ranges. It destroys their previous contents. Then install the original sketches and select code 1 in two cells:
+
+<CodeFromFile src="nintendo-game-boy/patterns/assembly/rendering/custom-glyphs/demo.asm" from="; The example source" to="    ld a,$91" lang="sm83" title="Install two pictures; display the first twice" />
+
+The complete caller includes video setup and boot structure. Its mailbox is verification transport; your project calls these entries directly.
+
+## The calling contract
+
+All three glyph backends use little-endian words in a 24-byte context at G.
+
+| Offset | Supply or read |
+| --- | --- |
+| 0 | Word: readable source address |
+| 2, 3 | First slot, nonzero count |
+| 4 | Code to select in a cell |
+| 5 | Word: linear cell index |
+| 7 | Output: 1 accepted, 0 rejected |
+| 8 | Word: destination bytes written |
+
+`glyph_install` uploads a range; `glyph_replace` uploads one picture and ignores count. `glyph_select` writes one name entry. `glyph_init` blanks all owned patterns and cells. Inputs 0–6 survive. Counts reset on rejection. The source must be readable, long enough and non-overlapping with destination/context; it is a trusted pointer, not an arbitrary-memory validator.
+
+Valid slots are 0–255; cell indices are 0–1023. Counts run 1–255; two calls can upload all 256 slots. Zero counts, ranges past the final slot and invalid cells reject before writing. All byte-sized codes are valid.
+
+## Make the picture into bytes
+
+Row `10000001` lights the outer two dots: bit weights 128+1 give byte **129**. Sketch eight rows like that and you have an 8×8 picture. The source sketches are original Code198x assets under MIT, not ripped game art or a copied ROM font.
+
+Two bytes store each row. The low-plane row address is `base + n*16 + r*2`; the next byte is its high plane. Low=$81/high=$00 gives colour index 1 at the two outer dots. Setting both planes there gives index 3.
+
+The [Crates opening lesson](/systems/sinclair-zx-spectrum/basic/crates/unit-01-draw-a-wooden-crate/) builds larger artwork from four 8×8 sketches. Its method of turning dots into byte weights applies here too, even though the upload and colour rules differ.
+
+## Respect this machine’s display
+
+Tiles occupy $8000–$8FFF and the 32×32 background map occupies $9800–$9BFF. Only 20×18 cells are visible with zero scroll; cell 1023 is legal but off screen. Each row has two bytes: low plane then high plane, both with the leftmost pixel in bit 7. Their bits produce palette indices 0–3. BGP then selects shades. LCD-on calls return rejection before touching VRAM. Stopping the LCD is a bulk construction baseline, not a recommended way to animate every frame; a bounded live upload queue is a later variant.
+
+## Replace a picture; select a different instance
+
+After the example, point G+0 at a new sketch, set G+2=1 and call `glyph_replace`. Both cells still contain code 1, so both show the new picture. To change only the first, put code 2 in G+4 and its cell index in G+5, then call `glyph_select`. The second cell keeps code 1.
+
+For a cell at column 2, row 2, the row-major index is `2*32+2 = 66`. Local dot (3,5) in that cell appears at screen pixel `(2*8+3, 2*8+5) = (19,21)`. [Place a point](/craft/maths-for-games/unit-06/) explores origin and coordinates; here the top-left screen origin makes Y increase downwards. Grid placement does not imply arbitrary-position or scaled text support.
+
+<Figure src="/images/game-boy/patterns/custom-glyphs.png" kind="capture" alt="Game Boy native output with both shared cells showing the replacement pattern" caption="The first replacement in the native check changes both cells. A later single-cell selection changes only one. Complete pattern/name memory and selected native frames are checked separately." />
+
+<details>
+<summary>Open the complete reusable SM83 include</summary>
+<CodeFromFile src="nintendo-game-boy/patterns/assembly/rendering/custom-glyphs/glyphs.inc" lang="sm83" title="Upload, replace and select without a whole game renderer" />
+</details>
+
+## Pay for what changes
+
+Changing one name costs **one destination byte**; replacing one picture costs **16**.  A full init writes 5,120 bytes; that clears the font plus the entire owned name table. Installing every glyph just to change one is wasted work.
+
+The assembled component takes 186 code bytes and 24 context bytes; glyph assets take 16 bytes each. These counts exclude the reset caller, video setup and the LCD-stop helper. They are storage and write counts, not measured frame budgets. The complete pattern allocation is 4 KB.
+
+AF/BC/DE/HL and flags are clobbered; allow eight stack bytes including nested calls. Add space for your other code and interrupts. The context is non-re-entrant. The routines do not change interrupt state or banks, and must not race a font cache, other renderer or OS using the same resources.
+
+A font cache, proportional layout, arbitrary-position text and live transfer queue are useful further components. PET and Aquarius ROM characters need a different strategy; an upload routine cannot make fixed ROM writable.
+
+## What was verified
+
+All 17 calls completed on this Game Boy configuration with Asm198x 0.0.71 and Emu198x 0.39.0. Checks compare full pattern/name memory, nonzero neighbours, public inputs, accepted/rejected status and destination-write counts after each request. They include shared replacement, single-cell selection, first/last slots, largest legal uploads, zero/overflow counts, invalid cells and reset plus LCD-on rejection. Selected whole native frames match a separate compositor. A completed wrong-slot build fails both memory and visible-output checks.
+
+This is an original reset caller, qualified independently on this machine. It does not establish stock-OS loading, interrupt coexistence, hardware timing or live LCD-on uploads.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/db7d12fbc08d12fcf3ccdd7830bf016c46e9e5ae/nintendo-game-boy/patterns/assembly/rendering/custom-glyphs)
+- [Reusable include](https://github.com/code198x/code-samples/blob/db7d12fbc08d12fcf3ccdd7830bf016c46e9e5ae/nintendo-game-boy/patterns/assembly/rendering/custom-glyphs/glyphs.inc)
+- [Full contracts, costs and primary references](https://github.com/code198x/code-samples/blob/db7d12fbc08d12fcf3ccdd7830bf016c46e9e5ae/cross-platform/patterns/rendering/drawing-foundations/README.md)
+- [Compare writable character systems](/patterns/cross-platform/rendering/custom-glyphs/)
+- [Draw a native map region](/patterns/game-boy/assembly/rendering/tile-region/)
