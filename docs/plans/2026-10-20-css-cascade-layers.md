@@ -23,6 +23,7 @@ CSS source size (stylesheets plus `<style>` blocks under `src/`):
 |---|---|---|---|
 | 2026-10-20 | Starting point (main at 7d2dba5) | 502,150 | |
 | 2026-10-20 | Removed 18 components no page renders | 481,253 | −4.2% |
+| 2026-10-20 | Removed selectors for 56 classes nothing renders | 457,216 | −8.9% |
 
 ## Where it stands (main at 7d2dba5)
 
