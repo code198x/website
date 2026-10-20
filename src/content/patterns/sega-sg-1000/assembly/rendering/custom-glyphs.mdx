@@ -1,0 +1,93 @@
+---
+title: "Change Shared Characters on SG-1000"
+summary: "Install a picture, use it in many cells, then replace the picture or change one instance. Reusable Z80 routines for SG-1000 Graphics I."
+platform: "sega-sg-1000"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["characters", "glyphs", "fonts", "udg", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Draw a door once and put it in two places. Open that shared picture, and both doors open. Change just one screen cell's number, and only that door changes. These routines let you choose which job you mean.
+
+<Figure src="/images/patterns/shared-glyph.svg" kind="image" rendering="smooth" alt="Two screen cells containing code one share one eight-row picture" caption="The glyph holds the picture; each screen cell holds its number. Replacing one and selecting the other do different jobs." />
+
+## Include, initialise and call
+
+Reserve **24 private RAM bytes** at `G`. Include the maintained MSX Z80 component: this SG-1000 port reuses its code unchanged and supplies its own wired ports and video setup. That reuse does not require an MSX BIOS.
+
+<CodeFromFile src="sega-sg-1000/patterns/assembly/rendering/custom-glyphs/demo.asm" from="kernel_start:" to="kernel_end:" lang="z80" title="Include the reusable glyph component" />
+
+Set `G+10=$BE` for data writes and `G+11=$BF` for control. Establish Graphics I with patterns at $0000, names at $1800 and grouped colours at $2000. The complete caller shows the register writes, sprite terminator and memory reservations. Call `glyph_init` once: it erases the owned font and name table, leaving colours, sprites and VDP registers alone.
+
+Then point at eight-byte sketches, install them and select the first twice:
+
+<CodeFromFile src="sega-sg-1000/patterns/assembly/rendering/custom-glyphs/demo.asm" from="example_install:" to="; Diagnostic transport below" lang="z80" title="Install pictures and use code one in two cells" />
+
+The source sketches are original MIT-licensed Code198x data. Your game calls these entries directly; the caller's later mailbox and snapshot buffer are verification tools.
+
+## Supply a source, slot and cell
+
+Words are little-endian. `glyph_install` copies a contiguous range; `glyph_replace` copies one slot and ignores count. `glyph_select` writes one cell's code; `glyph_init` blanks all 2,048 font bytes and 768 name bytes.
+
+| Offset | Supply or read |
+| --- | --- |
+| 0 | Word: readable CPU source pointer |
+| 2, 3 | First slot and nonzero glyph count |
+| 4 | Code to select |
+| 5 | Word: linear cell index |
+| 7 | Output: 1 accepted, 0 rejected |
+| 8 | Output word: destination data bytes written |
+| 10, 11 | Write data and control ports |
+
+Inputs 0–6 and the two port bytes survive. Slots/codes are 0–255, cells 0–767 and install counts 1–255. A range ending exactly at 256 is valid; a zero count, overflowing range or invalid cell rejects before writing. Status and cost reset on rejection. Two calls can install all 256 pictures.
+
+Keep the complete source readable and stable in CPU ROM or RAM, separate from `G`, with no address wrap or bank change. It is a trusted pointer; the component does not validate arbitrary mappings. Init/select ignore the source. The context is non-re-entrant. Calls clobber AF/BC/DE/HL/flags and need ten stack bytes including nested calls, plus your own callers and interrupts.
+
+## Count rows, slots and places
+
+An 8×8 sketch stores eight row bytes, bit 7 on the left. Row `10000001` is **129**. Slot 255 starts at `255*8 = 2040`, or $07F8; its final row is $07FF. The [Crates opening](/systems/sinclair-zx-spectrum/basic/crates/unit-01-draw-a-wooden-crate/) shows the same dots-to-byte arithmetic with another machine's upload rules.
+
+At column 31, row 23, the cell index is `23*32+31 = 767`, at $1AFF. Cell 768 would run into other video data. For local dot (3,5) in cell (2,2), the screen pixel is `(2*8+3, 2*8+5) = (19,21)`. [Place a point](/craft/maths-for-games/unit-06/) explores those coordinate choices; [move a glyph](/craft/maths-for-games/unit-13/) compares shared character cells with drawing a label at any pixel.
+
+## Own the video interface
+
+Patterns occupy VRAM $0000–$07FF and names $1800–$1AFF. They are reached through ports, not through an invented CPU bitmap address. **Two control writes choose an address** before the data transfer. Coordinate every other VDP user for the whole call; an interrupt changing the latch can send bytes to the wrong place. These routines do not mask interrupts or change banks. DI does not mask a console NMI.
+
+Graphics I shares a foreground/background colour byte among **eight slots**. Slot 7 uses $2000; slot 8 uses $2001. Replacing bits does not choose colours, and replacing one glyph does not select a new screen code. The complete caller sets white-on-black colours separately and owns its VDP configuration.
+
+This caller reserves G at $C200, starts its stack at $C3F0 and uses an original 32,768-byte cart image. Its diagnostic buffer is only 256 bytes, so the test fits the selected 1 KiB CPU RAM on the two small-RAM consoles. That buffer is not required by a game calling the routine. Reserve the remaining RAM for your own state and stack; the original reset example does not leave a BASIC or BIOS workspace running.
+
+The component retains conservative fixed port spacing. The native check qualifies this emulator's selected default clock/video configuration. Physical access timing, accelerated CPUs, tear-free live animation and VBlank transfer budgets need their own measurements. A running-game upload queue is a useful next component.
+
+## Replace a shared picture, or change one instance
+
+Point G+0 at a new sketch, put 1 in G+2 and call `glyph_replace`: both cells containing code 1 show it. Put 2 in G+4, the first cell's index in G+5, and call `glyph_select`: the other cell keeps code 1.
+
+<Figure src="/images/sega-sg-1000/patterns/custom-glyphs.png" kind="image" rendering="pixelated" width={560} alt="SG-1000 native Graphics I frame showing the same replacement picture in two adjacent cells" caption="One replacement changes both uses of code 1. The native frame and complete video-memory snapshot are checked independently." />
+
+<details>
+<summary>Open the complete reusable Z80 component</summary>
+<CodeFromFile src="msx/patterns/assembly/rendering/custom-glyphs/glyphs.inc" lang="z80" title="Initialise, install, replace and select" />
+</details>
+
+## Pay for the change you need
+
+Changing one cell writes **1 name byte plus 2 control bytes**. Replacing a glyph writes **8 pattern bytes plus 2 control bytes**. A 255-glyph upload writes 2,040 data bytes; init writes 2,816. G+8 counts data writes only. The control-byte counts follow the listing's address setup. These are amounts of work, not measured frame times.
+
+The unchanged routine takes **205 code bytes**, plus the **24-byte context**. Reserve the 2 KiB font, 768-byte name table and eight source bytes per sketch separately. Reset setup, diagnostic machinery and ROM padding are excluded. Replacing one shared wall can save editing many cells; opening one door often calls for selecting a different code in one cell.
+
+For larger screen changes, use [native map regions](/patterns/sega-sg-1000/assembly/rendering/tile-region/). [Bitmap text](/patterns/cross-platform/rendering/bitmap-text/) solves a different job: drawing labels away from character-grid positions. Graphics II, pattern caches and four-plane Sega Mode 4 need their own contracts.
+
+## What was verified
+
+**24 calls completed** on this SG-1000 configuration with Asm198x 0.0.71 and Emu198x 0.39.0. After each, an independent model checks all **16 KiB VRAM**, public inputs/ports, status, data-write count, CPU guards and unchanged RAM/ROM sources. Cases cover shared replacement, single-cell selection, first/last slots, largest transfers, rejected ranges/cells, reset and reuse after reset. Six complete native frames per build match a separate glyph compositor, including borders.
+
+Two completed accepted faulty builds, **wrong-slot** and **wrong-name**, fail both memory and visible-output checks on this machine. Retained checks also reject altered observations with recomputed hashes. This original reset fixture proves the named routine/configuration, not stock-OS loading, physical hardware timing or another display mode.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/0644610706bd4013366ed134d256652077af84e9/sega-sg-1000/patterns/assembly/rendering/custom-glyphs)
+- [Unchanged reusable include](https://github.com/code198x/code-samples/blob/0644610706bd4013366ed134d256652077af84e9/msx/patterns/assembly/rendering/custom-glyphs/glyphs.inc)
+- [Full contract, costs and primary references](https://github.com/code198x/code-samples/blob/0644610706bd4013366ed134d256652077af84e9/cross-platform/patterns/rendering/tms-glyphs/README.md)
+- [Compare writable character systems](/patterns/cross-platform/rendering/custom-glyphs/)
