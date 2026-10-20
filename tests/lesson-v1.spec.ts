@@ -11,8 +11,10 @@ for (const path of GATE) {
     const body = await page.locator('.unit-content p').first().evaluate((el) => getComputedStyle(el).fontFamily);
     expect(body).toMatch(/^"?Nebula Sans/);
 
-    // The masthead carries the game in the magazine face, and the face really loaded.
-    const mast = page.locator('.lesson-mast-game');
+    // The section bar carries the lesson's section in the magazine face, and the
+    // face really loaded. (The lesson masthead that used to carry it went in the
+    // 2026-10-06 redesign; the bar is where the face appears now.)
+    const mast = page.locator('.breadcrumbs .crumb-section > :is(a, span)');
     await expect(mast).toBeVisible();
     expect(await mast.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/Fira Sans Condensed/);
     // fonts.check() is false for a subset nothing on the page has asked for yet (Cyrillic), so load first.
