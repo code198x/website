@@ -4,13 +4,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 export CODE_SAMPLES_PATH="${CODE_SAMPLES_PATH:-$PWD/../code-samples}"
-export PLAY198X_WASM_PATH="${PLAY198X_WASM_PATH:-$PWD/../../Play198x/play198x/crates/play198x-web/pkg-node}"
 if ! command -v lychee >/dev/null; then
   echo 'Local link checks need the lychee executable on PATH.' >&2
   exit 1
 fi
-if [ ! -d "$CODE_SAMPLES_PATH" ] || [ ! -f "$PLAY198X_WASM_PATH/play198x_web.js" ]; then
-  echo 'Prepare code-samples and the Play198x decoder first; see README.md.' >&2
+if [ ! -d "$CODE_SAMPLES_PATH" ]; then
+  echo 'Prepare code-samples first; see README.md.' >&2
   exit 1
 fi
 
