@@ -71,3 +71,9 @@ non-zero if any did. Hover and focus states are not recorded.
 that between them render every scoped component and use every class the global
 stylesheets name. Re-run it after adding a component. Entries with `steps` open
 states a page load does not show, such as the mobile menu; edit those by hand.
+
+`npm run css:coverage -- <out-dir>` loads every built page at 1440, 768 and
+Pixel 7 widths with Chromium's CSS coverage on, and reports the rules that
+never matched anything (`<out-dir>/coverage.json`). Rules for hover, focus, open
+disclosures and classes added by scripts are reported too, so search `src/`
+before deleting one.

@@ -8,6 +8,13 @@ marked **intended change** must leave every page looking exactly as it did.
 Agreed with Steve on 2026-10-20 as approach 1 of three (layers first; not
 component-scoping everything, not a rewrite from the kit).
 
+**Target: half the CSS.** On 2026-10-20 the source held 502 KB of CSS: 174 KB
+in stylesheets and 329 KB in component `<style>` blocks (1,981 + 8,002 lines).
+Steve's target is 250 KB or less. Layers alone save little (the `body.magazine`
+prefixes are about 9 KB); most of the cut has to come from rules no page uses
+(step 1) and from duplicated rules (steps 4 and 5). Measure the source size at
+the end of every step and record it here.
+
 ## Where it stands (main at 7d2dba5)
 
 - 25 stylesheets in `src/styles/` and `src/lib/` (176 KB, mostly one-line
@@ -90,9 +97,21 @@ Each step also runs `npm run check:release`, and its PR runs the browser CI.
    (49 differences), and the diff exited 1.
 
 Not covered: `:hover` and `:focus` states. Add a forced-state pass through
-CDP `CSS.forcePseudoState` if step 3 turns up rules that only show under them.
+CDP `CSS.forcePseudoState` if step 4 turns up rules that only show under them.
 
-### 1. Everything into `legacy` (PR 2)
+### 1. Remove CSS no page uses
+
+1. Add `scripts/css-coverage.mjs`: load every built page at 1440, 768 and
+   Pixel 7 widths with Chromium's CSS coverage on, and report each rule that
+   never matched anything.
+2. Group the unused rules by source file. Before deleting one, search `src/`
+   for its classes and attributes: rules for `:hover`, `:focus`, open
+   disclosures and classes added by scripts report as unused too.
+3. Delete in PRs by area. Gate: `css:diff` shows zero differences, the browser
+   CI passes, and a fresh coverage run shows the rule gone without new unused
+   rules appearing.
+
+### 2. Everything into `legacy`
 
 1. Add the order statement to the head's first inline style, and a browser
    test that it comes before every stylesheet in the built page.
@@ -108,22 +127,22 @@ CDP `CSS.forcePseudoState` if step 3 turns up rules that only show under them.
    components). Fix each one by layering that CSS, or record why it stays
    unlayered. Finish at zero differences.
 
-### 2. Sort `legacy` into layers, lowest first (one PR per layer)
+### 3. Sort `legacy` into layers, lowest first (one PR per layer)
 
 Moving a rule to a lower layer makes it lose to everything still in `legacy`,
 so sort from the bottom up: `base` (site tokens, `lesson.css` defaults, the
 global element rules in `Layout.astro`), then `layout`, `components`, `pages`.
 When a move produces differences, the gate names the rule pair that competed.
 Either move the competitor in the same PR, or leave both in `legacy` and list
-them for step 3. Delete `legacy` when it is empty.
+them for step 4. Delete `legacy` when it is empty.
 
-### 3. Remove the specificity boosts (PRs by area)
+### 4. Remove the specificity boosts (PRs by area)
 
 Strip `body.magazine` prefixes, unnecessary `:global()` wrappers and
 `!important`, one area at a time (Vault, lessons, patterns, editorial, family,
 setup, shell). Zero differences per PR.
 
-### 4. One token vocabulary (PRs by token group)
+### 5. One token vocabulary (PRs by token group)
 
 1. Replace site tokens that alias a kit token everywhere with the kit token.
    Zero differences.
@@ -134,12 +153,12 @@ setup, shell). Zero differences per PR.
    for Steve. Any change of value is an **intended change** and needs
    screenshots and approval.
 
-### 5. Breakpoints (intended change)
+### 6. Breakpoints (intended change)
 
 Propose a scale (for example 600 / 900 / 1100) with screenshots of every page
 whose layout shifts. Steve approves the scale before any code changes.
 
-### 6. Files by purpose
+### 7. Files by purpose
 
 Rename or merge the files named after rollouts (`design-rollout.css`,
 `approved-pages.css`, `approved-learning.css`) into files named for what they

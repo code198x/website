@@ -7,14 +7,13 @@
 //
 // Usage: node scripts/css-snapshot.mjs <out-dir> [--only <route-name>]
 // Serves dist/ with `astro preview`, so run `npm run build` first.
-import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { chromium, devices } from '@playwright/test';
+import { startPreview } from './css-preview.mjs';
 
 const PORT = Number(process.env.CSS_SNAPSHOT_PORT) || 4394;
-const BASE = `http://localhost:${PORT}`;
 const VIEWPORTS = {
   desktop: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
   mobile: devices['Pixel 7'],
@@ -31,23 +30,6 @@ const routes = JSON.parse(await fs.readFile(new URL('./css-routes.json', import.
 if (routes.length === 0) {
   console.error(`No route named ${only} in scripts/css-routes.json`);
   process.exit(2);
-}
-
-async function startPreview() {
-  // Never adopt a server already on the port: it may be serving another build.
-  const taken = await fetch(BASE).then(() => true, () => false);
-  if (taken) throw new Error(`Port ${PORT} is already serving; set CSS_SNAPSHOT_PORT`);
-  const server = spawn('npx', ['astro', 'preview', '--port', String(PORT)], {
-    env: { ...process.env, ASTRO_PREVIEW_BACKGROUND: '0' },
-    stdio: 'ignore',
-    detached: true,
-  });
-  for (let attempt = 0; attempt < 120; attempt++) {
-    if (await fetch(BASE).then(() => true, () => false)) return server;
-    await new Promise(resolve => setTimeout(resolve, 500));
-  }
-  process.kill(-server.pid);
-  throw new Error('astro preview did not start');
 }
 
 // Runs in the page. Records, for every element and its ::before/::after, each
@@ -120,7 +102,8 @@ async function settle(page) {
   });
 }
 
-const server = await startPreview();
+const server = await startPreview(PORT);
+const BASE = server.base;
 const browser = await chromium.launch();
 let failed = false;
 try {
@@ -151,6 +134,6 @@ try {
   }
 } finally {
   await browser.close();
-  process.kill(-server.pid);
+  server.stop();
 }
 process.exit(failed ? 1 : 0);
