@@ -1,0 +1,67 @@
+---
+title: "Draw a Native Region on Atari 800XL"
+summary: "Reusable Atari 800XL code for drawing a room, changed tile or strip of scenery, with explicit display ownership."
+platform: "atari-800"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["tilemaps", "regions", "native", "assembly"]
+related:
+  patterns: ["tile-region", "tile-map-queries"]
+  vault: ["tile-maps"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Open a door, break a wall, reveal the next stretch of scenery. The map changes first; this routine makes the picture catch up. Give it a rectangle of byte-map IDs and a destination, and it draws just that part of the world.
+
+<Figure src="/images/atari-800/patterns/tile-region.png" kind="capture" alt="Atari 800XL native output showing a patterned map patch and a single-cell redraw" caption="Original diagnostic in Emu198x 0.39.0. A 5×3 patch and a single-cell erase are visible; a separate logical bottom-right write is also checked in memory." />
+
+## ANTIC decides where a line begins
+
+ANTIC F gives this example a 320×192 monochrome picture: forty **8×8** cells across, twenty-four down. Each picture takes eight bytes, with the leftmost pixel in bit 7. The CPU can copy those bytes directly, but the display must read the same addresses.
+
+ANTIC's screen-memory counter wraps at a **4 KB boundary**. Simply placing all 7,680 display bytes in one consecutive block would let the CPU and display disagree. Here the first block holds 102 complete forty-byte scanlines; line 102 starts at `$5000`. The tables use `$4000 + (y/102)*4096 + (y mod 102)*40`.
+
+The diagnostic uses an explicit LMS address for every scanline. That is deliberately readable rather than a minimal display list. Its active 582 bytes fit within a single 1 KB display-list page at `$3000`; the driver reserves and copies 768 bytes. The bitmap allocation is `$4000–$5FFF`, with 7,680 used bytes and 512 gap/tail bytes which drawing must preserve.
+
+## Make it part of your project
+
+Reserve all 32 bytes of `NR` in zero page, clear decimal mode, define the map, tile and screen constants, and include the shared 6502 routine once. `CELL_BYTES=1` and `X_STEP=1`. Supply low/high scanline tables matching your actual display list. A new mode, width or buffer address needs matching tables and ANTIC setup.
+
+The example map has twelve byte IDs per row and eight rows. Four tile pictures take eight bytes each; ID zero is an opaque blank. No scratch initialisation call is needed. A/X/Y and flags are clobbered; allow four stack bytes for the direct JSR and paint helper, beyond your caller and interrupt needs.
+
+The address tables cost 384 bytes. One cell copies eight bytes, or 120 for the 5×3 patch, plus ID preflight and address work. Cached source rows or span copying can save work in a larger scene. Character-mode rendering offers a different memory/copy trade-off; it is not a drop-in change of screen address.
+
+The original reset driver owns DMA, interrupts, display list and colours. An OS-loaded game must arrange ownership and memory with the OS rather than treating this reset setup as a loader.
+
+## Draw the patch
+
+These are the example caller's allocations and constants. Use addresses which fit your own memory plan.
+
+<CodeFromFile src="atari-800xl/patterns/assembly/rendering/tile-region/demo.asm" from="NR" to="start:" lang="6502" title="The caller owns its memory and display configuration" />
+
+Supply six unsigned bytes: source column, source row, destination column, destination row, width and height. Then call `region_draw`. `NR+6` is one for a completed draw or zero for rejection. The six request bytes survive.
+
+<CodeFromFile src="atari-800xl/patterns/assembly/rendering/tile-region/demo.asm" from="case_0:" to="case_1:" lang="6502" title="Draw a 5×3 patch from map cell (2,1) at display cell (4,3)" />
+
+The result store after the call belongs to the diagnostic. In a game, inspect the completion flag and continue with your own logic. The routine rejects zero sizes, invalid starts, source/destination overruns and IDs outside the configured tile set. It checks every selected ID before writing any destination bytes, so a bad ID cannot leave half a patch behind. It rejects rather than clips.
+
+## Keep the reusable code
+
+<CodeFromFile src="cross-platform/patterns/rendering/bitmap-regions/6502.inc" lang="6502" title="Checked native region drawing" />
+
+The context is non-re-entrant. Your caller owns its memory, video setup and interrupt policy. Keep all inputs and display resources stable throughout the call. Drawing an opaque zero tile erases a cell; transparent sprites need masking or background restoration instead.
+
+## What was checked
+
+All **18 calls** completed on this machine in the original reset diagnostic. Fifteen rejected map/bounds/ID requests were also executed **in isolation**, each after the same three accepted draws. The complete destination and both mapped guards were compared with an independent model, and every native capture pixel was compared with a separate composition. Completed wrong-layout and unsafe-destination controls fail those checks.
+
+The source selection crosses a CPU page boundary. Reserved attributes and allocation gaps are included in the memory comparison.
+
+These results qualify the selected Emu198x 0.39.0 configuration and Asm198x 0.0.71 fixture. They do not establish original-hardware timing, stock-OS loading, interrupt coexistence or a whole-game frame budget. The complete caller keeps reset setup separate from reusable drawing. Copy counts above are not measured timing claims.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/bc9c51d81b6c11b2e6393072f0e2f1776f27d2eb/atari-800xl/patterns/assembly/rendering/tile-region)
+- [Calling contracts, costs and primary references](https://github.com/code198x/code-samples/blob/bc9c51d81b6c11b2e6393072f0e2f1776f27d2eb/cross-platform/patterns/rendering/region-architectures/README.md)
+- [Other native region routines](/patterns/cross-platform/rendering/tile-region/)
+- [Map storage and queries](/patterns/cross-platform/rendering/tile-map-queries/)
