@@ -1,0 +1,94 @@
+---
+title: "Draw Bitmap Text at Pixel Positions on Amiga"
+summary: "Reusable 68000 glyph and counted-string routines over a single Chip RAM plane, with 32-bit source pointers, clipping and explicit advance."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["text", "fonts", "bitmap", "clipping", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Put a score above a moving enemy, slide a room name into view or label a point on a map. This component draws an 8×8 character or a counted string at any pixel position in an owned bitmap plane. It uses the [CPU span backend](/patterns/commodore-amiga/assembly/rendering/pixels-and-boxes/), so shapes and labels share a clear definition of a pixel.
+
+<Figure src="/images/commodore-amiga/patterns/bitmap-text.png" kind="capture" width={768} alt="Native Amiga output with the original PIXEL TEXT label, a score, a clipped string and a fallback character" caption="Original Code198x font and A500 PAL reset caller, captured unchanged in Emu198x 0.39.0. Whole plane memory and selected native frames are independently checked." />
+
+## Include it and draw a label
+
+Reserve **96 bytes at T plus 48 at BP**, both even-aligned and disjoint from code, stack, source data and the plane. The complete caller uses T=$2200, BP=$2000, the 320×256 plane at $10000 and its Copper at $4000. Define TEXT_WIDTH/HEIGHT and PIXEL_WIDTH/HEIGHT as 320/256, set BITMAP_BASE, and include the text and CPU span components once. Scratch needs no initialisation; public fields do.
+
+After the named display setup, this is a normal game call. It stops before the diagnostic marker/mailbox, which your project does not need.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/bitmap-text/demo.asm" from="; A normal game call:" to="    move.b #239,COMMAND+1" lang="m68k" title="Draw PIXEL TEXT at (21,37), using real font and string pointers" />
+
+Call `text_string`, then read T+21: one means accepted. Change the position and source pointer/length to draw another label. For a single glyph, set T+13 and call `text_char`; string pointer and length are then ignored. The routine owns no cursor, drawing list or game loop.
+
+## A pointer is wider; the contract is explicit
+
+**This Amiga context differs from the other text ports.** It uses 32-bit source pointers; copying their 16-bit-address offsets would not describe the same fields. Words and longwords are big-endian. Contexts must be even-aligned; byte font/string sources may be odd.
+
+| T offset | Supply or read |
+| --- | --- |
+| 0,2 | Signed origin X,Y, each −512..511 |
+| 4 | Font pointer longword |
+| 8 | String pointer longword |
+| 12,13 | String length byte 0..255; single character code byte |
+| 14,15 | First code and fallback code bytes |
+| 16 | Glyph-count word, 1..256; first+count ≤256 |
+| 18 | Mode byte: 0 transparent, 1 opaque |
+| 19,20 | Foreground/background bit pens, each 0..1 |
+| 21 | Accepted 1, rejected 0 |
+| 22,24,26,28 | Scissor left,top,right,bottom words; right/bottom exclusive |
+| 30 | Output signed word: next X |
+| 32,33 | Output consumed/substitution bytes |
+| 34 | Output word: backend span calls |
+| 36 | Output longword: destination-byte stores |
+| 40–95 | Private scratch |
+
+The origin is the cell's top-left corner, Y downwards. The scissor must be nonempty and inside the physical plane. Each glyph advances by eight, including blank, substituted and completely clipped glyphs: `nextX = startX + 8*consumed`. A counted string has no hidden terminator, newline handling, wrapping or case conversion. A zero byte is a code. Empty strings are accepted without source reads or drawing after declaration checks.
+
+Pointers are stored as longwords, but this 68000 contract accepts addresses only in **$000000–$FFFFFF**, with allocation ends no greater than $1000000. A last byte at $FFFFFF is arithmetically allowed. The source must actually be readable in the selected RAM/ROM mapping: arithmetic validation does not acquire memory or establish ownership. The default font is in the original reset ROM; the tests also use odd-addressed Chip RAM font and string buffers.
+
+Invalid coordinates, mode, either pen, font range/fallback, scissor or pointer arithmetic reject **before destination writes**, returning the original X and zero counters. Inputs 0–20 and 22–29 survive. Keep the whole font/string allocation stable and separate from code, T/BP, stack and destination throughout the call.
+
+## Supply the shape; keep the advance
+
+The optional **original Code198x font** supplies 64 ASCII glyphs, codes 32..95, under the sample repository's MIT licence. It is not extracted from ROM. Each glyph has eight high-bit-first row bytes, a five-column/seven-row visible design inside an 8×8 cell. A font row lives at `font + (code-first)*8 + row`. Unsupported codes use the declared fallback, which must exist in the font.
+
+<details>
+<summary>Open the original 64-glyph font</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/bitmap-text/font-m68000.inc" lang="m68k" title="Optional 512-byte sample font" />
+</details>
+
+Glyph-local (3,5) at origin (21,37) becomes (24,42). The next cell begins at X29, even if the first is a blank space. [Move a glyph, keep its shape](/craft/maths-for-games/unit-13/) explains that translation, clipping and the distinction between ink, cell and advance.
+
+Transparent mode sends foreground runs through `bp_hspan`, leaving zero font bits alone. Opaque first paints each clipped eight-pixel background row, then its foreground runs. Pens are **stored bit values** in this one plane. The caller chooses the palette and owns any other planes; this is not a hidden multi-plane colour replacement routine.
+
+## Make the cost visible
+
+For ten-code PIXEL TEXT, transparent drawing takes **77 / 77 byte stores** at X24/X31; opaque takes **157 / 237**. Foreground uses 77 spans; opaque adds 80 backgrounds. Gaps and partial edge bytes matter. Opaque drawing revisits foreground bytes after the background, buying a clear composable baseline at a cost.
+
+The text component is **888 assembled bytes**, plus **480** for the CPU backend and 96+48 RAM context bytes. The sample font takes 512 bytes; ten digits need only 80, and 256 contiguous glyphs need 2,048. Reset setup, bitmap, string, stack and the 72-byte Copper list are additional. These are storage and store counts, not cycles or a frame-rate promise.
+
+A masked word/longword blit could combine ink and background in fewer passes. [Pre-shifted Amiga sprites](/patterns/commodore-amiga/assembly/rendering/pre-shifted-sprites/) trade more asset storage for simpler positioning. The [CPU/blitter region example](/patterns/commodore-amiga/assembly/rendering/tile-region/) provides an aligned two-plane comparison. General blitter text would also need masks, alignment, Chip RAM, DMA ownership and completion handling; it is not supplied by this CPU component.
+
+## Own the resources
+
+T/BP are non-re-entrant. Clobbers D0–D7/A1/CCR; SR interrupt-mask bits survive. Reserve a conservative **64-byte stack budget** beyond your other calls/IRQs. The routine changes no interrupt enables, waits for no frame, acquires no OS display and synchronises no renderer. Keep other CPU, blitter and IRQ writers from racing its read/modify/write operations. An AmigaOS project needs its own loading, allocation and display ownership arrangement.
+
+<details>
+<summary>Open the reusable 68000 text component</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/bitmap-text/m68000.inc" lang="m68k" title="Include this text component once alongside its span backend" />
+</details>
+
+## What was verified
+
+**81 calls completed** using Asm198x 0.0.71 and native Emu198x 0.39.0. Every call compares the full plane, guards, public inputs, source/font preservation, acceptance, advance, consumption/substitution and work counts against an independent logical pixel model. Cases include every phase, pens, clipping edges, negative origins, empty/255-code strings, fallback, 256-code fonts, odd buffers, wide pointers and the 24-bit arithmetic boundary. Selected whole native frames match independently composed images; the Copper list stays unchanged.
+
+Wrong glyph-bit and advance executables each complete accepted calls and fail both memory and picture checks. Exact source/tool bindings and evidence-corruption tests are retained. This qualifies the original A500 PAL reset fixture, not stock Kickstart/AmigaOS loading, original-hardware timing or tear-free display coexistence.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/4c686daa6ecf9b36b47d0e5d363e32a501412f07/commodore-amiga/patterns/assembly/rendering/bitmap-text)
+- [Full Amiga contract, costs and MIT attribution](https://github.com/code198x/code-samples/blob/4c686daa6ecf9b36b47d0e5d363e32a501412f07/cross-platform/patterns/rendering/bitmap-text/amiga/README.md)
+- [Compare bitmap text paths](/patterns/cross-platform/rendering/bitmap-text/)
+- [Underlying CPU pixels and spans](/patterns/commodore-amiga/assembly/rendering/pixels-and-boxes/)

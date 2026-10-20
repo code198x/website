@@ -1,0 +1,87 @@
+---
+title: "Draw Pixels, Spans and Boxes on Amiga"
+summary: "Reusable 68000 CPU drawing for an A500 PAL single plane, with byte-edge masks and explicit Chip RAM ownership."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["pixels", "spans", "rectangles", "bitmap", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Draw a life bar, outline a room or inspect one dot before deciding where a bullet lands. These are six callable routines for a bitmap you own. Use a point when you need one pixel; use a span or box when that is the job, so the machine does not calculate every address again.
+
+<Figure src="/images/commodore-amiga/patterns/pixels-and-boxes.png" kind="capture" width={768} alt="Native Amiga A500 Single Plane output showing filled and outlined rectangles, horizontal spans and a vertical edge" caption="Original caller captured unchanged in Emu198x 0.39.0. Complete bitmap memory and selected native frames are independently checked." />
+
+## Include it, then draw a box
+
+Reserve **48 bytes at BP**, even-aligned at $2000. Define PIXEL_WIDTH/HEIGHT as 320/256, and BITMAP_BASE as $10000. Include `m68000.inc` once. Code, stack, tables, BP and the bitmap must not alias. Scratch needs no initialisation; public request fields do.
+
+After the named display setup, this is a normal direct call. The excerpt stops before the diagnostic marker/mailbox; your game does not need those stores.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/pixels-and-boxes/demo.asm" from="; A normal game call:" to="    move.b #239,COMMAND+1" lang="m68k" title="Outline [13,91) across and [27,53) down" />
+
+Read BP+9: one means accepted, zero rejected. Change the fields and call again. There is no retained drawing list or game loop inside the component.
+
+## The calling contract
+
+Words use **big-endian** order. Origin is top left, Y downwards. Call `bp_pixel`, `bp_read`, `bp_hspan`, `bp_vspan`, `bp_fill` or `bp_box`.
+
+| BP offset | Supply or read |
+| --- | --- |
+| 0,2 | Unsigned x0,y0 words |
+| 4,6 | Exclusive x1,y1 words |
+| 8 | Operation 0 set, 1 clear, 2 XOR; read requires 0 |
+| 9 | Accepted 1, rejected 0 |
+| 10 | Stored read bit 0/1; otherwise 0 |
+| 11 | Ignored and preserved |
+| 12–39,42–47 | Private scratch |
+| 40 | Output word: destination-byte stores |
+
+Pixel/read ignore both ends; hspan ignores y1; vspan ignores x1. Fill and box use [x0,x1)×[y0,y1). A box [5,13)×[20,24) is eight pixels wide and four high. The effective rectangle must be ordered, nonempty and inside 320×256; invalid requests reject before destination writes, with zero read/write outputs. Public inputs 0–8 and 11 survive.
+
+This is strict rejection rather than clipping. Intersect with your display before calling if you want partially visible shapes. An outline visits a shared corner once, including a 1×1 box; XOR therefore leaves its corner visible instead of toggling it twice.
+
+## One Chip RAM plane, with arbitrary pixel edges
+
+This A500 PAL caller supplies a 320×256 low-resolution plane at **$10000–$127FF**, a 72-byte Copper list at $4000, zero modulos and a black/white palette. The plane takes 10,240 bytes. Display DMA reads Chip RAM; pointing it at CPU-accessible Fast RAM would not provide a valid A500 display.
+
+`address = $10000 + y*40 + (x div 8)`
+
+At (13,20), that is **$10321**, mask **$04**. The CPU derives one row address and walks byte masks. Arbitrary X values work without making the caller align an edge to a word. There are no scanline tables here.
+
+This backend owns one **stored bit** per pixel. More planes need a deliberate plane/pen adapter and ownership policy. The caller owns the Copper, plane pointers, palette, DMA and interrupt policy. It is an original reset ROM, not Kickstart or an AmigaOS display setup. Do not let a blitter operation or IRQ renderer race a CPU read/modify/write call.
+
+Word or longword interiors could reduce the CPU store count when alignment permits. The [CPU/blitter region example](/patterns/commodore-amiga/assembly/rendering/tile-region/) shows an aligned two-plane alternative with its own masks, modulos, ownership and completion checks. That does not supply general arbitrary-position blitter spans. The current backend is a clear CPU baseline you can measure and replace where your game needs more.
+
+
+## Division chooses a byte; remainder chooses a bit
+
+At X13, `13 div 8 = 1` picks byte-column one and `13 mod 8 = 5` picks its sixth pixel. With bit 7 leftmost, `128 >> 5 = 4`. OR sets the mask, AND with its inverse clears it, and XOR toggles it. Replacing the byte with just $04 would erase seven neighbours.
+
+[Place a point](/craft/maths-for-games/unit-06/) explains the origin and local/screen distinction. [Draw with integer error](/craft/maths-for-games/unit-12/) shows how points and spans build curves. A qualified primitive does not automatically qualify those higher-level adapters on this display; their machine entries name their own evidence.
+
+<details>
+<summary>Open the reusable m68k backend</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/remaining-primitives/m68000.inc" lang="m68k" title="Include the maintained backend once" />
+</details>
+
+## What it costs, and what to try next
+
+A 32×8 fill takes **32 byte stores at X24 and 40 at X25** on this backend. Full-display fills take 10,240 stores. Spans protect their two edges and write full interior bytes, avoiding repeated per-pixel work. These are observed destination stores, not elapsed cycles or a frame-budget promise.
+
+The backend assembles to **480 bytes**, plus the 72-byte Copper list and the 48-byte context. Reset setup, bitmap, stack and assets are additional. Byte masks make edge ownership simple; wider interior stores or DMA need separate alignment and ownership work. A character-backed or sprite display may fit a game's actual job better than painting bitmap shapes.
+
+Clobbers D0–D7/A1/CCR; SR interrupt-mask bits survive. Reserve a conservative **64-byte stack budget** beyond your other calls/IRQs. BP is non-re-entrant. The routine changes no interrupt enables, acquires no OS display and synchronises no video access. Your caller owns that integration.
+
+## What was verified
+
+**173 calls completed** using Asm198x 0.0.71 and native Emu198x 0.39.0 in the stated original reset configuration. Every call compares the complete bitmap allocation, guards, public inputs, acceptance/read and byte-store counts with an independent selected-pixel model. Cases cover every horizontal phase, set/clear/XOR/read, tiny and full rectangles, last pixels, row boundaries, rejected declarations and aligned/unaligned fills. Selected whole native frames match independently composed images.
+
+The Copper list is checked unchanged. Wrong-mask and wrong-row executables each complete accepted calls and fail both memory and picture checks. Retained records bind exact source/tools and have evidence-corruption failure tests. Stock-OS loading, original-hardware timing and tear-free coexistence remain separate checks.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/4c686daa6ecf9b36b47d0e5d363e32a501412f07/commodore-amiga/patterns/assembly/rendering/pixels-and-boxes)
+- [Full contract, costs and primary references](https://github.com/code198x/code-samples/blob/4c686daa6ecf9b36b47d0e5d363e32a501412f07/cross-platform/patterns/rendering/remaining-primitives/README.md)
+- [Compare bitmap backends](/patterns/cross-platform/rendering/pixels-and-boxes/)
+- [Draw bitmap text](/patterns/commodore-amiga/assembly/rendering/bitmap-text/)

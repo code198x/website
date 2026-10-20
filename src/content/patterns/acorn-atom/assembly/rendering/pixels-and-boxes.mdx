@@ -1,0 +1,84 @@
+---
+title: "Draw Pixels, Spans and Boxes on Atom"
+summary: "Reusable 6502 drawing for the full-RAM Atom’s 256×192 bitmap, with strict bounds and clear byte ownership."
+platform: "acorn-atom"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["pixels", "spans", "rectangles", "bitmap", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Draw a life bar, outline a room or inspect one dot before deciding where a bullet lands. These are six callable routines for a bitmap you own. Use a point when you need one pixel; use a span or box when that is the job, so the machine does not calculate every address again.
+
+<Figure src="/images/acorn-atom/patterns/pixels-and-boxes.png" kind="capture" width={744} alt="Native Acorn Atom output showing filled and outlined rectangles, horizontal spans and a vertical edge" caption="Original caller captured unchanged in Emu198x 0.39.0. Complete bitmap memory and selected native frames are independently checked." />
+
+## Include it, then draw a box
+
+Reserve **48 bytes at BP**, in zero page at $70. Define PIXEL_WIDTH/HEIGHT as 256/192, and PIXEL_BYTE_STEP as 1. Include `6502.inc` once and retain the complete caller’s bitmap_lo/hi row tables. Code, stack, tables, BP and the bitmap must not alias. Scratch needs no initialisation; public request fields do.
+
+After the named display setup, this is a normal direct call. The excerpt stops before the diagnostic marker/mailbox; your game does not need those stores.
+
+<CodeFromFile src="acorn-atom/patterns/assembly/rendering/pixels-and-boxes/demo.asm" from="; A normal game call:" to="    lda #239" lang="6502" title="Outline [13,91) across and [27,53) down" />
+
+Read BP+9: one means accepted, zero rejected. Change the fields and call again. There is no retained drawing list or game loop inside the component.
+
+## The calling contract
+
+Words use **little-endian** order. Origin is top left, Y downwards. Call `bp_pixel`, `bp_read`, `bp_hspan`, `bp_vspan`, `bp_fill` or `bp_box`.
+
+| BP offset | Supply or read |
+| --- | --- |
+| 0,2 | Unsigned x0,y0 words |
+| 4,6 | Exclusive x1,y1 words |
+| 8 | Operation 0 set, 1 clear, 2 XOR; read requires 0 |
+| 9 | Accepted 1, rejected 0 |
+| 10 | Stored read bit 0/1; otherwise 0 |
+| 11 | Ignored and preserved |
+| 12–39,42–47 | Private scratch |
+| 40 | Output word: destination-byte stores |
+
+Pixel/read ignore both ends; hspan ignores y1; vspan ignores x1. Fill and box use [x0,x1)×[y0,y1). A box [5,13)×[20,24) is eight pixels wide and four high. The effective rectangle must be ordered, nonempty and inside 256×192; invalid requests reject before destination writes, with zero read/write outputs. Public inputs 0–8 and 11 survive.
+
+This is strict rejection rather than clipping. Intersect with your display before calling if you want partially visible shapes. An outline visits a shared corner once, including a 1×1 box; XOR therefore leaves its corner visible instead of toggling it twice.
+
+## Linear rows, with enough video RAM
+
+This caller selects the **full RAM Atom model**, sets the 8255/VDG for 256×192 and owns $8000–$97FF. It is not a claim that a base 2.5 KiB machine provides this complete allocation. Each row is 32 consecutive bytes:
+
+`address = $8000 + y*32 + (x div 8)`
+
+At (13,20), that is **$8281**, mask **$04**. The first pixel in the next row is thirty-two addresses after this row's start. The 384-byte scanline tables keep that layout out of the drawing loop. The routine needs PIXEL_BYTE_STEP=1; other Atom modes need another contract.
+
+The original combined reset image contains no Acorn firmware. Your own BASIC/OS project needs to arrange graphics memory and loading, rather than treating this reset setup as a loader. This execution establishes the full-RAM configuration only; it does not transfer timing claims from Dragon, which also has a VDG, or from another Acorn machine.
+
+
+## Division chooses a byte; remainder chooses a bit
+
+At X13, `13 div 8 = 1` picks byte-column one and `13 mod 8 = 5` picks its sixth pixel. With bit 7 leftmost, `128 >> 5 = 4`. OR sets the mask, AND with its inverse clears it, and XOR toggles it. Replacing the byte with just $04 would erase seven neighbours.
+
+[Place a point](/craft/maths-for-games/unit-06/) explains the origin and local/screen distinction. [Draw with integer error](/craft/maths-for-games/unit-12/) shows how points and spans build curves. A qualified primitive does not automatically qualify those higher-level adapters on this display; their machine entries name their own evidence.
+
+<details>
+<summary>Open the reusable 6502 backend</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/remaining-primitives/6502.inc" lang="6502" title="Include the maintained backend once" />
+</details>
+
+## What it costs, and what to try next
+
+A 32×8 fill takes **32 byte stores at X24 and 40 at X25** on this backend. Full-display fills take 6,144 stores. Spans protect their two edges and write full interior bytes, avoiding repeated per-pixel work. These are observed destination stores, not elapsed cycles or a frame-budget promise.
+
+The backend assembles to **528 bytes**, plus 384 bytes of row tables and the 48-byte context. Reset setup, bitmap, stack and assets are additional. The row tables spend storage to avoid deriving the complete display address during every call. A character-backed or sprite display may fit a game's actual job better than painting bitmap shapes.
+
+Clobbers A/X/Y/P. **Decimal mode must be off on entry**; the caller uses CLD during setup. Reserve a conservative **64-byte stack budget** beyond your other calls/IRQs. BP is non-re-entrant. The routine changes no interrupt enables, acquires no OS display and synchronises no video access. Your caller owns that integration.
+
+## What was verified
+
+**169 calls completed** using Asm198x 0.0.71 and native Emu198x 0.39.0 in the stated original reset configuration. Every call compares the complete bitmap allocation, guards, public inputs, acceptance/read and byte-store counts with an independent selected-pixel model. Cases cover every horizontal phase, set/clear/XOR/read, tiny and full rectangles, last pixels, row boundaries, rejected declarations and aligned/unaligned fills. Selected whole native frames match independently composed images.
+
+This machine ran independently; a related display’s result is not borrowed as proof. Wrong-mask and wrong-row executables each complete accepted calls and fail both memory and picture checks. Retained records bind exact source/tools and have evidence-corruption failure tests. Stock-OS loading, original-hardware timing and tear-free coexistence remain separate checks.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/4c686daa6ecf9b36b47d0e5d363e32a501412f07/acorn-atom/patterns/assembly/rendering/pixels-and-boxes)
+- [Full contract, costs and primary references](https://github.com/code198x/code-samples/blob/4c686daa6ecf9b36b47d0e5d363e32a501412f07/cross-platform/patterns/rendering/remaining-primitives/README.md)
+- [Compare bitmap backends](/patterns/cross-platform/rendering/pixels-and-boxes/)
