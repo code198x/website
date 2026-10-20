@@ -77,3 +77,22 @@ Pixel 7 widths with Chromium's CSS coverage on, and reports the rules that
 never matched anything (`<out-dir>/coverage.json`). Rules for hover, focus, open
 disclosures and classes added by scripts are reported too, so search `src/`
 before deleting one.
+
+## Cascade layers
+
+Every site rule sits in a cascade layer. `Layout.astro` declares the order in
+its first inline style: `kit, base, composition, utilities, blocks,
+exceptions, legacy`, lowest first. A later layer wins regardless of
+specificity. `tests/css-layers.spec.ts` checks that the statement reaches the
+built page before any stylesheet.
+
+- Wrap new CSS in a layer, normally `@layer legacy { … }` until
+  `docs/plans/2026-10-20-css-cascade-layers.md` introduces the others. CSS
+  outside every layer beats every layer, so an unwrapped rule silently
+  outranks the whole site.
+- The exception is a rule that overrides a 198x-ui component, either through
+  its `h-` classes or a class passed to it (`<Shell class="nx">`). The kit's
+  component styles are unlayered, so these overrides stay unlayered too, after
+  the layer block, under a comment that says why.
+- The kit's tokens and fonts come in through `src/styles/kit.css`, in the
+  `kit` layer.
