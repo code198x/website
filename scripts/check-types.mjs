@@ -11,6 +11,7 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { diagnosticKey } from './type-diagnostic.mjs';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const baselineFile = path.join(root, 'scripts/type-baseline.json');
@@ -35,7 +36,7 @@ if (!summary) {
 // out so unrelated edits above an old error do not count as a new one.
 const current = {};
 for (const [, file, code, message] of output.matchAll(/^(\S+):\d+:\d+ - error (ts\(\d+\)): (.*)$/gm)) {
-  const key = `${file} ${code} ${message.trim()}`;
+  const key = diagnosticKey(`${file} ${code} ${message.trim()}`);
   current[key] = (current[key] ?? 0) + 1;
 }
 const total = Object.values(current).reduce((sum, n) => sum + n, 0);
@@ -51,7 +52,11 @@ if (update) {
   process.exit(0);
 }
 
-const baseline = JSON.parse(fs.readFileSync(baselineFile, 'utf8'));
+const baseline = {};
+for (const [rawKey, count] of Object.entries(JSON.parse(fs.readFileSync(baselineFile, 'utf8')))) {
+  const key = diagnosticKey(rawKey);
+  baseline[key] = (baseline[key] ?? 0) + count;
+}
 const added = [];
 const fixed = [];
 for (const key of new Set([...Object.keys(current), ...Object.keys(baseline)])) {

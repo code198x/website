@@ -64,3 +64,11 @@ emulator/player versions and the approved AMOS 0.3.0 pin. No renderer conflict
 exists. Run npm ci, npm run check and npm run check:release on the merged tree,
 including the AMOS browser regression. Push the merge commit, read CI and merge
 PR #902 when checks pass. Clean the isolated worktree after verifying retention.
+
+The new checkout exposed two baseline entries whose missing-declaration messages
+include an absolute node_modules path. The errors themselves are unchanged; the
+comparison reported two additions and two removals solely from the checkout path.
+Normalise that path in both current and recorded keys, retaining file, code,
+message, package and subpath. Regression checks compare two checkout roots and
+ensure different package paths, diagnostic codes and source files still differ.
+No baseline entries are added and no type error is suppressed.
