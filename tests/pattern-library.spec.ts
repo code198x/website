@@ -1,3 +1,4 @@
+import {globSync} from 'node:fs';
 import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
@@ -88,9 +89,15 @@ test('code status distinguishes execution evidence from maintained and illustrat
 test('next-tier BBC patterns are discoverable without claiming a curriculum track',async({page})=>{
  await page.goto('/patterns/');
  await page.getByRole('combobox',{name:'Machine',exact:true}).selectOption('bbc-micro');
+ const expectedBBC = Array.from(globSync('**/*.mdx', {cwd:'src/content/patterns/bbc-micro'}))
+  .map(file=>'/patterns/bbc-micro/'+file.replaceAll('\\','/').replace(/\.mdx$/,'')+'/').sort();
+ expect(expectedBBC.length).toBeGreaterThan(0);
+ expect(expectedBBC).toContain('/patterns/bbc-micro/assembly/rendering/text-layout/');
  const rows=page.locator('[data-pattern]:visible');
+ const visibleRoutes=async()=>rows.locator('a[href^="/patterns/bbc-micro/"]').evaluateAll(links=>links.map(a=>a.getAttribute('href')).sort());
  await expect(rows.locator('a[href="/patterns/bbc-micro/assembly/rendering/tile-region/"]')).toHaveCount(1);
- await expect(rows).toHaveCount(11);
+ await expect(rows).toHaveCount(expectedBBC.length);
+ await expect.poll(visibleRoutes).toEqual(expectedBBC);
  await expect(rows.locator('a[href="/patterns/bbc-micro/assembly/rendering/bitmap-text/"]')).toHaveCount(1);
  await expect(rows.locator('a[href="/patterns/bbc-micro/assembly/rendering/pixels-and-boxes/"]')).toHaveCount(1);
  await expect(rows.locator('a[href="/patterns/bbc-micro/assembly/framework/collect-and-respond/"]')).toHaveCount(1);
@@ -105,7 +112,8 @@ test('next-tier BBC patterns are discoverable without claiming a curriculum trac
  await expect(page.locator('.pattern-prose')).toContainText('OSBYTE');
  await page.getByRole('link',{name:'More BBC Micro patterns'}).click();
  await expect(page).toHaveURL(/patterns\/platform\/bbc-micro/);
- await expect(page.locator('[data-pattern]:visible')).toHaveCount(11);
+ await expect(rows).toHaveCount(expectedBBC.length);
+ await expect.poll(visibleRoutes).toEqual(expectedBBC);
  await expect(page.locator('[data-pattern]:visible a[href="/patterns/bbc-micro/assembly/rendering/pixels-and-boxes/"]')).toHaveCount(1);
  await expect(page.locator('[data-pattern]:visible a[href="/patterns/bbc-micro/assembly/rendering/tile-map/"]')).toHaveCount(1);
 });
