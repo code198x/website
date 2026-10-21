@@ -56,6 +56,8 @@ for (const [machine, evidence] of machines) {
     }
     await page.goto(`/patterns/platform/${machine}/`);
     await expect(page.locator(`[data-pattern] a[href="/patterns/${machine}/assembly/rendering/text-layout/"]`)).toHaveCount(1);
+    await page.getByLabel('Search patterns', {exact:true}).fill('word');
+    await expect(page.locator(`[data-pattern]:visible a[href="/patterns/${machine}/assembly/rendering/text-layout/"]`)).toHaveCount(1);
   });
 }
 
