@@ -1,0 +1,92 @@
+---
+title: "Change Shared Character Pictures on Atari 800XL"
+summary: "Install a picture, share it across cells, then change every instance or just one. Reusable Atari 800XL routines with explicit character, colour and memory rules."
+platform: "atari-800"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["characters", "glyphs", "fonts", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A wall can appear in twenty places while its picture is stored once. Change that picture and every wall changes. Open one door instead, and you probably want to change just that cell's number. These routines let you choose.
+
+<Figure src="/images/atari-800/patterns/custom-glyphs.png" kind="capture" alt="Atari 800XL native output showing two cells using the same replaced character picture" caption="The first replacement changes both shared instances. Later calls change a single cell and exercise normal/inverse forms. Original Code198x pictures, independently captured on this target." />
+
+## Include, initialise and call
+
+Reserve **24 private zero-page bytes** at G, clear decimal mode and include `glyphs.inc`. The complete reset caller sets up the video and interrupt policy before the component runs. It supplies its own firmware image; it does not use the manufacturer's BASIC or operating system.
+
+<CodeFromFile src="atari-800xl/patterns/assembly/rendering/custom-glyphs/demo.asm" from="kernel_start:" to="kernel_end:" lang="6502" title="Include the maintained character component" />
+
+`glyph_init` clears the owned pictures and names. That destroys their old contents, so use it during setup. Then install two original sketches and select the first twice:
+
+<CodeFromFile src="atari-800xl/patterns/assembly/rendering/custom-glyphs/demo.asm" from="    jsr glyph_init" to="; Diagnostic transport" lang="6502" title="Initialise, install and select shared pictures" />
+
+Your game calls these entries directly. The later mailbox and debugger readbacks are optional verification transport.
+
+## Supply a source, slot and cell
+
+All words are little-endian. `glyph_install` uploads a range; `glyph_replace` uploads one shape and ignores count; `glyph_select` writes one cell's screen code. Init clears the owned allocations. Inputs 0–6 survive, and status/write count reset even when a request rejects.
+
+| Offset | Supply or read |
+| --- | --- |
+| 0–1 | Readable CPU source address |
+| 2, 3 | First stored glyph code and nonzero count |
+| 4 | Screen code to select |
+| 5–6 | Logical cell index |
+| 7 | Output: 1 accepted, 0 rejected |
+| 8–9 | Output: destination data bytes written |
+| 10–23 | Private scratch |
+
+Stored shapes are 0–127, counts 1–128 with `first+count <= 128`. Screen codes are 0–255: the low seven bits select a shape and bit 7 uses the caller's selected inverse policy. These are screen codes, not ATASCII. Logical cells are 0–959.
+
+Zero counts, overflowing ranges and invalid slots/cells reject before a destination write. Keep the source long enough, readable, non-wrapping, stable and separate from the context/destination. These are trusted pointers, not an arbitrary-memory validator.
+
+The context is non-re-entrant. A/X/Y and flags are clobbered; clear decimal mode and reserve six stack bytes including the direct call. Add space for your own calls and interrupts. The routines do not change interrupt state or banks.
+
+## Respect the machine's characters
+
+The caller selects **ANTIC mode 2**, with 40×24 eight-dot characters. It reserves a **1 KiB aligned font at $4000–$43FF**, names at **$5000–$53BF**, and a display list at $3000. CHBASE=$40 selects the font; CHACTL=$02 supplies this variant's inverse policy. GTIA colours, DMACTL, display-list setup, NMI and CPU mapping remain caller-owned.
+
+The display list supplies three blank mode lines, a load-memory-scan character instruction, 23 further character lines and a jump/wait-for-vertical-blank. The original OS-socket fixture runs at $E000. It is our own reset code, not an Atari OS ROM. An operating-system VBlank handler could restore its own video settings if mixed into this takeover example.
+
+Hardware **CHBASE is $D409**. The OS shadow **CHBAS at $02F4** has a different role: writing the shadow relies on the OS to apply it. The reusable component installs pictures and names; it does not silently change either register.
+
+Each row is eight bits, bit 7 leftmost. Slot 127 starts at `$4000+127*8 = $43F8`. Screen code 255 selects its inverse under this CHACTL policy. Other ANTIC character modes can change size, colours and alignment; they need separately checked implementations.
+
+## Count a shape and its place
+
+Cell (2,2) has index `2*40+2 = 82`, at screen address `$5000+82 = $5052`. Local dot (3,5) reaches active pixel (19,21). The last cell is `23*40+39 = 959`; cell 960 lies beyond this allocation.
+
+The font's 1 KiB alignment matters because the hardware interprets CHBASE as a font base, not a general byte pointer. Keep that constraint visible when laying out memory or adding font banks.
+
+[Move a glyph](/craft/maths-for-games/unit-13/) connects bit weights, stored shapes, codes and cell placement. [Place a point](/craft/maths-for-games/unit-06/) explains local and screen coordinates. These routines place fixed-grid pictures; they do not implement proportional text, arbitrary placement or scaled letters.
+
+## Replace the shared picture, or one instance
+
+After the example, point G+0 at a new eight-row sketch, set G+2 to 1 and call `glyph_replace`. Both cells still use that slot, so both change. To change only the first, put code 2 in G+4 and its logical cell index in G+5, then call `glyph_select`. The second keeps the old code.
+
+<details>
+<summary>Read the complete reusable 6502 component</summary>
+<CodeFromFile src="atari-800xl/patterns/assembly/rendering/custom-glyphs/glyphs.inc" lang="6502" title="Initialise, install, replace and select" />
+</details>
+
+## Pay for what changes
+
+One cell selection writes **one name byte**. Replacing one picture writes **eight bytes**, regardless of how many cells use it. Full init writes **1,984 bytes**. The assembled component uses **249 code bytes**, 24 context bytes and eight source bytes per picture, excluding reset/video/diagnostic code.
+
+Choose the operation by what should change. Eight writes can update many shared walls, but one write can open one door. These are storage and destination-write counts, not elapsed time. A font bank or cache can spend memory to avoid regenerating pictures. Live upload scheduling and physical contention need their own measurements before claiming a frame budget.
+
+## What was verified
+
+**21 calls completed per build**, using Asm198x 0.0.71. Qualification uses the released Atari 800XL Emu198x 0.41.0 binary with the original OS-socket fixture and BASIC disabled. The whole font/name memory, display list and surrounding guards are checked. The capture describes the pinned default video/palette configuration, not every PAL/NTSC or ANTIC mode.
+
+Three builds on each of the three targets produce **210 executed calls** in total. Tests include shared replacement, one-cell selection, inverse forms, full legal uploads, final slots/cells, zero/overflow requests and reset. Completed **wrong-slot** and **wrong-name** controls fail both memory and visible-output checks. Selected whole native frames match an independent compositor; retained checks reject missing calls and rehashed wrong observations.
+
+These original reset callers do not establish stock-OS loading, interrupt coexistence, physical timing or tear-free updates. Code and original pictures are MIT licensed.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/8315abed2399f83d0d831e4231eaa1d392243af9/atari-800xl/patterns/assembly/rendering/custom-glyphs)
+- [Full contracts, costs and hardware references](https://github.com/code198x/code-samples/blob/8315abed2399f83d0d831e4231eaa1d392243af9/cross-platform/patterns/rendering/character-ram-ports/README.md)
+- [Compare writable character systems](/patterns/cross-platform/rendering/custom-glyphs/)

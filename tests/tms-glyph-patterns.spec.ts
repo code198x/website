@@ -60,7 +60,7 @@ test('@built all six glyph ports appear once in their machine discovery and fami
     await expect(page.locator(`.pattern-prose a[href="${route(machine)}"]`)).toHaveCount(1);
   }
   await page.goto(family);
-  await expect(page.locator('.pattern-prose table tbody tr')).toHaveCount(13);
+  await expect(page.locator('.pattern-prose table tbody tr')).toHaveCount(16);
   for(const machine of machines) await expect(page.locator(`table a[href="${route(machine)}"]`)).toHaveCount(1);
 });
 

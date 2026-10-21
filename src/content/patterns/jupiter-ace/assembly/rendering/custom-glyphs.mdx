@@ -1,0 +1,90 @@
+---
+title: "Change Shared Character Pictures on Jupiter Ace"
+summary: "Install a picture, share it across cells, then change every instance or just one. Reusable Jupiter Ace routines with explicit character, colour and memory rules."
+platform: "jupiter-ace"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["characters", "glyphs", "fonts", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A wall can appear in twenty places while its picture is stored once. Change that picture and every wall changes. Open one door instead, and you probably want to change just that cell's number. These routines let you choose.
+
+<Figure src="/images/jupiter-ace/patterns/custom-glyphs.png" kind="capture" alt="Jupiter Ace native output showing two cells using the same replaced character picture" caption="The first replacement changes both shared instances. Later calls change a single cell and exercise normal/inverse forms. Original Code198x pictures, independently captured on this target." />
+
+## Include, initialise and call
+
+Reserve **24 private RAM bytes** at G and include `glyphs.inc`. The original caller uses the base RAM at G=$3C40, source $3D00 and stack $3FF0. It disables interrupts and takes over the display; it does not run inside Forth. Forth normally owns these workspaces and the character set, so a Forth-callable wrapper needs its own agreement about stacks, memory and interrupts.
+
+<CodeFromFile src="jupiter-ace/patterns/assembly/rendering/custom-glyphs/demo.asm" from="kernel_start:" to="kernel_end:" lang="z80" title="Include the maintained character component" />
+
+`glyph_init` clears the owned pictures and names. That destroys their old contents, so use it during setup. Then install two original sketches and select the first twice:
+
+<CodeFromFile src="jupiter-ace/patterns/assembly/rendering/custom-glyphs/demo.asm" from="    call glyph_init" to="; Diagnostic transport" lang="z80" title="Initialise, install and select shared pictures" />
+
+Your game calls these entries directly. The later mailbox and debugger readbacks are optional verification transport.
+
+## Supply a source, slot and cell
+
+All words are little-endian. `glyph_install` uploads a range; `glyph_replace` uploads one shape and ignores count; `glyph_select` writes one cell's screen code. Init clears the owned allocations. Inputs 0–6 survive, and status/write count reset even when a request rejects.
+
+| Offset | Supply or read |
+| --- | --- |
+| 0–1 | Readable CPU source address |
+| 2, 3 | First stored glyph code and nonzero count |
+| 4 | Screen code to select |
+| 5–6 | Logical cell index |
+| 7 | Output: 1 accepted, 0 rejected |
+| 8–9 | Output: destination data bytes written |
+| 10–23 | Private scratch |
+
+Stored shapes are 0–127, counts 1–128 with `first+count <= 128`. Screen codes are 0–255: the low seven bits select a shape, and bit 7 selects inverse video. Code 128 is not a 129th stored shape. Logical cells are 0–767.
+
+Zero counts, overflowing ranges and invalid slots/cells reject before a destination write. Keep the source long enough, readable, non-wrapping, stable and separate from the context/destination. These are trusted pointers, not an arbitrary-memory validator.
+
+The context is non-re-entrant. AF/BC/DE/HL and flags are clobbered; reserve eight stack bytes including the direct call. Add space for your own calls and interrupts. The routines do not change interrupt state or banks.
+
+## Respect the machine's characters
+
+The Ace has 32×24 cells and 128 writable 8×8 shapes. The routine writes pictures through **$2C00–$2FFF** and names through **$2400–$26FF**, using the TV-priority aliases. The lower mirrors at $2800/$2000 give the CPU priority instead, with different display contention. Choosing an address is therefore a hardware access policy, not just a way of saving a byte.
+
+**Character RAM is hardware write-only.** Keep the source pictures in readable RAM or ROM. If you want to change one row, change your source copy and upload it; do not read-modify-write character RAM. The diagnostic uses debugger inspection to check the stored shapes. That does not give a game a CPU font-read API.
+
+Normal glyph bits are white on black; code+128 swaps them. Each row stores eight dots, bit 7 on the left. Slot 127 starts at `$2C00+127*8 = $2FF8`. The screen code 255 shows its inverse, using exactly the same eight stored bytes. Replacing that slot changes both its normal and inverse instances.
+
+The caller preserves the 256 name-padding/workspace bytes and a working-RAM guard. Taking over those allocations is not proof of safe coexistence with the Forth input buffer, frame interrupt or dictionary.
+
+## Count a shape and its place
+
+Cell (2,2) has index `2*32+2 = 66`. Local dot (3,5) reaches active pixel `(2*8+3, 2*8+5) = (19,21)`. The native capture also has a border; those border pixels do not belong to the character grid.
+
+[Move a glyph](/craft/maths-for-games/unit-13/) connects bit weights, stored shapes, codes and cell placement. [Place a point](/craft/maths-for-games/unit-06/) explains local and screen coordinates. These routines place fixed-grid pictures; they do not implement proportional text, arbitrary placement or scaled letters.
+
+## Replace the shared picture, or one instance
+
+After the example, point G+0 at a new eight-row sketch, set G+2 to 1 and call `glyph_replace`. Both cells still use that slot, so both change. To change only the first, put code 2 in G+4 and its logical cell index in G+5, then call `glyph_select`. The second keeps the old code.
+
+<details>
+<summary>Read the complete reusable Z80 component</summary>
+<CodeFromFile src="jupiter-ace/patterns/assembly/rendering/custom-glyphs/glyphs.inc" lang="z80" title="Initialise, install, replace and select" />
+</details>
+
+## Pay for what changes
+
+One cell selection writes **one name byte**. Replacing one picture writes **eight bytes**, regardless of how many cells use it. Full init writes **1,792 bytes**. The assembled component uses **161 code bytes**, 24 context bytes and eight source bytes per picture, excluding reset/video/diagnostic code.
+
+Choose the operation by what should change. Eight writes can update many shared walls, but one write can open one door. These are storage and destination-write counts, not elapsed time. A font bank or cache can spend memory to avoid regenerating pictures. Live upload scheduling and physical contention need their own measurements before claiming a frame budget.
+
+## What was verified
+
+**21 calls completed per build**, using Asm198x 0.0.71. The released Emu198x 0.41.0 core had the normal/inverse colours reversed. Qualification here uses the [corrected Ace source build](https://github.com/emu198x/emu198x/pull/1912), pinned to commit 7806827f35d4f49417f3cbfd537470f1a91f06b4 with executable and Cargo.lock hashes. A source-independent regression fails on the old mapping and passes with the correction. The reusable component only writes font memory; it does not depend on the emulator's readable-font simplification.
+
+Three builds on each of the three targets produce **210 executed calls** in total. Tests include shared replacement, one-cell selection, inverse forms, full legal uploads, final slots/cells, zero/overflow requests and reset. Completed **wrong-slot** and **wrong-name** controls fail both memory and visible-output checks. Selected whole native frames match an independent compositor; retained checks reject missing calls and rehashed wrong observations.
+
+These original reset callers do not establish stock-OS loading, interrupt coexistence, physical timing or tear-free updates. Code and original pictures are MIT licensed.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/8315abed2399f83d0d831e4231eaa1d392243af9/jupiter-ace/patterns/assembly/rendering/custom-glyphs)
+- [Full contracts, costs and hardware references](https://github.com/code198x/code-samples/blob/8315abed2399f83d0d831e4231eaa1d392243af9/cross-platform/patterns/rendering/character-ram-ports/README.md)
+- [Compare writable character systems](/patterns/cross-platform/rendering/custom-glyphs/)

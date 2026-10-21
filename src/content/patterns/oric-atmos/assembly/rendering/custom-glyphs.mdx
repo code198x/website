@@ -1,0 +1,92 @@
+---
+title: "Change Shared Character Pictures on Oric Atmos"
+summary: "Install a picture, share it across cells, then change every instance or just one. Reusable Oric Atmos routines with explicit character, colour and memory rules."
+platform: "oric-atmos"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["characters", "glyphs", "fonts", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A wall can appear in twenty places while its picture is stored once. Change that picture and every wall changes. Open one door instead, and you probably want to change just that cell's number. These routines let you choose.
+
+<Figure src="/images/oric-atmos/patterns/custom-glyphs.png" kind="capture" alt="Oric Atmos native output showing two cells using the same replaced character picture" caption="The first replacement changes both shared instances. Later calls change a single cell and exercise normal/inverse forms. Original Code198x pictures, independently captured on this target." />
+
+## Include, initialise and call
+
+Reserve **24 private zero-page bytes** at G, clear decimal mode and include `glyphs.inc`. The complete reset caller sets up the video and interrupt policy before the component runs. It supplies its own firmware image; it does not use the manufacturer's BASIC or operating system.
+
+<CodeFromFile src="oric-atmos/patterns/assembly/rendering/custom-glyphs/demo.asm" from="kernel_start:" to="kernel_end:" lang="6502" title="Include the maintained character component" />
+
+`glyph_init` clears the owned pictures and names. That destroys their old contents, so use it during setup. Then install two original sketches and select the first twice:
+
+<CodeFromFile src="oric-atmos/patterns/assembly/rendering/custom-glyphs/demo.asm" from="    jsr glyph_init" to="; Diagnostic transport" lang="6502" title="Initialise, install and select shared pictures" />
+
+Your game calls these entries directly. The later mailbox and debugger readbacks are optional verification transport.
+
+## Supply a source, slot and cell
+
+All words are little-endian. `glyph_install` uploads a range; `glyph_replace` uploads one shape and ignores count; `glyph_select` writes one cell's screen code. Init clears the owned allocations. Inputs 0–6 survive, and status/write count reset even when a request rejects.
+
+| Offset | Supply or read |
+| --- | --- |
+| 0–1 | Readable CPU source address |
+| 2, 3 | First stored glyph code and nonzero count |
+| 4 | Screen code to select |
+| 5–6 | Logical cell index |
+| 7 | Output: 1 accepted, 0 rejected |
+| 8–9 | Output: destination data bytes written |
+| 10–23 | Private scratch |
+
+The stored drawable shapes are **ASCII 32–127**, with counts 1–96 staying within that range. The selectable screen codes are **32–127 and 160–255**: the latter are inverse forms of the same standard shapes. Codes 0–31 and 128–159 are attributes, so this picture API rejects them. Logical cells are 0–1035.
+
+Zero counts, overflowing ranges and invalid slots/cells reject before a destination write. Keep the source long enough, readable, non-wrapping, stable and separate from the context/destination. These are trusted pointers, not an arbitrary-memory validator.
+
+The context is non-re-entrant. A/X/Y and flags are clobbered; clear decimal mode and reserve six stack bytes including the direct call. Add space for your own calls and interrupts. The routines do not change interrupt state or banks.
+
+## Respect the machine's characters
+
+Oric TEXT has **40×28 physical cells**, each **6×8 dots**. This allocation reserves the first three cells of every row for the caller's paper, ink and mode attributes: 16 selects black paper, 7 white ink, and 26 selects 50 Hz TEXT. Pictures use the remaining **37×28** rectangle. The routine skips the control columns rather than treating them as spare picture cells.
+
+The standard character set starts at $B400. Drawable ASCII 32 begins at **$B500**; ASCII 127 ends at **$B7FF**. The low six bits of each row are dots, bit 5 on the left. Codes below 32 control display state instead of choosing a picture. The component preserves their unused font bytes, the alternate-font neighbour, reserved screen attributes and guards.
+
+Bit 7 in a screen code selects inverse video. It does **not** independently select the alternate font: standard/alternate selection comes from the serial style attribute. This variant uses the standard set, normal height and no flash. HIRES and alternate-font versions need their own allocations and checks.
+
+The complete caller owns the VIA/IRQ policy. The routines do not change video mode, colours, interrupt state or font style. Another renderer writing serial attributes can change the meaning of everything to their right, so coordinate ownership across the whole row.
+
+## Count a shape and its place
+
+Logical cell (2,2) has index `2*37+2 = 76`, but its physical screen address is `$BB80+2*40+3+2 = $BBD5`. The logical row width and physical stride differ. Using 37 for both puts later rows in the wrong place.
+
+A six-dot row `100001` is **33**, not 129. The two upper bits do not become extra visible dots. The example starts at physical column 5, so local dot (3,5) appears at pixel `(5*6+3, 2*8+5) = (33,21)`. Row-transition checks exercise logical cells 36 and 37.
+
+[Move a glyph](/craft/maths-for-games/unit-13/) connects bit weights, stored shapes, codes and cell placement. [Place a point](/craft/maths-for-games/unit-06/) explains local and screen coordinates. These routines place fixed-grid pictures; they do not implement proportional text, arbitrary placement or scaled letters.
+
+## Replace the shared picture, or one instance
+
+After the example, point G+0 at a new eight-row sketch, set G+2 to 33 and call `glyph_replace`. Both cells still use that slot, so both change. To change only the first, put code 34 in G+4 and its logical cell index in G+5, then call `glyph_select`. The second keeps the old code.
+
+<details>
+<summary>Read the complete reusable 6502 component</summary>
+<CodeFromFile src="oric-atmos/patterns/assembly/rendering/custom-glyphs/glyphs.inc" lang="6502" title="Initialise, install, replace and select" />
+</details>
+
+## Pay for what changes
+
+One cell selection writes **one name byte**. Replacing one picture writes **eight bytes**, regardless of how many cells use it. Full init writes **1,804 bytes**. The assembled component uses **331 code bytes**, 24 context bytes and eight source bytes per picture, excluding reset/video/diagnostic code.
+
+Choose the operation by what should change. Eight writes can update many shared walls, but one write can open one door. These are storage and destination-write counts, not elapsed time. The Oric row lookup uses repeated subtraction; a row-address table can save arithmetic by spending table memory. Live upload scheduling and physical contention need their own measurements before claiming a frame budget.
+
+## What was verified
+
+**28 calls completed per build**, using Asm198x 0.0.71. Qualification uses the released Oric Atmos Emu198x 0.41.0 binary. It checks the complete standard font, screen, reserved attributes and neighbours, including rejected control codes and the logical row transition. It does not turn the existing HIRES routines into evidence for this TEXT mode; this caller is separately executed.
+
+Three builds on each of the three targets produce **210 executed calls** in total. Tests include shared replacement, one-cell selection, inverse forms, full legal uploads, final slots/cells, zero/overflow requests and reset. Completed **wrong-slot** and **wrong-name** controls fail both memory and visible-output checks. Selected whole native frames match an independent compositor; retained checks reject missing calls and rehashed wrong observations.
+
+These original reset callers do not establish stock-OS loading, interrupt coexistence, physical timing or tear-free updates. Code and original pictures are MIT licensed.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/8315abed2399f83d0d831e4231eaa1d392243af9/oric-atmos/patterns/assembly/rendering/custom-glyphs)
+- [Full contracts, costs and hardware references](https://github.com/code198x/code-samples/blob/8315abed2399f83d0d831e4231eaa1d392243af9/cross-platform/patterns/rendering/character-ram-ports/README.md)
+- [Compare writable character systems](/patterns/cross-platform/rendering/custom-glyphs/)
