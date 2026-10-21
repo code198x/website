@@ -30,5 +30,5 @@ export function primitiveStyle(
   return all.length ? all.join('; ') : undefined;
 }
 
-/** A CSS length. An editor flags a typo; nothing in the build type-checks .astro files yet. */
+/** A CSS length, so a typo fails `npm run check:types`. */
 export type Length = `${number}${'px' | 'rem' | 'em' | 'ch' | '%' | 'vw' | 'vh' | 'vi' | 'svh'}` | '0';

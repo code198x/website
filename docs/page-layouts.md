@@ -132,9 +132,10 @@ one element with an `l-` class from `src/styles/composition.css` and takes
 | `Frame` | An illustration cropped to an aspect ratio | `ratio` |
 
 - Spacing props take a step of the kit's scale: `space={6}` is
-  `var(--h-space-6)`. Props and lengths are typed, so an editor with the
-  Astro extension flags a wrong value. The build does not type-check `.astro`
-  files: the site has no `@astrojs/check`.
+  `var(--h-space-6)`. Props and lengths are typed, and `npm run check:types`
+  (part of `npm run check` and the release checks) fails on a wrong value.
+  It runs `astro check` against `scripts/type-baseline.json`, the type errors
+  that predate it; that list may only shrink.
 - A block's own rules come later in the cascade than `composition`, so a
   block can override a primitive. Style what is inside a primitive; leave its
   spacing and sizing to the primitive's props.

@@ -140,9 +140,9 @@ single implementation and live in the `composition` layer.
 
 - Spacing props take a step of the kit's scale (`space="4"` →
   `var(--h-space-4)`), so the primitives add no new tokens.
-- Props are typed, so an editor flags a wrong value. The build does not
-  type-check `.astro` files (no `@astrojs/check`); adding it is a dependency
-  for Steve to approve.
+- Props are typed, and `npm run check:types` fails on a wrong value. It runs
+  `astro check` (added 2026-10-21) against a baseline of the 75 type errors
+  that predate it, which may only shrink.
 - **`Frame` never holds a capture.** Captures render at a whole multiple of
   their native pixels, uncropped (`decisions/family-visual-identity.md`); they
   keep their existing components.
