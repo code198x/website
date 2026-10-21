@@ -1,0 +1,85 @@
+---
+title: "Change Shared Character Pictures on NES CHR-RAM"
+summary: "Reusable install, replace and select routines for NES CHR-RAM, with real code, native output and explicit video ownership."
+platform: "nintendo-nes"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["characters", "glyphs", "fonts", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A single door picture can appear in many places. Replacing it changes every cell using its number. Changing one cell's number affects only that instance. Here is reusable code for both jobs.
+
+<Figure src="/images/nintendo-nes/patterns/custom-glyphs.png" kind="capture" alt="Native NES CHR-RAM output with two cells showing the same replacement picture" caption="One replacement changes both cells. Later checks select a different picture in only one cell. Original Code198x patterns, captured from this machine's separately executed caller." />
+
+## Include, initialise and call
+
+Reserve **24 private zero-page bytes** at `G`. Clear decimal mode, include the machine's component and establish the caller-owned video configuration before calling `glyph_init`.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/rendering/custom-glyphs/demo.asm" from="kernel_start:" to="kernel_end:" lang="6502" title="Include the maintained component" />
+
+Init clears the owned patterns and names. It destroys their old contents; call it during your setup, not before every tile change. The complete caller establishes the video state. Then install two original sketches and put the first in two cells:
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/rendering/custom-glyphs/demo.asm" from="    jsr glyph_init" to="; Diagnostic transport" lang="6502" title="Initialise, install pictures, then select the first twice" />
+
+To replace both instances, point the source at a new sketch, set first=1 and call `glyph_replace`. To change only one cell, select code 2 there. Games call these entries directly; the later mailbox and readback buffer are optional verification transport.
+
+## The calling contract
+
+Words are little-endian. `glyph_install` uploads a range, `glyph_replace` uploads one picture and ignores count, `glyph_select` changes one name. Status and data-write count reset on every call, including rejection.
+
+| Offset | Supply or read |
+| --- | --- |
+| 0 | CPU source address, word |
+| 2, 3 | First slot and nonzero count, bytes |
+| 4 | Selected code, byte |
+| 5 | Linear cell, word |
+| 7 | Output: 1 accepted, 0 rejected |
+| 8 | Output: destination bytes written, word |
+| 10–23 | Private scratch |
+
+Valid slots/codes are **0–255**, cells **0–959**. Counts are bytes, **1–255**; an exclusive range end of 256 is legal. Zero counts, overflowing ranges and invalid cells reject without destination writes. Use multiple calls to install all 256 pictures.
+
+Keep the source readable, stable, long enough, non-wrapping and separate from the context and destination. These are trusted pointers, not a memory sandbox. The context is non-re-entrant. Inputs 0–6 survive; A/X/Y and flags are clobbered. Reserve six stack bytes including the direct call. Add space for your own calls and interrupts.
+
+## Respect the display
+
+This caller is **NROM-256 with CHR-RAM**, not a CHR-ROM cartridge. Its explicit iNES header declares zero CHR-ROM banks. The component owns background patterns at **PPU $0000–$0FFF** and names at **$2000–$23BF**. Attribute bytes at $23C0–$23FF, palettes, the other pattern bank and the other physical nametable remain separate.
+
+**Turn rendering off for the entire call.** $2001 is write-only; the routine cannot read it to validate that policy. Own NMI/mapper state and the $2005/$2006 latch, use increment-one addressing and restore scroll/address/control before display resumes. A full upload does not fit by assumption into VBlank. This is a blanked-transfer component; a live queue would need its own budget and bank contract.
+
+The pinned ca65 linker emits an extra empty CHARS segment. The builder verifies the header and exact allowed extents, rejects any nonempty undeclared data, then writes the declared 32,784-byte cartridge. Removing assets does not make a CHR-ROM cartridge writable.
+
+## Turn a sketch into stored pixels
+
+Each tile has **16 bytes**: eight low-plane rows followed by eight high-plane rows. For a dot in row r, combine bit b from offsets r and r+8 as `low + 2*high`. Bit 7 is the leftmost dot. Tile 255 begins at $0FF0 and ends at $0FFF.
+
+Cell (2,2) has index `2*32+2 = 66`. A tile chooses two-bit pixel values; attribute data chooses its background palette. Replacing tile data does not change those attributes. The caller makes all four background palettes equivalent so the checked attribute guards can vary without changing the example's colours.
+
+[Move a glyph](/craft/maths-for-games/unit-13/) connects these bit weights and cell indices with text drawing. [Place a point](/craft/maths-for-games/unit-06/) covers local-to-screen coordinates. These routines place fixed-grid pictures; they do not provide proportional text or arbitrary-size letters.
+
+<details>
+<summary>Read the complete reusable 6502 component</summary>
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/rendering/custom-glyphs/glyphs.inc" lang="6502" title="Initialise, install, replace and select" />
+</details>
+
+## Pay for what changes
+
+A single name costs **1 destination byte**; replacing a picture costs **16**. Full init writes **5,056 bytes**. The assembled component takes **258 code bytes** and 24 context bytes; each source picture takes 16 bytes. These exclude the reset caller, video setup and assets.
+
+If many cells use one picture and all should change, a replacement can save writes. If one door should open, change its name. These are storage and data-write counts, not elapsed time. PPU address writes also cost work. Measure inside your actual game before promising a frame rate. Upload queues, caches and alternate allocations are useful further components.
+
+## What was verified
+
+**20 calls completed per build** with Asm198x 0.0.71 and Emu198x 0.39.0. Checks compare complete logical PPU memory, guards, inputs, status and actual destination-write counts. They cover shared replacement, single-cell selection, last slots/cells, maximum uploads, zero/overflow requests and reset.
+
+Selected whole native frames match a separate compositor. Completed **wrong-slot** and **wrong-name** builds fail both memory and visible-output comparisons. Retained checks independently rederive the expectations; corruption tests reject rehashed wrong memory and pictures. The diagnostic reads $3E00 through its physical $2E00 mirror to avoid palette reads bypassing the read buffer at $3F00.
+
+This is an original reset fixture, not proof of stock-OS loading, interrupt coexistence, hardware timing or tear-free live updates. Palette RGB values describe the pinned emulator release. Code and source pictures are MIT licensed.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/efb7b39db1f5f99b8a58a2a9d1414a3642211b48/nintendo-entertainment-system/patterns/assembly/rendering/custom-glyphs)
+- [Full contracts, costs and hardware references](https://github.com/code198x/code-samples/blob/efb7b39db1f5f99b8a58a2a9d1414a3642211b48/cross-platform/patterns/rendering/native-glyphs/README.md)
+- [Compare writable character systems](/patterns/cross-platform/rendering/custom-glyphs/)
+- [Map storage and drawing](/patterns/nintendo-nes/assembly/rendering/tile-map/)
