@@ -132,7 +132,9 @@ one element with an `l-` class from `src/styles/composition.css` and takes
 | `Frame` | An illustration cropped to an aspect ratio | `ratio` |
 
 - Spacing props take a step of the kit's scale: `space={6}` is
-  `var(--h-space-6)`. Lengths are typed, so `astro check` rejects a typo.
+  `var(--h-space-6)`. Props and lengths are typed, so an editor with the
+  Astro extension flags a wrong value. The build does not type-check `.astro`
+  files: the site has no `@astrojs/check`.
 - A block's own rules come later in the cascade than `composition`, so a
   block can override a primitive. Style what is inside a primitive; leave its
   spacing and sizing to the primitive's props.
@@ -140,8 +142,10 @@ one element with an `l-` class from `src/styles/composition.css` and takes
   a box (`decisions/family-visual-identity.md`); use `Figure` or
   `NativeImage`.
 - `Sidebar`, `Switcher` and `Reel` pass their settings to their children by
-  inheritance. Don't make one a direct child of another of the same kind;
-  wrap it in an element first.
+  inheritance, so one that is a direct child of another of the same kind
+  would be sized by the inner one's settings. Each fails the build when that
+  happens (`src/components/layout/nesting.ts`); wrap the inner one in an
+  element.
 
 Preview them at `/catalogue/layout/` on the development server.
 `tests/layout-primitives.spec.ts` measures that page at 320, 768 and 1440px.

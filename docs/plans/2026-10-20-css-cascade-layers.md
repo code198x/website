@@ -140,7 +140,9 @@ single implementation and live in the `composition` layer.
 
 - Spacing props take a step of the kit's scale (`space="4"` →
   `var(--h-space-4)`), so the primitives add no new tokens.
-- Props are typed, so a wrong value fails the build.
+- Props are typed, so an editor flags a wrong value. The build does not
+  type-check `.astro` files (no `@astrojs/check`); adding it is a dependency
+  for Steve to approve.
 - **`Frame` never holds a capture.** Captures render at a whole multiple of
   their native pixels, uncropped (`decisions/family-visual-identity.md`); they
   keep their existing components.
@@ -324,7 +326,10 @@ Done. The classes take an `l-` prefix (`.l-stack`), because `.center` and
 reads on itself are registered `inherits: false`, so nesting never leaks;
 Sidebar, Switcher and Reel style their children, so theirs inherit and the
 components always write them. Stack and Cover use `gap`, not child margins.
-Frame refuses a capture at build time (`frame.ts`, unit-tested). The layer
+Frame refuses a capture at build time (`frame.ts`, unit-tested), and
+Sidebar, Switcher and Reel refuse a direct child of their own kind
+(`nesting.ts`, unit-tested and seen failing a page in dev), because that
+child's settings would shadow theirs. The layer
 order moved into `LayerOrder.astro`, because the catalogue skips Layout and
 would otherwise have created `composition` after `legacy`. PageFrame's rules
 moved into `composition` too. The gate's only differences are the extra
