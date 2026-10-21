@@ -399,6 +399,13 @@ Steve owns the kit's releases.
   declarations on a primitive's children, and compare screenshots at every
   width where it should stack.
 
+- **Primitives on repeated items.** A primitive writes its settings inline
+  on its own element, so one on each of 205 Pattern Library result rows
+  would add about 20 KB to that page. Inline styles also beat any block
+  rule, so the settings can't be moved into the stylesheet. Lay out a long
+  list's rows with one block rule instead, and use primitives for the
+  list itself and for one-off layouts.
+
 - **Runtime CSS outside our control** (editor, player, pagefind) is unlayered
   and will now beat site overrides. Step 2 finds every case on the route set;
   routes outside the set rely on the browser CI and the release checks.
