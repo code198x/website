@@ -19,6 +19,14 @@ describe('kit-highlight', () => {
     expect(found.some((r) => r.startsWith('str:') && r.includes('Hello'))).toBe(true);
   });
 
+  it('keeps AMOS scientific values and quoted command words whole', async () => {
+    const found = await roles("Print 1E+3: Print 'Rem Wait Key'", 'amos');
+    expect(found).toContain('num:1E+3');
+    expect(found).toContain("str:'Rem Wait Key'");
+    expect(found.filter((r) => r.startsWith('kw:'))).toEqual(['kw:Print', 'kw:Print']);
+    expect(found.some((r) => r.startsWith('c:'))).toBe(false);
+  });
+
   it('keeps operators in plain ink', async () => {
     const found = await roles('LET a=a+1', 'sinclair-basic');
     expect(found).not.toContain('kw:=');
