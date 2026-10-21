@@ -45,7 +45,7 @@ its own parent commit, because other work lands on main in between.
 | Dropped 14 `!important` flags (step 3, #884) | −142 | 429,275 |
 | Kit names for 26 site aliases, 9 unread tokens removed (step 4.1, #886) | −3,549 | 425,726 |
 | Seven body-scoped tokens resolved to the kit (step 4.2, #888) | −4,651 | 421,075 |
-| 138 fallbacks on kit tokens that never apply (step 4.3) | −890 | 420,185 |
+| 138 fallbacks on kit tokens that never apply (step 4.3, #889) | −890 | 420,185 |
 
 Removals so far: 70,973 bytes, 14.9% of the starting point.
 
@@ -300,6 +300,14 @@ stylesheets in step 7.
    ramps belong in the kit when its dark theme is specified.
 
 ### 5. Build the primitives
+
+First, element defaults move from `legacy` into `base` (zero differences).
+While they sit in the last layer, `p { margin: … }` and its kind outrank the
+`composition` layer, so a Stack could not reset its children's margins on any
+real page. Done for the 33 rules whose selectors name no class, id, attribute
+hook or custom element: Layout's global defaults, `html`, `body`, `:root`
+and `site-tokens.css`. One, `tbody tr:last-child td`, stays in `legacy`
+because it beats page table rules by weight.
 
 Add the ten primitives above to `src/components/layout/`, their classes to the
 `composition` layer, a catalogue specimen each and their browser tests.
