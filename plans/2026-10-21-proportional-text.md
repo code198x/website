@@ -1,0 +1,10 @@
+# Proportional text on existing bitmap backends
+
+Continue docs #126 after publishing samples #150 and website #903. Extend existing text-layout entries; do not create duplicate catalogue entries or claim stock-OS/timing qualification.
+
+1. Merge #150 with reviewed head guard; rerun #903 Browser tests, require all applicable checks green, then guarded rebase merge. Verify deployment pages and exact capture bytes.
+2. Add `cross-platform/patterns/rendering/proportional-text/` CPU includes (6502/Z80/6809), independent model/cases/build and original font metrics. Reuse existing bitmap-text and span backends for Spectrum, BBC MODE 4, Dragon PMODE 4 and CPC MODE 1. Count actual per-glyph advances for measurement, alignment and word-aware wrapping; preserve fixed-width alternatives. Keep bounded inputs, preflight rejection, explicit ownership and native byte order.
+3. Add normal/custom callers under each machine's `rendering/proportional-text/`. Expose metric-table pointer and letter spacing with clear bounds; show one maintained customisation and wrong/fixed advance example. Retain exact native outputs, full bitmap/neighbours/source/font/metric checks and selected whole-frame captures. Reuse released pinned tools; cross-check assembler output.
+4. Add fresh verifier, independent retained checker and meaningful corruption controls to scripts and existing evidence CI. Run all affected retained checks, tool parity and publishing artefact builds.
+5. Extend the existing five text-layout MDX pages using CodeFromFile and verified images; connect advance sums/rounding to Maths for Games. Add focused desktop/phone discovery, code, image, overflow/accessibility and reciprocal-link checks; run website checks/build.
+6. Push verified small commits, open linked source/site PRs, update docs #126 and coverage matrix without inflating entry counts. Preserve evidence under task outputs. Remove task worktrees/caches and stop task-owned processes after remote retention and file inventories are verified.

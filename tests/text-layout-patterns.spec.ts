@@ -64,7 +64,7 @@ test('@built text layout comparison leads to four implementations and Maths', as
   const prose = page.locator('.pattern-prose');
   for (const [machine] of machines) await expect(prose.locator(`a[href="/patterns/${machine}/assembly/rendering/text-layout/"]`)).toHaveCount(1);
   for (const unit of ['06', '13']) {
-    await prose.locator(`a[href="/craft/maths-for-games/unit-${unit}/"]`).click();
+    await prose.locator(`a[href="/craft/maths-for-games/unit-${unit}/"]`).first().click();
     await expect(page.locator('main a[href="/patterns/cross-platform/rendering/text-layout/"]').first()).toBeVisible();
     await page.goBack();
   }
