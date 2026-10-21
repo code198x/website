@@ -42,8 +42,10 @@ its own parent commit, because other work lands on main in between.
 | Other work: the Pattern Library prototype (#837 and follow-ups) | +9,189 | |
 | Wrapped every rule in a layer (step 2, #877) | +5,982 | 434,765 |
 | Dropped 382 `body.magazine` prefixes (step 3, #879) | −5,348 | 429,417 |
+| Dropped 14 `!important` flags (step 3, #884) | −142 | 429,275 |
+| Kit names for 26 site aliases, 9 unread tokens removed (step 4.1) | −3,549 | 425,726 |
 
-Removals so far: 61,741 bytes, 13.0% of the starting point.
+Removals so far: 65,432 bytes, 13.7% of the starting point.
 
 **Correction.** Until 2026-10-20 evening this table used a line-based count
 that missed one-line `<style>` blocks and counted script text after a
@@ -246,12 +248,27 @@ reports with empty values. Those prefixed selectors are kept, and the loop
 repeats until the gate is clean. Eleven rounds kept 138 selectors (95
 distinct) and removed 383. A twelfth, at 320px, kept one more (139 kept,
 382 removed). The kept ones go in step 6, when their rules move
-from `legacy` into `blocks` and `exceptions`. `:global()` and `!important` follow the same way.
+from `legacy` into `blocks` and `exceptions`.
+
+`!important` (done, #884): 14 of 52 flags only added weight. Of the 38 left,
+most are needed (`[hidden]`, reduced motion, print, shiki's inline
+background, an animation's fill, nav links over the kit's unlayered styles).
+The Vault studies and feature-article flags still win by them and go in
+step 6.
+
+`:global()` is left alone. Most of the 204 wrappers reach MDX content that
+arrives through a slot, so they are needed while those rules live in a
+component's `<style>`. They go when the prose rules move into block
+stylesheets in step 7.
 
 ### 4. One token vocabulary (PRs by token group)
 
 1. Replace site tokens that alias a kit token everywhere with the kit token.
-   Zero differences.
+   Zero differences. Done: 26 aliases whose every definition was the same kit
+   token, 1,121 uses, plus 9 tokens nothing read. Every element's snapshot
+   records its custom properties, so the gate runs
+   `css-diff --removed <names>`, which ignores only those properties
+   disappearing. The off-scale `--space-5/10/14/20` and the tokens below stay.
 2. Scoped redefinitions with different values (`--color-text`,
    `--color-primary`, …): name what each scope means and give it its own
    token. Zero differences.
