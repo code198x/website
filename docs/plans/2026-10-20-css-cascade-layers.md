@@ -44,9 +44,10 @@ its own parent commit, because other work lands on main in between.
 | Dropped 382 `body.magazine` prefixes (step 3, #879) | −5,348 | 429,417 |
 | Dropped 14 `!important` flags (step 3, #884) | −142 | 429,275 |
 | Kit names for 26 site aliases, 9 unread tokens removed (step 4.1, #886) | −3,549 | 425,726 |
-| Seven body-scoped tokens resolved to the kit (step 4.2) | −4,651 | 421,075 |
+| Seven body-scoped tokens resolved to the kit (step 4.2, #888) | −4,651 | 421,075 |
+| 138 fallbacks on kit tokens that never apply (step 4.3) | −890 | 420,185 |
 
-Removals so far: 70,083 bytes, 14.7% of the starting point.
+Removals so far: 70,973 bytes, 14.9% of the starting point.
 
 **Correction.** Until 2026-10-20 evening this table used a line-based count
 that missed one-line `<style>` blocks and counted script text after a
@@ -284,7 +285,19 @@ stylesheets in step 7.
    fixed bar nothing links to. `--gutter` stays: `.setup-page` changes it.
 3. Raw hex values: replace those identical to an existing token. List the rest
    for Steve. Any change of value is an **intended change** and needs
-   screenshots and approval.
+   screenshots and approval. Done as far as it goes without a change of
+   value: 138 `var(--h-…, fallback)` calls named a token the kit always
+   defines at `:root`, so the fallback never applied, and they are gone
+   (`--h-text-hero` and `--h-lh-hero` are not kit tokens and keep theirs).
+   Of the seven hex values identical to a kit token, five were such
+   fallbacks; the other two are the Figure lightbox's dark chrome, which
+   only shares its values with the code listing. 176 raw values remain (93
+   distinct), mostly machine palettes (SystemHero, the CRASH! Live page),
+   diagram inks and the state colours in `site-tokens.css`. Changing any of
+   them is a design decision, made family by family in step 6.
+   OKLCH notation is not adopted here: the derived tints already mix in
+   oklab, hardware palettes read best in the hex their sources use, and the
+   ramps belong in the kit when its dark theme is specified.
 
 ### 5. Build the primitives
 
