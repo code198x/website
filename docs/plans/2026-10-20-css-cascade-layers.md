@@ -376,6 +376,14 @@ Steve owns the kit's releases.
 
 ## Risks
 
+- A block rule that sets a property a primitive sets on its children
+  (`min-width: 0` on a Sidebar's main pane, a `flex-basis`, a `gap`) wins,
+  because `blocks` comes after `composition`. The Vault article header kept
+  its text pane at 170px wide for that reason until the leftover
+  `min-width: 0` went. When recomposing, remove the block's own layout
+  declarations on a primitive's children, and compare screenshots at every
+  width where it should stack.
+
 - **Runtime CSS outside our control** (editor, player, pagefind) is unlayered
   and will now beat site overrides. Step 2 finds every case on the route set;
   routes outside the set rely on the browser CI and the release checks.
