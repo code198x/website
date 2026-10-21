@@ -10,8 +10,9 @@ for(const [machine,name,routine,cost] of entries){
   const prose=page.locator('.pattern-prose');
   await expect(page.locator('.code-error')).toHaveCount(0);
   await expect(prose).toContainText(cost);
-  await prose.locator('details summary').click();
-  await expect(prose.locator('details code').first()).toContainText(routine);
+  const original=prose.locator('details').filter({hasText:machine==='atari-2600'?'Read the reusable helpers and complete NTSC caller':'Read the builder and complete DMA setup caller'});
+  await original.locator('summary').click();
+  await expect(original.locator('code').first()).toContainText(routine);
   await expect(prose.getByRole('link',{name:'Reusable source, caller and execution records'})).toHaveAttribute('href',/\/tree\/[0-9a-f]{40}\//);
   const image=prose.locator('img').first();
   await expect.poll(()=>image.evaluate((i:HTMLImageElement)=>i.complete&&i.naturalWidth>0)).toBe(true);
@@ -31,6 +32,18 @@ for(const [machine,name,routine,cost] of entries){
    expect(createHash('sha256').update(await response.body()).digest('hex')).toBe(createHash('sha256').update(readFileSync(source)).digest('hex'));
    await expect.poll(()=>broken.evaluate((i:HTMLImageElement)=>i.complete&&i.naturalWidth>0)).toBe(true);
   }
+  await expect(prose.getByRole('heading',{name:'Make it your own',exact:true})).toBeVisible();
+  const customNames=machine==='atari-2600'?['maze','reflected']:['ships'];
+  for(const variant of customNames){
+   const custom=prose.locator(`img[src$="/customise/${variant}.png"]`);
+   await custom.scrollIntoViewIfNeeded();
+   const response=await page.request.get(`/images/${machine}/patterns/customise/${variant}.png`);
+   expect(response.status()).toBe(200);
+   const source=path.join(process.env.CODE_SAMPLES_PATH||'../code-samples',machine,'patterns/assembly/rendering',name,'customise/verification',variant+'.png');
+   expect(createHash('sha256').update(await response.body()).digest('hex')).toBe(createHash('sha256').update(readFileSync(source)).digest('hex'));
+   await expect.poll(()=>custom.evaluate((i:HTMLImageElement)=>i.complete&&i.naturalWidth>0)).toBe(true);
+  }
+  await expect(prose).toContainText(machine==='atari-2600'?'144 picture bytes':'14 bytes to 16');
   await expect(prose).toContainText('Deliberately wrong');
   await expect(prose).toContainText(machine==='atari-2600'?'59,964':'second valid terminator');
   await page.goto(`/patterns/platform/${machine}/`);

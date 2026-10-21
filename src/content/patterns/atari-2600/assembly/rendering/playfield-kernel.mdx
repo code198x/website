@@ -58,6 +58,56 @@ The kernel's visible CPU cost recurs even when nothing changes. A ROM-only pictu
 <CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/demo.asm" lang="asm" title="Complete allocation, reset and field caller" />
 </details>
 
+## Make it your own
+
+Turn the letter demonstration into a tiny maze. The separate `customise/` caller builds walls and passages, stamps an original arrow and chooses a new foreground colour. It uses the same two includes, buffer and kernel. The original working example stays available above.
+
+<Figure src="/images/atari-2600/patterns/customise/maze.png" kind="capture" alt="A red maze with interior walls, passages and an arrow, repeated across both halves of the TIA picture." caption="Verified native customisation: new cells, glyph and colour; the same 192-line kernel and 262-line NTSC field." />
+
+### Replace the picture, keep its format
+
+Keep `customise/` beside `playfield.inc` and `kernel.inc`, and run `make` there. Load `build/maze.a26` for repetition or `build/reflected.a26` for reflection. Both small wrappers include the same `caller.inc`. To bring this into your game, copy the parent includes and reserve the documented buffer/context first; then adapt the preparation calls, not the kernel's visible-line schedule.
+
+Replace these seven source values with your own five-bit rows. Here 4 is binary `00100`, 2 is `00010`, and 31 fills all five dots. Bit 4 is the left edge. Each row must remain 0..31, and the whole stamp must fit its origin. The arrow is placed at (2,4); changing PF+2/PF+3 moves it within the existing bounds. Its zero bits erase what was underneath.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/customise/caller.inc" from="; BEGIN CUSTOM GLYPH" to="; END CUSTOM GLYPH" lang="asm" title="Replace seven rows to make your own glyph" />
+
+Walls use ordinary `pf_cell` calls with value 1. A doorway is a call with value 0. The complete caller draws the perimeter, two interior walls with passages, then the arrow; edit those coordinates to make another room. Drawing order matters because the stamp is opaque. These are pictures and passages, not collision or pathfinding rules: your game can keep a separate logical map.
+
+### Change colour or reflect the room
+
+The foreground changes from $0E to $46 before the first field; COLUBK remains zero. The selected NTSC emulator shows this as a rose-red playfield. Choose another register value in setup, then check contrast in your target model. Physical colour and other video standards are not established by this capture.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/customise/caller.inc" from="; BEGIN CUSTOM COLOUR" to="; END CUSTOM COLOUR" lang="asm" title="Choose the foreground before visible emission" />
+
+Set `MAZE_REFLECT` to 0 for repetition or 1 for reflection. This complete reflected wrapper changes that choice without adding a second stored half:
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/customise/reflected.asm" lang="asm" title="Reflect the same prepared half-picture" />
+
+<Figure src="/images/atari-2600/patterns/customise/reflected.png" kind="capture" alt="The maze's right half is reflected, including its doorway, interior passages and arrow direction." caption="The right arrow and passages reverse with the entire half-picture. Reflection is not an independent sprite flip or forty separately stored columns." />
+
+### Know what the variation costs
+
+| Resource or work | Original caller | Maze caller |
+|---|---:|---:|
+| Reusable code + tables | 197 + 64 bytes | Same |
+| Picture + context | 72 + 16 bytes | Same |
+| Glyph source | 7 bytes | 7 replacement bytes |
+| Setup writes to picture, including clear | 108 | 213 |
+| Startup instruction span, start to ready | 81 bytes | 162 bytes |
+| Measured colour clocks per steady field | 59,736 | 59,736 |
+
+The maze makes 84 perimeter cell writes, 21 interior-wall writes, one doorway erase and 35 opaque stamp writes: 141 after the 72-write clear. That preparation happens once before the first field. A game updating the picture every field must measure its own blanking workload. The startup span is assembled code size, not CPU execution time; both cartridges remain 4 KiB.
+
+New row data, valid cell coordinates and setup colour/reflection choices preserve this contract. Changing the band height does not. Keeping 192 picture lines with four-line bands would require 48 bands: at three bytes each, **144 picture bytes**, already more than all 128 bytes of RIOT RAM before context or stack. A different buffer strategy and kernel would be needed. Extra visible-loop work, asymmetric halves, relocated indexed buffers and shared video ownership also need renewed timing verification.
+
+<details>
+<summary>Read the complete maze preparation and field caller</summary>
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/customise/caller.inc" lang="asm" title="Custom picture using the unchanged reusable includes" />
+</details>
+
+Both customisation builds were assembled and executed in the same released native emulator. The entire buffer and every frame pixel match an independent logical maze/arrow model; guards and steady field periods pass. The colour expectation belongs to that emulator's NTSC palette. See the linked source directory's `customise/README.md` and captures to reproduce the checks.
+
 ## Common mistakes and their symptoms
 
 These examples are deliberately broken. Keep the working includes above as your starting point. Each wrong fragment was assembled into this caller, run in the same NTSC emulator and checked against an independently predicted result. The corrected fragments were run too.
@@ -117,7 +167,7 @@ All three corrected diagnostic fragments also reproduce the working frame. The n
 
 This is evidence for this caller and emulator configuration, not original hardware, PAL, arbitrary relocation or coexistence with another kernel.
 
-- [Reusable source, caller and execution records](https://github.com/code198x/code-samples/tree/7d7022971a21ec65ba8468d37326b183a518291e/atari-2600/patterns/assembly/rendering/playfield-kernel)
-- [Contracts, costs and reproduction](https://github.com/code198x/code-samples/blob/7d7022971a21ec65ba8468d37326b183a518291e/cross-platform/patterns/rendering/tia-maria/README.md)
+- [Reusable source, caller and execution records](https://github.com/code198x/code-samples/tree/6379a565b3066b7bc0c02bf6827f95e352de0b39/atari-2600/patterns/assembly/rendering/playfield-kernel)
+- [Contracts, costs and reproduction](https://github.com/code198x/code-samples/blob/6379a565b3066b7bc0c02bf6827f95e352de0b39/cross-platform/patterns/rendering/tia-maria/README.md)
 - Steve Wright, Atari, [Stella Programmer's Guide](http://www.atarihq.com/danb/files/stella.pdf), playfield discussion and printed p39 serial-output diagram.
 - [Build objects for the very different MARIA display](/patterns/atari-7800/assembly/rendering/maria-objects/).
