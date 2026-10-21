@@ -347,6 +347,15 @@ editorial, system pages, family pages and setup. Per family:
 3. Screenshots at 320, 768 and 1440 px before and after for Steve, and the
    source size and layout-media-query count for the progress table.
 
+Vault progress (2026-10-21): its styles left `legacy` with no visible change
+(#895; 31 selectors stay, beating other legacy rules by weight), and the index
+is recomposed on the primitives (#896). Steve approved the index screenshots
+as almost identical, with extra spacing in a few places to revisit when the
+step is finished. The likely cause is that a primitive has one `gap` for rows
+and columns where the old grids had two. `vault.css` went from 13,007 to 9,922
+bytes: layout alone takes about a quarter out of a family's CSS, so halving the
+total also needs the repeated block styles merged.
+
 This replaces the earlier "settle a breakpoint scale" step: most breakpoints
 go rather than being standardised. Any that remain (navigation, say) are
 listed for Steve with a proposed scale.
