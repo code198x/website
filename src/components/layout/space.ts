@@ -2,6 +2,7 @@
  * Shared props for the layout primitives in this folder
  * (docs/page-layouts.md, "Layout primitives").
  */
+import type { HTMLAttributes } from 'astro/types';
 
 /** A step of the kit's spacing scale: `4` is `var(--h-space-4)`. */
 export type Space = 0 | 1 | 2 | 3 | 4 | 6 | 8 | 12 | 16 | 24;
@@ -15,14 +16,16 @@ export const space = (step: Space): string => (step === 0 ? '0' : `var(--h-space
  */
 export function primitiveStyle(
   properties: Record<string, string | number | undefined>,
-  style?: string | Record<string, string | number>,
+  style?: HTMLAttributes<'div'>['style'],
 ): string | undefined {
   const own = Object.entries(properties)
     .filter(([, value]) => value !== undefined)
     .map(([name, value]) => `${name}: ${value}`);
   const passed = typeof style === 'string'
     ? [style.trim().replace(/;$/, '')]
-    : Object.entries(style ?? {}).map(([name, value]) => `${name.startsWith('--') ? name : name.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`)}: ${value}`);
+    : Object.entries((style ?? {}) as Record<string, unknown>)
+        .filter(([, value]) => value !== undefined && value !== null)
+        .map(([name, value]) => `${name.startsWith('--') ? name : name.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`)}: ${value}`);
   const all = [...own, ...passed].filter(Boolean);
   return all.length ? all.join('; ') : undefined;
 }
