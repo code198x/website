@@ -1,0 +1,9 @@
+# Bounded text layout across four bitmap machines
+
+1. Reuse the maintained 8x8 bitmap-text renderers, their original font, mode setup and native transport on Spectrum 48K, BBC MODE 4, Dragon PMODE 4 and CPC MODE 1. Preserve existing routines and evidence.
+2. Add separate include files for counted-line measurement, left/centre/right alignment and bounded multi-line layout. Use character-boundary wrapping plus LF, a declared rectangle and line pitch; preflight the complete request before drawing. Preserve public layout inputs; document the owned text/backend contexts. No proportional or transformed-font claim.
+3. Supply complete callers, a changed-width/alignment/spacing customisation, and bounded wrong-width/wrong-origin examples with independently predicted native results and verified repairs. Verify all four emulators: full destination memory, guards, source preservation, empty/max-length/rejected cases, aligned origins/line breaks, foreground writes and captures. Qualify actual tool binaries and retain source/image hashes and corruption controls in CI.
+4. Add CodeFromFile learner entries and an explanatory comparison, reciprocal Maths links where useful, desktop/phone verification and source-first dependency notes. Update #126 and the topic/machine matrix; do not claim the wider proportional/scaling issue complete.
+5. Run appropriate checks, commit/push source and website PRs, retain review evidence and clean task-owned exports/worktrees/tools/processes. No merge or deploy is requested for this batch.
+
+Verification prerequisite: the current type baseline embeds an absolute node_modules path from another checkout. Normalise only that installation prefix on both observed/baseline keys, sum collisions and retain diagnostic file/code/message/package subpaths and counts. Prove the old mismatch and run negative/equality/count controls before the full check. Do not rewrite the baseline or waive errors.
