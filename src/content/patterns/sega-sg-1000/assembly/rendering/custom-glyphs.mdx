@@ -4,7 +4,7 @@ summary: "Install a picture, use it in many cells, then replace the picture or c
 platform: "sega-sg-1000"
 category: "rendering"
 difficulty: "intermediate"
-tags: ["characters", "glyphs", "fonts", "udg", "maths"]
+tags: ["characters", "glyphs", "fonts", "udg", "maths", "large characters", "tiles"]
 ---
 
 import CodeFromFile from '@components/CodeFromFile.astro';
@@ -91,3 +91,73 @@ Two completed accepted faulty builds, **wrong-slot** and **wrong-name**, fail bo
 - [Unchanged reusable include](https://github.com/code198x/code-samples/blob/0644610706bd4013366ed134d256652077af84e9/msx/patterns/assembly/rendering/custom-glyphs/glyphs.inc)
 - [Full contract, costs and primary references](https://github.com/code198x/code-samples/blob/0644610706bd4013366ed134d256652077af84e9/cross-platform/patterns/rendering/tms-glyphs/README.md)
 - [Compare writable character systems](/patterns/cross-platform/rendering/custom-glyphs/)
+
+
+## Make a larger character from four tiles
+
+A score digit or a title can grow beyond one cell without a bitmap renderer. Prepare four ordinary 8×8 tiles, put them in four consecutive slots, and select them as a **2×2 character**. The VDP still draws its usual tiles; your picture now occupies 16×16 stored dots.
+
+<Figure src="/images/sega-sg-1000/patterns/character-quads/opening.png" kind="capture" width={560} alt="Two original F characters enlarged to sixteen dots across and down on the native character grid" caption="Each F uses four shared patterns and four screen names. The two copies share their picture bytes, just as ordinary characters do." />
+
+### Prepare the picture once
+
+The maintained host-side converter doubles every source dot into a 2×2 block. Run `python3 cross-platform/patterns/rendering/character-quads/prepare.py source.bin large.bin` with exactly eight source bytes. The result is **32 bytes**: top-left, top-right, bottom-left, bottom-right, eight rows each. The supplied original F and arrow are also checked in as assembler data:
+
+<CodeFromFile src="sega-sg-1000/patterns/assembly/rendering/character-quads/assets.inc" lang="z80" title="Four row-major tiles per large character" />
+
+You can design a full 16×16 picture instead of enlarging an 8×8 source. Keep that tile order and length. Passing eight bytes to an upload declaring four patterns would read 24 bytes beyond your asset: the upload API trusts its source pointer. Keep all 32 bytes readable, non-wrapping and stable in the selected CPU bank.
+
+### Include, install and place
+
+Keep the existing **24-byte G context** and allocate **eight more private bytes at Q**, separate from G, assets, code and stack. Set the same wired G+10/G+11 ports and Graphics I mode described above; call `glyph_init` once after video setup. Then include the placement routine alongside the unchanged upload component:
+
+<CodeFromFile src="sega-sg-1000/patterns/assembly/rendering/character-quads/caller.inc" from="kernel_start:" to="quad_end:" lang="z80" title="Include upload and four-cell placement" />
+
+The normal caller chooses the F at asset offset 0, slot 8 and origins 330 and 334. Those origins are column 10 and 14 of row 10, because `cell = row*32+column`:
+
+<CodeFromFile src="sega-sg-1000/patterns/assembly/rendering/character-quads/demo.asm" lang="z80" title="Choose the asset, four slots and two places" />
+
+<CodeFromFile src="sega-sg-1000/patterns/assembly/rendering/character-quads/prepare.inc" lang="z80" title="Install once, then place two instances" />
+
+Call **quad_select** directly in your own project. Set Q+0 to the first slot and the little-endian word Q+1 to the top-left cell. These three input bytes survive. Q+3 returns 1 for an accepted call or 0 for rejection; Q+4 returns four name data writes or zero. Q+5–7 are private. All G bytes survive placement, including the upload results and ports.
+
+AF/BC/DE/HL/flags are clobbered. Reserve twelve stack bytes including the call, plus your caller/interrupt needs. The routine is non-re-entrant, changes no interrupt-enable or bank state, and needs the same exclusive VDP latch ownership as the upload component. A console NMI is not masked by DI. The reset fixture's mailbox and 256-byte readback buffer are verification tools, not requirements for a game.
+
+Accepted origins have **column 0–30 and row 0–22**. The last is `22*32+30 = 734`, whose lower-right cell is 767. Column 31, row 23 and word indices outside the screen reject **before any VDP access**. First slot 252 is valid; 253–255 would run past slot 255 and reject. Both outputs reset even after a previous successful call. There is no clipping or automatic allocation. Install the four slots first; erase an old instance separately when moving one.
+
+### Make it your own
+
+The customised caller changes the asset offset to 32 for the arrow, chooses slot 16 and places its first copy at cell 734, the last legal origin. Its second copy remains near the centre. Scratch and code size stay the same:
+
+<CodeFromFile src="sega-sg-1000/patterns/assembly/rendering/character-quads/customise.asm" lang="z80" title="Change the shape, allocation and position" />
+
+<Figure src="/images/sega-sg-1000/patterns/character-quads/customise.png" kind="capture" width={560} alt="An original arrow appears near the centre and exactly at the lower-right corner of the native character screen" caption="The customised program ran independently. Four cells fit at the bottom-right; starting one column or row later would reject the whole placement." />
+
+Graphics I colours still belong to groups of **eight slots**. Slots 8–11 share one colour byte; slots 5–8 cross two groups. A four-slot-aligned start keeps the four tiles in one group, but that group can also contain other pictures. Set its colours separately. This white-on-black fixture does not verify colour animation. Replacing a shared tile changes every instance using that slot, including unrelated pictures if their allocations overlap.
+
+### Common mistake: one cell is not one row
+
+**Deliberately wrong:** this changes the bottom-row step from 32 to 1. The call completes and reports four data writes, but its lower tiles land beside the upper ones. One overwrites the top-right name.
+
+<CodeFromFile src="cross-platform/patterns/rendering/character-quads/mistakes/stride.inc" from="; BEGIN WRONG" to="; END WRONG" lang="z80" title="Wrong: move one cell to find the lower row" />
+
+<Figure src="/images/sega-sg-1000/patterns/character-quads/wrong-stride.png" kind="capture" width={560} alt="The completed faulty program breaks both F characters by placing their bottom tiles in the upper row" caption="Wrong: the names are in valid VRAM, but the four tiles no longer form a 2×2 picture. A successful return did not prove the geometry." />
+
+<CodeFromFile src="cross-platform/patterns/rendering/character-quads/mistakes/stride.inc" from="; BEGIN FIX" to="; END FIX" lang="z80" title="Fixed: move one full 32-cell row" />
+
+<Figure src="/images/sega-sg-1000/patterns/character-quads/fixed-stride.png" kind="capture" width={560} alt="The independently executed repaired program restores both complete F characters" caption="Fixed: the names and full native picture match the independent model. The repaired executable is byte-identical to the normal caller." />
+
+### Count tiles, names and work
+
+Tile (tx,ty) uses code `first + ty*2+tx`; its screen cell is `origin + ty*32+tx`. Inside the 16×16 result, output dot (x,y) comes from source `(x div 2,y div 2)`. [Translation and character grids](/craft/maths-for-games/unit-13/) connects those local and screen coordinates; [integer division](/craft/maths-for-games/unit-06/) explains choosing the containing source cell. These are stored dots, not a promise of physically square pixels on every TV.
+
+A prepared character needs **32 asset bytes and four pattern slots**, four times its eight-byte source. Upload once for **32 pattern data bytes plus two control bytes**. Each placement writes **four name bytes plus four control bytes**. Q+4 counts only name data; none of these counts is elapsed cycles or a frame budget. The placement adds **92 code bytes and eight RAM bytes** to the existing 205-byte upload component and its 24-byte context. Video setup, stack and diagnostics are additional. There is no runtime pixel resampling.
+
+At most 64 disjoint four-tile characters fit before you reserve blank, UI and game tiles. A string API, non-consecutive tile sharing, banks, a VBlank queue and larger grid shapes need separately verified contracts. [Bitmap text](/patterns/cross-platform/rendering/bitmap-text/) offers arbitrary placement and other sizing choices at a different draw/storage cost. Keep ordinary one-cell text when it does the job cheaply.
+
+<CodeFromFile src="cross-platform/patterns/rendering/character-quads/z80.inc" lang="z80" title="Reusable bounded four-tile placement" />
+
+This sega-sg-1000 reset configuration completed **893 native observations** with Asm198x 0.0.71 and Emu198x 0.39.0: every screen origin, slot boundaries, rejected edges, the customised caller and completed wrong/fixed builds. Every call checks all 768 name bytes, inputs, status/count, unchanged G and CPU guards; selected whole 16 KiB VRAM snapshots and native frames check other resources and visible output. Original replacement firmware only: no stock OS, physical-device timing, interrupt coexistence or tear-free live-upload claim. Shared code does not qualify another machine automatically.
+
+- [Prepared assets, callers and native evidence](https://github.com/code198x/code-samples/tree/0c412ed36df3d5da4deb58a046fee05edc3d6949/sega-sg-1000/patterns/assembly/rendering/character-quads)
+- [Shared four-tile contract and alternatives](https://github.com/code198x/code-samples/blob/0c412ed36df3d5da4deb58a046fee05edc3d6949/cross-platform/patterns/rendering/character-quads/README.md)
