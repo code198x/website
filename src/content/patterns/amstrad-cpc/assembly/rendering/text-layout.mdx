@@ -55,7 +55,7 @@ Block mode uses `width div 8` cells per line. It keeps spaces and **can split a 
 
 A full chunk consumes an immediately following LF as its own break. Consecutive LFs retain interior empty lines. A final LF ends its line without creating another trailing row. Empty input has zero lines and no drawing. The whole rectangle must fit the physical bitmap and be at least 8×8; an empty request still validates its declaration.
 
-Pitch is the distance between row origins. Five rows at pitch 16 need `(5-1)*16+8=72` scanlines. Opaque mode paints actual glyph cells, not the unused width or an empty line. Clear the panel you own before replacing a longer message, or old letters may remain. Word wrapping and incremental reveal can build on this, but are not supplied here.
+Pitch is the distance between row origins. Five rows at pitch 16 need `(5-1)*16+8=72` scanlines. Opaque mode paints actual glyph cells, not the unused width or an empty line. Clear the panel you own before replacing a longer message, or old letters may remain. Use the word-aware variant below when words should stay together. Incremental reveal is a separate technique.
 
 ## Make it your own
 
@@ -126,3 +126,69 @@ The component is non-re-entrant. It supplies no frame wait, OS negotiation, inte
 The [source and retained records](https://github.com/code198x/code-samples/tree/50a33a0f1ef1bc027ead0d9115a559f1158e33c1/amstrad-cpc/patterns/assembly/rendering/text-layout) contain 64 positive native calls for this machine, the custom caller, two completed faults and both repairs. The checks compare the whole bitmap allocation, public results, guards, unchanged source/font and selected entire native frames. Asm198x 0.0.71 and released Emu198x 0.41.0 are pinned. Retained replay and corruption tests support CI; they do not replace fresh execution on another machine or configuration.
 
 [Compare the four implementations](/patterns/cross-platform/rendering/text-layout/) and use the existing bitmap-text entry for the font, backend and original hardware sources.
+
+
+## Keep words together
+
+For a paragraph or message panel, word-aware wrapping can be easier to read. Choose the maintained `word-wrap/z80.inc` variant over the same bitmap-text renderer. It adds 113 code bytes (1,741 total) and keeps the **same 64-byte TL allocation and public contract**. The original character-wrap component above remains useful for compact labels and fixed grids.
+
+In seven columns, `ONE THREE FIVE` becomes `ONE` / `THREE` / `FIVE`. In two columns, `ABCDE` still becomes `AB` / `CD` / `E`: a word wider than the panel has to split if the routine is to make progress.
+
+The exact policy matters when preparing messages:
+
+- Fit at most `width div 8` cells. If an LF or space follows a full line, consume that delimiter as the break.
+- Otherwise, break at the last space **after the first byte** of the current line, omitting that one separator. If there is none, split at the cell limit.
+- Preserve every other space. Leading, repeated and trailing spaces remain data; this is not whitespace normalisation. Three spaces in a one-column panel occupy two rows because the middle space becomes a break.
+- Byte 10 is LF in block mode. Consecutive LFs retain interior empty lines; a final LF adds no extra trailing row. Byte zero is a glyph code, not a terminator.
+
+`layout_line` and `layout_measure` retain their counted-line behaviour: LF occupies a glyph cell there. Unsupported codes use the configured fallback. Empty input has zero rows and no drawing but still validates the declaration.
+
+Both layout components deliberately export the same entry labels. **Include one of them**, after bitmap-text, rather than including both. The TL contract and single-line calls stay the same. Words can require more rows than character wrapping: the complete first pass checks the height **before drawing**, so a panel that is now too short rejects without partial text.
+
+Pitch measures the distance between row origins. Five rows at pitch 16 need `(5-1)*16+8=72` scanlines. Opaque mode paints actual glyph cells, not the unused panel width or empty rows. Clear the panel you own before replacing a longer message, or old letters may remain.
+
+
+### Try a word-aware panel
+
+Use the [complete word-aware caller](https://github.com/code198x/code-samples/tree/917f96973ca31ef7e72c9afce2f9463247b02257/amstrad-cpc/patterns/assembly/rendering/word-wrap). The include replaces text-layout; keep the same T/BP/font/backend setup. The normal call still looks like this:
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/rendering/word-wrap/prepare.inc" lang="asm" title="Use the same TL contract with word-aware layout" />
+
+Build `customise.asm` with the same includes. It narrows the panel from 176 to 104 pixels, selects right alignment, changes pitch from 12 to 16 and supplies another original counted message. The result has five lines inside the existing 80-scanline height. The rows are A NARROW / PANEL / WRAPS THIS / MESSAGE / PRESS FIRE. PANEL and MESSAGE stay whole; character wrapping split both words in the earlier example.
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/rendering/word-wrap/customise.asm" lang="asm" title="Change the panel, alignment, pitch and counted message" />
+
+<Figure src="/images/amstrad-cpc/patterns/word-wrap/customise.png" kind="capture" alt="The custom message wraps into five right-aligned lines inside a narrower panel on CPC 464 MODE 1." caption="Verified native customisation using the unchanged layout and drawing routines. The narrow panel keeps words together; pitch controls the vertical footprint." />
+
+Edit `customise-message.inc` and update `MESSAGE_LENGTH` together. The routine has no terminator scan to rescue an incorrect count. More rows or wider text can increase drawing work, even though code and context allocations stay the same. A proportional font, another glyph size, a different whitespace policy or another video mode needs its own implementation and verification.
+
+
+### A word breaks despite a usable space
+
+The scan has found a space, but the caller discards that saved boundary and cuts at capacity. `ONE THREE FIVE` becomes `ONE THR` / `EE FIVE` in a seven-column panel. The count is bounded, yet the intended word policy is lost.
+
+<CodeFromFile src="cross-platform/patterns/rendering/word-wrap/mistakes/z80-break.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: discard the saved word boundary" />
+
+<Figure src="/images/amstrad-cpc/patterns/word-wrap/wrong-break.png" kind="capture" alt="ONE THREE FIVE is cut into ONE THR and EE FIVE despite a usable word boundary." caption="The faulty word-break branch completes its native call but splits words unnecessarily." />
+
+Restore both the drawn count and the source resume position. The common delimiter step then consumes the selected space exactly once:
+
+<CodeFromFile src="cross-platform/patterns/rendering/word-wrap/mistakes/z80-break.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct: resume at the saved separator" />
+
+<Figure src="/images/amstrad-cpc/patterns/word-wrap/fixed-break.png" kind="capture" alt="ONE, THREE and FIVE occupy three complete centred lines." caption="The repaired native caller keeps each word whole. The full bitmap and outputs match the independent expectation." />
+
+
+### What does word wrapping cost?
+
+The extra work is scanning for a separator and possibly rescanning the start of a word on the next row, in both planning passes. Every row consumes at least one source byte; counted input is bounded at 255. There is no extra context or font allocation. This is not proportional text, kerning or whitespace normalisation.
+
+For the same custom message and panel, changed line breaks and two omitted spaces reduce span calls from **709 to 693**. Destination-byte writes change from **1,453 to 1,405**. Those are observed drawing-work counts, not a total-speed comparison: planning costs more, and placement changes byte phase too. Measure the complete call before claiming a frame budget.
+
+The word-aware component retains **79 positive native calls**, the customisation and three faults with executed repairs on this machine. Full memory, inputs/outputs, guards, unchanged source/font and selected native frames match independent expectations. The four-machine total is 320 observations with Asm198x 0.0.71 and Emu198x 0.41.0. [Source and records](https://github.com/code198x/code-samples/tree/917f96973ca31ef7e72c9afce2f9463247b02257/amstrad-cpc/patterns/assembly/rendering/word-wrap) include the resource contract and reproduction commands.
+
+<details>
+<summary>Read the reusable word-aware component</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/word-wrap/z80.inc" lang="asm" title="Selectable word-aware variant; include instead of text-layout" />
+</details>
+
+Captures preserve native borders and horizontal sampling. Use logical pixel coordinates for layout calculations; these are not calibrated CRT aspect-ratio demonstrations.

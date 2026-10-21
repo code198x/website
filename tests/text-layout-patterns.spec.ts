@@ -30,9 +30,9 @@ for (const [machine, evidence] of machines) {
     await expect(prose.getByRole('heading', {name: 'Make it your own', exact: true})).toHaveCount(1);
     await expect(prose.getByRole('heading', {name: 'Common mistakes and their symptoms', exact: true})).toHaveCount(1);
     await expect(prose.locator('code').filter({hasText: 'layout_block'}).first()).toBeVisible();
-    await prose.locator('details summary').click();
-    await expect(prose.locator('details code')).toContainText('layout_measure');
-    await expect(prose.locator('details code')).toContainText('layout_reject');
+    await prose.locator('details summary').first().click();
+    await expect(prose.locator('details code').first()).toContainText('layout_measure');
+    await expect(prose.locator('details code').first()).toContainText('layout_reject');
     for (const [name, retained] of Object.entries(captures)) {
       const url = `/images/${machine}/patterns/text-layout/${name}.png`;
       const image = prose.locator(`img[src="${url}"]`);
