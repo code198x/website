@@ -28,10 +28,12 @@ for (const [machine, evidence] of machines) {
     await expect(prose.getByRole('heading', {name: 'Make it your own', exact: true})).toHaveCount(1);
     await expect(prose.getByRole('heading', {name: 'Common mistakes and their symptoms', exact: true})).toHaveCount(1);
     await expect(prose.locator('code').filter({hasText: 'layout_block'}).first()).toBeVisible();
-    await prose.locator('details summary').last().click();
-    await expect(prose.locator('details code').last()).toContainText('layout_measure');
-    await expect(prose.locator('details code').last()).toContainText('layout_reject');
-    await expect(prose.locator('details code').last()).toContainText('l_break_i');
+    const wordComponent = prose.locator('details').filter({has: page.getByText('Read the reusable word-aware component', {exact:true})});
+    await expect(wordComponent).toHaveCount(1);
+    await wordComponent.locator('summary').click();
+    await expect(wordComponent.locator('code')).toContainText('layout_measure');
+    await expect(wordComponent.locator('code')).toContainText('layout_reject');
+    await expect(wordComponent.locator('code')).toContainText('l_break_i');
     await expect(prose.getByRole('heading', {name:'Keep words together',exact:true})).toHaveCount(1);
     for (const [name, retained] of Object.entries(captures)) {
       const url = `/images/${machine}/patterns/word-wrap/${name}.png`;
@@ -66,7 +68,7 @@ test('@built text layout comparison leads to four implementations and Maths', as
   const prose = page.locator('.pattern-prose');
   for (const [machine] of machines) await expect(prose.locator(`a[href="/patterns/${machine}/assembly/rendering/text-layout/"]`)).toHaveCount(1);
   for (const unit of ['06', '13']) {
-    await prose.locator(`a[href="/craft/maths-for-games/unit-${unit}/"]`).click();
+    await prose.locator(`a[href="/craft/maths-for-games/unit-${unit}/"]`).first().click();
     await expect(page).toHaveURL(new RegExp(`/craft/maths-for-games/unit-${unit}/$`));
     const back = page.locator('main a[href="/patterns/cross-platform/rendering/text-layout/#keep-words-together"]').first();
     await expect(back).toBeVisible();

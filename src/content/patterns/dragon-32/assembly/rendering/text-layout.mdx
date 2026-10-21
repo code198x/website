@@ -1,10 +1,10 @@
 ---
 title: "Measure, Align and Wrap Text on Dragon 32 PMODE 4"
-summary: "Measure and align counted labels, then choose bounded character or word wrapping for a message panel."
+summary: "Measure and align labels, choose character or word wrapping, and give narrow letters less room with proportional text."
 platform: "dragon-32"
 category: "rendering"
 difficulty: "intermediate"
-tags: [text, layout, alignment, wrapping, word-wrap, maths, diagnostics]
+tags: [proportional, text, layout, alignment, wrapping, word-wrap, maths, diagnostics]
 ---
 
 import CodeFromFile from '@components/CodeFromFile.astro';
@@ -65,7 +65,7 @@ Build `customise.asm` with the same includes. It narrows the panel from 176 to 1
 
 <Figure src="/images/dragon-32/patterns/text-layout/customise.png" kind="capture" alt="The custom message wraps into five right-aligned lines inside a narrower panel on Dragon 32 PMODE 4." caption="Verified native customisation using the unchanged layout and drawing routines. Width changes the line count; pitch changes the vertical footprint." />
 
-Edit `customise-message.inc` and update `MESSAGE_LENGTH` together. The routine has no terminator scan to rescue an incorrect count. More rows or wider text can increase drawing work, even though code and context allocations stay the same. A proportional font, another glyph size, word-wrap policy or another video mode needs its own implementation and verification.
+Edit `customise-message.inc` and update `MESSAGE_LENGTH` together. The routine has no terminator scan to rescue an incorrect count. More rows or wider text can increase drawing work, even though code and context allocations stay the same. The proportional option below changes glyph advances. Another glyph size or video mode still needs its own implementation and verification.
 
 For these exact original messages, native counters report:
 
@@ -160,7 +160,7 @@ Build `customise.asm` with the same includes. It narrows the panel from 176 to 1
 
 <Figure src="/images/dragon-32/patterns/word-wrap/customise.png" kind="capture" alt="The custom message wraps into five right-aligned lines inside a narrower panel on Dragon 32 PMODE 4." caption="Verified native customisation using the unchanged layout and drawing routines. The narrow panel keeps words together; pitch controls the vertical footprint." />
 
-Edit `customise-message.inc` and update `MESSAGE_LENGTH` together. The routine has no terminator scan to rescue an incorrect count. More rows or wider text can increase drawing work, even though code and context allocations stay the same. A proportional font, another glyph size, a different whitespace policy or another video mode needs its own implementation and verification.
+Edit `customise-message.inc` and update `MESSAGE_LENGTH` together. The routine has no terminator scan to rescue an incorrect count. More rows or wider text can increase drawing work, even though code and context allocations stay the same. The proportional option below changes glyph advances; different glyph sizes, whitespace rules or video modes need their own qualification.
 
 
 ### A word breaks despite a usable space
@@ -192,3 +192,69 @@ The word-aware component retains **63 positive native calls**, the customisation
 </details>
 
 Captures preserve native borders and horizontal sampling. Use logical pixel coordinates for layout calculations; these are not calibrated CRT aspect-ratio demonstrations.
+
+
+## Give narrow letters less room
+
+An `I` does not need the same space as a `W`. The proportional variant crops our original font to its ink and supplies one width byte per glyph. Add the chosen letter spacing to get the **advance**: the distance to the next glyph. At spacing 1, six `I`s need 24 pixels and six `W`s need 36. Both needed 48 in the fixed-cell version.
+
+<Figure src="/images/dragon-32/patterns/proportional-text/opening.png" kind="capture" alt="The original two-line prompt uses narrower, proportional letter spacing." caption="The same 33-byte prompt, with glyph-specific advances. Original Code198x font, cropped from the maintained MIT design; verified native reset capture." />
+
+Choose `proportional-text/6809.inc` **instead of** either fixed-width layout include. Keep the existing bitmap-text component and this machine's backend. Reserve **80 bytes for TL**, rather than 64; T and BP still need 96 and 48 bytes. Their addresses and video obligations remain as above. Use the [complete proportional caller](https://github.com/code198x/code-samples/tree/6db0c4c434aa465fa0edeb088ebf9a9f3bf1c37b/dragon-32/patterns/assembly/rendering/proportional-text) for the new font and metric includes as well as the ordinary setup call.
+
+The first 13 TL input bytes and output offsets remain familiar. Add a native-order **word metric pointer at TL+64** and **byte letter spacing at TL+66**. The table has one width byte per declared glyph, indexed by `resolved code − first code`. Resolve an unsupported code to the configured fallback *before* looking up its width. Each width is 1..8, spacing is 0..2, and their sum must be at most 8. Inputs TL+0..12 and +64..66 survive; the rest of the 80-byte context is scratch or output.
+
+<CodeFromFile src="dragon-32/patterns/assembly/rendering/proportional-text/prepare.inc" lang="asm" title="Supply the metric table and letter spacing before layout_block" />
+
+**Measurement now reads the string, fallback and widths.** Initialise the whole declaration before `layout_measure`; the old count-only call cannot measure this font. It returns the sum at TL+18, even if that sum exceeds panel width. `layout_line` checks fit before subtracting for alignment. The same advances decide where a word fits in block mode, then place its glyphs during rendering. This is an advance sum, not optical centring: the final spacing slot is included too.
+
+The source is still counted bytes, the glyph is still eight rows, and top is a cell origin rather than a baseline. LF only breaks in block mode; elsewhere it is a glyph or fallback. Word wrapping keeps the explicit space/LF policy described above, but tests pixel advances rather than `width div 8`. No kerning pairs, shaping, bearings or case conversion are supplied.
+
+### Change the spacing deliberately
+
+The maintained custom caller uses spacing **2 instead of 1**, a 104-pixel right-aligned panel, pitch 16 and the 44-byte message used above. It produces **4 rows**, with a maximum advance of **94 pixels**. The glyphs keep their shapes; their origins move further apart. `I! WIDE` measures 32 pixels at spacing 1 and 39 at spacing 2.
+
+<CodeFromFile src="dragon-32/patterns/assembly/rendering/proportional-text/customise.asm" lang="asm" title="Change letter spacing alongside the panel and message" />
+
+<Figure src="/images/dragon-32/patterns/proportional-text/customise.png" kind="capture" alt="The custom message uses wider letter spacing in the narrow right-aligned panel." caption="Executed customisation: the width table stays the same; spacing, panel and message change." />
+
+Edit a glyph's eight row bytes and its width together. Keep ink inside the declared width and `width + spacing ≤ 8`. A smaller width crops pixels; it does not shrink the letter. A space has width 3 in this original font. A different font needs readable, stable rows and a matching table for its declared range. Those allocations must not overlap the bitmap, scratch, code or stack.
+
+### Letters spread beyond their measured end
+
+This next fragment is **deliberately wrong**. Measurement uses proportional advances, but drawing still moves eight pixels after each glyph. `I! WIDE` starts at the planned position, then spreads out. Changing the panel origin would hide one symptom while leaving the disagreement in place.
+
+<CodeFromFile src="cross-platform/patterns/rendering/proportional-text/mistakes/6809-advance.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: retain a fixed eight-pixel movement" />
+
+<Figure src="/images/dragon-32/patterns/proportional-text/wrong-advance.png" kind="capture" alt="I! WIDE spreads across fixed eight-pixel positions despite its smaller measured width." caption="The faulty native call completes. Its whole bitmap differs from the correct proportional expectation." />
+
+Restore the very advance used by the planner:
+
+<CodeFromFile src="cross-platform/patterns/rendering/proportional-text/mistakes/6809-advance.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct: advance by this glyph's width plus spacing" />
+
+<Figure src="/images/dragon-32/patterns/proportional-text/fixed-advance.png" kind="capture" alt="The repaired I! WIDE label fits its measured proportional advance." caption="The repaired caller executes and reproduces the original working fixture bytes." />
+
+### What the smaller letters cost
+
+This layout variant uses **2,230 code bytes and 80 TL bytes**, compared with the fixed alternatives above. The cropped font still uses 512 bytes; its width table adds 64. The unchanged renderer and backend still cost 2,058 and 470 code bytes. BBC row tables, video, source and stack remain separate allocations. Keep the conservative 80-byte stack budget plus your caller/interrupt depth.
+
+| Exact workload | Normal prompt | Narrow custom panel |
+| --- | ---: | ---: |
+| Source bytes | 33 | 44 |
+| Logical rows | 2 | 4 |
+| Maximum line advance | 104 pixels | 94 pixels |
+| Backend spans | 511 | 701 |
+| Destination-byte writes | 682 | 952 |
+
+Smaller advances can reduce opaque background work, but also change byte phase and line breaks. The component validates the table, reads glyph widths, may rescan words and calls the baseline renderer once per glyph. These drawing counts do **not** establish a speed gain or frame budget. Measure static labels once where useful; pre-rendering trades another asset for less runtime work.
+
+The complete planning pass validates the declaration and height before drawing. Rejection leaves zero public results and the bitmap intact. Source, font, metrics, pens and mappings must remain stable through both passes. Opaque text clears each glyph's advance, including spacing, for eight rows; unused panel space and blank lines still need your own clearing. Transparent zero bits preserve the picture underneath.
+
+The component owns T/BP and their scissor, is non-re-entrant, and supplies no OS or interrupt protection, bank switching or safe display interval. CPU clobbers remain those of the renderer above. The 88 positive native calls, custom caller and wrong/fixed observations compare advance sums, row placement, complete destination memory, neighbours, unchanged source/font/metrics and selected whole frames. Tests cover all eight horizontal phases, empty/255-code strings, fallback, spacing limits, malformed metrics and atomic rejection. The exact dragon reset/display configuration is qualified with pinned Asm198x 0.0.71 and Emu198x 0.41.0; stock-OS loading, live tearing, original hardware and other modes remain separate checks.
+
+<details>
+<summary>Read the reusable proportional component</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/proportional-text/6809.inc" lang="asm" title="Proportional measurement and word-aware layout over the existing renderer" />
+</details>
+
+[Advance sums and rounding](/craft/maths-for-games/unit-06/) explain why measuring and drawing must agree; [local-to-screen coordinates](/craft/maths-for-games/unit-13/) explain how those advances become glyph origins. Integer enlargement and other transforms remain further variants.
