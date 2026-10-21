@@ -46,8 +46,13 @@ its own parent commit, because other work lands on main in between.
 | Kit names for 26 site aliases, 9 unread tokens removed (step 4.1, #886) | −3,549 | 425,726 |
 | Seven body-scoped tokens resolved to the kit (step 4.2, #888) | −4,651 | 421,075 |
 | 138 fallbacks on kit tokens that never apply (step 4.3, #889) | −890 | 420,185 |
+| Element defaults into `base` (step 5, #890) | +195 | 420,380 |
+| Ten layout primitives, their specimen, PageFrame on Center (step 5) | +5,586 | 425,966 |
 
-Removals so far: 70,973 bytes, 14.9% of the starting point.
+Removals so far: 70,973 bytes, 14.9% of the starting point. Net of the
+additions above, the source is 50,021 bytes (10.5%) smaller. The primitives
+are an investment step 6 has to repay: it replaces hand-written layout with
+them.
 
 **Correction.** Until 2026-10-20 evening this table used a line-based count
 that missed one-line `<style>` blocks and counted script text after a
@@ -313,6 +318,17 @@ Add the ten primitives above to `src/components/layout/`, their classes to the
 `composition` layer, a catalogue specimen each and their browser tests.
 Rebuild `PageFrame` on `Center`, which must leave its pages unchanged (zero
 differences). No other page changes in this step.
+
+Done. The classes take an `l-` prefix (`.l-stack`), because `.center` and
+`.grid` were already site classes and `.grid` a kit one. Settings a primitive
+reads on itself are registered `inherits: false`, so nesting never leaks;
+Sidebar, Switcher and Reel style their children, so theirs inherit and the
+components always write them. Stack and Cover use `gap`, not child margins.
+Frame refuses a capture at build time (`frame.ts`, unit-tested). The layer
+order moved into `LayerOrder.astro`, because the catalogue skips Layout and
+would otherwise have created `composition` after `legacy`. PageFrame's rules
+moved into `composition` too. The gate's only differences are the extra
+inline `<style>` elements in `<head>`.
 
 ### 6. Recompose page families (intended change, one PR per family)
 
