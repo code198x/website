@@ -72,3 +72,19 @@ Normalise that path in both current and recorded keys, retaining file, code,
 message, package and subpath. Regression checks compare two checkout roots and
 ensure different package paths, diagnostic codes and source files still differ.
 No baseline entries are added and no type error is suppressed.
+
+## Current-main reconciliation
+
+Main independently merged its own checkout-independent type-baseline fix while
+this PR was being checked. Retain main's implementation and remove this PR's
+duplicate helper/tests. The adoption diff again changes only the approved
+AMOS consumer. On the preceding combined tree, 232 unit checks and the existing
+75-error type baseline pass, production builds 2634 pages, and the release
+browser run reports 529 passes and one 1920px Systems-link click timeout. All
+310 frame-plus-AMOS checks pass in the two-worker rerun, including that case
+in 941ms. Offline links report 249610 total, 19278 unique and zero errors.
+
+The new main also adds text-layout patterns. Verify its baseline helper tests
+and the AMOS tests after reconciliation. GitHub's full browser workflow is
+separate pending evidence; do not claim its completion or a merge yet. The
+original failures are retained in PR #902 and navigation issue #901.

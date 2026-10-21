@@ -11,7 +11,7 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { diagnosticKey } from './type-diagnostic.mjs';
+import { normaliseTypeCounts } from './type-baseline-keys.mjs';
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const baselineFile = path.join(root, 'scripts/type-baseline.json');
@@ -34,11 +34,12 @@ if (!summary) {
 
 // An error is its file, code and first message line. Line numbers are left
 // out so unrelated edits above an old error do not count as a new one.
-const current = {};
+const observed = {};
 for (const [, file, code, message] of output.matchAll(/^(\S+):\d+:\d+ - error (ts\(\d+\)): (.*)$/gm)) {
-  const key = diagnosticKey(`${file} ${code} ${message.trim()}`);
-  current[key] = (current[key] ?? 0) + 1;
+  const key = `${file} ${code} ${message.trim()}`;
+  observed[key] = (observed[key] ?? 0) + 1;
 }
+const current = normaliseTypeCounts(observed);
 const total = Object.values(current).reduce((sum, n) => sum + n, 0);
 if (total !== Number(summary[1])) {
   console.error(`Parsed ${total} errors but astro check reported ${summary[1]}; the output format has changed.`);
@@ -52,11 +53,7 @@ if (update) {
   process.exit(0);
 }
 
-const baseline = {};
-for (const [rawKey, count] of Object.entries(JSON.parse(fs.readFileSync(baselineFile, 'utf8')))) {
-  const key = diagnosticKey(rawKey);
-  baseline[key] = (baseline[key] ?? 0) + count;
-}
+const baseline = normaliseTypeCounts(JSON.parse(fs.readFileSync(baselineFile, 'utf8')));
 const added = [];
 const fixed = [];
 for (const key of new Set([...Object.keys(current), ...Object.keys(baseline)])) {

@@ -1,0 +1,57 @@
+---
+title: "Put Text Inside a Panel"
+summary: "Measure counted labels, align them and wrap multi-line messages using four reusable machine-specific implementations."
+platform: "cross-platform"
+category: "rendering"
+difficulty: "intermediate"
+tags: [text, layout, alignment, wrapping, maths]
+---
+
+A prompt changes from `READY` to `READY TO PLAY`. It should still fit its panel. A longer message should either find room on the next line or leave the old picture intact. Those are useful rules to put in one routine instead of rediscovering them in every menu.
+
+These components add counted-line measurement, left/centre/right alignment and bounded multi-line layout to the existing [bitmap-text renderers](/patterns/cross-platform/rendering/bitmap-text/). The drawing routines and their machine-specific display contracts stay in charge of pixels.
+
+| Implementation | What the display path keeps visible |
+| --- | --- |
+| [Spectrum 48K](/patterns/sinclair-zx-spectrum/assembly/rendering/text-layout/) | 256×192 bitmap; scanline helper and separately owned attributes |
+| [BBC Micro MODE 4](/patterns/bbc-micro/assembly/rendering/text-layout/) | 320×256 bitmap; interleaved rows, 512-byte tables, zero-page BP |
+| [Dragon 32 PMODE 4](/patterns/dragon-32/assembly/rendering/text-layout/) | 256×192 linear bitmap; big-endian input/output words |
+| [CPC 464 MODE 1](/patterns/amstrad-cpc/assembly/rendering/text-layout/) | 320×200 logical pixels; packed pen indices and interleaved rows |
+
+Each entry has usable includes, a complete caller, a changed-width/spacing example, native captures and two common mistakes with verified repairs. The evidence covers these named machines and modes; another machine needs its own qualified display backend and execution checks.
+
+## Start with the cell width
+
+An 8×8 font advances eight pixels per code, including a space or fallback glyph. Five codes need 40 pixels. A 177-pixel panel has 137 pixels left over, so centre alignment puts 68 before the label and 69 after it. Add the panel's left edge to turn that local offset into a screen position.
+
+The measurement routine reads a supplied byte count, without scanning for a terminator. Its word result can represent all 2,040 pixels of a 255-code line. Check the result against the panel **before** unsigned subtraction. A label too wide for single-line mode rejects without changing the bitmap.
+
+This centres logical cells, not the outlines of the letters. The original font has blank columns inside its cells. Optical centring, proportional advances and kerning are different decisions; use them when they improve the result enough to justify their costs.
+
+## Give wrapping a precise policy
+
+Block mode fits `panel width div 8` cells per line. It recognises LF (byte 10), preserves spaces and wraps at character boundaries. A long word can split. It does not silently turn into a word processor.
+
+An LF immediately after a full chunk belongs to that break. Consecutive LFs retain interior blank lines. A final LF does not add an extra trailing row. Empty input has zero lines. Single-line mode treats every byte as a glyph code instead; the counted-line measurement routine follows that same rule.
+
+Line pitch is the distance between origins. Five 8-pixel rows at pitch 16 occupy `(5-1)*16+8=72` scanlines. Counting five whole pitches would reserve an unnecessary final gap. The routine plans the complete block before drawing, so a message too tall for its rectangle does not paint half a paragraph first.
+
+## Use it in a game
+
+Supply a panel, alignment, pitch, source pointer and byte count. Initialise the existing renderer's font/range, fallback, mode and pens. The layout owns its 64-byte context and the renderer's 96-byte T/48-byte BP workspaces during the call. It sets the scissor to the panel and leaves source/font/configuration stability to the caller.
+
+For a result screen, centre a counted heading. For menu values, a right-aligned edge can be steadier. For a message panel, use block mode and clear the area you own before replacing longer text. Opaque glyph cells do not erase unused line space or interior blank lines; transparent text preserves zero-bit pixels.
+
+The narrower custom caller shows what the inputs buy you: another message, right alignment, five rows and wider line spacing, with the same font and component allocations. Its 13-column character wrapping deliberately splits PANEL. Word-boundary planning can be a later alternative; it should not be implied by this simpler contract.
+
+## Keep the alternatives cheap
+
+Counted labels are a good fit for fixed game text. A static position can cost less than recalculating a title every frame. A pre-rendered panel can cost less CPU at the expense of another asset. Hardware character screens have their own fixed grids and character repertoires; these bitmap routines are not a reason to replace those useful paths.
+
+The new layout code is 1,628 bytes on Z80, 1,867 on 6502 and 1,463 on 6809 with the qualified assembler. All add 64 private RAM bytes. Renderer/backend code, existing workspaces, font, video storage, BBC tables, messages and stack remain separate. Block mode makes two planning passes; drawing adds source/font reads and the existing glyph/span work. Native span/write counters explain work for a named picture, not elapsed time or a frame budget.
+
+The supplied faults show two common disagreements: measuring four pixels while drawing eight, and treating a panel-local offset as a screen coordinate. Both complete in the emulators, both have independent full-picture expectations, and both repairs execute. A successful loader alone would prove none of that.
+
+[Coordinates and remainders](/craft/maths-for-games/unit-06/) and [glyph-local positions](/craft/maths-for-games/unit-13/) connect the calculations to other drawing routines. The [source contract and execution records](https://github.com/code198x/code-samples/tree/50a33a0f1ef1bc027ead0d9115a559f1158e33c1/cross-platform/patterns/rendering/text-layout) retain include/init/call details, boundaries, tool identities and reproduction commands.
+
+Proportional advances, word-boundary planning, integer enlargement and other transforms need further implementations. Choose those when the result warrants their extra code, data and drawing work. The routines here provide fixed-width layout with the explicit policies described above.
