@@ -4,7 +4,7 @@ summary: "Reusable fixed-width characters and counted strings at any pixel posit
 platform: "dragon-32"
 category: "rendering"
 difficulty: "intermediate"
-tags: ["text", "fonts", "bitmap", "clipping", "maths"]
+tags: ["scaling", "enlargement", "text", "fonts", "bitmap", "clipping", "maths"]
 ---
 
 import CodeFromFile from '@components/CodeFromFile.astro';
@@ -97,3 +97,70 @@ Wrong glyph-bit and string-advance builds each completed accepted calls and fail
 - [Full contract, costs and MIT attribution](https://github.com/code198x/code-samples/blob/ff68dcb33c316532b6d6b2f577bc95a31c86ba83/cross-platform/patterns/rendering/bitmap-text/README.md)
 - [Compare text paths](/patterns/cross-platform/rendering/bitmap-text/)
 - [Underlying pixels and spans](/patterns/dragon-32/assembly/rendering/pixels-and-boxes/)
+
+
+## Make the letters bigger
+
+A title need not use the same tiny cells as a score. Repeat each source pixel twice in both directions and an 8×8 cell becomes 16×16. Use different factors for deliberately wide or tall lettering: 3×2 gives a 24×16 cell. The font still stores just eight bytes per glyph.
+
+<Figure src="/images/dragon-32/patterns/scaled-text/opening.png" kind="capture" width={744} alt="PIXEL TEXT drawn with two-by-two enlarged pixels in the native bitmap." caption="The original font, expanded at draw time with scale X=2 and Y=2. Verified native reset capture; borders and horizontal sampling are preserved." />
+
+Choose `scaled-text/6809.inc` **instead of** the fixed bitmap-text CPU include. It exports the same `text_char` and `text_string` labels, so include only one. Keep this machine's existing backend and required helper/tables. The allocations remain **96 bytes at T plus 48 at BP**. Add two explicit inputs: **T+68 is scale X and T+69 is scale Y**, each an integer from 1 to 4. Set both, even for 1×1; an old fixed-width caller leaves those bytes uninitialised.
+
+<CodeFromFile src="dragon-32/patterns/assembly/rendering/scaled-text/prepare.inc" lang="asm" title="Initialise font, pens, scissor and both scales before text_string" />
+
+The existing font/range, fallback, source/count, mode, pens and scissor contract still applies. Inputs T+0..16, +18..25 and +68..69 survive. T+17 reports acceptance; T+26 returns `X + length×8×scaleX` as a word. Clipped, blank and fallback codes still advance. At scale X=4, 255 codes advance 8,160 pixels; a byte would lose most of that result. A rejected declaration preserves the original X and returns zero consumed, fallback, span and write counts before any destination writes.
+
+Each font pixel becomes a rectangle, rather than a smoothed edge. For a destination-local pixel, the source position is `(x div scaleX, y div scaleY)`. Equivalently, source column 3 at scale X=2 occupies local columns 6 and 7. Add the cell origin, then clip. A cut-off letter keeps that sampling phase: it does not start again at font column zero at the clipping edge. [Integer division and remainders](/craft/maths-for-games/unit-06/) and [glyph-local coordinates](/craft/maths-for-games/unit-13/) explain those two steps.
+
+The native code scales the endpoints of each foreground run and repeats source rows. The independent checker instead samples destination pixels using integer division. Transparent zero bits preserve the picture underneath; opaque mode paints the enlarged background cell first, then its ink. Opaque spaces therefore clear their whole enlarged cells. Neither mode clears unused panel space.
+
+### Make it your own: wide lettering
+
+The maintained custom caller changes 2×2 to **3×2** and replaces the ten-byte PIXEL TEXT message with four-byte BIG!. Its cells become **24×16**, and the four-code label advances **96 pixels**. The font and workspace sizes stay the same. Change the counted length with the message.
+
+<CodeFromFile src="dragon-32/patterns/assembly/rendering/scaled-text/customise.asm" lang="asm" title="Choose independent X/Y enlargement and a counted label" />
+
+<Figure src="/images/dragon-32/patterns/scaled-text/customise.png" kind="capture" width={744} alt="BIG! uses wider three-by-two expanded pixels." caption="Executed customisation: 24×16 cells made from the same eight-row source font. This workload uses 134 spans and 364 destination-byte writes." />
+
+Use 1×4 or 4×1 for other shapes; all sixteen pairs are executed. These factors describe logical pixels. Equal X/Y factors preserve the native raster's pixel proportions, which are not necessarily square on a physical display. The captures do not calibrate a television's aspect ratio.
+
+### Bigger glyphs, but an old drawing step
+
+The following fragment is **deliberately wrong**. The glyph is now 16 pixels wide, but the next origin still moves eight. WAVE overlaps its neighbours. In opaque mode, a later background cell can erase part of the preceding letter.
+
+<CodeFromFile src="cross-platform/patterns/rendering/scaled-text/mistakes/6809-advance.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: keep an eight-pixel advance" />
+
+<Figure src="/images/dragon-32/patterns/scaled-text/wrong-advance.png" kind="capture" width={744} alt="The enlarged WAVE letters overlap because their origins move only eight pixels." caption="The faulty native call completes and matches its independent wrong-image expectation." />
+
+Restore the cached `8×scaleX` advance, then check both the final X and the full picture:
+
+<CodeFromFile src="cross-platform/patterns/rendering/scaled-text/mistakes/6809-advance.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct: move by the enlarged cell width" />
+
+<Figure src="/images/dragon-32/patterns/scaled-text/fixed-advance.png" kind="capture" width={744} alt="The repaired WAVE letters occupy separate sixteen-pixel cells." caption="The repair executes and reproduces the original working fixture bytes." />
+
+### Size has a drawing cost
+
+The scaled component uses **2,590 code bytes** with the qualified assembler; the backend remains 470. The original sample font is still 512 bytes, and T/BP remain 96+48. BBC scanline tables, display memory, caller, string and stack remain separate. Keep a conservative 64-byte stack budget plus your caller/interrupt depth, and the renderer's CPU/register obligations above.
+
+For the same original W! label at (21,37), opaque mode and the same pens, native counters report. Cell dimensions are logical pixels:
+
+| Scale | Cell (px) | Spans | Byte writes |
+| --- | --- | ---: | ---: |
+| 1×1 | 8×8 | 38 | 54 |
+| 2×2 | 16×16 | 76 | 168 |
+| 3×3 | 24×24 | 114 | 282 |
+| 4×4 | 32×32 | 152 | 416 |
+
+Doubling both factors quadruples a cell's background area. Horizontal enlargement widens runs and changes byte crossings; vertical enlargement repeats rows and spans. CPC packs four pen indices per byte while the mono backends pack eight pixels, so their write counts differ. Counters include repeated writes to a byte. They measure drawing work, **not cycles or a frame budget**.
+
+A separate pre-rendered size costs more assets but can avoid runtime expansion. Pre-shifted/masked blitters or precomposed hardware characters offer other trade-offs. Fully clipped cells skip raster work after resolving fallback, retaining logical advance and consumed/missing counts. This avoids expanding invisible rows in long offscreen strings.
+
+The component owns T/BP, is non-re-entrant and supplies no OS negotiation, banking, interrupt protection or safe display interval. Keep source, font, code, contexts, stack and bitmap distinct and stable. This is a direct character/string renderer: the current fixed/proportional text-layout wrappers assume eight-pixel cells and row heights and **cannot simply be placed over this include**. A scaled layout must agree on both dimensions. Wrapping, baselines, kerning, fractional sizes, shrinking, flips and rotation remain separate work.
+
+The [complete source and retained records](https://github.com/code198x/code-samples/tree/b3b5eb21cb542770e9d349993f30bbe6abf91e5f/dragon-32/patterns/assembly/rendering/scaled-text) contain **155 positive native calls**, the customisation and completed wrong/fixed observations. Full bitmap allocations, neighbours, public outputs, counted source/font immutability and selected entire native frames match independent expectations. Coverage includes all scale pairs, every horizontal bit phase, pens, partial/full clipping, empty/255-code input, a 256-glyph declaration and invalid declarations. Qualified tools are Asm198x 0.0.71 and Emu198x 0.41.0 for this named reset/display path; original hardware, stock-OS coexistence, live tearing and other modes need separate checks.
+
+<details>
+<summary>Read the reusable integer-enlarged renderer</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/scaled-text/6809.inc" lang="asm" title="Scaled foreground runs over the existing native span backend" />
+</details>
