@@ -35,7 +35,9 @@ try {
   for (const width of WIDTHS) {
     const page = await browser.newPage({ viewport: { width, height: 900 } });
     for (const route of routes) {
-      await page.goto(base + route, { waitUntil: 'networkidle' });
+      const response = await page.goto(base + route, { waitUntil: 'networkidle' });
+      // A missing page would be photographed as the 404 page and pass for a screenshot.
+      if (!response?.ok()) throw new Error(`${route} answered ${response?.status()}; build the site first`);
       await page.evaluate(() => document.fonts.ready);
       await page.screenshot({ path: path.join(out, `${name(route)}.${width}.png`), fullPage: true, animations: 'disabled' });
     }
