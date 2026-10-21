@@ -1,3 +1,6 @@
+import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import path from 'node:path';
 import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 const entries=[['atari-2600','playfield-kernel','pf_cell:','59,736'],['atari-7800','maria-objects','maria_append:','121 code bytes']];
@@ -16,6 +19,20 @@ for(const [machine,name,routine,cost] of entries){
   for(const link of links)expect((await page.request.get(link)).status(),link).toBe(200);
   for(const width of [1440,320]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);}
   for(const colorScheme of ['light','dark'] as const){await page.emulateMedia({colorScheme,reducedMotion:'reduce'});expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);}
+  await expect(prose.getByRole('heading',{name:'Common mistakes and their symptoms',exact:true})).toBeVisible();
+  const faultNames=machine==='atari-2600'?['wrong-bit','late-registers','wrong-period']:['short-width','wrong-position','bad-terminator'];
+  for(const fault of faultNames){
+   const broken=prose.locator(`img[src$="/mistakes/${fault}.png"]`);
+   await expect(broken).toHaveCount(1);
+   await broken.scrollIntoViewIfNeeded();
+   const response=await page.request.get(`/images/${machine}/patterns/mistakes/${fault}.png`);
+   expect(response.status()).toBe(200);
+   const source=path.join(process.env.CODE_SAMPLES_PATH||'../code-samples',machine,'patterns/assembly/rendering',name,'verification',fault+'.png');
+   expect(createHash('sha256').update(await response.body()).digest('hex')).toBe(createHash('sha256').update(readFileSync(source)).digest('hex'));
+   await expect.poll(()=>broken.evaluate((i:HTMLImageElement)=>i.complete&&i.naturalWidth>0)).toBe(true);
+  }
+  await expect(prose).toContainText('Deliberately wrong');
+  await expect(prose).toContainText(machine==='atari-2600'?'59,964':'second valid terminator');
   await page.goto(`/patterns/platform/${machine}/`);
   await expect(page.locator(`[data-pattern] a[href$="/${name}/"]`)).toHaveCount(1);
  });
