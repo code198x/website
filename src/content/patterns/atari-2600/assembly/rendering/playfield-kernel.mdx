@@ -58,13 +58,66 @@ The kernel's visible CPU cost recurs even when nothing changes. A ROM-only pictu
 <CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/demo.asm" lang="asm" title="Complete allocation, reset and field caller" />
 </details>
 
+## Common mistakes and their symptoms
+
+These examples are deliberately broken. Keep the working includes above as your starting point. Each wrong fragment was assembled into this caller, run in the same NTSC emulator and checked against an independently predicted result. The corrected fragments were run too.
+
+### Part of the letter is scrambled
+
+**Symptom:** the leftmost part of each A is mangled, but the rest of the letter stays in place. This is a packing error, not a reason to move the whole glyph.
+
+<Figure src="/images/atari-2600/patterns/mistakes/wrong-bit.png" kind="capture" alt="Both A glyphs have their first four playfield columns reversed while their remaining columns stay in place." caption="Deliberately reversed PF0 masks. Native Emu198x NTSC capture from the same original glyph and caller as the working image." />
+
+**Cause:** the first four cells use PF0's high nibble. Treating that nibble as most-significant-bit first reverses those four columns. PF1 really does scan most-significant-bit first; applying its rule to PF0 is the mistake.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/mistakes/wrong-bit.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: PF0 masks run backwards" />
+
+**Fix:** restore PF0's order to bits 4,5,6,7, leaving the other masks alone. Compare the whole buffer and picture with the known-good result; a glyph that happens to be symmetric can hide this error.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/mistakes/wrong-bit.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct: each register keeps its own bit order" />
+
+### Small notches appear at a band boundary
+
+**Symptom:** a few pixels at the left of the first A are wrong where its shape changes between eight-line bands. The repeated A on the right is intact. That difference is a timing clue.
+
+<Figure src="/images/atari-2600/patterns/mistakes/late-registers.png" kind="capture" alt="The left A has short erroneous horizontal edges at some band transitions; the repeated right A remains correct." caption="Twelve inserted NOPs delay the playfield writes by 24 CPU cycles. The full native frame differs from the working frame in 64 pixels, all in the left PF0/PF1 regions at band transitions." />
+
+**Cause:** `$EA` is the two-cycle NOP instruction. These twelve bytes do nothing useful, but cost 24 cycles. PF0 and PF1 are now written at cycles 31 and 38 instead of 7 and 14, too late for their left-side output. At a band transition, those regions use the previous band's bits. By the time the beam reaches the repeated right half, the new bits are ready. Most lines within a band look fine because their data did not change.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/mistakes/late-registers.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: add 24 cycles before the first buffer read" />
+
+**Fix:** remove the delay and put extra work outside the visible kernel. Restore the scheduled read below and retain the following PF0 store. Check transitions in an asymmetric picture, as well as the cycle schedule; a constant fill can conceal a late write.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/mistakes/late-registers.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct: keep the first read on its scheduled cycle" />
+
+### The picture looks right, but the field is too long
+
+**Symptom:** this emulator still produces the familiar letter, yet one field takes an extra scanline. A screenshot alone cannot diagnose it.
+
+<Figure src="/images/atari-2600/patterns/mistakes/wrong-period.png" kind="capture" alt="The extra-scanline caller still displays the two A glyphs and boundary cells normally." caption="A plausible-looking still from the broken 263-line caller. The native field-marker measurement, rather than this image, exposes the extra line. No television rolling or instability is claimed." />
+
+**Cause:** the selected caller already accounts for one overscan WSYNC at the frame start. Increasing its other overscan loop from 29 to 30 adds another line. Count all the caller's waits, including the kernel boundary and the final picture line, rather than choosing a loop count in isolation.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/mistakes/wrong-period.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: add one overscan line" />
+
+| This caller | Lines per field | Measured colour clocks between steady field markers |
+|---|---:|---:|
+| Working | 262 | 59,736 |
+| Extra overscan wait | 263 | 59,964 |
+
+**Fix:** restore 29 in this caller, then measure between the same steady CPU markers again. The difference is 228 colour clocks: exactly one scanline. That count belongs to this NTSC caller, not every TIA kernel or PAL configuration.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/mistakes/wrong-period.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct for this caller's complete field schedule" />
+
 ## What was verified
 
 Asm198x 0.0.71 and released Emu198x 0.41.0 execute this original 4 KiB reset cartridge without firmware. Every native frame pixel and all 72 picture bytes are compared with a separate logical-grid model, in repetition and reflection builds. Native call markers and the measured field period guard against incomplete execution. Six rejected boundary calls leave the whole buffer unchanged. Completed wrong-bit, late-register and extra-scanline controls fail the same checks. The website's pinned Asm198x 0.0.65 also assembles it.
 
+All three corrected diagnostic fragments also reproduce the working frame. The native verifier checks each broken capture against its predicted symptom, then requires the repaired path to pass the original destination and timing checks.
+
 This is evidence for this caller and emulator configuration, not original hardware, PAL, arbitrary relocation or coexistence with another kernel.
 
-- [Reusable source, caller and execution records](https://github.com/code198x/code-samples/tree/32081dccbfc2243f751f9aa675ea1042deef6837/atari-2600/patterns/assembly/rendering/playfield-kernel)
-- [Contracts, costs and reproduction](https://github.com/code198x/code-samples/blob/32081dccbfc2243f751f9aa675ea1042deef6837/cross-platform/patterns/rendering/tia-maria/README.md)
+- [Reusable source, caller and execution records](https://github.com/code198x/code-samples/tree/7d7022971a21ec65ba8468d37326b183a518291e/atari-2600/patterns/assembly/rendering/playfield-kernel)
+- [Contracts, costs and reproduction](https://github.com/code198x/code-samples/blob/7d7022971a21ec65ba8468d37326b183a518291e/cross-platform/patterns/rendering/tia-maria/README.md)
 - Steve Wright, Atari, [Stella Programmer's Guide](http://www.atarihq.com/danb/files/stella.pdf), playfield discussion and printed p39 serial-output diagram.
 - [Build objects for the very different MARIA display](/patterns/atari-7800/assembly/rendering/maria-objects/).

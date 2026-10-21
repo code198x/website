@@ -60,12 +60,62 @@ Indirect character maps, 320-pixel modes, holey DMA, arbitrary vertical movement
 <CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/demo.asm" lang="asm" title="Complete RAM lists, DLL, palettes and original graphics" />
 </details>
 
+## Common mistakes and their symptoms
+
+These are deliberately broken versions of the bounded caller. Keep the working builder above. Every example reaches the normal running state; its full native image and relevant list bytes are checked against a separately predicted result. Each corrected fragment was also assembled and executed.
+
+### The right side of each letter disappears
+
+**Symptom:** both A objects lose the part stored in their second graphics byte. Their positions and the surviving left sides remain correct.
+
+<Figure src="/images/atari-7800/patterns/mistakes/short-width.png" kind="capture" alt="Both MARIA glyphs are cropped after their first graphics byte, losing the right part of the A." caption="A one-byte fetch for graphics that needs two bytes. Native Emu198x NTSC direct 160A capture, using the original working glyph data." />
+
+**Cause:** the header stores a five-bit two's-complement width, not a plain byte count. This wrong subtraction encodes a requested width of two as 31, which tells MARIA to fetch one byte. In 160A that fetch supplies only four logical pixels.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/mistakes/short-width.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: use 33 instead of 32 before subtracting width" />
+
+**Fix:** restore 32 before the existing width subtraction and palette combination. A two-byte request then encodes as 30. Check the header and the picture: a too-wide fetch can be invisible when its extra source byte is zero, while still consuming DMA bandwidth.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/mistakes/short-width.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct: encode the negative width in five bits" />
+
+### Two objects turn into one at the left edge
+
+**Symptom:** the objects vanish from their requested x32 and x152 positions. One A appears at x0. Both headers now have the same position, so their identical pictures overlap.
+
+<Figure src="/images/atari-7800/patterns/mistakes/wrong-position.png" kind="capture" alt="One visible A sits at the far left of the MARIA active area because two identical objects overlap at x0." caption="Two objects still exist in the list, but both position bytes are zero. The native capture includes overscan; logical x0 does not mean capture x0." />
+
+**Cause:** the builder writes a constant into the header's fourth byte instead of copying the caller's position. Nothing is wrong with the stored glyph or its page stride. Counting visible pictures would miss that two headers are present.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/mistakes/wrong-position.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: discard the requested horizontal position" />
+
+**Fix:** load ML+6, which holds the caller's logical 160A x coordinate, before writing the fourth header byte. Inspect both positions and the frame. Do not compensate by changing the graphics data or adding a capture-border offset to your game coordinates.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/mistakes/wrong-position.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct: copy the caller's position into the header" />
+
+### An unrequested third letter appears
+
+**Symptom:** the two intended objects remain, and another A appears at logical x96. The software's object count is still two.
+
+<Figure src="/images/atari-7800/patterns/mistakes/bad-terminator.png" kind="capture" alt="MARIA displays an extra A between the two intended objects after a corrupted list terminator." caption="A deliberately bounded terminator error. Known bytes form the stray header, followed by a second valid terminator. No uncontrolled RAM walk is needed to reproduce the symptom." />
+
+**Cause:** MARIA follows list bytes, not ML+7's software count. The second byte of the terminating pair must be zero. This diagnostic makes it 30, turning the pair into the start of another two-byte-wide object header. It also prepares that header's address and position, and leaves a valid terminator immediately after it. Without a bounded fixture, subsequent behaviour would depend on whatever bytes followed the list.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/mistakes/bad-terminator.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong diagnostic: replace the terminator with a stray header" />
+
+This fragment is inserted after list construction and before the caller sets DPPH. It is a test fixture, not code to add to a game. The working builder already writes a new two-byte terminator after every append.
+
+**Fix:** restore the zero at LIST+9, the second byte after this caller's two four-byte headers. MARIA then stops before reading the planted header tail. In your own code, preserve the builder's terminator and use its count to find the end; do not hard-code +9 for a list with a different number of objects. Rebuild or repair an inactive list with DMA off, or under a separately verified publication scheme.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/mistakes/bad-terminator.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct for the selected two-object diagnostic" />
+
 ## What was verified
 
 Asm198x 0.0.71 and released Emu198x 0.41.0 execute this NTSC direct 160A reset caller. Every native frame pixel and each populated header/terminator byte are compared with independent expected results. Seven rejected native calls preserve the surrounding 256-byte list page, including full capacity and page overflow. Guards and completed CPU markers are checked. Completed wrong-width and wrong-position controls fail the same destination/image checks. The website's pinned Asm198x 0.0.65 also assembles it.
 
+All three corrected diagnostic fragments also reproduce the working frame. The native verifier checks each broken capture against its predicted symptom, then requires the repaired path to pass the original destination and timing checks.
+
 This does not establish stock BIOS loading, original-hardware timing, live publication, every palette/mode or a maximum-load benchmark.
 
-- [Reusable source, caller and execution records](https://github.com/code198x/code-samples/tree/32081dccbfc2243f751f9aa675ea1042deef6837/atari-7800/patterns/assembly/rendering/maria-objects)
-- [Contracts, costs and reproduction](https://github.com/code198x/code-samples/blob/32081dccbfc2243f751f9aa675ea1042deef6837/cross-platform/patterns/rendering/tia-maria/README.md)
+- [Reusable source, caller and execution records](https://github.com/code198x/code-samples/tree/7d7022971a21ec65ba8468d37326b183a518291e/atari-7800/patterns/assembly/rendering/maria-objects)
+- [Contracts, costs and reproduction](https://github.com/code198x/code-samples/blob/7d7022971a21ec65ba8468d37326b183a518291e/cross-platform/patterns/rendering/tia-maria/README.md)
 - Atari, [7800 Software Guide](https://atarihq.com/danb/files/7800%20Software%20Guide.pdf), “Display List”, “Display List List”, “DMA Modes”, “Starting up the 7800” and Appendix 3.
