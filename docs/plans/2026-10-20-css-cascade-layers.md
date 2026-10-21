@@ -397,7 +397,9 @@ Steve owns the kit's releases.
   its text pane at 170px wide for that reason until the leftover
   `min-width: 0` went. When recomposing, remove the block's own layout
   declarations on a primitive's children, and compare screenshots at every
-  width where it should stack.
+  width where it should stack. `tests/primitive-children.spec.ts` now fails
+  on any such rule across the route set; a child that means to keep its own
+  size says so with `data-primitive-own="<reason>"`.
 
 - **Primitives on repeated items.** A primitive writes its settings inline
   on its own element, so one on each of 205 Pattern Library result rows
