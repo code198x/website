@@ -1,6 +1,6 @@
 ---
 title: "Nametables and Scrolling"
-summary: "Position the NES's 256×240 viewport inside the larger tile map by setting the nametable-select bits and the fine scroll every vblank — the foundation of every scrolling NES game."
+summary: "Move through a two-screen NES background with reusable scroll routines and a complete cartridge. Publish a finished display update before NMI uses it."
 platform: "nintendo-nes"
 category: "rendering"
 difficulty: "intermediate"
@@ -9,83 +9,59 @@ evolution:
   previous: null
   next: "column-feeding"
 related:
-  patterns: ["nmi-game-loop", "column-feeding"]
+  patterns: ["scrolling", "nmi-game-loop", "column-feeding", "multi-sprite-oam"]
   vault: ["ppu", "nintendo-nes"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
 
-## Overview
+The background slides beneath a row of moving-object graphics. The CPU does not copy the whole background each frame: it changes the PPU's view into two prepared nametables. The same cartridge also demonstrates sprite overload and its costs.
 
-The NES background is a **nametable**: a 32×30 grid of tile numbers (960 bytes) plus a small attribute table that colours it. The PPU has room for two of them side by side, and what you see is a 256×240 **viewport** onto that larger map. Scrolling is simply moving that window: the [PPU](/vault/hardware/ppu) offers a fine scroll of 0–255 pixels through `PPUSCROLL`, and the two low bits of `PPUCTRL` pick which nametable the window starts in — the coarse, 256-pixel step. Set both every frame in vblank and the world slides smoothly under a fixed screen. The catch that shapes everything else: you can only set scroll cleanly during vblank, and it must come *after* any other PPU memory writes.
+<img src="/images/patterns/rendering-families/nes.png" alt="A scrolling tiled NES background with sprites sharing one row" width="256" height="240" loading="lazy" />
 
-## Code
+*Original Code198x NROM scene captured in Emu198x, NTSC configuration.*
 
-```ca65
-; =============================================================================
-; NAMETABLES AND SCROLLING - NES
-; Set the scroll every vblank to position the 256x240 window in the tile map
-; =============================================================================
+**Code status: maintained routines and a running NTSC cartridge.** [Execution record](https://github.com/code198x/code-samples/blob/a5eadba064d1b9de63b69dbb58fdc033a0baf2c6/docs/rendering-families/verification/results.json). The [scrolling family](/patterns/cross-platform/rendering/scrolling/) compares the same job on other machines. No PAL, original-hardware or worst-case NMI-budget qualification is claimed here.
 
-PPUCTRL   = $2000
-PPUSTATUS = $2002
-PPUSCROLL = $2005
+## Include the two operations
 
-.segment "ZEROPAGE"
-scroll_x:  .res 1
-scroll_y:  .res 1
-nametable: .res 1          ; 0 or 1: base nametable ($2000 or $2400)
+Include `scroll.inc` once and supply four bytes: `scroll_x`, `scroll_y`, `nametable` and `ppu_ctrl_shadow`. Y is 0–239 and nametable is 0–3. `scroll_right` increments X and flips only the horizontal nametable bit when X wraps from 255 to zero. A and flags change; the other registers survive.
 
-.segment "CODE"
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/rendering/nametable-scrolling/scroll.inc" lang="asm" title="Advance a camera and apply its PPU scroll" />
 
-; --- Call in the NMI, AFTER OAM DMA and after any $2006/$2007 VRAM writes ---
-set_scroll:
-    bit PPUSTATUS          ; reading $2002 resets the $2005/$2006 write latch
-    lda scroll_x
-    sta PPUSCROLL          ; 1st write = horizontal scroll
-    lda scroll_y
-    sta PPUSCROLL          ; 2nd write = vertical scroll
-    lda #%10000000         ; NMI enabled...
-    ora nametable          ; ...OR in the base-nametable select (bits 0-1)
-    sta PPUCTRL
-    rts
+`set_scroll` resets the shared address/scroll write latch, writes X and Y, then combines the nametable selection with the other settings in `ppu_ctrl_shadow`. It changes A and flags. Call during vblank, after all `$2006/$2007` writes; those writes use the same internal state and would otherwise disturb scroll.
 
-; --- Game logic (main thread): pan right one pixel per frame ---
-scroll_right:
-    inc scroll_x
-    bne :+                 ; did scroll_x wrap past 255?
-    lda nametable
-    eor #$01               ; yes — step into the neighbouring nametable
-    sta nametable
-:   rts
+Cartridge wiring matters. This caller uses vertical mirroring, giving `$2000` and `$2400` separate physical tables for a 512-pixel-wide world. Horizontal mirroring aliases those two addresses. Four logical nametable addresses do not guarantee four independent screens of RAM.
+
+## Publish a whole picture
+
+Main computes the next scroll state and builds OAM while `ready=0`, then sets `ready=1` last. NMI transfers that finished OAM page, applies the matching scroll snapshot and clears ready. Main waits for that acknowledgement before changing it again. NMI saves A/X/Y and leaves the previous picture alone when no update is ready.
+
+```asm
+    ; Main owns the state only after acknowledgement.
+    jsr scroll_right
+    jsr build_oam
+    jsr advance_priority
+    lda #1
+    sta ready
 ```
 
-## Trade-offs
+This protocol lets main take more than a frame without publishing half a picture. It does not make slow logic faster. NMI owns DMA and scroll; the caller owns NMI, all OAM, palettes, CHR and both nametables. DMC and audio servicing are absent from this example.
 
-| Aspect | Cost |
-|--------|------|
-| CPU | A few bytes in the NMI |
-| Memory | Two zero-page bytes plus the nametable select |
-| Limitation | Scroll is set once per frame — a mid-screen split needs [sprite 0](/patterns/nintendo-nes/assembly/rendering/sprite-zero-split) |
+## The complete cartridge
 
-**When to use:** Any game whose world is bigger than one screen — platformers, shooters, overhead adventures.
+`make` in the source folder creates `build/demo.nes`. The scene boots without external firmware. The new background is deliberately finite and repeating: both nametables are filled once with rendering off. Reset to leave.
 
-**When to avoid:** A single static screen; leave the scroll at zero and don't touch it.
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/rendering/nametable-scrolling/demo.asm" lang="asm" title="Two-screen background and finished-page publication" />
 
-## Coarse and fine, together
+The [OAM builder](/patterns/nintendo-nes/assembly/rendering/multi-sprite-oam/) deliberately submits twelve objects at the same Y. The PPU can display only eight sprite entries on one scanline. Changing OAM order shares which ones drop out; it does not raise that capacity.
 
-Scroll position is split across two registers, and it helps to see why. `PPUSCROLL` carries the **fine** part — 0 to 255 pixels within the current nametable — while `PPUCTRL` bits 0–1 carry the **coarse** part: which of the four nametables ($2000, $2400, $2800, $2C00) the window starts in, each a full 256 pixels apart. Panning right, you increment the fine X until it wraps at 256, then flip the coarse nametable bit and carry on. The two together address a space wider and taller than one screen — and with the usual cartridge mirroring, the two physical nametables tile to give you 512 pixels of width (or height) to scroll through.
+## Beyond the two prepared screens
 
-## Why scroll comes last
+[Column feeding](/patterns/nintendo-nes/assembly/rendering/column-feeding/) adds new tiles as the camera crosses tile boundaries. It must also merge palette attribute quadrants without destroying their neighbours, and account for DMA, audio and other VRAM writes in the same vblank. That entry remains illustrative; this cartridge does not implement an endless map streamer.
 
-`PPUSCROLL` (`$2005`) and `PPUADDR` (`$2006`) share **one internal address latch** and one write-toggle inside the PPU. So every time you write a tile through `$2006`/`$2007` — updating the map, feeding a new column — you clobber the scroll. The discipline is fixed: do all your VRAM writes first, *then* read `$2002` to reset the toggle, *then* set the scroll as the last thing before rendering resumes. Get the order wrong and the screen jumps or shears where the stale latch leaks through.
+Useful later versions include a fixed status panel, vertical scrolling, a camera dead zone and a bounded VRAM-update queue. Keep camera policy and display service separate so a different scrolling game can reuse the low-level code.
 
-## The seam
+Register and sprite behaviour is documented in Ricoh's *RP2C02 development specification* (KA-A002-B), sections on CTLR0, SCC and object evaluation; the [NESdev register reference](https://www.nesdev.org/wiki/PPU_registers) provides an accessible register-by-register account.
 
-Incrementing past 255 into the next nametable is only half the job. The tiles waiting in that second nametable have to *be there* before the window reaches them — and a level longer than two screens has to recycle nametable memory as it goes, writing fresh scenery into the part that just scrolled off. That column-by-column refill is the real work of NES scrolling; see [Feeding New Columns](/patterns/nintendo-nes/assembly/rendering/column-feeding).
-
-## Related
-
-**Patterns:** [NMI Game Loop](/patterns/nintendo-nes/assembly/framework/nmi-game-loop), [Feeding New Columns](/patterns/nintendo-nes/assembly/rendering/column-feeding)
-
-**Vault:** [PPU](/vault/hardware/ppu) | [Nintendo Entertainment System](/vault/systems/nintendo-entertainment-system)
+Explore the [cross-platform scrolling family](/patterns/cross-platform/rendering/scrolling/) for camera coordinates, seams and implementations on other machines.

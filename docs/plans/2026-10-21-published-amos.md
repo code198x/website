@@ -56,3 +56,11 @@ A direct live RSS read returns `HTTP Error 403: Forbidden`; no live-site
 verification or deployment claim is made. The website adoption is retained in
 a separate PR for review. Existing .impeccable review directories and
 tests/site-review-evidence.spec.ts remain untouched in the original checkout.
+
+## Merge verification
+
+Resolve the package manifest and lockfile conflict by retaining current main's
+emulator/player versions and the approved AMOS 0.3.0 pin. No renderer conflict
+exists. Run npm ci, npm run check and npm run check:release on the merged tree,
+including the AMOS browser regression. Push the merge commit, read CI and merge
+PR #902 when checks pass. Clean the isolated worktree after verifying retention.

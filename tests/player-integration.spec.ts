@@ -305,8 +305,10 @@ test.describe('editable BASIC in the lesson', () => {
     await page.getByRole('button',{name:'Run this code',exact:true}).click();
     const dialog=page.getByRole('dialog',{name:'Your Spectrum'});
     await expect(dialog).toBeVisible();
-    await expect(dialog.locator('.machine-transcript pre')).toContainText('Hello, world.');
-    await expect(dialog.locator('.machine-transcript pre')).toContainText('1.5');
+    // The Spectrum boots and runs the listing in a worker; a CI runner can take
+    // longer than the default five seconds to get there.
+    await expect(dialog.locator('.machine-transcript pre')).toContainText('Hello, world.', { timeout: 15_000 });
+    await expect(dialog.locator('.machine-transcript pre')).toContainText('1.5', { timeout: 15_000 });
     await dialog.locator('canvas').press('Escape');
     await expect(dialog).toBeVisible();
     await page.getByRole('button',{name:'Back to the listing'}).click();
@@ -316,7 +318,7 @@ test.describe('editable BASIC in the lesson', () => {
     await expect(page.getByRole('alert')).toContainText('line number');
     await expect(dialog).toBeHidden();
     await page.getByRole('button',{name:'Return to your Spectrum'}).click();
-    await expect(dialog.locator('.machine-transcript pre')).toContainText('Hello, world.');
+    await expect(dialog.locator('.machine-transcript pre')).toContainText('Hello, world.', { timeout: 15_000 });
     await expect(dialog.locator('.machine-status')).toContainText('Paused');
   });
   test('resets the draft without reopening the machine',async({page})=>{

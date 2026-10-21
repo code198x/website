@@ -1,0 +1,85 @@
+---
+title: "Draw Pixels, Spans and Boxes on BBC Micro"
+summary: "Callable set, clear, XOR, read, span and rectangle routines for BBC Micro, with explicit bounds and byte ownership."
+platform: "bbc-micro"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["pixels", "spans", "rectangles", "maths", "bitmap"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A life bar, a room outline or a tiny drawing tool needs a few reliable drawing calls. These routines let you change a bit, read it back, or paint a box without borrowing a game’s renderer.
+
+<Figure src="/images/bbc-micro/patterns/pixels-and-boxes.png" kind="capture" alt="BBC Micro output showing filled strips, thin and outlined boxes, bit-phase tests and a full-display border" caption="Original caller running in Emu198x 0.39.0. The complete bitmap and selected native frames are checked independently." />
+
+## Include it and make a first call
+
+Define `BP` at 48 reserved zero-page bytes, `PIXEL_WIDTH=320`, `PIXEL_HEIGHT=256`, and include `6502.inc`. Copy the complete caller’s `bitmap_lo` and `bitmap_hi` tables too. They describe each of the 256 scanlines, not character rows. Clear decimal mode before calls.
+
+Initialise and clear the display once. This example then sets pixel (0,0); the context’s unused end fields need no initialisation for a point call. The complete reset caller also contains a mailbox used by the verifier. Your game calls the routine directly.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/pixels-and-boxes/demo.asm" from="; Example: set a single pixel" to="mailbox:" lang="6502" title="Set one pixel using the reusable component" />
+
+The screen origin is the **top left**. X increases rightwards and Y downwards. This mode is 320×256; the last pixel is (319,255).
+
+## The calling contract
+
+Reserve 48 context bytes at BP. The word fields are little-endian on this CPU.
+
+| Offset | What to supply or read |
+| --- | --- |
+| 0, 2 | x0, y0: unsigned 16-bit coordinates |
+| 4, 6 | x1, y1: unsigned 16-bit exclusive ends |
+| 8 | Operation: 0 set, 1 clear, 2 XOR |
+| 9 | Output: 1 accepted, 0 rejected |
+| 10 | Output: the bit read, as 0 or 1 |
+| 12–47 | Private scratch; word at 40 counts destination-byte writes |
+
+`bp_fill` paints [x0,x1)×[y0,y1); `bp_box` outlines it. `bp_hspan` uses x0/x1/y0, `bp_vspan` uses x0/y0/y1, and `bp_pixel`/`bp_read` use x0/y0. Set operation to zero for reads. Public inputs survive. Unused end fields are ignored.
+
+A box from (5,20) to (13,24) is **eight pixels wide and four high**. A 1×1 outline touches its pixel once, including with XOR. Empty, reversed, invalid-operation or out-of-bounds requests reject before any destination write. The routine does not silently clip.
+
+## From a coordinate to a byte
+
+MODE 4 puts eight scanlines of one character next to each other. Moving one byte to the right on screen means adding **8**, not 1. At (13,20), the byte is &5A8C and the mask is &04. The 512-byte row table buys a straightforward lookup; deriving rows or caching the last address saves table space with a different CPU cost. The caller owns the 6845, video ULA, palette and the &5800–&7FFF bitmap.
+
+Integer division and remainder tell us two different things: `13 div 8 = 1` chooses a byte column, while `13 mod 8 = 5` chooses a bit within it. The leftmost pixel uses bit 7, so `128 >> 5 = 4`. Set ORs that mask into the old byte; clear ANDs its inverse; XOR toggles it. Writing $04 straight over the byte would erase seven neighbours.
+
+<Figure src="/images/patterns/span-byte-masks.svg" kind="image" rendering="smooth" alt="Four rows of sixteen dots, with columns five through twelve highlighted across a byte boundary" caption="[5,13) spans two bytes. Keep the neighbours on both edges, then repeat the masks over four rows." />
+
+[Place a point](/craft/maths-for-games/unit-06/) explores position and origin. Its world Y points upwards; these screen coordinates point downwards. For integer points in a bottom-left-origin world of this height, convert with `screenY = 255 - worldY`. The width calculation needs no sign reversal: `13-5=8`, height `24-20=4`, area `8*4=32` pixels.
+
+## The maintained implementation
+
+<details>
+<summary>Open the complete reusable 6502 include</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/drawing-foundations/6502.inc" lang="6502" title="Include this backend once in your program" />
+</details>
+
+## Choose a path for the work
+
+The 32×8 aligned fill in the native check makes **32 byte writes**; shifting it one pixel makes **40**. The eight-pixel-wide example above makes eight writes for its 32 pixels. Calling a plot routine for each pixel would repeat addressing and edge work. This backend works a byte at a time, preserving the first and last byte’s unrelated bits.
+
+A full-display clear makes 10,240 writes. The kernel, including its masks, takes 526 assembled bytes, with a further 512-byte row table; BP needs 48 RAM bytes. Assets/display memory and the reset caller are additional. These are measured storage and write counts, not a frame-budget or cross-CPU speed ranking. The write counter itself also costs work.
+
+An unchecked inner loop, cached row address or specialised full-byte store can be smaller/faster for a particular caller. This version still reads a byte before a full-byte set/clear; an outline skips stores to middle columns but still visits them. [Clipped lines, circles and ellipses](/patterns/bbc-micro/assembly/rendering/geometry/) add a reusable geometry layer over this unchanged backend.
+
+## Own the resources
+
+A/X/Y and flags are clobbered; keep decimal mode clear. The context is not re-entrant. Reserve at least eight stack bytes for the routines, plus the rest of your program and interrupts. Keep context, code and any address tables out of the bitmap; do not let another renderer or interrupt handler change them during a call. The routines do not change interrupt state. Colour, palette and video setup remain caller-owned.
+
+## What was verified
+
+All 94 calls completed independently on this BBC Micro configuration using Asm198x 0.0.71 and Emu198x 0.39.0. Every call checks the complete bitmap, guards or attribute neighbours, status, read value, unchanged public inputs and byte-write count. Cases cover all bit phases, set/clear/XOR/read, spans, one-pixel and full-size boxes, empty/reversed extents and invalid bounds. Selected whole native frames match a separate composition. A completed wrong-mask version fails both memory and picture comparisons.
+
+This is an original reset fixture. It establishes these calls in this mode; stock-OS loading, physical-machine timing, interrupt coexistence and tear-free animation need their own checks.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/db7d12fbc08d12fcf3ccdd7830bf016c46e9e5ae/bbc-micro/patterns/assembly/rendering/pixels-and-boxes)
+- [Reusable include](https://github.com/code198x/code-samples/blob/db7d12fbc08d12fcf3ccdd7830bf016c46e9e5ae/cross-platform/patterns/rendering/drawing-foundations/6502.inc)
+- [Full contracts, measured space/work costs and primary references](https://github.com/code198x/code-samples/blob/db7d12fbc08d12fcf3ccdd7830bf016c46e9e5ae/cross-platform/patterns/rendering/drawing-foundations/README.md)
+- [Compare the three bitmap layouts](/patterns/cross-platform/rendering/pixels-and-boxes/)
+- [Draw a tile-map region](/patterns/bbc-micro/assembly/rendering/tile-region/)
+
+[Draw bitmap text](/patterns/bbc-micro/assembly/rendering/bitmap-text/) reuses these spans for glyphs at arbitrary pixel positions, with an explicit font, advance and scissor.

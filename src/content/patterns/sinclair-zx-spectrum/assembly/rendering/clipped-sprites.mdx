@@ -1,0 +1,49 @@
+---
+title: "Clip Masked Sprites on the Spectrum"
+summary: "A byte-aligned 16×16 sprite can cross any screen edge safely. Reusable signed clipping and masked drawing, with source cropping and a complete 48K tape example."
+platform: "sinclair-zx-spectrum"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["sprites", "clipping", "mask", "viewport"]
+related:
+  patterns: ["clipping", "sprite-lifecycle", "sprites"]
+  vault: ["sprites"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+<img src="/images/patterns/sprite-clipping/spectrum.png" alt="Original spectrum scene with masked objects cropped at the four screen corners and drawn inside the viewport" width="352" height="296" loading="lazy" />
+
+*Original Code198x program and artwork captured in Emu198x.*
+
+**Code status: maintained routines and an emulator-executed caller.** [Execution record](https://github.com/code198x/code-samples/blob/55e0220ea89d97f13f44eebaee1700c7d33a7f73/docs/sprite-clipping/verification/results.json).
+
+The original masked renderer expects a complete on-screen rectangle. This wrapper lets an object begin outside the bitmap, selects the surviving source bytes and rows, then draws only that part. Its sample scene shows four clipped corners and three interior objects; two further calls are fully invisible.
+
+## Include the routines and give them a context
+
+Include `clip.inc`, `draw.inc` and the existing bitmap-addressing helper once. `draw_clipped` takes IX pointing at 32 caller-owned bytes. Put the signed X position at +0, signed Y at +14, and source pointer at +28. X is measured in **eight-pixel byte columns**, Y in pixel rows. X = −1 crops one column from the left; X = 32 is fully outside.
+
+The source is fixed at 16×16: 64 interleaved keep-mask/image bytes, four bytes per original row. Keep-mask 1 preserves the old bitmap bit; the corresponding image bit must be zero. Source, context, stack and code must be separate from the bitmap and one another.
+
+The wrapper fills in its two clipping blocks. Within each 14-byte block, destination is +6, source skip +8 and visible count +10. +12..13 is scratch; context +30 counts drawn rows. Positions and source pointer survive, but other workspace fields are outputs or scratch. AF/BC/DE/HL change; IX/IY survive. The wrapper does not touch attributes or set up interrupts.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/clipped-sprites/draw.inc" lang="z80" title="Crop the source and draw the visible mask/image pairs" />
+
+The axis helper is also usable on its own: IX selects a 14-byte block containing signed position at +0, extent at +2 and viewport limit at +4. Extent is 0..256, limit 1..256. All three results are zero when empty. Temporary two-byte pushes preserve comparisons; the drawing loop pushes four row-pointer bytes, in addition to call returns and interrupt needs.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/clipped-sprites/clip.inc" lang="z80" title="Intersect a signed interval with the viewport" />
+
+## Fit it into a running program
+
+The complete caller initialises the display, sets context/source values and calls the wrapper for each object. It owns a private stack at $ff00 and uses ROM IM1/HALT afterwards. Build with `make ASM198X=/path/to/asm198x` and load `build/demo.tap` on a 48K PAL Spectrum. Reset to leave the caller.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/clipped-sprites/demo.asm" lang="z80" title="Complete tape caller with cropped corners and invisible objects" />
+
+## Move it next
+
+This draws at a position; it does not remove the previous image. Combine it with [background restoration](/patterns/sinclair-zx-spectrum/assembly/rendering/sprite-lifecycle/), retaining the previous clipped address and dimensions with the saved pixels. The [shared clipping entry](/patterns/cross-platform/rendering/clipping/) explains the order and the case where an object becomes fully invisible.
+
+The sides are byte aligned, while top and bottom cropping work by pixel row. Arbitrary-X motion needs shifts or prepared image variants. There is no promised frame budget: the complete scene proves the stated drawing result and a running caller, while display scheduling belongs to the surrounding game.
+
+For individual pixel X positions, [select prepared source phases](/patterns/sinclair-zx-spectrum/assembly/rendering/pre-shifted-sprites/) and keep the padded footprint and original source stride explicit.

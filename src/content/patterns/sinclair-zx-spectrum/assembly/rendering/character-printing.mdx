@@ -14,119 +14,41 @@ related:
   vault: ["sinclair-zx-spectrum"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+
+**Code status: maintained routines, executed in a bounded Z80 fixture.** Checks cover all 768 character cells plus string and bounds cases against an independent bitmap oracle. The fixture supplies a synthetic font; it does not claim to test ROM startup.
+
+[Audit execution record](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/z80.json) · [Scope and remaining checks](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/README.md)
 
 ## Overview
 
 Print text directly to the display file by copying character data from the ROM character set at `$3C00`. Faster than using ROM routines and gives you full control over positioning. Essential for scores, messages, and UI text.
 
-## Code
+
+## Include and call
+
+Include `characters.inc` once. Give it a valid stack and the standard 48K font visible in ROM. `print_char` takes ASCII 32–127 in A, row 0–23 in B and column 0–31 in C. It preserves AF, BC, DE and HL. Invalid characters or positions do nothing. It writes eight bitmap bytes and leaves attributes alone: choose the cell colours separately.
+
+`print_string` takes a zero-terminated string in HL and the same B/C position. It preserves BC, DE and HL, changes AF and clips at column 32. The string must remain readable until its terminator or the right edge; it does not wrap or clear old text.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/character-printing/characters.inc" lang="z80" title="Bounded character and string printing" />
 
 ```z80
-; =============================================================================
-; CHARACTER PRINTING - ZX SPECTRUM
-; Print characters using ROM character set
-; Taught: Game 1 (Ink War), Unit 4
-; CPU: ~200 cycles per character | Memory: ~50 bytes
-; =============================================================================
-
-DISPLAY_FILE equ    $4000       ; Screen memory
-CHAR_SET    equ     $3C00       ; ROM character set (chars 0-127)
-
-; Print single character
-; Input: A = ASCII character (32-127)
-;        B = row (0-23), C = column (0-31)
-print_char:
-    push    bc
-    push    de
-    push    hl
-    push    af
-
-    ; Calculate character data address: CHAR_SET + char * 8
-    ld      l, a
-    ld      h, 0
-    add     hl, hl              ; * 2
-    add     hl, hl              ; * 4
-    add     hl, hl              ; * 8
-    ld      de, CHAR_SET
-    add     hl, de              ; HL = character data source
-
-    push    hl                  ; Save source address
-
-    ; Calculate display file address
-    ; The Spectrum's display is organised in thirds with interleaved lines
-    ld      a, b                ; A = row (0-23)
-    and     %00011000           ; Which third (0, 8, or 16)?
-    add     a, $40              ; Add display file base ($4000 high byte)
-    ld      d, a                ; D = high byte
-
-    ld      a, b                ; A = row
-    and     %00000111           ; Line within character row (0-7)
-    rrca
-    rrca
-    rrca                        ; Move to bits 5-7
-    add     a, c                ; Add column
-    ld      e, a                ; E = low byte, DE = screen address
-
-    pop     hl                  ; HL = character data
-
-    ; Copy 8 bytes (8 pixel rows)
-    ld      b, 8
-.loop:
-    ld      a, (hl)             ; Get character row
-    ld      (de), a             ; Write to screen
-    inc     hl                  ; Next character row
-    inc     d                   ; Next screen line (add 256)
-    djnz    .loop
-
-    pop     af
-    pop     hl
-    pop     de
-    pop     bc
-    ret
-```
-
-**Print a string:**
-
-```z80
-; Print null-terminated string
-; Input: HL = string address, B = row, C = column
-print_string:
-    push    bc
-    push    hl
-
-.loop:
-    ld      a, (hl)
-    or      a                   ; Check for null terminator
-    jr      z, .done
-
-    call    print_char
-    inc     hl
-    inc     c                   ; Next column
-    jr      .loop
-
-.done:
-    pop     hl
-    pop     bc
-    ret
-
-; Example usage:
-;   ld      hl, message
-;   ld      b, 10               ; Row 10
-;   ld      c, 5                ; Column 5
-;   call    print_string
-;
-; message:
-;   defm    "HELLO WORLD"
-;   defb    0
+    ld hl,message
+    ld b,10
+    ld c,5
+    call print_string
+message: defm "HELLO WORLD"
+         defb 0
 ```
 
 ## Trade-offs
 
 | Aspect | Cost |
 |--------|------|
-| CPU | ~200 cycles per character |
-| Memory | ~50 bytes for routines |
+| CPU | Not measured for this illustrative listing; include the caller and hardware scheduling costs |
+| Memory | Assemble the include with your caller to obtain its size |
 | Limitation | ROM charset only (use custom font for alternatives) |
 
 **When to use:** Scores, labels, messages, any text display.
@@ -162,8 +84,8 @@ This means horizontal scrolling within a third is fast (write to 8 contiguous ad
 ## ROM Character Set
 
 The character set at `$3C00` contains:
-- Characters 0-31: Control characters (don't use)
-- Characters 32-127: Printable ASCII
+- `$3C00` is the addressing bias used with ASCII × 8; it is not the start of 128 stored glyphs.
+- Printable glyphs for codes 32–127 occupy `$3D00–$3FFF`; the Spectrum glyphs differ from ASCII at some codes.
 - Each character is 8 bytes (8x8 pixels)
 
 ## Related

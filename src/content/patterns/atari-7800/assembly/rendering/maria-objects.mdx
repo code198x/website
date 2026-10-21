@@ -1,0 +1,171 @@
+---
+title: Give MARIA a bounded object list
+summary: Build reusable direct 160A headers while keeping zones, graphics placement and DMA ownership explicit.
+platform: atari-7800
+category: rendering
+difficulty: advanced
+tags: [maria, display-lists, dma, glyphs, bounds, maths-for-games]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Put a picture address, width and position in a list, and MARIA fetches the dots for you. Your CPU can get on with something else. The price is a different kind of budget: headers and picture bytes must fit into each scanline's DMA time.
+
+<Figure src="/images/atari-7800/patterns/maria-objects.png" kind="capture" alt="Two original A glyph objects on the Atari 7800, one at the right boundary." caption="Native Emu198x NTSC capture, direct 160A. Two eight-pixel-wide objects share original Code198x graphics. Logical horizontal pixels are doubled in this capture, which includes overscan." />
+
+## Include, initialise, append
+
+Copy `objects.inc` and include it once. Set `ML_CAPACITY` to 1..31. Reserve **10 private zero-page bytes** at `ML` ($80 here), and a **page-aligned RAM list** of `4*capacity+2` bytes. The caller uses four slots: 18 bytes at $1900. These allocation rules are trusted preconditions; the routine does not validate arbitrary RAM pointers.
+
+Put the list pointer at ML+0/1 and call `maria_begin`. It resets count at +7 and writes a two-byte terminator. It does not erase the old tail. Then supply a graphics pointer at +2/3, byte width at +4, palette at +5 and logical x at +6. Call `maria_append`; +8 returns 1 accepted or 0 rejected. This maintained example includes a right-edge fit and a rejected overrun:
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/demo.asm" from="    lda #<LIST" to="    lda #$a5" lang="asm" title="Build the list before enabling DMA" />
+
+Widths are 1..31 bytes; palette is 0..7; x is 0..159. A row must fit visibly: `x+4*width<=160`. Its source bytes must stay within one page: `low-address+width<=256`, including an exact end at the boundary. This API rejects rather than clips or wraps. Full capacity also rejects. Every check precedes any list write; rejection preserves the list and count.
+
+ML+0..6 survive. The routine owns count +7, status +8 and scratch +9. Begin again when changing the list pointer. A/X/Y/flags are clobbered; clear decimal mode and reserve two stack bytes per direct call, plus caller/interrupt depth. Keep the context in valid zero-page RAM and out of 6532 RAM. Do not share a live context between interrupts and foreground code. The helpers change no interrupt, video, bank or DMA state.
+
+## Own the zone and the data
+
+A direct header has four bytes: graphics low address, palette/negative width, graphics high address, horizontal position. Width two encodes as 30 in the low five bits. In 160A, four 2-bit pixels fit in a byte. Zero is transparent; a palette supplies three nonzero colours.
+
+The caller supplies a 48-byte DLL at $1800, a populated list at $1900 and an empty list at $1920. Its sixteen zones each use OFFSET=15: sixteen rasters. Only zone 3 selects the populated list. MARIA adds the descending OFFSET to the graphics address's high byte, so row zero lives at base+15*256 and row fifteen at base. **Adjacent visible rows are a page apart in memory.**
+
+This simple fixture spends 16 pages to hold one eight-pixel-wide shape with 32 useful bytes. Several shapes can share the unused columns. The original A uses only colour 1 and transparent zero; the selected palette also initialises colours 2 and 3. The builder supports all eight palette numbers, but it does not choose or initialise your colours.
+
+The complete caller disables DMA, copies the DLL into RAM, builds the lists, sets palettes and both nonadjacent display-pointer registers, waits for VBlank, then enables normal 160A DMA. The lists stay immutable afterwards. This is an original 48 KiB reset cartridge, without commercial BIOS authentication. It does not demonstrate that boot path.
+
+For animation, build an inactive list/DLL and publish it during VBlank, coordinating both pointer writes and interrupts. That publisher is outside this component and has not been verified here. Writing a header while MARIA fetches it risks displaying an unfinished object. The DLL, zones, palettes, DMA mode, graphics lifetime and bank state need one coordinated owner.
+
+## Count work, not just objects
+
+The builder is **121 code bytes**. Context takes 10 bytes; four slots take 18 RAM bytes; the DLL takes 48 and the empty list two. Each append writes four header bytes and two terminator bytes. The populated list occupies ten bytes for two objects and its terminator.
+
+Each populated raster fetches two four-byte headers, a two-byte terminator and four graphics bytes. That repeats for sixteen rasters. Empty zones still have DMA setup, termination and shutdown work. Four is this caller's allocation capacity, not a hardware object limit.
+
+Atari's *7800 Software Guide*, Appendix 3, uses **7.16 MHz cycles**: eight per four-byte header and three per direct graphics byte, plus startup and shutdown. Startup ranges from 5–9; shutdown from 4–7, or 10–13 at a zone end. These clock and accounting boundaries differ from CPU instruction timing and other MARIA specifications. The retained measurement is list/data workload, not an exact elapsed-DMA benchmark. Wider rows, indirect data and more headers cost more time even when they fit in RAM.
+
+## Connect the coordinates
+
+For local x, byte index is floor(x/4) and the shift is `6−2*(x mod 4)`. At object x32, local pixel x3 appears at logical x35. The native capture doubles horizontal pixels and starts the active area at capture x27: the first object's left edge is x91. Its selected zone appears at capture y50. These observed viewport offsets belong to the capture, not the reusable game API.
+
+[Place a point](/craft/maths-for-games/unit-06/) connects local, object and screen coordinates. [Move a glyph](/craft/maths-for-games/unit-13/) connects row packing with stored shapes. The page-stepped rows add another useful distinction: a picture's visible geometry and its storage stride can be very different.
+
+Indirect character maps, 320-pixel modes, holey DMA, arbitrary vertical movement, priority composition and split objects deserve separate contracts. A display-list builder alone is not a framebuffer or a general line/circle/text renderer. [The 2600 playfield kernel](/patterns/atari-2600/assembly/rendering/playfield-kernel/) shows why even closely related consoles need different reusable components.
+
+<details>
+<summary>Read the builder and complete DMA setup caller</summary>
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/objects.inc" lang="asm" title="Reusable bounded direct-header builder" />
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/demo.asm" lang="asm" title="Complete RAM lists, DLL, palettes and original graphics" />
+</details>
+
+## Make it your own
+
+Use the same builder to place two original ships. The customisation caller supplies a wider picture, moves both objects and gives the second a blue palette. It still builds the lists once with DMA off and enables them during VBlank. The normal example above and its reusable include are unchanged.
+
+<Figure src="/images/atari-7800/patterns/customise/ships.png" kind="capture" alt="Two twelve-pixel-wide ship shapes, one pale and one blue, placed at different positions in the MARIA display." caption="Verified native direct 160A customisation. Both objects share the same original graphics bytes; their headers choose different positions and palettes." />
+
+### Supply a wider picture and move it
+
+Keep `customise/` beside `objects.inc`. Run `make` there and load `build/ships.bin`. `ships.asm` includes the parent builder and the original data in `ship.inc`. Copy those allocations and setup responsibilities when adapting the caller to your own project.
+
+The width changes from two bytes to three: **8 to 12 logical pixels**. The new positions are x24 and x100. Palette 0 draws the first ship; palette 1 draws the second. ML+4 and the graphics pointer remain set for the second call, so changing ML+5/ML+6 reuses the same shape.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/customise/ships.asm" from="; BEGIN CUSTOM OBJECTS" to="; END CUSTOM OBJECTS" lang="asm" title="Change width, position and palette through the existing inputs" />
+
+Check the whole width when moving an object: `x+4*width<=160`. The original x152 fits an eight-pixel picture, but cannot fit twelve pixels. At width three, the last accepted start is x148. This API rejects an overrun; it does not clip your ship for you.
+
+To replace the ship, pack four 2-bit pixels into each byte. Zero is transparent; 1, 2 and 3 choose palette colours. Three bytes describe a twelve-pixel row. With the existing sixteen-raster zone, store rows 256 bytes apart, bottom row first in ascending memory. Each useful three-byte row is followed by 253 padding bytes. For example, row `000001100000` packs as `$00,$14,$00`. Keep the source row within its page and every zone-offset address readable under the selected bank mapping.
+
+### Initialise the colours you select
+
+Choosing palette 1 in a header does not populate it. This setup supplies its three nonzero colours before enabling DMA. Palette 0 retains $0E/$06/$0A; palette 1 uses $86/$8C/$8E. The same pixel indices now produce a blue ship in the selected NTSC emulator. Transparent pixels still show the background.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/customise/ships.asm" from="; BEGIN CUSTOM PALETTES" to="; END CUSTOM PALETTES" lang="asm" title="Initialise palette 1 before publishing the picture" />
+
+Choose your own colour values and check the native result in your target configuration. The capture verifies this emulator's palette interpretation, not a calibrated physical television colour or every video standard.
+
+### Pay for width as well as object count
+
+| Resource or work | Original caller | Ship caller |
+|---|---:|---:|
+| Reusable builder + context | 121 + 10 bytes | Same |
+| Four-slot list allocation | 18 bytes | Same |
+| Two headers + terminator | 10 bytes | Same |
+| Useful graphics across 16 rows | 32 bytes | 48 bytes |
+| Page-stepped graphics span | 4,096 bytes | Same |
+| Graphics bytes fetched per populated raster | 4 | 6 |
+| Startup instruction span, start to ready | 120 bytes | 126 bytes |
+
+The two headers and terminator still take ten fetched bytes per populated raster. Graphics fetches increase by two, so that raster's header/termination/graphics workload grows from 14 bytes to 16. The sixteen-raster zone repeats it. A wider picture can cost more DMA time even though the list size stays the same. These are byte/work counts; the startup span is code size, not an elapsed-time or worst-case-load measurement. Both cartridges remain 48 KiB.
+
+Picture data, fitting positions, initialised palette choices and widths within the documented limits use the existing interface. More objects require both capacity and DMA planning. For example, raising capacity from four to eight changes its allocation from `4*4+2=18` to `4*8+2=34` bytes; that arithmetic does not verify that eight chosen objects fit a scanline. Moving smoothly between zones, switching video mode or banks, and replacing a live list need separate design and execution checks. This example does not add an animation publisher.
+
+<details>
+<summary>Read the original ship data and complete caller</summary>
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/customise/ship.inc" lang="asm" title="Three useful bytes per page-stepped row" />
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/customise/ships.asm" lang="asm" title="Complete customisation caller using the unchanged builder" />
+</details>
+
+The customisation was assembled and executed in the same released native emulator. Both headers, the terminator, every page-stepped source row, guards and the full native frame pass independent checks. The model checks the original ship shape, both placements and both palettes. The linked directory's `customise/README.md` and retained capture explain reproduction and limits.
+
+## Common mistakes and their symptoms
+
+These are deliberately broken versions of the bounded caller. Keep the working builder above. Every example reaches the normal running state; its full native image and relevant list bytes are checked against a separately predicted result. Each corrected fragment was also assembled and executed.
+
+### The right side of each letter disappears
+
+**Symptom:** both A objects lose the part stored in their second graphics byte. Their positions and the surviving left sides remain correct.
+
+<Figure src="/images/atari-7800/patterns/mistakes/short-width.png" kind="capture" alt="Both MARIA glyphs are cropped after their first graphics byte, losing the right part of the A." caption="A one-byte fetch for graphics that needs two bytes. Native Emu198x NTSC direct 160A capture, using the original working glyph data." />
+
+**Cause:** the header stores a five-bit two's-complement width, not a plain byte count. This wrong subtraction encodes a requested width of two as 31, which tells MARIA to fetch one byte. In 160A that fetch supplies only four logical pixels.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/mistakes/short-width.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: use 33 instead of 32 before subtracting width" />
+
+**Fix:** restore 32 before the existing width subtraction and palette combination. A two-byte request then encodes as 30. Check the header and the picture: a too-wide fetch can be invisible when its extra source byte is zero, while still consuming DMA bandwidth.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/mistakes/short-width.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct: encode the negative width in five bits" />
+
+### Two objects turn into one at the left edge
+
+**Symptom:** the objects vanish from their requested x32 and x152 positions. One A appears at x0. Both headers now have the same position, so their identical pictures overlap.
+
+<Figure src="/images/atari-7800/patterns/mistakes/wrong-position.png" kind="capture" alt="One visible A sits at the far left of the MARIA active area because two identical objects overlap at x0." caption="Two objects still exist in the list, but both position bytes are zero. The native capture includes overscan; logical x0 does not mean capture x0." />
+
+**Cause:** the builder writes a constant into the header's fourth byte instead of copying the caller's position. Nothing is wrong with the stored glyph or its page stride. Counting visible pictures would miss that two headers are present.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/mistakes/wrong-position.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: discard the requested horizontal position" />
+
+**Fix:** load ML+6, which holds the caller's logical 160A x coordinate, before writing the fourth header byte. Inspect both positions and the frame. Do not compensate by changing the graphics data or adding a capture-border offset to your game coordinates.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/mistakes/wrong-position.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct: copy the caller's position into the header" />
+
+### An unrequested third letter appears
+
+**Symptom:** the two intended objects remain, and another A appears at logical x96. The software's object count is still two.
+
+<Figure src="/images/atari-7800/patterns/mistakes/bad-terminator.png" kind="capture" alt="MARIA displays an extra A between the two intended objects after a corrupted list terminator." caption="A deliberately bounded terminator error. Known bytes form the stray header, followed by a second valid terminator. No uncontrolled RAM walk is needed to reproduce the symptom." />
+
+**Cause:** MARIA follows list bytes, not ML+7's software count. The second byte of the terminating pair must be zero. This diagnostic makes it 30, turning the pair into the start of another two-byte-wide object header. It also prepares that header's address and position, and leaves a valid terminator immediately after it. Without a bounded fixture, subsequent behaviour would depend on whatever bytes followed the list.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/mistakes/bad-terminator.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong diagnostic: replace the terminator with a stray header" />
+
+This fragment is inserted after list construction and before the caller sets DPPH. It is a test fixture, not code to add to a game. The working builder already writes a new two-byte terminator after every append.
+
+**Fix:** restore the zero at LIST+9, the second byte after this caller's two four-byte headers. MARIA then stops before reading the planted header tail. In your own code, preserve the builder's terminator and use its count to find the end; do not hard-code +9 for a list with a different number of objects. Rebuild or repair an inactive list with DMA off, or under a separately verified publication scheme.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/mistakes/bad-terminator.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct for the selected two-object diagnostic" />
+
+## What was verified
+
+Asm198x 0.0.71 and released Emu198x 0.41.0 execute this NTSC direct 160A reset caller. Every native frame pixel and each populated header/terminator byte are compared with independent expected results. Seven rejected native calls preserve the surrounding 256-byte list page, including full capacity and page overflow. Guards and completed CPU markers are checked. Completed wrong-width and wrong-position controls fail the same destination/image checks. The website's pinned Asm198x 0.0.65 also assembles it.
+
+All three corrected diagnostic fragments also reproduce the working frame. The native verifier checks each broken capture against its predicted symptom, then requires the repaired path to pass the original destination and timing checks.
+
+This does not establish stock BIOS loading, original-hardware timing, live publication, every palette/mode or a maximum-load benchmark.
+
+- [Reusable source, caller and execution records](https://github.com/code198x/code-samples/tree/6379a565b3066b7bc0c02bf6827f95e352de0b39/atari-7800/patterns/assembly/rendering/maria-objects)
+- [Contracts, costs and reproduction](https://github.com/code198x/code-samples/blob/6379a565b3066b7bc0c02bf6827f95e352de0b39/cross-platform/patterns/rendering/tia-maria/README.md)
+- Atari, [7800 Software Guide](https://atarihq.com/danb/files/7800%20Software%20Guide.pdf), “Display List”, “Display List List”, “DMA Modes”, “Starting up the 7800” and Appendix 3.

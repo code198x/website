@@ -14,50 +14,27 @@ related:
   vault: ["commodore-amiga"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+
+**Code status: the maintained reader is reused by executed Amiga callers; the edge adapter has a 1,024-case CPU/state check.** The edge check consumes synthetic held/previous samples; hardware decoding uses the reader’s separate evidence. The surrounding movement examples are adapters; they need their own state, bounds and frame wait. The named callers establish physical port 2 under their A500 configuration, not every peripheral.
+
+[Audit execution record](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/amiga-edges.json) · [Scope and remaining checks](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/README.md)
 
 ## Overview
 
 Basic joystick reading returns the current state - fine for continuous movement, but problematic for grid-based games where holding a direction shouldn't cause repeated steps. Edge detection returns only *newly* pressed directions by comparing current state to the previous frame.
 
+## Calling contract
+
+Set A5 to `$DFF000`, configure CIA-A bit 7 as an input and own physical joystick port 2. Include `framework/input-to-sound/input.inc` once in writable memory. `read_controls` returns the held controls in D0.W and `controls`: up `$0100`, down `$0001`, left `$0200`, right `$0002`, Fire `$0010`. It changes D0/D1 and condition codes; other registers survive. Only the low word of D0 is defined.
+
+Keep the horizontal bits from the original JOYDAT sample. The XOR with its shifted copy decodes the vertical bits; applying it to the whole result can turn leftover counter bits into false horizontal input. Physical port 1 uses JOY0DAT and CIA-A bit 6 for Fire; physical port 2 uses JOY1DAT and bit 7.
+
 ## Code
 
-```m68k
-; =============================================================================
-; JOYSTICK EDGE DETECTION - AMIGA
-; Return only newly-pressed directions
-; Taught: Game 1 (Signal), Unit 5
-; CPU: ~30 cycles | Memory: ~20 bytes
-; =============================================================================
 
-CUSTOM      equ $dff000
-JOY1DAT     equ $00c            ; Joystick port 2 data
-
-; Read joystick with edge detection
-; Input:  A5 = CUSTOM chip base
-; Output: D0 = newly pressed directions only
-;         Bit 8 = up (new), Bit 0 = down (new)
-;         Bit 9 = left (new), Bit 1 = right (new)
-read_joystick_edge:
-            ; Read and decode current joystick state
-            move.w  JOY1DAT(a5),d0
-            move.w  d0,d1
-            lsr.w   #1,d1
-            eor.w   d1,d0               ; D0 = decoded current state
-
-            ; Edge detection: current AND NOT previous
-            move.w  joy_prev,d1
-            not.w   d1                  ; D1 = inverted previous
-            and.w   d0,d1               ; D1 = bits that are new
-
-            ; Save current state for next frame
-            move.w  d0,joy_prev
-
-            move.w  d1,d0               ; Return newly pressed
-            rts
-
-joy_prev:   dc.w    0                   ; Previous frame's joystick state
-```
+<CodeFromFile src="commodore-amiga/patterns/assembly/input/joystick-edge-detection/edges.inc" lang="m68k" />
 
 **Usage example (grid-based movement):**
 
@@ -94,8 +71,8 @@ update_player:
 
 | Aspect | Cost |
 |--------|------|
-| CPU | ~30 cycles |
-| Memory | ~20 bytes + 2 bytes state |
+| CPU | Measure the reader and edge adapter together in your caller |
+| Memory | Assembled reader/adapter plus a 2-byte history word |
 | Limitation | Requires per-frame update to work correctly |
 
 **When to use:** Grid-based movement, menu navigation, any single-step input.
@@ -125,3 +102,9 @@ This gives you a pulse on the first frame of a press, then nothing until release
 **Patterns:** [Joystick Reading](/patterns/commodore-amiga/assembly/input/joystick-reading), [VBlank Game Loop](/patterns/commodore-amiga/assembly/framework/vblank-game-loop)
 
 **Vault:** [Commodore Amiga](/vault/systems/commodore-amiga)
+
+## History belongs to the caller
+
+Include `edges.inc` alongside the input reader. `read_joystick_edge` samples once and returns new presses in D0.W, changing D0/D1 and condition codes. If the frame already sampled input, call `detect_joystick_edges` instead. The shared `controls` word supplies that sample.
+
+With `joy_prev` initially zero, a held control counts as a first press. To suppress that, sample once during initialisation and copy `controls` to `joy_prev`. Keep the history while a button remains held; clearing it on a screen transition invents another press. This routine does not clamp the example's grid coordinates or generate timed repeats.

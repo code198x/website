@@ -1,0 +1,173 @@
+---
+title: Prepare a playfield, then race the beam
+summary: Reuse coarse cells and glyph stamps without losing sight of the TIA's scanline schedule.
+platform: atari-2600
+category: rendering
+difficulty: advanced
+tags: [playfield, tia, kernels, timing, glyphs, maths-for-games]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A chunky maze wall is a good fit for the TIA. So is a huge letter. Prepare their bits in RAM, then let a fixed kernel deliver them to the television. The preparation can be reusable code; the delivery still has to happen on time, every field.
+
+<Figure src="/images/atari-2600/patterns/playfield-kernel.png" kind="capture" alt="An original coarse A repeated across the Atari 2600 playfield, with a boundary cell at the bottom." caption="Native Emu198x NTSC capture. The 20-column half-playfield repeats across the right side. The bottom cell tests the last column and band. Original Code198x glyph data; no game or firmware artwork." />
+
+## Include, initialise, call
+
+Copy `playfield.inc` and `kernel.inc`, and include each once. Reserve **72 picture bytes** at `PF_BUFFER=$80` and **16 context bytes** at `PF=$C8`. The complete caller leaves results at $D8–$E7, guards at $E8–$EB and 20 stack bytes at $EC–$FF. Those allocations fit the machine's 128 bytes of RIOT RAM; they are not free space for another routine.
+
+First call `pf_clear`. To set or erase a cell, put column 0..19 at PF+2, band 0..23 at +3 and 1=set or 0=erase at +4, then call `pf_cell`. PF+5 returns 1 when accepted, 0 when rejected. Invalid requests reject before any buffer write. Inputs survive; A/X/Y/flags and PF+5..7 are clobbered. Clear zeroes the buffer without setting a status.
+
+This maintained caller stamps a letter, sets the boundary cell and tries an out-of-bounds request:
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/demo.asm" from="    jsr pf_clear" to="ready:" lang="asm" title="Prepare picture data outside the visible kernel" />
+
+`pf_stamp` takes a pointer at PF+0/1 and an origin at +2/+3. Its seven source bytes use five low bits per row, bit 4 leftmost. Bits 7..5 must be zero. It checks the entire request before drawing, including all seven rows. A whole 5×7 stamp fits only at `x<=15, y<=17`. Zero bits erase existing cells: this is an opaque stamp. Source pointer and origin survive; +4..12 are scratch/status, with +5 returning 1/0.
+
+Keep the source readable, stable, non-wrapping and disjoint from writable allocations. Use decimal mode clear. The shared context is not re-entrant. Reserve two stack bytes per direct call; stamping needs four because it calls the cell helper, plus your caller/interrupt depth. Neither helper changes interrupt state or video, sound or bank registers.
+
+## Give the kernel its own time
+
+`pf_kernel` emits 24 bands of eight scanlines. It owns WSYNC and PF0/1/2 while running, clobbering A/Y/flags and PF+13/14. Your field caller owns VSYNC, VBLANK, colours, repetition/reflection and blanking work. Clear stale PF registers before unblanking, call the kernel at its scheduled boundary, then finish its final line with WSYNC before blanking. The complete caller below shows that sequence.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/kernel.inc" lang="asm" title="The fixed visible-line schedule" />
+
+At this allocation, each indexed buffer read takes four CPU cycles. After WSYNC releases, the three register writes finish at cycles **7, 14 and 21**. Visible output begins at colour clock 68: CPU cycle 22⅔. Moving the buffer so an indexed read crosses a page changes that schedule. Adding work inside the loop changes it too. Input, music and picture preparation belong outside this kernel.
+
+The caller measures **59,736 colour clocks per field: 262×228**. The picture contains 192 emitted lines. This emulator's 240-row capture includes the surrounding viewport; the first emitted line appears at y14 here. That capture offset is not a game-coordinate rule. PAL needs its own caller and verification.
+
+## Use the grid you actually have
+
+Each independent cell spans four colour clocks horizontally and eight scanlines vertically. There are **20 independent columns**. CTRLPF bit 0 chooses whether the right half repeats or reflects them. Forty positions on the television do not give this kernel forty independent columns.
+
+PF0 scans bits 4,5,6,7; PF1 scans 7..0; PF2 scans 0..7. The helper handles this awkward packing. A logical point (13,19) maps to cell (3,2), with remainders (1,3). A 5×7 glyph therefore occupies 20×56 colour clocks/scanlines before repetition or reflection. Its drawing grid need not be your game's collision grid.
+
+[Place a point](/craft/maths-for-games/unit-06/) develops grid conversion and remainders. [Move a glyph](/craft/maths-for-games/unit-13/) connects stored rows with positions. Here the maths also explains a useful constraint: reflection can give a maze symmetry without storing another half.
+
+## Pay for the picture
+
+The components assemble to **197 code bytes plus 64 table bytes**, with 72 picture bytes and 16 context bytes. Each glyph adds seven source bytes. Clear makes 72 writes; a cell makes one; a stamp makes 35 cell calls/writes after seven validation reads. These are work counts, not measured helper durations. Many stamps may exceed your blanking budget.
+
+The kernel's visible CPU cost recurs even when nothing changes. A ROM-only picture or fewer bands can save RAM. Independent right-side detail needs an asymmetric kernel with carefully timed mid-line writes. Players, missiles, the ball, changing colours and finer lettering need their own register and cycle contracts. This component supplies no general pixel, line, circle or arbitrary-size font API.
+
+<details>
+<summary>Read the reusable helpers and complete NTSC caller</summary>
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/playfield.inc" lang="asm" title="Reusable picture preparation" />
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/demo.asm" lang="asm" title="Complete allocation, reset and field caller" />
+</details>
+
+## Make it your own
+
+Turn the letter demonstration into a tiny maze. The separate `customise/` caller builds walls and passages, stamps an original arrow and chooses a new foreground colour. It uses the same two includes, buffer and kernel. The original working example stays available above.
+
+<Figure src="/images/atari-2600/patterns/customise/maze.png" kind="capture" alt="A red maze with interior walls, passages and an arrow, repeated across both halves of the TIA picture." caption="Verified native customisation: new cells, glyph and colour; the same 192-line kernel and 262-line NTSC field." />
+
+### Replace the picture, keep its format
+
+Keep `customise/` beside `playfield.inc` and `kernel.inc`, and run `make` there. Load `build/maze.a26` for repetition or `build/reflected.a26` for reflection. Both small wrappers include the same `caller.inc`. To bring this into your game, copy the parent includes and reserve the documented buffer/context first; then adapt the preparation calls, not the kernel's visible-line schedule.
+
+Replace these seven source values with your own five-bit rows. Here 4 is binary `00100`, 2 is `00010`, and 31 fills all five dots. Bit 4 is the left edge. Each row must remain 0..31, and the whole stamp must fit its origin. The arrow is placed at (2,4); changing PF+2/PF+3 moves it within the existing bounds. Its zero bits erase what was underneath.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/customise/caller.inc" from="; BEGIN CUSTOM GLYPH" to="; END CUSTOM GLYPH" lang="asm" title="Replace seven rows to make your own glyph" />
+
+Walls use ordinary `pf_cell` calls with value 1. A doorway is a call with value 0. The complete caller draws the perimeter, two interior walls with passages, then the arrow; edit those coordinates to make another room. Drawing order matters because the stamp is opaque. These are pictures and passages, not collision or pathfinding rules: your game can keep a separate logical map.
+
+### Change colour or reflect the room
+
+The foreground changes from $0E to $46 before the first field; COLUBK remains zero. The selected NTSC emulator shows this as a rose-red playfield. Choose another register value in setup, then check contrast in your target model. Physical colour and other video standards are not established by this capture.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/customise/caller.inc" from="; BEGIN CUSTOM COLOUR" to="; END CUSTOM COLOUR" lang="asm" title="Choose the foreground before visible emission" />
+
+Set `MAZE_REFLECT` to 0 for repetition or 1 for reflection. This complete reflected wrapper changes that choice without adding a second stored half:
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/customise/reflected.asm" lang="asm" title="Reflect the same prepared half-picture" />
+
+<Figure src="/images/atari-2600/patterns/customise/reflected.png" kind="capture" alt="The maze's right half is reflected, including its doorway, interior passages and arrow direction." caption="The right arrow and passages reverse with the entire half-picture. Reflection is not an independent sprite flip or forty separately stored columns." />
+
+### Know what the variation costs
+
+| Resource or work | Original caller | Maze caller |
+|---|---:|---:|
+| Reusable code + tables | 197 + 64 bytes | Same |
+| Picture + context | 72 + 16 bytes | Same |
+| Glyph source | 7 bytes | 7 replacement bytes |
+| Setup writes to picture, including clear | 108 | 213 |
+| Startup instruction span, start to ready | 81 bytes | 162 bytes |
+| Measured colour clocks per steady field | 59,736 | 59,736 |
+
+The maze makes 84 perimeter cell writes, 21 interior-wall writes, one doorway erase and 35 opaque stamp writes: 141 after the 72-write clear. That preparation happens once before the first field. A game updating the picture every field must measure its own blanking workload. The startup span is assembled code size, not CPU execution time; both cartridges remain 4 KiB.
+
+New row data, valid cell coordinates and setup colour/reflection choices preserve this contract. Changing the band height does not. Keeping 192 picture lines with four-line bands would require 48 bands: at three bytes each, **144 picture bytes**, already more than all 128 bytes of RIOT RAM before context or stack. A different buffer strategy and kernel would be needed. Extra visible-loop work, asymmetric halves, relocated indexed buffers and shared video ownership also need renewed timing verification.
+
+<details>
+<summary>Read the complete maze preparation and field caller</summary>
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/customise/caller.inc" lang="asm" title="Custom picture using the unchanged reusable includes" />
+</details>
+
+Both customisation builds were assembled and executed in the same released native emulator. The entire buffer and every frame pixel match an independent logical maze/arrow model; guards and steady field periods pass. The colour expectation belongs to that emulator's NTSC palette. See the linked source directory's `customise/README.md` and captures to reproduce the checks.
+
+## Common mistakes and their symptoms
+
+These examples are deliberately broken. Keep the working includes above as your starting point. Each wrong fragment was assembled into this caller, run in the same NTSC emulator and checked against an independently predicted result. The corrected fragments were run too.
+
+### Part of the letter is scrambled
+
+**Symptom:** the leftmost part of each A is mangled, but the rest of the letter stays in place. This is a packing error, not a reason to move the whole glyph.
+
+<Figure src="/images/atari-2600/patterns/mistakes/wrong-bit.png" kind="capture" alt="Both A glyphs have their first four playfield columns reversed while their remaining columns stay in place." caption="Deliberately reversed PF0 masks. Native Emu198x NTSC capture from the same original glyph and caller as the working image." />
+
+**Cause:** the first four cells use PF0's high nibble. Treating that nibble as most-significant-bit first reverses those four columns. PF1 really does scan most-significant-bit first; applying its rule to PF0 is the mistake.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/mistakes/wrong-bit.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: PF0 masks run backwards" />
+
+**Fix:** restore PF0's order to bits 4,5,6,7, leaving the other masks alone. Compare the whole buffer and picture with the known-good result; a glyph that happens to be symmetric can hide this error.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/mistakes/wrong-bit.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct: each register keeps its own bit order" />
+
+### Small notches appear at a band boundary
+
+**Symptom:** a few pixels at the left of the first A are wrong where its shape changes between eight-line bands. The repeated A on the right is intact. That difference is a timing clue.
+
+<Figure src="/images/atari-2600/patterns/mistakes/late-registers.png" kind="capture" alt="The left A has short erroneous horizontal edges at some band transitions; the repeated right A remains correct." caption="Twelve inserted NOPs delay the playfield writes by 24 CPU cycles. The full native frame differs from the working frame in 64 pixels, all in the left PF0/PF1 regions at band transitions." />
+
+**Cause:** `$EA` is the two-cycle NOP instruction. These twelve bytes do nothing useful, but cost 24 cycles. PF0 and PF1 are now written at cycles 31 and 38 instead of 7 and 14, too late for their left-side output. At a band transition, those regions use the previous band's bits. By the time the beam reaches the repeated right half, the new bits are ready. Most lines within a band look fine because their data did not change.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/mistakes/late-registers.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: add 24 cycles before the first buffer read" />
+
+**Fix:** remove the delay and put extra work outside the visible kernel. Restore the scheduled read below and retain the following PF0 store. Check transitions in an asymmetric picture, as well as the cycle schedule; a constant fill can conceal a late write.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/mistakes/late-registers.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct: keep the first read on its scheduled cycle" />
+
+### The picture looks right, but the field is too long
+
+**Symptom:** this emulator still produces the familiar letter, yet one field takes an extra scanline. A screenshot alone cannot diagnose it.
+
+<Figure src="/images/atari-2600/patterns/mistakes/wrong-period.png" kind="capture" alt="The extra-scanline caller still displays the two A glyphs and boundary cells normally." caption="A plausible-looking still from the broken 263-line caller. The native field-marker measurement, rather than this image, exposes the extra line. No television rolling or instability is claimed." />
+
+**Cause:** the selected caller already accounts for one overscan WSYNC at the frame start. Increasing its other overscan loop from 29 to 30 adds another line. Count all the caller's waits, including the kernel boundary and the final picture line, rather than choosing a loop count in isolation.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/mistakes/wrong-period.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: add one overscan line" />
+
+| This caller | Lines per field | Measured colour clocks between steady field markers |
+|---|---:|---:|
+| Working | 262 | 59,736 |
+| Extra overscan wait | 263 | 59,964 |
+
+**Fix:** restore 29 in this caller, then measure between the same steady CPU markers again. The difference is 228 colour clocks: exactly one scanline. That count belongs to this NTSC caller, not every TIA kernel or PAL configuration.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/mistakes/wrong-period.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct for this caller's complete field schedule" />
+
+## What was verified
+
+Asm198x 0.0.71 and released Emu198x 0.41.0 execute this original 4 KiB reset cartridge without firmware. Every native frame pixel and all 72 picture bytes are compared with a separate logical-grid model, in repetition and reflection builds. Native call markers and the measured field period guard against incomplete execution. Six rejected boundary calls leave the whole buffer unchanged. Completed wrong-bit, late-register and extra-scanline controls fail the same checks. The website's pinned Asm198x 0.0.65 also assembles it.
+
+All three corrected diagnostic fragments also reproduce the working frame. The native verifier checks each broken capture against its predicted symptom, then requires the repaired path to pass the original destination and timing checks.
+
+This is evidence for this caller and emulator configuration, not original hardware, PAL, arbitrary relocation or coexistence with another kernel.
+
+- [Reusable source, caller and execution records](https://github.com/code198x/code-samples/tree/6379a565b3066b7bc0c02bf6827f95e352de0b39/atari-2600/patterns/assembly/rendering/playfield-kernel)
+- [Contracts, costs and reproduction](https://github.com/code198x/code-samples/blob/6379a565b3066b7bc0c02bf6827f95e352de0b39/cross-platform/patterns/rendering/tia-maria/README.md)
+- Steve Wright, Atari, [Stella Programmer's Guide](http://www.atarihq.com/danb/files/stella.pdf), playfield discussion and printed p39 serial-output diagram.
+- [Build objects for the very different MARIA display](/patterns/atari-7800/assembly/rendering/maria-objects/).

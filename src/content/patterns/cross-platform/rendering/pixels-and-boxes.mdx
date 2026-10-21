@@ -1,0 +1,50 @@
+---
+title: "Draw Pixels, Spans and Boxes"
+summary: "Start with one bit and build reusable spans and rectangles. Compare eleven qualified bitmap backends without hiding their costs."
+platform: "cross-platform"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["pixels", "spans", "rectangles", "bitmap", "maths"]
+---
+
+import Figure from '@components/Figure.astro';
+
+A life bar is a filled box. A selection frame is an outline. A tiny drawing tool needs to set, clear and inspect individual dots. These are useful pieces in their own right, and a base for more elaborate drawing.
+
+## Pick the actual display
+
+| Machine | Code and display | Addressing choice |
+| --- | --- | --- |
+| [Spectrum 48K](/patterns/sinclair-zx-spectrum/assembly/rendering/pixels-and-boxes/) | Z80, 256×192 mono bitmap | Reuse `pixel_addr`; attributes are separate |
+| [BBC Micro MODE 4](/patterns/bbc-micro/assembly/rendering/pixels-and-boxes/) | 6502, 320×256 mono bitmap | 512-byte row table; horizontal bytes are eight addresses apart |
+| [Dragon 32 PMODE 4](/patterns/dragon-32/assembly/rendering/pixels-and-boxes/) | 6809, 256×192 mono bitmap | Calculate y×32; consecutive linear scanlines |
+| [CPC 464 MODE 1](/patterns/amstrad-cpc/assembly/rendering/pixels-and-boxes/) | Z80, 320×200 four-pen bitmap | Four pixels per byte, two separated bits per pen |
+| [Oric Atmos HIRES](/patterns/oric-atmos/assembly/rendering/pixels-and-boxes/) | 6502, 228×200 logical surface | Six pixels per byte; two reserved serial-attribute columns and canonical-byte preflight |
+| [Atari 800XL](/patterns/atari-800/assembly/rendering/pixels-and-boxes/) | 6502, ANTIC F 320×192 | CPU row tables agree with explicit LMS addresses across the 4 KiB split |
+| [Atari 5200](/patterns/atari-5200/assembly/rendering/pixels-and-boxes/) | 6502, ANTIC F 320×192 | Separate cartridge/reset-stub execution; console RAM and GTIA addresses |
+| [Atom, full RAM](/patterns/acorn-atom/assembly/rendering/pixels-and-boxes/) | 6502, 256×192 mono | Linear 32-byte rows; separately executed full-RAM model |
+| [Electron MODE 4](/patterns/acorn-electron/assembly/rendering/pixels-and-boxes/) | 6502, 320×256 mono | Fixed ULA screen start and interleaved row tables |
+| [C64 standard HIRES](/patterns/commodore-64/assembly/rendering/pixels-and-boxes/) | 6502, 320×200 stored bits | VIC bank, bitmap cells, screen-RAM colours and preserved 192-byte tail |
+| [Amiga A500 single plane](/patterns/commodore-amiga/assembly/rendering/pixels-and-boxes/) | 68000, 320×256 stored bits | Chip RAM, byte masks and caller-owned Copper/DMA |
+
+Each entry has the real include, a complete caller and machine-specific resource rules. The names agree where the operations agree; the memory layouts and native word order stay visible. The CPC entry supplies a packed-colour backend with explicit replace/clear/XOR pen semantics.
+
+The Oric contract reserves serial-attribute columns and checks canonical pixel bytes before drawing. The Atari examples make the CPU/display-list agreement explicit and qualify XL and 5200 separately. These entries add primitive backends; text and geometry still require their own adapters and evidence.
+
+## Follow eight pixels across a boundary
+
+<Figure src="/images/patterns/span-byte-masks.svg" kind="image" rendering="smooth" alt="Eight highlighted pixels cross from the end of one byte into the start of the next, repeated across four rows" caption="The interval [5,13) is eight pixels wide. Each row still touches two bytes." />
+
+Start at x=5 and stop before x=13. Width is `13−5=8`. Repeat from y=20 up to, but not including, y=24: height `24−20=4`, area `8*4=32` pixels. The first byte needs mask $07, the last $F8. Four rows therefore need eight destination-byte writes.
+
+That is why a span deserves its own routine. It can handle the two edges and write complete interior bytes, without asking the plotter to calculate every pixel address again. The native checks measure 32 writes for a 32×8 aligned fill and 40 when it moves one pixel sideways. Those are write counts, not a cross-machine speed ranking or frame budget.
+
+The checked interface rejects an empty, reversed or out-of-bounds request before writing. Use it when you want a mistake to leave the destination alone. If you want off-screen shapes to be partially drawn, a clipping layer should calculate the visible interval first. [Clipped lines, circles and ellipses](/patterns/cross-platform/rendering/geometry/) now build on these foundations, including span-filled curves. Polygon and flood fills remain bounded follow-up work.
+
+## Maths with something to draw
+
+At x=13, `13 div 8 = 1` selects a byte column; `13 mod 8 = 5` selects a bit inside it. With the most significant bit on the left, the mask is `128 >> 5 = 4`. The byte’s other seven pixels must survive.
+
+[Place a point](/craft/maths-for-games/unit-06/) gives position and origin an experiment you can move. These routines make it concrete in display memory. They count Y down from the top left; the experiment counts world Y upwards. Keep world and screen coordinates distinct, then convert deliberately. Each machine entry works through a real address locally; no maths course is a prerequisite.
+
+If your scene is built from repeated pictures, [native map regions](/patterns/cross-platform/rendering/tile-region/) may be a better starting point. [Writable characters](/patterns/cross-platform/rendering/custom-glyphs/) use another strategy again: cells share pictures instead of owning bitmap dots.

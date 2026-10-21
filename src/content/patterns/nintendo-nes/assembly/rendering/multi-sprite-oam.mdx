@@ -1,232 +1,55 @@
 ---
-title: "Multi-Sprite OAM Update"
-summary: "Manage multiple sprites in the OAM buffer. Update positions, hide unused sprites, and DMA transfer efficiently."
+title: "Build an OAM Page and Share Sprite Dropout"
+summary: "Pack active NES objects into a complete OAM page, hide unused slots and rotate priorities when a row exceeds the hardware limit. Includes a running cartridge."
 platform: "nintendo-nes"
 category: "rendering"
 difficulty: "intermediate"
-taught_in: "Game 1, Unit 5"
-tags: ["sprites", "oam", "dma", "rendering"]
+tags: ["sprites", "oam", "dma", "priority", "flicker"]
 evolution:
   previous: "nmi-game-loop"
   next: null
 related:
-  patterns: ["nmi-game-loop", "sprite-movement-bounds"]
-  vault: ["nintendo-nes"]
+  patterns: ["sprites", "nmi-game-loop", "sprite-movement-bounds", "nametable-scrolling"]
+  vault: ["nintendo-nes", "sprite-flicker"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
 
-## Overview
+Twelve objects fit comfortably in the NES's sixty-four OAM entries. Put them on the same scanline and some disappear: the PPU's per-line limit is eight entries. This component packs a complete page and offers a simple way to share that dropout.
 
-The NES supports 64 sprites, each requiring 4 bytes in OAM (Object Attribute Memory). For multiple game objects, you need to manage their OAM entries systematically - updating positions, hiding inactive objects, and handling the OAM DMA transfer during NMI.
+**Code status: maintained 6502 builder, independently checked on the NTSC NES emulator, with a complete caller.** [Execution record](https://github.com/code198x/code-samples/blob/a5eadba064d1b9de63b69dbb58fdc033a0baf2c6/docs/rendering-families/verification/results.json). See the [sprite family](/patterns/cross-platform/rendering/sprites/) for hardware multiplexing, software drawing and other overload policies.
 
-## Code
+## Supply the objects and an owned staging page
 
-```ca65
-; =============================================================================
-; MULTI-SPRITE OAM UPDATE - NES
-; Manage multiple sprites in OAM buffer
-; Taught: Game 1 (Neon Nexus), Unit 5
-; CPU: ~200 cycles | Memory: ~100 bytes
-; =============================================================================
+Include `oam.inc` once. Supply five 64-byte arrays: `obj_x`, `obj_y`, `obj_tile`, `obj_attr`, `obj_active`. Each active object here is one 8×8 hardware sprite. X is raw OAM X; Y is the raw stored value, so the displayed top is Y+1. Values 0–238 are supported; Y≥239 is omitted. Choose legal tile/palette values and clear reserved attribute bits.
 
-OAMADDR   = $2003
-OAMDMA    = $4014
+Also supply `object_count`, `first_object`, `oam_used`, `oam_status`, `objects_left`, `object_index` and a page-aligned `oam_buffer[256]`. Keep that page, arrays, stack and state separate. Clear decimal mode. A/X/Y/flags change.
 
-MAX_OBJECTS = 8                 ; Maximum active objects
-SPRITE_HIDDEN = $FF             ; Y position to hide sprite
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/rendering/multi-sprite-oam/oam.inc" lang="asm" title="Pack, hide and optionally rotate the OAM candidates" />
 
-.segment "OAM"
-oam_buffer:  .res 256           ; Must be page-aligned ($xx00)
+`build_oam` hides every entry by setting Y=$FF, then packs eligible objects in circular order from `first_object`. It leaves the input arrays unchanged. An out-of-range starting index normalises to zero for a non-empty list. Empty lists hide everything.
 
-.segment "ZEROPAGE"
-; Object data (parallel arrays)
-obj_x:       .res MAX_OBJECTS   ; X positions
-obj_y:       .res MAX_OBJECTS   ; Y positions
-obj_tile:    .res MAX_OBJECTS   ; Tile numbers
-obj_attr:    .res MAX_OBJECTS   ; Attributes (palette, flip)
-obj_active:  .res MAX_OBJECTS   ; 0=inactive, 1=active
+| Result | Meaning |
+| --- | --- |
+| Carry clear, status 0 | Valid count; `oam_used` is the number packed |
+| Carry set, status 1 | Count exceeded 64; all slots hidden and no object arrays read |
 
-.segment "CODE"
+Only hidden Y values are defined; the other bytes of those entries retain their previous contents. DMA remains the caller's job. Main must finish building before publishing the page, and must wait for the consuming NMI to acknowledge it before rewriting it.
 
-; Update all active objects in OAM buffer
-; Call this before NMI triggers DMA
-update_oam:
-        ldx #0                  ; Object index
-        ldy #0                  ; OAM buffer index
+## Rotation is a policy, not extra capacity
 
-@object_loop:
-        lda obj_active, x
-        beq @skip_object        ; Skip inactive objects
+Call `advance_priority` when you want a different object to lead the next list. It wraps at the count, resets empty/invalid counts to zero, and changes A/flags. The complete caller rotates once per accepted display update.
 
-        ; Copy object to OAM buffer
-        ; Byte 0: Y position
-        lda obj_y, x
-        sta oam_buffer, y
-        iny
+This spreads disappearance over several objects instead of always losing the same ones. It also causes flicker and changes overlap order. It moves the identity in slot zero, so it cannot be dropped unchanged into a sprite-zero split system. A more selective version could reserve player/HUD slots and rotate only less important effects.
 
-        ; Byte 1: Tile number
-        lda obj_tile, x
-        sta oam_buffer, y
-        iny
+A large character made from four entries still spends four entries on every scanline touched by all four. Metasprite grouping, 8×16 sprites, arbitrary clipping and scanline-aware admission need further implementations; they are not supplied by this single-tile builder.
 
-        ; Byte 2: Attributes
-        lda obj_attr, x
-        sta oam_buffer, y
-        iny
+## Run it with scrolling
 
-        ; Byte 3: X position
-        lda obj_x, x
-        sta oam_buffer, y
-        iny
+The complete [nametable-scrolling cartridge](/patterns/nintendo-nes/assembly/rendering/nametable-scrolling/) includes this component. Build there with `make`. Main prepares a finished page and matching camera state; NMI sets `$2003=0`, transfers page `$0200` through `$4014`, applies scroll, then acknowledges. The caller owns NMI and OAM exclusively.
 
-        jmp @next_object
+The execution checks cover counts 0, 1, 8, 9, 12, 63, 64, 65 and 255, circular starts, invalid starting indices, inactive/hidden objects, input preservation and hidden-slot contents. A missing attribute write must fail the same output check. The running scene is captured separately; neither result certifies PAL or a whole-game frame budget.
 
-@skip_object:
-        ; Write hidden sprite to OAM
-        lda #SPRITE_HIDDEN
-        sta oam_buffer, y
-        iny
-        iny
-        iny
-        iny                     ; Skip 4 bytes
+The PPU's scanline selection and OAM format are described by Ricoh's *RP2C02 development specification* and the [NESdev sprite-evaluation reference](https://www.nesdev.org/wiki/PPU_sprite_evaluation).
 
-@next_object:
-        inx
-        cpx #MAX_OBJECTS
-        bne @object_loop
-
-        ; Hide remaining sprites (up to 64)
-        lda #SPRITE_HIDDEN
-@hide_rest:
-        cpy #0                  ; Wrapped around = done
-        beq @done
-        sta oam_buffer, y
-        iny
-        iny
-        iny
-        iny
-        bne @hide_rest
-
-@done:
-        rts
-
-; Perform OAM DMA transfer (call from NMI)
-do_oam_dma:
-        lda #0
-        sta OAMADDR             ; Start at OAM address 0
-        lda #>oam_buffer        ; High byte of buffer address
-        sta OAMDMA              ; Triggers 256-byte DMA transfer
-        rts
-
-; Hide all sprites (call at init or game over)
-hide_all_sprites:
-        lda #SPRITE_HIDDEN
-        ldx #0
-@loop:
-        sta oam_buffer, x
-        inx
-        inx
-        inx
-        inx
-        bne @loop
-        rts
-
-; Spawn object at index X
-; Input: A=tile, obj_x[X], obj_y[X] already set
-spawn_object:
-        sta obj_tile, x
-        lda #0
-        sta obj_attr, x         ; Default attributes
-        lda #1
-        sta obj_active, x
-        rts
-
-; Deactivate object at index X
-kill_object:
-        lda #0
-        sta obj_active, x
-        rts
-```
-
-## Trade-offs
-
-| Aspect | Cost |
-|--------|------|
-| CPU | ~200 cycles for 8 objects |
-| Memory | ~100 bytes code + 256 OAM + arrays |
-| Limitation | 8 sprites per scanline hardware limit |
-
-**When to use:** Games with multiple moving objects (enemies, bullets, items).
-
-**When to avoid:** Single-sprite games - use direct OAM writes instead.
-
-## OAM Entry Format
-
-Each sprite uses 4 consecutive bytes:
-
-| Offset | Purpose | Notes |
-|--------|---------|-------|
-| +0 | Y position | $FF hides sprite |
-| +1 | Tile number | Pattern table index |
-| +2 | Attributes | Palette, flip, priority |
-| +3 | X position | - |
-
-**Attribute byte format:**
-```
-76543210
-||||||++- Palette (0-3)
-|||+++--- Unused
-||+------ Priority (0=front, 1=behind BG)
-|+------- Horizontal flip
-+-------- Vertical flip
-```
-
-## NMI Integration
-
-```ca65
-nmi:
-        pha
-        txa
-        pha
-        tya
-        pha
-
-        ; Update OAM from game state
-        jsr update_oam
-
-        ; DMA transfer to PPU
-        jsr do_oam_dma
-
-        pla
-        tay
-        pla
-        tax
-        pla
-        rti
-```
-
-## Sprite Flickering
-
-The NES PPU can only display **8 sprites per scanline**. When the PPU evaluates OAM during a scanline and finds a 9th candidate, it sets the sprite-overflow flag (`$2002` bit 5) and drops further sprites for that line. Which sprites get dropped depends on **OAM order**: the PPU evaluates sprite 0 first, sprite 63 last, and the *first* eight on a scanline are kept.
-
-This means sprite priority is fixed by OAM index. Sprite 0 always wins; sprite 63 always gets dropped first. So if you have 10 sprites that occasionally overlap a scanline, the same 2 will *always* disappear — visually jarring.
-
-To distribute the flicker evenly across all sprites, rotate the OAM start index each frame:
-
-```ca65
-; Simple rotation: start OAM index at different offset each frame
-update_oam_rotate:
-        lda frame_count
-        and #$1C                ; 0, 4, 8, 12, 16, 20, 24, 28
-        tay                     ; Start OAM index
-        ; ... rest of update loop
-```
-
-Cycling through 8 different start offsets every frame means each sprite spends roughly 1/8 of its time at low priority, so flicker is shared rather than concentrated. This is the trick *Super Mario Bros.* and most NES games use to keep large enemy groups looking smooth despite the 8-per-line ceiling.
-
-## Related
-
-**Patterns:** [NMI Game Loop](/patterns/nintendo-nes/assembly/framework/nmi-game-loop), [Sprite Movement with Bounds](/patterns/nintendo-nes/assembly/physics/sprite-movement-bounds)
-
-**Vault:** [NES](/vault/systems/nintendo-entertainment-system)
+Explore the [cross-platform sprite family](/patterns/cross-platform/rendering/sprites/) for software drawing, hardware limits, restoration and overload policies.

@@ -1,0 +1,59 @@
+---
+title: "Save, Draw and Restore Amiga Bobs"
+summary: "Move word-aligned blitter objects over a persistent background. Reusable chip-RAM save, masked drawing and restore routines with a complete two-object ADF caller."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["sprites", "bobs", "blitter", "save-under", "overlap"]
+related:
+  patterns: ["sprite-lifecycle", "sprites", "cookie-cut-blit", "blitter-copy"]
+  vault: ["blitter", "sprites", "commodore-amiga"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+These objects are drawn into the playfield by the blitter. Moving one means putting its previous background back, then saving and drawing at the new address. The second object overlaps it, so the order matters too.
+
+<img src="/images/patterns/sprite-lifecycle/amiga.png" alt="Two original Amiga blitter objects over a patterned background" width="768" height="576" loading="lazy" />
+
+*Original Code198x A500 caller captured in Emu198x. It uses one bitplane and word-aligned motion.*
+
+**Code status: maintained routines, executed on the A500 OCS PAL/Kickstart1.3 configuration.** [Execution record](https://github.com/code198x/code-samples/blob/df5b3ae5bc07ffc82336908b5dd9aee3bc2045c4/docs/sprite-lifecycle/verification/results.json). The [shared lifecycle](/patterns/cross-platform/rendering/sprite-lifecycle/) explains restoration order across machines. No original-hardware or whole-game frame-budget claim is made.
+
+## Include it and provide the buffers
+
+Include `bob.inc` once. Each live object needs its previous rectangle address and a packed background buffer. The module allocates no save slots.
+
+For all three calls, D0 is width in **16-bit words**, D1 is height, and D2 is the screen stride in **bytes**. Zero width or height does nothing. Otherwise width is 1–64, height 1–1024, and the even stride must be at least 2×width and at most 32766. Every accessed address must be even, in owned chip RAM and within its valid allocation; buffers must not overlap code, stack, sources or each other.
+
+| Routine | Pointers |
+| --- | --- |
+| `bob_save` | A0=screen rectangle, A1=packed save buffer |
+| `bob_restore` | A0=packed save buffer, A1=screen rectangle at its old position |
+| `bob_draw` | A0=opaque mask, A1=image, A2=screen rectangle |
+
+Packed source/save rows contain 2×width bytes. The mask uses 1 for the image and 0 for the background, unlike the Spectrum/BBC keep-mask convention. Images and masks are separate sources, not interleaved byte pairs.
+
+D0, D3–D5, A5 and flags change; D1/D2/A0–A2 survive. **Reload D0 before the next operation** rather than chaining calls on its previous value. Each non-empty operation waits before programming the blitter and before returning. The caller enables DMA and excludes other blitter users; separate buffers do not make concurrent calls safe.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/sprite-lifecycle/bob.inc" lang="m68k" title="Synchronous save, masked draw and restoration" />
+
+The copy path transfers A to D with minterm `$F0`. Drawing uses A=mask, B=image, C=old screen and D=screen with `$CA`. Modulos bridge packed rows and the screen stride. Software zero-size checks happen before encoding the blitter's maximum-size zero fields. See the *Amiga Hardware Reference Manual*, [chapter 6](https://www.theflatnet.de/pub/cbm/amiga/AmigaDevDocs/hard_6.html), for channels, modulos and size encoding.
+
+## A complete two-object caller
+
+`make` creates `build/demo.adf`. Boot it on the named A500 configuration. The caller owns the custom chips, copper list, bitplane and chip-RAM assets, uses the existing VERTB polling wait, and resets to leave. It is a takeover demo; integration with AmigaOS needs its blitter ownership protocol instead of this startup.
+
+A and B are 32×16 objects. Main restores old B, then old A, changes A's position, saves/draws A, then saves/draws B. Every call reloads the geometry. Movement is in 16-pixel steps because this version is word aligned.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/sprite-lifecycle/demo.asm" lang="m68k" title="Original ADF caller with two overlapping bobs" />
+
+## What is qualified, and what comes next
+
+Checks cover empty operations, ordinary rectangles, different strides, width 64 and height 1024 as separate small-memory cases, surrounding guards, packed saves and independent expected restoration. A two-object fixture compares the full composed and restored region and checks unchanged image/mask sources. Broken-mask and wrong-order variants must fail those same comparisons. The complete displayed caller progresses separately.
+
+The normal screen example is one bitplane. A colour bob needs a save/draw/restore operation and saved background per changed plane; the silhouette mask can be shared. This is extra work and storage, not a colour flag you can turn on for free.
+
+There is no clipping, arbitrary-X shift or asynchronous queue here. The existing [cookie-cut listing](/patterns/commodore-amiga/assembly/rendering/cookie-cut-blit/) explores shifting and remains illustrative. Saved backgrounds also become stale if scenery changes: remove objects before updating or scrolling their background, or redraw dirty tiles from world state. See the [shared lifecycle](/patterns/cross-platform/rendering/sprite-lifecycle/) before expanding the object count.
+
+When an object can leave the screen, [clip its visible rectangle](/patterns/commodore-amiga/assembly/rendering/clipped-sprites/) before saving or drawing it. Keep its old clipped address and dimensions for the next restoration.

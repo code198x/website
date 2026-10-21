@@ -1,0 +1,56 @@
+---
+title: "Software Scrolling a Bitmap Band"
+summary: "Move a Spectrum playfield one pixel at a time, supplying the newly exposed edge yourself. Reusable Z80 code and a running tiled-band caller."
+platform: "sinclair-zx-spectrum"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["scrolling", "bitmap", "software", "playfield"]
+related:
+  patterns: ["scrolling", "bitmap-addressing", "masked-sprites"]
+  vault: ["software-scroll", "scrolling", "ula"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+The Spectrum cannot move this bitmap by writing a fine-scroll register. This routine moves the pixels itself. A repeating grid slides through a 48-line band while the rest of the screen stays still.
+
+<img src="/images/patterns/rendering-families/spectrum.png" alt="A tiled grid scrolling through a narrow band on the Spectrum bitmap" width="352" height="296" loading="lazy" />
+
+*Original Code198x program captured in Emu198x. The capture shows the small band used by the caller, not a full-screen performance claim.*
+
+**Code status: maintained Z80 routine with independent bitmap checks, plus a ROM-loaded tape caller.** [Execution record](https://github.com/code198x/code-samples/blob/a5eadba064d1b9de63b69dbb58fdc033a0baf2c6/docs/rendering-families/verification/results.json). The [scrolling family](/patterns/cross-platform/rendering/scrolling/) compares this with character shifts and hardware offsets on other machines.
+
+## Include it and supply an edge
+
+Include `scroll.inc` and the maintained bitmap-addressing include once. Pass HL pointing to one byte per scanline; bit 0 of each byte is the pixel entering at X=255. D is the top pixel row and B is the height. For a non-empty band, top+height must be at most 192. A zero height is a no-op.
+
+```z80
+    ld hl,next_edge       ; at least 48 readable bytes, outside the bitmap
+    ld d,72
+    ld b,48
+    call scroll_band_left
+```
+
+The routine moves the full 256-pixel width left by one pixel. HL advances by the height. AF, BC and DE change; IX/IY survive. It uses no static writable state and needs eight temporary stack bytes beyond the caller's return address and any interrupt stack use. The caller prevents concurrent writes to the same band.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/software-scrolling/scroll.inc" lang="z80" title="Shift a bitmap band and inject the new edge" />
+
+## Why work from the right?
+
+The incoming edge bit becomes bit 0 of the last byte. Rotating that byte left puts its old bit 7 into carry, ready to enter the byte immediately to its left. Continue towards the left edge and every pixel moves one place. Processing the bytes in the opposite order would propagate the wrong neighbour's bit.
+
+The [addressing routine](/patterns/sinclair-zx-spectrum/assembly/rendering/bitmap-addressing/) finds the next physical scanline despite the Spectrum's interleaving. The scroll tests include character-row and screen-third boundaries, row 191, zero height and a full-height band; they compare all bitmap bytes and require an altered edge-carry implementation to fail.
+
+## A complete caller
+
+The caller owns the bitmap, attributes, private stack and ROM IM1 frame wait. It generates a repeating tile edge, then calls the same routine. Reset to leave. `make` in the source folder creates `build/demo.tap`; use `LOAD ""` on a 48K Spectrum.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/software-scrolling/demo.asm" lang="z80" title="Complete tiled-band tape program" />
+
+## What it costs, and what comes next
+
+Each call visits 32×height bitmap bytes, with a read/modify/write rotate for each. A short band is a deliberately smaller workload than a full screen. No measured whole-game frame budget or tear-free guarantee is supplied.
+
+Attributes stay where they are. Uniform ink/paper suits this example; moving a multicolour tile world requires a separate attribute policy at the coarse boundary, or a different visual design. The routine also leaves map decoding, camera policy and sprite restoration to the caller.
+
+Character-step scrolling trades smoothness for less work. Pre-shifted tile graphics trade storage for fewer runtime shifts. Unrolled drawing trades code space for speed. Compare those approaches in the [shared family](/patterns/cross-platform/rendering/scrolling/), and restore old [software sprites](/patterns/sinclair-zx-spectrum/assembly/rendering/masked-sprites/) before moving their background.

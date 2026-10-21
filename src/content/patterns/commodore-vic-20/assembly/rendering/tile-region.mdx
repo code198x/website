@@ -1,0 +1,70 @@
+---
+title: "Draw a Native Region on VIC-20"
+summary: "Reusable VIC-20 code for a room, changed tile or strip of scenery, with its display layout and ownership explicit."
+platform: "commodore-vic-20"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["tilemaps", "regions", "native", "assembly", "characters"]
+related:
+  patterns: ["tile-region", "tile-map-queries"]
+  vault: ["tile-maps"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A door opens, and one map cell changes. This routine redraws its picture without rebuilding the whole screen. The same call can paint a room or the strip of scenery revealed by a camera: choose a source rectangle and a destination, then let the machine's renderer do the copying.
+
+<Figure src="/images/commodore-vic-20/patterns/tile-region.png" kind="capture" alt="VIC-20 native diagnostic showing a small patterned region, a single-cell redraw and a separate corner tile" caption="Original reset diagnostic in Emu198x 0.39.0: unexpanded PAL RAM-character screen. Complete display memory and every native pixel are checked separately." />
+
+
+## Put your pictures in character RAM
+
+The unexpanded PAL example uses 22×23 cells at `$1E00`, with matching colour nibbles at `$9600`. Four original high-resolution characters take 32 bytes at `$1000`. The reset caller selects that RAM character base separately from drawing regions.
+
+Now an ID chooses both a native screen code and a colour. `glyph_codes` deliberately maps IDs 0,1,2,3 to codes 0,3,1,2; `tile_colours` supplies colours 1,1,2,5. Editing a character's bitmap changes every screen cell using that code. Changing one cell's code affects just that cell. Those are useful, different tools for animation.
+
+Keep colour bit 3 clear for this **high-resolution** path. Enabling multicolour changes how pixel bits are interpreted. The screen, character data and game state also compete for the unexpanded machine's small RAM allocation. No expansion is assumed here.
+
+## Reserve your workspace
+
+Define `NR`, map dimensions, `TILE_COUNT`, `SCREEN`, `COLOUR`, `SCREEN_COLS=22`, `SCREEN_ROWS=23`, `HAS_COLOUR=1`, and one glyph-code/colour descriptor per logical ID. Include `character-regions/6502.inc` once. Reserve all 32 bytes of context in zero page and clear decimal mode. No scratch initialisation call is needed.
+
+The example map is twelve bytes wide and eight high. Source width is 1–128 and height 1–255; keep context, source and descriptors separate from destination allocations. A/X/Y and flags are clobbered; four stack bytes cover direct JSR plus paint helper, beyond your caller and interrupts.
+
+A 5×3 patch writes fifteen character bytes and fifteen colour nibbles, plus ID checks and address work. Each full 512-byte allocation is checked, including the six unused tail cells. Colour RAM physically stores four bits; verification compares those bits rather than inventing eight-bit storage.
+
+Character animation, multicolour pictures and raster effects are further variants. Longer row copies can reduce overhead. Keep their display ownership and timing visible rather than assuming this small region routine provides them.
+
+## Draw the rectangle
+
+The constants belong to the original caller's working memory plan. Choose allocations which fit your own project, keeping setup and drawing separate.
+
+<CodeFromFile src="commodore-vic-20/patterns/assembly/rendering/tile-region/demo.asm" from="NR=" to="start:" lang="6502" title="Caller-owned memory and display constants" />
+
+<CodeFromFile src="commodore-vic-20/patterns/assembly/rendering/tile-region/demo.asm" from="glyph_codes:" to="!source" lang="6502" title="Translate logical IDs into native screen codes and colours" />
+
+Supply six unsigned bytes at `NR+0..5`: source column, source row, destination column, destination row, width and height. Call `region_draw`; `NR+6` is one for completion or zero for rejection. The six request bytes survive.
+
+<CodeFromFile src="commodore-vic-20/patterns/assembly/rendering/tile-region/demo.asm" from="case_0:" to="case_1:" lang="6502" title="Draw a 5×3 patch from map cell (2,1) at display cell (4,3)" />
+
+The result store after the call belongs to the diagnostic. In a game, read the completion flag and carry on with your own logic. The routine rejects zero sizes, invalid starts, source/destination overruns and IDs outside the configured table. Every selected ID is checked before painting begins, so a bad tile cannot leave half a patch behind. This variant rejects rather than clips.
+
+## Keep the routine
+
+<CodeFromFile src="cross-platform/patterns/rendering/character-regions/6502.inc" lang="6502" title="Checked character and colour region drawing" />
+
+The context is private and non-re-entrant. Keep the request, map, descriptors or picture data, and display configuration stable throughout the call. Your caller owns video setup, allocations and interrupt policy; the routine does not disable interrupts or negotiate with an OS. Interrupt handlers must preserve the used registers and must not change those resources halfway through drawing.
+
+## What was checked
+
+All **18 calls** completed: three accepted draws and fifteen map/bounds/ID rejections. Each rejected request also ran **in isolation** after the same three accepted draws, preserving complete destination allocations and both mapped guards. The source selection crosses a CPU page boundary.
+
+The observer compares every destination byte, unused allocation tails and stored colour bits where present, with an independent model. It compares every native capture pixel with a separate composition, including borders and scaling. Completed wrong-layout and unsafe-destination controls fail the same memory checks; wrong-layout pictures also fail the pixel check.
+
+These results qualify the selected Emu198x 0.39.0 configuration with Asm198x 0.0.71 and the original reset fixture. They do not establish stock-OS loading, original-hardware timing, interrupt coexistence, tear-free updates or throughput.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/15f3b795e75e88c505bf47b020c3aa6555414643/commodore-vic-20/patterns/assembly/rendering/tile-region)
+- [Calling contracts, costs and sources](https://github.com/code198x/code-samples/blob/15f3b795e75e88c505bf47b020c3aa6555414643/cross-platform/patterns/rendering/character-regions/README.md)
+- [Other native region routines](/patterns/cross-platform/rendering/tile-region/)
+- [Map storage and queries](/patterns/cross-platform/rendering/tile-map-queries/)

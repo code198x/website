@@ -14,171 +14,35 @@ related:
   vault: ["nintendo-nes"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
 
-## Overview
 
-Read the standard NES controller by writing to the strobe register, then reading 8 bits serially. Each bit represents one button: A, B, Select, Start, Up, Down, Left, Right. This is the standard approach used by virtually every NES game.
 
-## Code
+The NES controller sends eight button states through one serial input. Strobe once, read eight times and rotate each returned bit into a byte. After eight shifts the previous byte has been shifted out, so it does not need clearing first.
 
-```ca65
-; =============================================================================
-; CONTROLLER READING - NES
-; Read controller 1 via serial interface
-; Taught: Game 1 (Neon Nexus), Unit 2
-; CPU: ~80 cycles | Memory: ~20 bytes
-; =============================================================================
+## Include, initialise and sample
 
-JOYPAD1   = $4016               ; Controller 1 port
-JOYPAD2   = $4017               ; Controller 2 port
+Include `framework/input-to-sound/input.inc` once. Its `controls` byte belongs in writable RAM; the ca65 caller supplies the BSS segment. Set up the stack and APU first, and leave DMC sample DMA disabled for this simple reader.
 
-; Button masks
-BTN_A      = %10000000
-BTN_B      = %01000000
-BTN_SELECT = %00100000
-BTN_START  = %00010000
-BTN_UP     = %00001000
-BTN_DOWN   = %00000100
-BTN_LEFT   = %00000010
-BTN_RIGHT  = %00000001
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/input-to-sound/input.inc" lang="6502" />
 
-.segment "ZEROPAGE"
-buttons:   .res 1               ; Current button state
+`read_controls` changes A/X and flags, preserves Y and stores held input in `controls`. Its masks are:
 
-.segment "CODE"
+| Button | Mask |
+| --- | --- |
+| A / B | `$80` / `$40` |
+| Select / Start | `$20` / `$10` |
+| Up / Down | `$08` / `$04` |
+| Left / Right | `$02` / `$01` |
 
-; Read controller and store button state
-; Output: buttons variable contains all 8 button states
-read_controller:
-    ; Strobe the controller
-    lda #1
-    sta JOYPAD1
-    lda #0
-    sta JOYPAD1
+Call once at the chosen update point and let movement, menus and [press detection](/patterns/cross-platform/input/edge-detection/) consume the same sample. Holding A keeps its bit set; this reader does not turn that into a single new press.
 
-    ; Read 8 buttons into 'buttons' variable
-    ldx #8
-@read_loop:
-    lda JOYPAD1
-    lsr a                       ; Bit 0 -> Carry
-    rol buttons                 ; Carry -> buttons
-    dex
-    bne @read_loop
+The [complete caller](/patterns/nintendo-nes/assembly/framework/collect-and-respond/) shows reset, frame ownership and use of the sampled byte. Its NMI announces a frame; the main loop reads the controller and advances the game.
 
-    rts
-```
+## Ownership and limits
 
-**Usage:**
+Writing the strobe to `$4016` latches both controllers. A two-controller reader should latch once and consume both serial streams under one owner. Two independent readers that strobe at unrelated times can disturb each other.
 
-```ca65
-main_loop:
-    jsr read_controller
+DMC sample DMA can interfere with serial reads on relevant NES hardware. This reader's contract excludes it. Repeated reads need a separate bounded timing and failure policy; merely naming a retry loop “safe” does not establish correctness. Use and verify a DMC-compatible implementation before combining these facilities.
 
-    ; Check specific buttons
-    lda buttons
-    and #BTN_A
-    bne @a_pressed
-
-    lda buttons
-    and #BTN_UP
-    beq @no_up
-    ; Handle up pressed
-    dec player_y
-@no_up:
-
-    lda buttons
-    and #BTN_DOWN
-    beq @no_down
-    ; Handle down pressed
-    inc player_y
-@no_down:
-
-    jmp main_loop
-
-@a_pressed:
-    ; Handle A button
-    jmp main_loop
-```
-
-## Trade-offs
-
-| Aspect | Cost |
-|--------|------|
-| CPU | ~80 cycles |
-| Memory | ~20 bytes code, 1 byte variable |
-| Limitation | Reads controller 1 only |
-
-**When to use:** Any NES game needing player input. This is the standard approach.
-
-**When to avoid:** None - this pattern works for all games.
-
-## How It Works
-
-1. Write `$01` then `$00` to `$4016` to "strobe" the controller
-2. This latches the current button state inside the controller
-3. Read `$4016` eight times - each read returns one button in bit 0
-4. Button order: A, B, Select, Start, Up, Down, Left, Right
-5. Use `LSR` and `ROL` to shift each bit into your variable
-
-## Button Bitmask Reference
-
-| Bit | Button | Mask |
-|-----|--------|------|
-| 7 | A | `$80` |
-| 6 | B | `$40` |
-| 5 | Select | `$20` |
-| 4 | Start | `$10` |
-| 3 | Up | `$08` |
-| 2 | Down | `$04` |
-| 1 | Left | `$02` |
-| 0 | Right | `$01` |
-
-## DMC DMA conflict
-
-The 2A03 (NTSC NES) has a known hardware bug: when the DMC sample channel runs DMA, controller reads at `$4016`/`$4017` can return corrupted bits. The PAL 2A07 fixes this — its DMC DMA halts on opcode-fetch cycles only, sidestepping the conflict.
-
-Standard mitigation when DMC is active: read the controller 2-3 times and accept a value only when consecutive reads match.
-
-```ca65
-read_controller_safe:
-@retry:
-    jsr read_controller
-    lda buttons
-    pha                     ; Save first read
-    jsr read_controller     ; Read again
-    pla
-    cmp buttons             ; Match?
-    bne @retry              ; If not, try again
-    rts
-```
-
-Games that don't use DMC samples can ignore this — it only matters when you're streaming voice/percussion samples.
-
-## Controller 2
-
-`$4017` is dual-purpose: writing it configures the APU frame counter; reading it returns controller 2's serial bits. The strobe to `$4016` latches both controllers simultaneously.
-
-```ca65
-read_controller2:
-    ; Strobe (latches both controllers)
-    lda #1
-    sta JOYPAD1
-    lda #0
-    sta JOYPAD1
-
-    ldx #8
-@read_loop:
-    lda JOYPAD2             ; Read $4017 instead of $4016
-    lsr a
-    rol buttons2
-    dex
-    bne @read_loop
-    rts
-```
-
-## Related
-
-**Patterns:** [NMI Game Loop](/patterns/nintendo-nes/assembly/framework/nmi-game-loop)
-
-**Vault:** [NES](/vault/systems/nintendo-entertainment-system)
+**Code status: maintained reader reused by executed NTSC NROM callers.** Their real-input checks establish press, hold and release on that configuration with DMC disabled. This is not a DMC workaround or original-hardware qualification.

@@ -1,6 +1,6 @@
 ---
 title: "Sprite Movement with Bounds"
-summary: "Move sprites with joystick input and play area boundary clamping. Foundation for player control."
+summary: "Move sprites with joystick input and play area boundary checks. Foundation for player control."
 platform: "commodore-amiga"
 category: "physics"
 difficulty: "beginner"
@@ -20,14 +20,22 @@ related:
 
 Amiga sprites move by updating their control words each frame. Read the joystick, apply movement with boundary checks, then recalculate the sprite's position registers. The 68000's signed comparisons make bounds checking straightforward.
 
+## Calling contract
+
+Include the maintained [joystick reader](/patterns/commodore-amiga/assembly/input/joystick-reading/) once and sample it before `move_frog`. It takes decoded held controls in D0.W, changes D1 and condition codes, and preserves D0 and the address registers. `frog_x` and `frog_y` are writable signed words, initially inside their inclusive ranges. With speed 2 these small coordinates cannot overflow a word.
+
+This version **rejects a step that crosses an edge**; it does not saturate to the edge. From X=279, right proposes 281 and stays 279. Choose saturation if reaching 280 matters. Directions are processed up, down, left, right; opposing inputs can behave differently at a boundary. These are game rules to choose deliberately.
+
+The loop below is glue, not a standalone executable: supply the frame wait and [sprite control-word writer](/patterns/commodore-amiga/assembly/rendering/sprite-control-words/), its allocated Chip RAM block, display setup and lifetime. Use one coordinate convention throughout; these example limits are beam coordinates, not automatically a 320×256 screen-relative rectangle.
+
 ## Code
 
 ```m68k
 ; =============================================================================
 ; SPRITE MOVEMENT WITH BOUNDS - AMIGA
-; Move sprite with joystick and boundary clamping
+; Move sprite; reject a step that would cross a boundary
 ; Taught: Game 1 (Signal), Unit 2
-; CPU: ~60 cycles | Memory: ~50 bytes
+; Cost depends on the assembled caller and memory placement.
 ; =============================================================================
 
 MOVE_SPEED      equ 2           ; Pixels per frame
@@ -39,7 +47,7 @@ MIN_Y           equ 44          ; Top edge
 MAX_Y           equ 196         ; Bottom edge
 
 ; Move sprite based on decoded joystick input
-; Input: D0 = decoded joystick (from read_joystick)
+; Input: D0 = decoded joystick (from read_controls)
 ;        Bit 8 = up, Bit 0 = down
 ;        Bit 9 = left, Bit 1 = right
 move_frog:
@@ -89,8 +97,8 @@ frog_y:     dc.w    180             ; Current Y position
 
 | Aspect | Cost |
 |--------|------|
-| CPU | ~60 cycles |
-| Memory | ~50 bytes |
+| CPU | Not measured for this illustrative listing; include the caller and hardware scheduling costs |
+| Memory | Assemble the complete caller to obtain its size |
 | Limitation | Must call update_sprite after to see changes |
 
 **When to use:** Any game with joystick-controlled sprites.
@@ -105,17 +113,17 @@ The 68000's `CMP` and `Bcc` instructions handle signed values naturally:
 |-----------|--------|----------|
 | `BLT` | Less than (signed) | Check against minimum |
 | `BGT` | Greater than (signed) | Check against maximum |
-| `BLE` | Less or equal | Inclusive minimum |
-| `BGE` | Greater or equal | Inclusive maximum |
+| `BLE` | Less or equal | Candidate at or below a maximum |
+| `BGE` | Greater or equal | Candidate at or above a minimum |
 
-This is simpler than 6502 where you must track carry/overflow manually.
+On a 6502, unsigned small screen coordinates can use carry-based comparisons; signed values need an explicit signed comparison. Choose the representation before choosing the branch.
 
 ## Complete Movement Loop
 
 ```m68k
 mainloop:
             bsr     wait_vblank
-            bsr     read_joystick   ; D0 = joystick state
+            bsr     read_controls   ; D0.W = maintained held-control word
             bsr     move_frog       ; Update position
             bsr     update_sprite   ; Recalculate control words
             bra     mainloop

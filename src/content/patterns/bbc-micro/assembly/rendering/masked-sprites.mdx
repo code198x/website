@@ -1,0 +1,63 @@
+---
+title: "Masked Sprites with Background Restoration"
+summary: "Draw an 8×8 software object over BBC Micro MODE4 scenery, restore what it covered, then move it. A small reusable primitive with a complete caller."
+platform: "bbc-micro"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["sprites", "mask", "save-under", "software", "mode4"]
+related:
+  patterns: ["sprites", "mos-game-loop"]
+  vault: ["sprites", "bbc-micro"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+An object moves across a patterned strip without leaving its previous image behind. There is no sprite engine doing that job: the CPU saves the eight background bytes, combines the image with them, and restores them before moving.
+
+<img src="/images/patterns/rendering-families/bbc.png" alt="A small masked shape over a patterned band in BBC Micro MODE4" width="640" height="512" loading="lazy" />
+
+*Original Code198x program captured in Emu198x. This is an eight-pixel primitive; larger and pixel-aligned objects are onward techniques.*
+
+**Code status: maintained 6502 routine, executed through a BBC BASIC loader on the Model B configuration.** [Execution record](https://github.com/code198x/code-samples/blob/a5eadba064d1b9de63b69dbb58fdc033a0baf2c6/docs/rendering-families/verification/results.json). The [sprite family](/patterns/cross-platform/rendering/sprites/) connects it to Spectrum masking, C64 hardware sprites and multiplexing, NES OAM and Amiga bobs.
+
+## The useful small case
+
+MODE4 is a 320×256 two-colour bitmap at `&5800–&7FFF`. Its eight scanlines within one character cell are consecutive bytes. This routine draws one 8×8 object at a byte-aligned character-cell position; it does not pretend that arbitrary pixel positions have the same addressing.
+
+Include `masked.inc` once. Set `screen_ptr` (`&70/&71`) to a complete cell in that bitmap, and `pairs_ptr` (`&72/&73`) to 16 readable mask/image bytes. Keep source data separate from the destination, saved state and stack. Clear decimal mode. A/Y/flags change; X survives. IRQ code must preserve the owned zero-page and working registers.
+
+```asm
+    ; Set screen_ptr and pairs_ptr first.
+    jsr save_background
+    jsr draw_masked_cell
+    ; Before moving the object:
+    jsr restore_background
+    ; Set the NEW screen_ptr, save it, and draw there.
+```
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/masked-sprites/masked.inc" lang="asm" title="Save, mask and restore one BBC character cell" />
+
+A mask bit of one preserves background. A mask bit of zero clears that position before the image is ORed into it. Image bits must be zero wherever the mask preserves scenery. The component owns one saved address, eight saved bytes and two scratch bytes; one save slot means one live saved object.
+
+`restore_background` also restores the saved address into `screen_ptr`. Choose the next address after restoring, rather than accidentally restoring at the new position.
+
+## Build and run the example
+
+`make` creates `build/loader.bas`. Load or type it into BBC BASIC and `RUN`. It selects MODE4, reserves `HIMEM=&3000`, installs the original machine code and moves the object one cell per eight vertical syncs. MOS IRQ remains active; OSBYTE19 provides the sync. Reset to leave.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/masked-sprites/demo.asm" lang="asm" title="Complete patterned-strip caller" />
+
+## Grow it without losing the background
+
+The checks draw and restore at five cell addresses, including the bitmap's first and last cells. They compare the rendered and restored bytes independently, check that the source survives and reject a broken mask operation. The running caller is checked separately; this is not an original-hardware or frame-budget certification.
+
+For several saved objects, restore them in reverse drawing order before saving and drawing the next frame. If scenery changed, old saved pixels can undo that change; redraw affected tiles from the world instead. The [shared sprite guide](/patterns/cross-platform/rendering/sprites/) explains the choice.
+
+Further versions can add larger rectangles, clipping, pre-shifted images and arbitrary Y positions. CRTC start-address scrolling also changes how logical positions map into physical screen RAM, including wrap. This primitive requires the ordinary MODE4 mapping; a scrolling renderer must supply its own correct mapping.
+
+The source manual is the *BBC Microcomputer Advanced User Guide*, the chapter on the screen display and its MODE4 memory organisation. The routine itself uses no MOS drawing calls; the demo uses MOS only for synchronisation.
+
+Explore the [cross-platform sprite family](/patterns/cross-platform/rendering/sprites/) for software drawing, hardware limits, restoration and overload policies.
+
+
+For a complete caller that removes old objects and handles overlapping saved backgrounds, follow the [software-object lifecycle](/patterns/bbc-micro/assembly/rendering/sprite-lifecycle/).

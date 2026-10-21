@@ -13,7 +13,12 @@ related:
   vault: []
 ---
 
-**Code status: illustrative pseudocode.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+
+**Code status: the maintained Z80 routine is CPU-executed; the other examples are illustrative.** The Z80 check includes a table spanning a 256-byte boundary. The 6502 renderer adapter and language-neutral variants need their own caller and target checks.
+
+[Audit execution record](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/z80.json) · [Scope and remaining checks](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/README.md)
 
 ## Overview
 
@@ -26,7 +31,7 @@ The same logic works for walk cycles, explosions, flickering torches — any rep
 ```text
 ; Animation state
 anim_frame: byte = 0       ; Current frame index (0, 1, 2...)
-anim_counter: byte = 0     ; Ticks until next frame
+anim_counter: byte = 0     ; Elapsed updates since the last animation step
 
 ; Animation data
 ANIM_DELAY = 8             ; Frames between animation steps
@@ -110,38 +115,17 @@ update_animation:
 ```
 
 **Z80:**
-```asm
-update_animation:
-    ld a,(anim_counter)
-    inc a
-    ld (anim_counter),a
-    cp ANIM_DELAY
-    ret c                 ; Not time yet
 
-    xor a
-    ld (anim_counter),a
+<CodeFromFile src="cross-platform/patterns/rendering/sprite-animation/z80.inc" lang="z80" title="Z80 animation state" />
 
-    ld a,(anim_frame)
-    inc a
-    cp ANIM_LENGTH
-    jr c,.set_frame
-    xor a
-.set_frame:
-    ld (anim_frame),a
+Supply `ANIM_DELAY` and `ANIM_LENGTH` in 1–255, a readable `walk_frames` table of that length, and writable bytes `anim_frame`, `anim_counter` and `sprite_index`. Start both counters at zero and put `walk_frames[0]` in `sprite_index`. Call once per chosen update; the renderer reads `sprite_index`. The routine changes AF/DE/HL and preserves BC/IX/IY. The whole address addition matters: a table may cross a 256-byte boundary.
 
-    ld hl,walk_frames
-    add a,l
-    ld l,a
-    ld a,(hl)             ; Get sprite index
-    ; ... set sprite
-    ret
-```
 
 ## Trade-offs
 
 | Aspect | Cost |
 |--------|------|
-| CPU | ~20-30 cycles per frame |
+| CPU | A counter update on waiting calls; table lookup and renderer work on a change. Measure the actual target implementation. |
 | Memory | 2 bytes state + frame table |
 | Flexibility | Easy to change speed and sequence |
 
@@ -190,26 +174,28 @@ sprite = base_frame + walk_frames[anim_frame]
 For characters with multiple animations (idle, walk, run, jump, attack), pair the animation pattern with a [state machine](/patterns/cross-platform/framework/state-machine) — each state has its own frame table and delay:
 
 ```text
-; Per-state animation data
-animations:
-    ;        delay  length  frame_data...
-    !byte    16,    2,      0, 1                  ; ANIM_IDLE: slow blink
-    !byte    6,     4,      2, 3, 4, 3            ; ANIM_WALK: standard walk
-    !byte    3,     6,      5, 6, 7, 8, 9, 8      ; ANIM_RUN: faster, more frames
-    !byte    1,     1,      10                    ; ANIM_JUMP: single frame
-    !byte    4,     5,      11, 12, 13, 14, 13    ; ANIM_ATTACK
+; Descriptors have a delay and a reference to their own frame sequence.
+animations[IDLE]   = { delay:16, frames:[0,1] }
+animations[WALK]   = { delay:6,  frames:[2,3,4,3] }
+animations[RUN]    = { delay:3,  frames:[5,6,7,8,9,8] }
+animations[JUMP]   = { delay:1,  frames:[10] }
 
-; State-aware animation update
+change_animation(next_state):
+    player_anim_state = next_state
+    anim_frame = 0
+    anim_counter = 0
+    sprite_index = animations[next_state].frames[0]
+
 update_animation:
-    ; Fetch this state's animation data
-    anim_state = player_anim_state
-    anim_offset = anim_state * ANIM_RECORD_SIZE
-    delay = animations[anim_offset + 0]
-    length = animations[anim_offset + 1]
-    frame_table = animations + anim_offset + 2
-
-    ; Standard counter / frame logic with fetched delay & length
-    ...
+    descriptor = animations[player_anim_state]
+    delay = descriptor.delay
+    length = LENGTH(descriptor.frames)
+    ; Apply the counter/step logic above using this descriptor.
 ```
 
-When the state changes (e.g. player presses jump), reset `anim_frame` and `anim_counter` to 0 so the new animation starts from its first frame. Without this, switching from walk to run might briefly show the wrong frame index.
+A compact machine representation can use a table of pointers to variable-length records. Multiplying the state by one fixed record size only works when every record has that size. Here the frame sequences have different lengths. Validate state, length and delay before choosing a record.
+
+
+When the state changes (e.g. player presses jump), reset both counters and publish the first image immediately. Without this, switching from walk to run might briefly show the wrong frame index.
+
+Explore the [cross-platform sprite family](/patterns/cross-platform/rendering/sprites/) for software drawing, hardware limits, restoration and overload policies.

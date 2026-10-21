@@ -1,0 +1,51 @@
+---
+title: "Place BBC MODE4 Sprites at Pixel Positions"
+summary: "Use eight prepared mask phases with signed pixel coordinates, normal forty-column MODE4 mapping and a bounded three-byte drawing routine."
+platform: "bbc-micro"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["sprites", "shifting", "mask", "assets"]
+related:
+  patterns: ["pre-shifted-sprites", "clipped-sprites", "sprite-lifecycle"]
+  vault: ["sprites", "sprite-animation"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+<img src="/images/patterns/sprite-phases/bbc.png" alt="Original bbc sprite gallery with prepared pixel phases on a sparse background grid, including cropped screen edges" width="640" height="512" loading="lazy" />
+
+*Original Code198x program and artwork captured in Emu198x.*
+
+**Code status: maintained routines and an emulator-executed phase gallery.** [Execution record](https://github.com/code198x/code-samples/blob/9ebc7a16fba087f6e6211d0286a6d9dfac8a9599/docs/sprite-phases/verification/results.json).
+
+Pixel X can belong to the object even though MODE4 memory is organised in byte columns and eight-row character cells. The phase wrapper selects a prepared source, then the drawing routine deals with that bitmap layout and viewport clipping.
+
+## Set up the call
+
+Include `phase.inc`, `draw.inc`, the existing `clipped-sprites/clip.inc` and one generated bank. Set `clip_ptr` ($70/$71) to 32 exclusive caller bytes. Signed pixel X goes at +0, signed pixel-row Y at +14, and an eight-entry pointer table at +28.
+
+The wrapper consumes X/table fields, replacing them with byte-column X and the selected source pointer. Reload those inputs before each call; keep the object's logical coordinates separately. Use another generated table to draw a different image with the same routine.
+
+A/X/Y/P change, and decimal mode must be clear. The routine owns zero-page $70..$78 and context; interrupt users must preserve them. Table, sources, context, code and stack must be separate from the bitmap and one another. It sets up no IRQs, screen mode or display timing.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/pre-shifted-sprites/phase.inc" lang="asm" title="Select the phase and divide signed pixel X towards negative infinity" />
+
+## Follow the prepared source through MODE4
+
+Every prepared phase has three byte columns and sixteen rows: ninety-six interleaved keep-mask/image bytes. The mask retains background bits where it is 1; the corresponding image bits are zero. The bank contains eight phases and sixteen pointer bytes, totalling 784 bytes rather than 64 unshifted bytes.
+
+The bounded renderer keeps the original six-byte source stride after cropping. It maps the normal unscrolled forty-column MODE4 display, including page carries within and between 320-byte character-row bands. A changed CRTC start needs a different mapper.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/pre-shifted-sprites/draw.inc" lang="asm" title="Draw the visible prepared mask/image pairs in MODE4" />
+
+The loop pushes two source-pointer bytes per row, plus JSR returns and interrupt requirements. It shares the existing [axis clipping helper](/patterns/bbc-micro/assembly/rendering/clipped-sprites/) while leaving the old fixed-size renderer intact.
+
+## Run the gallery
+
+Build with `make ASM198X=/path/to/asm198x` and type `build/loader.bas` on Model B MOS1.20/BASICII. Its compact hexadecimal DATA loader reserves HIMEM=&4000 and enters machine code there, below the bitmap at &5800. The caller uses OSBYTE19 with MOS IRQs active after drawing. Reset to leave.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/pre-shifted-sprites/demo.asm" lang="asm" title="Complete MODE4 caller with all eight phases and cropped edges" />
+
+The gallery is static and keeps servicing frame waits. It verifies placement and masking, rather than an animation deadline. Run `make regenerate` after editing the original artwork; `make check-assets` rejects a stale bank.
+
+For movement, provide a backing store for the old padded/clipped rectangle or redraw from tile/world data. The existing [8×8 saved-cell routine](/patterns/bbc-micro/assembly/rendering/sprite-lifecycle/) is too small for a 24×16 prepared footprint. The [shared article](/patterns/cross-platform/rendering/pre-shifted-sprites/) explains the memory choice and alternatives.

@@ -13,57 +13,48 @@ related:
   vault: ["ula", "zx-spectrum"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+
+**Code status: maintained Z80 routines, executed in a bounded CPU fixture.** The checks compare actual memory or emitted characters with independent expectations. They establish the stated routine contracts in uncontended 48K RAM; ROM startup, display timing and original hardware are separate checks.
+
+[Audit execution record](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/z80.json) · [Scope and remaining checks](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/README.md)
 
 ## Overview
 
-An Amiga draws a shaped object over scenery with the [blitter's cookie-cut](/patterns/commodore-amiga/assembly/rendering/cookie-cut-blit); the Spectrum has no such hardware, so it does the same job by hand, one byte at a time. The technique is the same in spirit: a **mask** decides pixel by pixel whether to keep the background or the sprite. For each screen byte the object touches, you `AND` a mask to punch a clean hole in the background, then `OR` the image into that hole — `screen = (screen AND mask) OR image`. Combined with the [screen addressing](/patterns/sinclair-zx-spectrum/assembly/rendering/bitmap-addressing) routine to walk down the object's lines, this is how every Spectrum game moves anything more complex than a colour block.
+An Amiga draws a shaped object over scenery with the [blitter's cookie-cut](/patterns/commodore-amiga/assembly/rendering/cookie-cut-blit); the Spectrum has no such hardware, so it does the same job by hand, one byte at a time. The technique is the same in spirit: a **mask** decides pixel by pixel whether to keep the background or the sprite. For each screen byte the object touches, you `AND` a mask to punch a clean hole in the background, then `OR` the image into that hole — `screen = (screen AND mask) OR image`. Combined with the [screen addressing](/patterns/sinclair-zx-spectrum/assembly/rendering/bitmap-addressing) routine to walk down the object's lines, this gives us a shaped object while preserving scenery around it.
 
-## Code
+
+## Calling the routines
+
+Include `masked.inc` and the maintained [bitmap addressing](/patterns/sinclair-zx-spectrum/assembly/rendering/bitmap-addressing/) include once. Define `SPRITE_W` as a constant from 1 to 32. Supply DE = the left screen-byte address, HL = readable interleaved mask/image pairs and C = height. The entire rectangle must fit the 256 × 192 bitmap. The routine does not clip, shift or set attributes.
+
+A zero height does nothing. `draw_row` accepts a byte width in B; zero is a no-op. Each screen byte becomes `(old_byte AND mask) OR image`. Supply zero image bits wherever the background should survive. The source needs two bytes for every destination byte.
+
+AF, BC, DE and HL are working registers. HL advances through the sprite data; the row's left edge is saved before drawing and restored before stepping down. `pixel_down` must preserve BC/DE. It is never called after the last row, so a sprite ending on pixel row 191 stays within its contract.
+
+Masking combines a new image with the current background. Moving it still requires restoring the old area or redrawing the scene. Applying a mask over the previous sprite is not an erase operation.
+
+For example, after establishing the documented stack, state and data:
 
 ```z80
-; =============================================================================
-; MASKED SPRITES - ZX SPECTRUM
-; Draw one sprite row over the background:  screen = (screen AND mask) OR image
-; Sprite data is stored as interleaved (mask, image) byte pairs.
-; DE -> screen address for this row,  HL -> sprite data,  B = width in bytes
-; =============================================================================
-
-draw_row:
-.byte:
-    ld   a,(de)            ; the background byte
-    and  (hl)              ; AND mask: 1s keep background, 0s clear for the sprite
-    inc  hl
-    or   (hl)              ; OR image: the sprite's own pixels
-    inc  hl
-    ld   (de),a            ; write it back
-    inc  de                ; next byte across
-    djnz .byte
-    ret
-
-; A full sprite: for each of its rows, draw a row then step the screen down.
-; (pixel_down is the one-line-down routine from Bitmap Addressing.)
-draw_sprite:
-    ; DE -> top-left screen byte, HL -> sprite data, C = height in rows
-.row:
-    push bc
-    ld   b,SPRITE_W        ; bytes wide (one more than the image if pre-shifted)
-    call draw_row
-    ; step DE down one pixel line...
-    ex   de,hl
-    call pixel_down        ; HL = line below
-    ex   de,hl
-    pop  bc
-    dec  c
-    jr   nz,.row
-    ret
+    ld d,63           ; pixel row
+    ld e,16           ; pixel X, byte-aligned
+    call pixel_addr   ; HL is the screen byte
+    ex de,hl          ; DE is the destination
+    ld hl,my_pairs
+    ld c,3            ; three pixel rows, 2*SPRITE_W*3 source bytes
+    call draw_sprite
+    ; Include masked.inc and bitmap-addressing.inc once.
 ```
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/masked-sprites/masked.inc" lang="z80" title="Masked rows and sprites" />
 
 ## Trade-offs
 
 | Aspect | Cost |
 |--------|------|
-| CPU | Two memory ops + a write per byte per row — the bulk of a Spectrum frame |
+| CPU | Work grows with the destination bytes touched; measure it alongside restoration and the rest of the frame |
 | Memory | Mask **and** image (double the sprite data); pre-shifting multiplies it further |
 | Limitation | Colour is still per-cell — a moving sprite risks [attribute clash](/patterns/sinclair-zx-spectrum/assembly/rendering/attribute-clash) |
 
@@ -73,11 +64,11 @@ draw_sprite:
 
 ## The mask, bit for bit
 
-The two bytes do complementary jobs. The **mask** is 1 wherever the background should survive and 0 over the sprite's solid pixels; `AND`-ing it leaves the scenery intact and clears a precise silhouette-shaped hole. The **image** is the sprite's pixels, 0 everywhere else; `OR`-ing it drops the object into the hole without disturbing a pixel outside it. Draw a sprite with no mask (a bare `OR`) and its transparent areas show as a solid rectangle of set pixels — the tell-tale "black box" around a Spectrum sprite that forgot its mask.
+The two bytes do complementary jobs. The **mask** is 1 wherever the background should survive and 0 over the sprite's solid pixels; `AND`-ing it leaves the scenery intact and clears a precise silhouette-shaped hole. The **image** is the sprite's pixels, 0 everywhere else; `OR`-ing it drops the object into the hole without disturbing a pixel outside it. A bare `OR` can add set pixels but cannot clear scenery where the object needs an unset pixel. A straight rectangular copy has the opposite problem: its background pixels overwrite the scenery too.
 
 ## Pre-shifting for any X
 
-A byte holds eight pixels, so a sprite whose X isn't a multiple of 8 straddles two byte columns — its pixels have to be **shifted** into place. Shifting mask and image at runtime (rotating through the carry, byte by byte) works but is slow, and it's the same shift every frame. So fast games **pre-shift**: store the sprite in all eight horizontal alignments, precomputed, and pick the copy matching `x AND 7`. It costs eight times the sprite memory and makes each shifted copy one byte wider (the pixels spill right), but the draw loop becomes a plain copy with no rotation — the trade every action game on the Spectrum made.
+A byte holds eight pixels, so a sprite whose X isn't a multiple of 8 straddles two byte columns — its pixels have to be **shifted** into place. Shifting mask and image at runtime (rotating through the carry, byte by byte) works but is slow, and it's the same shift every frame. So fast games **pre-shift**: store the sprite in all eight horizontal alignments, precomputed, and pick the copy matching `x AND 7`. It costs eight times the sprite memory and makes each shifted copy one byte wider (the pixels spill right), but the draw loop becomes a plain copy with no rotation — a useful trade when the available memory and frame budget support it.
 
 ## Movement means erase
 
@@ -88,3 +79,8 @@ A sprite that moves must leave the background as it found it. Two ways: **save-u
 **Patterns:** [Bitmap Addressing](/patterns/sinclair-zx-spectrum/assembly/rendering/bitmap-addressing), [Attribute Clash](/patterns/sinclair-zx-spectrum/assembly/rendering/attribute-clash), [Cookie-Cut Blit (Amiga)](/patterns/commodore-amiga/assembly/rendering/cookie-cut-blit)
 
 **Vault:** [ULA](/vault/hardware/ula) | [ZX Spectrum](/vault/systems/sinclair-zx-spectrum)
+
+Explore the [cross-platform sprite family](/patterns/cross-platform/rendering/sprites/) for software drawing, hardware limits, restoration and overload policies.
+
+
+For a complete caller that removes old objects and handles overlapping saved backgrounds, follow the [software-object lifecycle](/patterns/sinclair-zx-spectrum/assembly/rendering/sprite-lifecycle/).

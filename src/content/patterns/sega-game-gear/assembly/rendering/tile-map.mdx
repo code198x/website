@@ -1,0 +1,59 @@
+---
+title: "Query a Byte Map on Game Gear"
+summary: "Read and change map cells, look up tile properties and convert world positions with reusable Z80 code and an explicit memory contract."
+platform: "sega-game-gear"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["tilemaps", "maps", "queries", "collision", "assembly"]
+related:
+  patterns: ["tile-map-queries"]
+  vault: ["tile-maps", "tile-collision"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+A level does not need to be on screen for the game to ask what is there. Give it a byte per cell, keep those bytes in row order, and the same map can answer questions about walls, hazards, goals or scenery that has changed.
+
+This implementation supplies four routines: checked get, checked set, property lookup and conversion from unsigned world positions to eight-unit cells. It does not draw or wait for a frame. The [shared entry](/patterns/cross-platform/rendering/tile-map-queries/) explains the arrangement and links the implementations across all 30 machines.
+
+## Include and initialise
+
+Define TM as the start of a reserved 20-byte context, then include the routine. The map contains W×H consecutive bytes, with width and height each from 1 to 255. Its property table contains one byte per possible ID, through the configured highest ID. Both ranges must remain addressable without crossing an address-space end, bank window or unmapped boundary. Use writable RAM for `tile_set`; a ROM map needs another way to record changes.
+
+Pointers and world-coordinate words are little endian.
+
+Context offsets: **0–1 map pointer; 2/3 width/height; 4/5 column/row; 6 tile; 7 valid; 8–10 scratch; 11 property; 12–13 property pointer; 14 highest tile ID; 15 scratch; 16–17 X; 18–19 Y.** Initialise the pointers, dimensions and highest ID before a call. Scratch bytes belong to the routine.
+
+<CodeFromFile src="sega-game-gear/patterns/assembly/rendering/tile-map/demo.asm" from="start:" to="valid_0:" lang="asm" title="Initialise the diagnostic map and make its first checked query" />
+
+The complete diagnostic uses a 7×5 map. Its context starts at `$C000`, results at `$C040` and writable map at `$C0F0`. These locations belong to a caller taking over the machine; choose and reserve suitable memory in your own project, accounting for firmware, display, banking and interrupts.
+
+## Call the routine
+
+Set column and row, call `tile_get`, then check the valid byte. A successful call returns the tile ID. Failure returns valid=0 and tile=0, so **tile zero alone does not mean success**. This compact variant uses unsigned byte coordinates; wider maps can use a wider-coordinate variant rather than treating this as a machine limit. Translate a signed or wider world into this representation explicitly.
+
+For a write, set column/row/tile and call `tile_set`. Invalid coordinates or an ID above the configured maximum leave the map unchanged. To classify a tile, call `tile_property`; it returns the table byte and a separate valid flag. Your game decides whether those property bits mean blocking, damage, a goal or something else.
+
+<CodeFromFile src="cross-platform/patterns/rendering/tile-map/z80.inc" lang="asm" title="Reusable Z80 map/query implementation" />
+
+For `tile_pixel8`, set unsigned 16-bit X and Y in world coordinates. It divides by eight, rejects a cell coordinate too large for a byte, then performs the checked lookup. Read cell/tile outputs only after checking valid. X/Y inputs remain unchanged. Eight-unit square cells are this routine’s deliberate fast conversion; other sizes, wrapping or a signed origin need a corresponding variant.
+
+## State, stack and cost
+
+AF, BC, DE and HL are clobbered. The routines use the current stack and the supplied context. They do not mask or install interrupts. An interrupt caller needs its own context and must preserve the state that the interrupted code needs.
+
+Get/set use 4 bytes of return addresses at their deepest point, including the direct caller’s call into the library. Pixel conversion uses 4; property lookup uses 2. Add the surrounding caller stack and any interrupt frames.
+
+Map storage is W×H bytes, plus highest-ID+1 property bytes, context, code and stack. This readable version adds the row width repeatedly; later rows cost more work. Row-pointer tables or fixed-width shifts are alternatives when query speed matters. There is no whole-game frame-rate claim.
+
+## Run and adapt it
+
+`make ASM198X=/path/to/asm198x` builds the complete original diagnostic. It uses a synthetic reset ROM/cartridge to execute the routines and observe their RAM results. This establishes the query code and its declared memory on this machine; it does not establish a stock BASIC/FORTH loader, video output, IRQ coexistence or a frame deadline.
+
+The caller checks every cell of a non-square map, rejected reads/writes, a map-end guard, a valid change, properties and coordinate conversion. The same observer rejects completed wrong-stride and write-without-valid versions. The map crosses a 256-byte boundary so row/column address carries are exercised. Use the reusable include in your own program; the unrolled diagnostic queries make observations explicit and are not a proposed game loop.
+
+- [Complete caller and machine reservation](https://github.com/code198x/code-samples/tree/046fc0ffe6bb70491bb472dba044d86aa3f49fd8/sega-game-gear/patterns/assembly/rendering/tile-map)
+- [Full CPU calling contract](https://github.com/code198x/code-samples/blob/046fc0ffe6bb70491bb472dba044d86aa3f49fd8/cross-platform/patterns/rendering/tile-map/README.md)
+- [Execution records and all-system coverage](https://github.com/code198x/code-samples/tree/046fc0ffe6bb70491bb472dba044d86aa3f49fd8/docs/tilemaps)
+
+For the next step, [draw a native tile region](/patterns/sega-game-gear/assembly/rendering/tile-region/) using these logical IDs and a separate display adapter.

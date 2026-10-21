@@ -2,6 +2,7 @@
  * The logic behind `NativeImage.astro`, kept out of the component so every
  * failure it can produce is testable without rendering a page.
  */
+import { readFileSync } from 'node:fs';
 import { readFile, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -130,15 +131,18 @@ interface Wasm {
 
 let wasm: Wasm | null = null;
 
+// The decoder is @play198x/web, installed from npm at the pinned version and
+// built once by Play198x (umbrella decisions/browser-bundles-ship-as-npm-packages.md).
+// It's the browser build, so it's started here from the wasm bytes; Node
+// requires the ES module synchronously.
 function load(): Wasm {
   if (wasm) return wasm;
-  const dir = process.env.PLAY198X_WASM_PATH;
-  if (!dir) {
-    throw new Error(
-      'PLAY198X_WASM_PATH is unset: run scripts/build-wasm.mjs before building the site',
-    );
-  }
-  wasm = require_(path.join(dir, 'play198x_web.js')) as Wasm;
+  const dir = path.dirname(require_.resolve('@play198x/web/package.json'));
+  const decoder = require_(path.join(dir, 'play198x_web.js')) as Wasm & {
+    initSync(options: { module: Uint8Array }): unknown;
+  };
+  decoder.initSync({ module: readFileSync(path.join(dir, 'play198x_web_bg.wasm')) });
+  wasm = decoder;
   return wasm;
 }
 

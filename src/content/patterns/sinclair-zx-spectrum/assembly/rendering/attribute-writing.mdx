@@ -14,137 +14,59 @@ related:
   vault: ["sinclair-zx-spectrum"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+
+**Code status: maintained Z80 routines, executed in a bounded CPU fixture.** The checks compare actual memory or emitted characters with independent expectations. They establish the stated routine contracts in uncontended 48K RAM; ROM startup, display timing and original hardware are separate checks.
+
+[Audit execution record](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/z80.json) · [Scope and remaining checks](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/README.md)
 
 ## Overview
 
 The Spectrum's attribute system lets you colour 8x8 character cells without drawing pixels. Each attribute byte controls foreground (ink), background (paper), brightness, and flash. This is the fastest way to create colourful displays and is the basis for many classic Spectrum game graphics.
 
-## Code
+
+## Calling the routines
+
+Include `attributes.inc` once. Give the program a valid stack and ownership of the attribute memory it writes. No ROM routine or interrupt handler is required.
+
+`set_attribute` takes A = attribute byte, B = row 0–23 and C = column 0–31. `fill_row` takes A = row and E = attribute. `fill_attributes` takes A = attribute, B/C = the top-left cell and D/E = height/width. A zero width or height does nothing. Other rectangles must fit: B + D ≤ 24 and C + E ≤ 32. This routine does not clip.
+
+The cell and rectangle routines preserve AF, BC and DE, and change HL. The row filler changes AF, BC and HL, and preserves DE. The rectangle reserves up to 16 additional stack bytes, plus its caller's return address. Never share that stack or change its loop registers from an interrupt without preserving them.
+
+Attribute bits are FLASH, BRIGHT, PAPER and INK. Setting a cell changes the colours of all its pixels; it does not draw or erase the bitmap. Try a 4 × 3 rectangle, then one at row 23, column 31. Both the visible footprint and the bytes outside it should agree with the requested area.
+
+For example, after establishing the documented stack, state and data:
 
 ```z80
-; =============================================================================
-; ATTRIBUTE WRITING - ZX SPECTRUM
-; Direct manipulation of attribute memory
-; Taught: Game 1 (Ink War), Unit 1
-; CPU: ~30 cycles per cell | Memory: ~40 bytes
-; =============================================================================
-
-ATTR_BASE   equ     $5800           ; Start of attribute memory (768 bytes)
-
-; Attribute format: %FBPPPIII
-; F = Flash (0=off, 1=flashing — swaps ink/paper every 16 frames at 50Hz)
-; B = Bright (0=normal, 1=bright — applies to both ink AND paper of the cell)
-; P = Paper colour (0-7)
-; I = Ink colour (0-7)
-; Note: BRIGHT 0 BLACK and BRIGHT 1 BLACK are visually identical (black has no luminance)
-
-; Colour values
-BLACK       equ     0
-BLUE        equ     1
-RED         equ     2
-MAGENTA     equ     3
-GREEN       equ     4
-CYAN        equ     5
-YELLOW      equ     6
-WHITE       equ     7
-
-; Example attributes
-ATTR_WHITE  equ     %00111000       ; White paper, black ink
-ATTR_FLASH  equ     %10111000       ; White paper, black ink + FLASH
-ATTR_BRIGHT equ     %01111000       ; White paper, black ink + BRIGHT
-
-; Set attribute at row, column
-; Input: B = row (0-23), C = column (0-31), A = attribute value
-set_attribute:
-    push    af                  ; Save attribute value
-
-    ; Calculate address: ATTR_BASE + row * 32 + column
-    ld      a, b
-    ld      l, a
-    ld      h, 0
-    add     hl, hl              ; *2
-    add     hl, hl              ; *4
-    add     hl, hl              ; *8
-    add     hl, hl              ; *16
-    add     hl, hl              ; *32
-    ld      a, c
-    add     a, l
-    ld      l, a
-    ld      bc, ATTR_BASE
-    add     hl, bc              ; HL = attribute address
-
-    pop     af                  ; Restore attribute value
-    ld      (hl), a             ; Write attribute
-    ret
+    ld a,$47          ; bright white ink, black paper
+    ld b,2
+    ld c,3
+    ld d,3            ; height in character cells
+    ld e,4            ; width
+    call fill_attributes
+    ; Include attributes.inc once, outside the executed control flow.
 ```
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/attribute-writing/attributes.inc" lang="z80" title="Attribute cells, rows and rectangles" />
+
+## Code
+
+
 
 **Fill a rectangular area:**
 
-```z80
-; Fill rectangle with attribute
-; Input: B = start row, C = start column
-;        D = height, E = width, A = attribute
-fill_attributes:
-    push    af
 
-.row_loop:
-    push    bc
-    push    de
-
-.col_loop:
-    pop     de
-    pop     bc
-    pop     af
-    push    af
-    push    bc
-    push    de
-
-    call    set_attribute
-
-    inc     c                   ; Next column
-    dec     e
-    jr      nz, .col_loop
-
-    pop     de
-    pop     bc
-    inc     b                   ; Next row
-    dec     d
-    jr      nz, .row_loop
-
-    pop     af
-    ret
-```
 
 **Fast row fill (optimised):**
 
-```z80
-; Fill entire row with attribute
-; Input: A = row (0-23), E = attribute value
-fill_row:
-    ld      l, a
-    ld      h, 0
-    add     hl, hl
-    add     hl, hl
-    add     hl, hl
-    add     hl, hl
-    add     hl, hl              ; HL = row * 32
-    ld      bc, ATTR_BASE
-    add     hl, bc              ; HL = start of row in attributes
 
-    ld      b, 32               ; 32 columns
-.loop:
-    ld      (hl), e
-    inc     hl
-    djnz    .loop
-    ret
-```
 
 ## Trade-offs
 
 | Aspect | Cost |
 |--------|------|
-| CPU | ~30 cycles per cell |
+| CPU | Not measured for this caller; include the selected input, drawing and scheduling costs |
 | Memory | 768 bytes for full screen |
 | Limitation | 8x8 cell resolution only |
 

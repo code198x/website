@@ -1,0 +1,61 @@
+---
+title: "Query and Change a Tile Map on Dragon 32"
+summary: "Keep level data separate from the screen. Reusable Dragon BASIC routines read and change tiles, look up properties and draw a small text region."
+platform: "dragon-32"
+category: "rendering"
+difficulty: "beginner"
+tags: ["tilemaps", "maps", "queries", "collision", "BASIC"]
+related:
+  patterns: ["tile-map-queries"]
+  vault: ["tile-maps", "tile-collision"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+A wall can look like anything you like. Your movement code still needs a clear answer to one question: **what is in that cell?** These routines give the level its own data, so the answer does not depend on what happens to be drawn on screen.
+
+The complete caller prints a small level, reads the hazard at column 3, row 2, changes it into a goal and prints the changed level. It is a short demonstration of the routines’ interfaces. The [shared entry](/patterns/cross-platform/rendering/tile-map-queries/) explains the layout, properties and alternatives.
+
+## Start with the data
+
+The caller uses CLS and the stock numeric-array syntax. Logical map coordinates have nothing to do with a graphics mode’s pixel storage. The region routine writes text at the current cursor; it is not a PMODE tile renderer.
+
+Copy the routines into free line numbers in your program. Keep their numbers, or update every GOSUB when moving them. Initialise W (columns), H (rows), S (world units per square tile) and L (highest tile ID), then allocate and fill the map/property arrays. W, H and S must be positive integers, L a non-negative integer. Allocate the arrays to match them before calling anything.
+
+<CodeFromFile src="dragon-32/patterns/basic/rendering/tile-map/demo.bas" from="10 W=" to="90 PRINT" lang="basic" title="Allocate and fill the caller-owned map and property table" />
+
+The sample uses IDs 0–3: floor, wall, hazard and goal. The property table gives them values 0, 1, 2 and 4. Those values describe gameplay; they are not screen character codes. Change the table to suit your rules, and enlarge it when adding more tile IDs.
+
+## Call a routine
+
+| Entry | Set before calling | Read afterwards |
+| --- | --- | --- |
+| `GOSUB 1000` | C column, R row | E=1 and T tile ID; E=0 and T=-1 if invalid |
+| `GOSUB 1100` | C, R, V new tile ID | E=1 and T=V after writing; E=0 leaves the map unchanged |
+| `GOSUB 1200` | T tile ID | E=1 and F property value; invalid IDs give E=0, F=-1 |
+| `GOSUB 1300` | X, Y world position, S tile size | C/R cell coordinates, then the same lookup result as 1000 |
+| `GOSUB 1400` | Q/U source cell, A/B region width/height | Prints the complete text region and returns E=1, or prints nothing and returns E=0 |
+
+Check E immediately. A later call replaces it. For a position query, set X/Y, call 1300 and check E; then call 1200 to classify the returned tile, and check E again. Decide in your game whether a position beyond the map should block movement, wrap or lead to another room.
+
+<CodeFromFile src="dragon-32/patterns/basic/rendering/tile-map/routines.bas" lang="basic" title="Reusable Dragon BASIC map routines" />
+
+Negative world positions and a non-positive S return C=R=T=-1 and E=0. Non-negative positions beyond the map retain their calculated C/R but return T=-1, E=0. Fractional tile coordinates and IDs are rejected. Positive fractional world positions are allowed and round down to a cell.
+
+## Own the state
+
+Reserve the map/property arrays M()/P(), W/H/S/L and the inputs/outputs in the table. D is lookup scratch. Region drawing also consumes C/R/T/D/J/K, so do not call it inside a loop that needs J or K preserved. The routines use global BASIC state and are not re-entrant.
+
+The region must fit completely inside the map and have positive integer dimensions. It starts at the current text cursor, prints character codes 48+T for the sample’s IDs 0–3, and ends each row with a newline. It does not position a window on screen, draw custom artwork or manage colour. Replace that small display adapter when choosing another tile set.
+
+Changing the map does not redraw it. Draw the affected cell or region through your display adapter. Keep moving actors separately when the underlying floor must survive their movement.
+
+## Take the code
+
+- [Complete caller](https://github.com/code198x/code-samples/blob/046fc0ffe6bb70491bb472dba044d86aa3f49fd8/dragon-32/patterns/basic/rendering/tile-map/demo.bas)
+- [Reusable routines and full contract](https://github.com/code198x/code-samples/tree/046fc0ffe6bb70491bb472dba044d86aa3f49fd8/dragon-32/patterns/basic/rendering/tile-map)
+- [Execution evidence and all-system coverage](https://github.com/code198x/code-samples/tree/046fc0ffe6bb70491bb472dba044d86aa3f49fd8/docs/tilemaps)
+
+Numeric-array elements take this interpreter’s numeric storage, not one byte each. This version favours readable, editable data. Byte maps, packed IDs, ROM maps with a small change list and room-at-a-time decoding are useful alternatives when memory becomes tight. They need their own implementations and measurements. No complete-game frame rate follows from this text caller.
+
+Use [native bitmap-region drawing](/patterns/dragon-32/assembly/rendering/tile-region/) when a changed map cell needs a new picture.

@@ -1,0 +1,75 @@
+---
+title: "Draw a Bitmap Region on Amstrad CPC"
+summary: "Redraw a room, changed patch or single tile with reusable z80 code for Amstrad CPC's MODE 1 bitmap."
+platform: "amstrad-cpc"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["tilemaps", "regions", "bitmap", "assembly"]
+related:
+  patterns: ["tile-region", "tile-map-queries"]
+  vault: ["tile-maps"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A door opens. Its map cell changes, and now its picture needs to change too. This routine takes a rectangle of byte-map IDs and paints their 8×8 pictures into the bitmap. Use it for one tile, a whole room or the strip of scenery revealed by a camera.
+
+<Figure src="/images/amstrad-cpc/patterns/tile-region.png" kind="capture" alt="Amstrad CPC native bitmap output: a small patterned region, an erased cell and an isolated bottom-right tile" caption="Original diagnostic running in Emu198x 0.39.0. The 5×3 patch comes from a larger map; a single-cell erase and the display’s bottom-right corner are checked separately." />
+
+## Make room for the renderer
+
+Define the map, tile pictures, two scanline address tables and a **32-byte context**, `NR`, in your own memory layout. The allocation constants shown here belong to the reset diagnostic; choose addresses which fit your project. The context can live in ordinary writable RAM.
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/rendering/tile-region/demo.asm" from="NR" to="start:" lang="z80" title="The caller supplies the map, bitmap dimensions and private context" />
+
+`MAP` is a row-major byte map, twelve cells wide and eight high in this example. `TILES` contains four pictures, each with eight scanlines and 2 byte(s) per scanline. ID zero is an opaque empty picture, so drawing it erases a cell. It does not mean “skip this tile”.
+
+The two tables, `bitmap_lo` and `bitmap_hi`, hold the low and high address byte for every pixel scanline. Keep the tables, tiles and map stable throughout a call. Include the shared `z80.inc` routine once, after defining its symbols. The complete caller linked below supplies working tables and tile data as well as video setup.
+
+## Draw a rectangle
+
+Set `NR+0..5` to source column, source row, destination column, destination row, width and height. Call `region_draw`; `NR+6` is one when it completes and zero when it rejects the request. All six request bytes survive.
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/rendering/tile-region/demo.asm" from="case_0:" to="case_1:" lang="z80" title="Copy a 5×3 patch from map cell (2,1) to display cell (4,3)" />
+
+The extra result store belongs to the diagnostic. In a game, inspect `NR+6` and continue with your own logic. No separate initialisation call is needed for the context scratch.
+
+The routine rejects zero sizes, out-of-range starts, rectangles which overrun either edge and IDs outside the tile table. It checks every selected ID before painting the first byte. Bounds are checked by comparing the requested size with the space remaining, so byte arithmetic cannot wrap a large request into an apparently small one. This variant rejects rather than clips.
+
+## How this bitmap is laid out
+
+MODE 1 gives you 320×200 pixels with four pens: forty cells across and twenty-five down. Each 8-pixel tile scanline needs two packed bytes. Set `CELL_BYTES=2` and `X_STEP=2` for this routine.
+
+The bitmap occupies the $C000–$FFFF allocation, but successive scanlines are not adjacent. Within a character row they begin $800 bytes apart. After eight scanlines, the next character row starts eighty bytes after the preceding one. The tables encode that layout, including the unused gaps which the tests require to remain unchanged.
+
+Pixel colour bits are interleaved too. Bits 7–4 contain the low colour bit of four pixels; bits 3–0 contain their high colour bit. An ordinary sequence of adjacent two-bit colours will produce the wrong picture. The maintained tile data shows the actual packed bytes.
+
+The reset diagnostic configures the CRTC, Gate Array mode and four pens. It disables the upper ROM so CPU readback sees the bitmap, while retaining its original reset code in the lower ROM. An ordinary game will need its own firmware/ROM and interrupt policy.
+
+## The reusable routine
+
+<CodeFromFile src="cross-platform/patterns/rendering/bitmap-regions/z80.inc" lang="z80" title="Checked bitmap-region drawing" />
+
+AF, BC, DE, HL and flags are clobbered. The context scratch may change; only the six request bytes are preserved. Allow four stack bytes for the direct call and its paint helper, plus whatever your caller and interrupt handlers need. The routine is not re-entrant.
+
+Your renderer owns the bitmap, display configuration, palette and interrupt policy. This routine neither sets video registers nor changes interrupt state. An interrupt may run only if it preserves the registers and cannot change the request, map, tables, tiles or affected display memory during the call.
+
+## Choose the right cost
+
+One accepted cell copies 16 bitmap bytes. A 5×3 patch copies 240; there is also a full ID preflight and source address work. The two scanline tables cost 400 bytes, trading space for a readable address lookup. These are storage and copy counts, not measured cycle or VBlank budgets.
+
+For a large moving scene, cache source-row pointers, copy longer spans or queue a limited amount of work per frame. For a sprite, consider masking and background restoration instead of opaque tile replacement. A camera at a map edge needs clipping of source and destination together. Those are useful variants; they each change the contract.
+
+## What was checked
+
+All **18 calls** completed in this machine’s reset diagnostic: three accepted draws and fifteen rejected requests. Each rejection was also executed in isolation after the accepted draws, and left the entire allocated bitmap and guard unchanged. The non-square source selection crosses a CPU page boundary.
+
+The observer compares complete bitmap memory with an independent expected layout, then compares every native capture pixel with a separate composition. Both completed wrong-layout and unsafe-destination controls fail. The captures include the emulator’s borders and scaling; they are not photographs of a CRT.
+
+This qualifies the selected Emu198x 0.39.0 configuration with Asm198x 0.0.71. The publishing assembler, 0.0.65, produces byte-identical fixtures. It does not establish stock-OS loading, interrupt coexistence, original-hardware timing, tearing-free animation or a whole-game frame budget.
+
+- [Complete caller, tables and execution evidence](https://github.com/code198x/code-samples/tree/d45925f78ef128ac6bdfbcc95ec0af88b3c050e5/amstrad-cpc/patterns/assembly/rendering/tile-region)
+- [Shared calling contract, costs and primary references](https://github.com/code198x/code-samples/blob/d45925f78ef128ac6bdfbcc95ec0af88b3c050e5/cross-platform/patterns/rendering/bitmap-regions/README.md)
+- [Other native region routines](/patterns/cross-platform/rendering/tile-region/)
+- [The separate map/query family](/patterns/cross-platform/rendering/tile-map-queries/)

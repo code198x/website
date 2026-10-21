@@ -1,0 +1,87 @@
+---
+title: "Draw Lines, Circles and Ellipses on BBC Micro MODE 4"
+summary: "Reusable clipped integer geometry, span-filled curves and explicit endpoint ownership for BBC Micro MODE 4."
+platform: "bbc-micro"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["lines", "circles", "ellipses", "clipping", "maths", "bitmap"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Draw a sight line, a circular scanner or a filled oval without building a renderer first. These are five callable assembly routines over the existing pixel/span interface. You choose the bitmap, own the memory and call only the pieces your game needs.
+
+<Figure src="/images/bbc-micro/patterns/geometry.png" kind="capture" alt="Native BBC Micro MODE 4 output with filled and outlined ellipses, a circle, and a clipped diagonal line" caption="Original caller in Emu198x 0.39.0. This is the machine’s native output; the diagnostic scene contains no third-party art." />
+
+## Include it and make a call
+
+BP needs 48 **zero-page** bytes; the caller uses &40. G is 160 ordinary RAM bytes at &0400. Copy the 256-entry `bitmap_lo` and `bitmap_hi` scanline tables and define `PIXEL_WIDTH=320`, `PIXEL_HEIGHT=256`. The tables cost 512 bytes. The bitmap begins at &5800; neighbouring byte columns are eight addresses apart. The caller owns the 6845, video ULA and palette.
+
+Define `GEO_WIDTH` and `GEO_HEIGHT` as 320 and 256. Set `GEO_PEN_MAX` to 255 (pen ignored). Include the geometry `6502.inc` and the backend exactly once, as shown at the bottom of the complete caller. Reserve **160 bytes at G plus 48 at BP**, separately from code, stack, tables and display. Scratch needs no initialisation; public inputs do.
+
+After the caller’s video setup, this is an ordinary direct call. Your game does not need the verification mailbox that follows it.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/geometry/demo.asm" from="; A normal game call:" to="mailbox:" lang="6502" title="Outline an ellipse centred at (80,70), radii (48,24)" />
+
+Read G+10 after return: 1 means accepted, 0 means rejected. An accepted shape can be completely outside the scissor and draw nothing. Change the inputs and call again; G holds no hidden scene or list of shapes.
+
+## The calling contract
+
+All words use **little-endian** byte order. Screen origin is top left; Y increases downwards. Pen is ignored by this monochrome backend; initialise it to 1 for a caller that also ports to CPC.
+
+| G offset | Supply or read |
+| --- | --- |
+| 0,2 | Signed x0,y0 for a line; centre cx,cy for curves |
+| 4,6 | Signed x1,y1 for a line; radii rx,ry for an ellipse; a circle uses rx and ignores ry |
+| 8 | Operation: 0 set/replace, 1 clear, 2 XOR |
+| 9 | Line: 0 includes both ends, 1 omits the original caller’s final end; curves require 0 |
+| 10 | Output: 1 accepted, 0 rejected |
+| 11 | Pen index (ignored on mono backends) |
+| 12,14,16,18 | Unsigned scissor left,top,right,bottom; right/bottom **exclusive** |
+| 20 | Output: 32-bit destination-byte writes |
+| 24 | Output: 16-bit backend calls |
+| 26–159 | Private scratch |
+
+Call `geo_line`, `geo_circle`, `geo_ellipse`, `geo_fill_circle` or `geo_fill_ellipse`. Coordinates must be **−512..511**, radii **0..255**. The scissor must be nonempty and inside the 320×256 display. Invalid bounds, radii, operation, flags or pen reject **before any destination write**, with zero counters. Inputs at 0–9 and 11–19 survive. Unused circle ry is ignored. A zero radius becomes a point or straight span rather than an error.
+
+## Keep the line you asked for
+
+The line uses accumulated integer error in all eight octants. It orders endpoints consistently before choosing half-way pixels, so reversing a line produces the same pixels. A horizontal or vertical line uses a span fast path. A zero-length inclusive line draws one pixel.
+
+For a closed XOR polyline, give **every edge flag 1**. Each omits its original final endpoint, so the next edge owns that shared vertex. Leaving both endpoints on both edges would toggle the vertex twice and erase it. A zero-length omit-final line draws nothing.
+
+The scissor discards outside pixels from the original raster, preserving its rounding phase. It does not replace the endpoints with rounded intersections. Offscreen steps still cost work: the accepted coordinate range bounds the major-axis delta at 1023. Filled curves instead intersect each row span with the scissor before calling the backend.
+
+[Draw with integer error](/craft/maths-for-games/unit-12/) works through a short line, symmetry, span filling and overflow. [Place a point](/craft/maths-for-games/unit-06/) explains the origin difference; for integer screen rows here, convert an upwards world Y with `screenY=height-1-worldY`.
+
+## Fill rows, not thousands of point calls
+
+Outline ellipses update an integer decision and reflect points into four quadrants. Axis points are emitted once. Filled ellipses select the widest interval for each row and emit that span once; they do not repeatedly XOR the same row as the edge advances. Circles use equal ellipse radii through this same kernel. A specialised eight-way circle implementation could reduce work further.
+
+An ellipse with radii (37,15) covers 1,833 logical pixels here but needs only **31 span calls** when filled. Those calls made **258 byte writes** on this backend. That is actual destination work, not elapsed cycles. Four-pixel CPC packing and eight-pixel mono packing produce different counts, and partial edge bytes still need protection.
+
+The geometry occupies **5,533 assembled bytes**, the backend **526**, plus the 208 RAM bytes for G and BP. A further 512-byte scanline table is required. Reset code, stack, display and assets are additional. The checked 32-bit curve arithmetic buys a clear range contract but has a code/time cost. Cache static shapes or specialise a hot path when measurement shows a need. No frame-budget claim has been measured here.
+
+A logical circle has equal X/Y radii. Its displayed shape still depends on the display mode, pixel aspect and capture presentation. Choose the presentation deliberately; changing radius to compensate is a separate mapping decision, not a change to the circle equation.
+
+## Own the resources
+
+Clobbered: A/X/Y and flags; keep decimal mode clear. Reserve a conservative **64-byte stack budget**, plus your other calls and interrupts. The component is non-re-entrant. It does not change interrupt state or negotiate display access. Keep G/BP private and coordinate another renderer or interrupt user yourself. Reset fixtures own the machine; integration under a live OS needs its own loading and coexistence checks.
+
+<details>
+<summary>Open the complete reusable 6502 geometry include</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/geometry/6502.inc" lang="6502" title="Include this CPU component once" />
+</details>
+
+## What was verified
+
+**215 calls completed** on this exact configuration using Asm198x 0.0.71 and Emu198x 0.39.0. Every call compares complete bitmap memory, neighbouring guards, public inputs, acceptance, byte writes and backend calls with an independent model. Cases cover all octants, reversal/ties, endpoint ownership, axes, zero radii, clipping, XOR, range extremes and rejected requests. Selected whole native frames match independently composed pixels. A wrong ellipse recurrence completed accepted draws and failed both memory and picture checks.
+
+The radius bound also has a separate exhaustive arithmetic check: all 65,025 nonzero radius pairs fit the chosen 32-bit error path. That host check does not claim native execution of every pair. Real-hardware timing, stock-OS loading and tear-free live drawing remain separate.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/dedcd9c9d51a0e8eaf8fe5e4d64d542bc355d8be/bbc-micro/patterns/assembly/rendering/geometry)
+- [Reusable geometry include](https://github.com/code198x/code-samples/blob/dedcd9c9d51a0e8eaf8fe5e4d64d542bc355d8be/cross-platform/patterns/rendering/geometry/6502.inc)
+- [Full contract, costs, primary references and MIT attribution](https://github.com/code198x/code-samples/blob/dedcd9c9d51a0e8eaf8fe5e4d64d542bc355d8be/cross-platform/patterns/rendering/geometry/README.md)
+- [Compare geometry paths](/patterns/cross-platform/rendering/geometry/)
+- [Pixels, spans and boxes](/patterns/bbc-micro/assembly/rendering/pixels-and-boxes/)

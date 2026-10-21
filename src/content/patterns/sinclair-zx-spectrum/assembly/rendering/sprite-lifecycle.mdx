@@ -1,0 +1,57 @@
+---
+title: "Save and Restore Software Sprite Backgrounds"
+summary: "Keep a separate packed background for each Spectrum object, then restore overlaps in reverse order. Reusable rectangle helpers and a complete masked-sprite tape caller."
+platform: "sinclair-zx-spectrum"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["sprites", "mask", "save-under", "overlap", "bitmap"]
+related:
+  patterns: ["sprite-lifecycle", "masked-sprites", "bitmap-addressing", "software-scrolling"]
+  vault: ["sprites", "ula", "zx-spectrum"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+The existing mask renderer draws a shaped object. These helpers supply the other half of movement: save the background, then restore it at the old address before drawing again. The caller uses two objects that can overlap.
+
+<img src="/images/patterns/sprite-lifecycle/spectrum.png" alt="Two masked Spectrum objects over a patterned bitmap band" width="352" height="296" loading="lazy" />
+
+*Original Code198x 48K tape program captured in Emu198x; motion is byte aligned.*
+
+**Code status: maintained rectangle helpers, independently CPU-executed, plus a ROM-loaded tape caller.** [Execution record](https://github.com/code198x/code-samples/blob/df5b3ae5bc07ffc82336908b5dd9aee3bc2045c4/docs/sprite-lifecycle/verification/results.json). The [shared lifecycle](/patterns/cross-platform/rendering/sprite-lifecycle/) explains why overlapping backgrounds must be restored in reverse order.
+
+## Include the helpers beside the renderer
+
+Include `background.inc` and `bitmap-addressing.inc` once. `save_rect` and `restore_rect` take DE=top-left bitmap byte, HL=packed buffer, B=width in bytes and C=height in pixel rows. Either zero dimension is a no-op. Otherwise the whole rectangle must fit: width≤32, left column+width≤32 and top row+height≤192.
+
+The caller supplies width×height buffer bytes, without address wrap or overlap with the bitmap, code, stack or another live save. AF/BC/DE/HL change; IX/IY survive. HL advances by width×height. Four temporary stack bytes are needed beyond the return address and any interrupt use. There is no static save state; IRQs must preserve active registers and other renderers must leave the owned region alone.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/sprite-lifecycle/background.inc" lang="z80" title="Packed rectangle saves and restores across the Spectrum bitmap" />
+
+The existing `pixel_down` routine handles the interleaved screen layout. It is not called after the last row, so a rectangle ending on row 191 stays within its contract. Attributes are separate and are not saved here.
+
+## Keep each buffer with its old address
+
+```z80
+    ld de,(old_b)
+    ld hl,under_b
+    ld bc,$0210          ; 2 bytes wide, 16 pixel rows
+    call restore_rect
+    ; Restore old A next, then choose new positions and save/draw A followed by B.
+```
+
+Drawing still uses [masked.inc](/patterns/sinclair-zx-spectrum/assembly/rendering/masked-sprites/). In this caller `SPRITE_W=2` configures that renderer; the rectangle helpers take their own width each call. Mask data consists of interleaved keep-mask/image byte pairs, with image bits zero where the mask preserves scenery.
+
+`make` creates `build/demo.tap`; `LOAD ""` on a 48K Spectrum. The caller owns the bitmap, attributes, private stack and ROM IM1 wait. Two 16×16 objects each keep 32 saved bytes. One moves in eight-pixel steps; reset to leave.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/sprite-lifecycle/demo.asm" lang="z80" title="Two objects, separate buffers and reverse restoration" />
+
+## Grow the scene deliberately
+
+The independent checks cover seven rectangle cases, including zero sizes, layout boundaries, a full bitmap and the last scanline. Four overlap cases compare the composed and restored bitmap. Broken saving and wrong restoration order must fail. Complete tape startup and progression are separate checks; no tear-free display or whole-game frame budget is claimed.
+
+Saving and restoring add two transfers of width×height bytes per object around drawing. More objects can repeatedly touch the same screen area. Before increasing their size or count, measure the entire update and consider dirty-tile redraw or a clean back buffer.
+
+These routines do not clip, shift or organise object lists. If the background changes, saved bytes can become stale. Restore old objects before [scrolling](/patterns/sinclair-zx-spectrum/assembly/rendering/software-scrolling/), then capture and draw at the new screen positions. The [shared guide](/patterns/cross-platform/rendering/sprite-lifecycle/) connects that ordering to the BBC and Amiga implementations.
+
+When an object can leave the screen, [clip its visible rectangle](/patterns/sinclair-zx-spectrum/assembly/rendering/clipped-sprites/) before saving or drawing it. Keep its old clipped address and dimensions for the next restoration.

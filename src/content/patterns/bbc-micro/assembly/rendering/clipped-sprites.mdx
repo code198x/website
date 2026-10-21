@@ -1,0 +1,51 @@
+---
+title: "Clip Masked Sprites in BBC MODE4"
+summary: "Draw the visible part of a byte-aligned sprite in the normal MODE4 screen, preserving source stride and the BBC’s interleaved character-row layout."
+platform: "bbc-micro"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["sprites", "clipping", "mask", "viewport"]
+related:
+  patterns: ["clipping", "sprite-lifecycle", "sprites"]
+  vault: ["sprites"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+<img src="/images/patterns/sprite-clipping/bbc.png" alt="Original bbc scene with masked objects cropped at the four screen corners and drawn inside the viewport" width="640" height="512" loading="lazy" />
+
+*Original Code198x program and artwork captured in Emu198x.*
+
+**Code status: maintained routines and an emulator-executed caller.** [Execution record](https://github.com/code198x/code-samples/blob/55e0220ea89d97f13f44eebaee1700c7d33a7f73/docs/sprite-clipping/verification/results.json).
+
+MODE4 packs eight pixel rows into each character cell. Clipping a sprite therefore needs two pieces of care: selecting the surviving source pixels and finding the matching rows in that interleaved bitmap. This wrapper does both for a byte-aligned 16×16 object.
+
+## Give the wrapper its workspace
+
+Include `clip.inc` and `draw.inc` once. Set `clip_ptr` ($70/$71) to 32 caller-owned bytes. Store signed X at +0, signed Y at +14 and source pointer at +28. X is measured in eight-pixel byte columns; the normal 320-pixel MODE4 screen has forty. Y is measured in pixel rows, from zero to 255 when visible.
+
+Source data contains 64 interleaved keep-mask/image bytes, four bytes per original row. Keep-mask 1 preserves scenery; corresponding image bits must be zero. Both source and context must be separate from code, stack and the bitmap.
+
+The wrapper owns zero-page $70..$78 and its context. A/X/Y/P change; decimal mode must be clear. Interrupt users must preserve that workspace. Each axis uses a 14-byte block: input position +0, extent +2, limit +4; outputs destination +6, source skip +8 and count +10. +12..13 is scratch, and context +30 is a row counter. The wrapper supplies its own fixed extents and viewport limits.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/clipped-sprites/draw.inc" lang="asm" title="Crop and draw a 16×16 image in the MODE4 bitmap" />
+
+The address calculation uses forty character columns and 320 bytes per eight-row band. It handles the page carry when a sprite crosses a character-row boundary. It assumes the normal unscrolled $5800..$7fff mapping; a changed CRTC screen start needs a different address mapper. The *BBC Microcomputer User Guide* describes MODE4's [320×256 display and forty-column text layout](https://www.bbcmicrobot.com/docs/BBC_User_Guide.pdf).
+
+The axis helper can also serve other jobs within its contract: signed 16-bit position, extent 0..256 and viewport limit 1..256. It returns all-zero results when invisible and preserves the input fields. It does not validate values outside that contract.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/clipped-sprites/clip.inc" lang="asm" title="Signed interval clipping with explicit carry and borrow" />
+
+## Run the complete scene
+
+Build with `make ASM198X=/path/to/asm198x`. Type the generated `build/loader.bas` into Model B MOS1.20/BASICII. It selects MODE4, reserves machine-code memory with HIMEM=&3000 and enters the caller. The caller owns that memory and the bitmap, keeps MOS IRQs active and waits through OSBYTE19 after drawing. Reset to leave.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/clipped-sprites/demo.asm" lang="asm" title="Complete MODE4 caller with edge and corner crops" />
+
+## Keep the old footprint when moving
+
+The wrapper pushes two source-pointer bytes per drawn row, in addition to call returns and interrupt needs. It keeps no saved background. Use [separate background buffers](/patterns/bbc-micro/assembly/rendering/sprite-lifecycle/) when objects move over scenery, remembering the old clipped dimensions as well as the old address.
+
+The [shared clipping entry](/patterns/cross-platform/rendering/clipping/) explains source stride, invisible objects and restoration order. This implementation deliberately leaves out horizontal bit shifts, CRTC wraparound and automatic erasure. Those are useful further components, with their own costs and contracts.
+
+For individual pixel X positions, [select prepared source phases](/patterns/bbc-micro/assembly/rendering/pre-shifted-sprites/) and keep the padded footprint and original source stride explicit.

@@ -1,0 +1,49 @@
+---
+title: "Place Spectrum Sprites at Pixel Positions"
+summary: "Select one of eight prepared masks, keep signed pixel positions correct at the left edge, and draw the visible three-byte footprint."
+platform: "sinclair-zx-spectrum"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["sprites", "shifting", "mask", "assets"]
+related:
+  patterns: ["pre-shifted-sprites", "clipped-sprites", "sprite-lifecycle"]
+  vault: ["sprites", "sprite-animation"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+<img src="/images/patterns/sprite-phases/spectrum.png" alt="Original spectrum sprite gallery with prepared pixel phases on a sparse background grid, including cropped screen edges" width="352" height="296" loading="lazy" />
+
+*Original Code198x program and artwork captured in Emu198x.*
+
+**Code status: maintained routines and an emulator-executed phase gallery.** [Execution record](https://github.com/code198x/code-samples/blob/9ebc7a16fba087f6e6211d0286a6d9dfac8a9599/docs/sprite-phases/verification/results.json).
+
+The aligned renderer can draw a byte column. This wrapper lets the object keep a **pixel X** position and selects the prepared source that belongs there. The gallery exercises every phase in the interior and against each screen edge.
+
+## Supply pixel position and a bank
+
+Include `phase.inc`, this folder's `draw.inc`, the existing `clipped-sprites/clip.inc` and bitmap-addressing helper once. Include a generated phase bank once. `draw_pixel_sprite` takes IX pointing at 32 exclusive caller bytes: signed pixel X at +0, signed Y at +14, and an eight-entry phase pointer table at +28.
+
+X and table fields are consumed: they become the aligned byte X and chosen source pointer. **Reload all three inputs for each call**, retaining logical game coordinates elsewhere. The complete caller below shows those assignments before every draw. This also lets several objects use the routine with different generated banks.
+
+AF/BC/DE/HL change; IX/IY survive. Keep table, source, context, code and stack separate from the bitmap and one another. The include changes neither attributes nor interrupt setup. Exclude concurrent users of the working state.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/pre-shifted-sprites/phase.inc" lang="z80" title="Split signed pixel X and select a prepared source" />
+
+The low three bits choose a phase. Arithmetic shifts turn −1 into byte column −1, rather than zero or a large unsigned address. The [shared article](/patterns/cross-platform/rendering/pre-shifted-sprites/) shows why that distinction matters.
+
+## Draw the selected padded image
+
+The prepared source spans 24×16 pixels: three mask/image pairs per row, ninety-six bytes per phase. Transparent padding makes that fixed shape useful at every phase, including zero. The bounded copy loop clips the padded rectangle, advances through the correct source samples and keeps the original six-byte row stride.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/pre-shifted-sprites/draw.inc" lang="z80" title="Copy clipped prepared rows without losing source stride" />
+
+A bank uses 784 bytes including pointers, versus 64 unshifted bytes. The drawing loop pushes four row-pointer bytes, plus call-return and interrupt requirements. The [clipping helper](/patterns/sinclair-zx-spectrum/assembly/rendering/clipped-sprites/) keeps its existing contract; this is a separate renderer for the wider prepared rows.
+
+## Build and adapt the caller
+
+Build with `make ASM198X=/path/to/asm198x`; load `build/demo.tap` on a 48K PAL Spectrum. The caller owns the bitmap, attributes and a private stack at $ff00, then uses ROM IM1/HALT to service frames. Reset to leave. It draws a static gallery, so it does not promise a smooth animation cadence.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/pre-shifted-sprites/demo.asm" lang="z80" title="Complete tape caller for every phase and all four edges" />
+
+Change the original `sprite.json`, then run `make regenerate`; `make check-assets` verifies the committed bank. For a moving object, the existing [rectangle save/restore helpers](/patterns/sinclair-zx-spectrum/assembly/rendering/sprite-lifecycle/) accept the three-byte width. Allow up to 48 saved background bytes per object and keep its old clipped address and dimensions. Source preparation, position updates and removal of the old picture remain separate jobs.

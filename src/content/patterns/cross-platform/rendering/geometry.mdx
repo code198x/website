@@ -1,0 +1,53 @@
+---
+title: "Draw Lines, Circles and Ellipses"
+summary: "Choose a reusable integer rasteriser or an existing hardware line path. Keep clipping, endpoint ownership, fills and display costs explicit."
+platform: "cross-platform"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["lines", "circles", "ellipses", "clipping", "maths"]
+---
+
+import Figure from '@components/Figure.astro';
+
+A radar sweep, a wire outline and a circular explosion all ask a similar question: which dots should we change? You can answer it with small reusable routines, then let each machine deal with its own display memory.
+
+## Choose a maintained path
+
+| Target | Callable implementation | What differs |
+| --- | --- | --- |
+| [Spectrum 48K](/patterns/sinclair-zx-spectrum/assembly/rendering/geometry/) | Z80 lines, ellipse/circle outlines and span fills | Interleaved bitmap; separate attributes |
+| [BBC Micro MODE 4](/patterns/bbc-micro/assembly/rendering/geometry/) | 6502, same geometry contract | Zero-page BP; 512-byte scanline table; eight-address byte stride |
+| [Dragon 32 PMODE 4](/patterns/dragon-32/assembly/rendering/geometry/) | 6809, same geometry contract | Big-endian words; linear 32-byte scanlines |
+| [CPC 464 MODE 1](/patterns/amstrad-cpc/assembly/rendering/geometry/) | Z80, same geometry with packed-colour backend | Four pens; replace/clear/XOR; two separated bits per pixel |
+| [Amiga blitter line](/patterns/commodore-amiga/assembly/rendering/blitter-line-draw/) | Existing hardware line component | Chip RAM; caller clipping; exclusive blitter/DMA ownership; asynchronous completion |
+
+The four CPU entries each include working code, a complete direct caller, the resource contract and native execution evidence. They build on [pixels, spans and boxes](/patterns/cross-platform/rendering/pixels-and-boxes/). Other bitmap modes can share arithmetic ideas, but still need a real backend and qualification. A tile-only display needs writable tile storage and an update policy; it does not acquire a free bitmap by sharing this API.
+
+## A rounded line still needs a rule
+
+<Figure src="/images/patterns/integer-line.svg" kind="image" rendering="smooth" alt="Nine selected grid points form a line from (0,0) to (8,3), with a continuous ideal line behind them" caption="The mathematical line passes between rows. Integer error decides when to step down; the API decides ties and endpoint ownership." />
+
+The line from (0,0) to (8,3) needs X to advance eight times and Y three times. Accumulated error distributes those vertical steps. Reverse the endpoints and you should still get the same pixels: these routines canonicalise the order before breaking half-way ties.
+
+An inclusive line owns both endpoints. A closed XOR polyline instead omits each edge’s original final endpoint, so shared corners are drawn once. Scissoring removes pixels from the original raster rather than rerounding new endpoints; this preserves the phase but still spends work on bounded offscreen steps.
+
+## Curves buy work with symmetry
+
+An ellipse has a centre and two radii. One quadrant gives us the other three; points on an axis must only be emitted once. Filled variants turn each row into one span. That saves repeated pixel addressing and keeps XOR correct when several edge steps land on the same row.
+
+A circle is an equal-radius ellipse in this component. A dedicated eight-way circle routine can be a useful smaller/faster variant. Trigonometric sampling is another option for arcs or angle-driven effects, but it needs angle steps and trig/table costs; uneven sampling can leave gaps or revisit pixels. The routines here use integer decisions, with 32-bit curve intermediates and an explicit radius limit.
+
+[Draw with integer error](/craft/maths-for-games/unit-12/) explains the actual choices with numbers. A pixel circle is circular in coordinate space; the physical pixel aspect and display presentation determine whether it looks circular. Hardware modes and capture scaling deserve their own mapping, not an unexplained correction inside the rasteriser.
+
+## Existing language commands remain useful
+
+- [Sinclair BASIC graphics](/systems/sinclair-zx-spectrum/basic/basic-reference/unit-12/) already teaches PLOT, relative DRAW and CIRCLE. Its origin and ROM command behaviour differ from this top-left assembly contract.
+- [AMOS shapes](/systems/commodore-amiga/amos/meet-amos/unit-09/) draws through the runtime’s graphics commands; it does not expose this G/BP interface.
+- [Blitz bitmap shapes](/systems/commodore-amiga/blitz/meet-blitz/unit-02/) uses Boxf and Circle in a bitmap/slice setup. Its [circle-loop experiment](/systems/commodore-amiga/blitz/meet-blitz/unit-05/) gives a concrete place to explore repeated drawing.
+- The Amiga assembly line uses hardware rather than the CPU pixel backend. Clip before calling, own the registers, and wait for completion before inspecting, reusing or freeing its destination. The existing entry carries its own A500 OCS PAL checks; the new four-machine verification does not extend those claims.
+
+Choose the level that helps your project. Runtime convenience, a compact specialised loop and a fully checked callable component solve different needs. Storage, setup, scratch and destination writes belong in the comparison alongside the algorithm.
+
+## Fills have a boundary too
+
+This release includes span-filled circles and ellipses. Polygon filling needs a vertex-count limit, scratch capacity, winding/even-odd rule and explicit edge ownership. Flood filling needs caller-owned bounded work storage and a capacity-exhaustion result. Neither is implemented by these entries. The [source contract](https://github.com/code198x/code-samples/blob/dedcd9c9d51a0e8eaf8fe5e4d64d542bc355d8be/cross-platform/patterns/rendering/geometry/README.md) records those follow-up requirements before the library grows another fill operation.

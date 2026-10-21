@@ -1,0 +1,51 @@
+---
+title: "Clip Word-Aligned Amiga Bobs"
+summary: "Crop a 32×16 blitter object against a 320×256 viewport, with separate source and screen strides and no blit for fully invisible objects."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["sprites", "clipping", "mask", "viewport"]
+related:
+  patterns: ["clipping", "sprite-lifecycle", "sprites"]
+  vault: ["sprites"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+<img src="/images/patterns/sprite-clipping/amiga.png" alt="Original amiga scene with masked objects cropped at the four screen corners and drawn inside the viewport" width="768" height="576" loading="lazy" />
+
+*Original Code198x program and artwork captured in Emu198x.*
+
+**Code status: maintained routines and an emulator-executed caller.** [Execution record](https://github.com/code198x/code-samples/blob/55e0220ea89d97f13f44eebaee1700c7d33a7f73/docs/sprite-clipping/verification/results.json).
+
+A bob can start beyond the display and still have a visible part. This routine clips a fixed 32×16 source before programming the blitter, advances the mask/image pointers to the surviving pixels, and keeps the original source stride when a side is cropped.
+
+## Call it with source and screen pointers
+
+Include `clip.inc` and `draw.inc` once. Pass signed X in D0.w, measured in sixteen-pixel **words**, and signed Y in D1.w, measured in rows. A0 points to the opaque mask, A1 to the image and A2 to the 320×256 one-plane screen base.
+
+Each source is 64 bytes: sixteen rows of four bytes. Mask 1 selects image and mask 0 retains the destination. This is the opposite polarity to the Spectrum/BBC keep-masks. All pointers must be even and every accessed span must be owned chip RAM, separate from the other live spans, code and stack. The caller must enable DMA and own the blitter for the whole operation.
+
+D0-D7 and A0-A5 survive; CCR changes. The routine uses 68 bytes of saved stack data, plus call-return and interrupt requirements. It waits before programming and before returning. It sets up no copper list, interrupts or operating-system ownership.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/clipped-sprites/draw.inc" lang="m68k" title="Clip both axes and preserve source stride across a cropped blit" />
+
+A left crop advances both source pointers by a word. A top crop advances them by complete four-byte source rows. The A/B source modulos retain that original row width, while C/D retain the forty-byte screen row. The [Amiga Hardware Reference Manual, chapter 6](https://www.theflatnet.de/pub/cbm/amiga/AmigaDevDocs/hard_6.html) describes chip-memory access, channels and row modulos.
+
+The independent axis helper takes signed position in D0.w, extent 0..256 in D1.w and viewport limit 1..256 in D2.w. It returns destination, source skip and visible count in those same registers, all zero when empty. D3/D4 and CCR change; address registers survive. Upper data-register words are unspecified.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/clipped-sprites/clip.inc" lang="m68k" title="Clip an interval before forming a bitplane address" />
+
+## Boot the complete caller
+
+Build with `make ASM198X=/path/to/asm198x BUILD198X=/path/to/build198x-adf` and boot `build/demo.adf` on A500 OCS PAL/Kickstart1.3. The caller owns the custom chips and one 320×256 bitplane. It draws cropped corners, interior objects and two fully invisible calls, then continues frame servicing. Reset is required to leave it.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/clipped-sprites/demo.asm" lang="m68k" title="Original ADF caller with cropped bobs at all four corners" />
+
+## Build on the bounded version
+
+This wrapper handles word-aligned sides and individual pixel rows at top/bottom. It has no arbitrary-X shifts, colour-plane iteration or asynchronous blit queue. A fully invisible call returns before touching blitter registers.
+
+For movement over scenery, combine it with [save/draw/restore](/patterns/commodore-amiga/assembly/rendering/sprite-lifecycle/) and retain the previous clipped address and dimensions. The [shared clipping entry](/patterns/cross-platform/rendering/clipping/) describes the update order and stale backgrounds. Smaller windows, shifted sources and colour bobs are onward work; this scene establishes the named configuration and output, not a whole game's display-time budget.
+
+For individual pixel X positions, [select prepared source phases](/patterns/commodore-amiga/assembly/rendering/pre-shifted-sprites/) and keep the padded footprint and original source stride explicit.

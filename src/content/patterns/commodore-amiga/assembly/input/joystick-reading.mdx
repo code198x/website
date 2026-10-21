@@ -14,37 +14,25 @@ related:
   vault: ["commodore-amiga"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+
+**Code status: the maintained reader is reused by executed Amiga callers.** The surrounding movement examples are adapters; they need their own state, bounds and frame wait. The named callers establish physical port 2 under their A500 configuration, not every peripheral.
 
 ## Overview
 
 Read joystick input from the custom chip register `JOY1DAT`. The Amiga uses quadrature encoding, requiring an XOR operation to decode vertical movement. Horizontal directions are read directly from specific bits. This pattern provides smooth, continuous movement.
 
+## Calling contract
+
+Set A5 to `$DFF000`, configure CIA-A bit 7 as an input and own physical joystick port 2. Include `framework/input-to-sound/input.inc` once in writable memory. `read_controls` returns the held controls in D0.W and `controls`: up `$0100`, down `$0001`, left `$0200`, right `$0002`, Fire `$0010`. It changes D0/D1 and condition codes; other registers survive. Only the low word of D0 is defined.
+
+Keep the horizontal bits from the original JOYDAT sample. The XOR with its shifted copy decodes the vertical bits; applying it to the whole result can turn leftover counter bits into false horizontal input. Physical port 1 uses JOY0DAT and CIA-A bit 6 for Fire; physical port 2 uses JOY1DAT and bit 7.
+
 ## Code
 
-```m68k
-; =============================================================================
-; JOYSTICK READING - AMIGA
-; Read joystick port 2 via JOY1DAT
-; Taught: Game 1 (Signal), Unit 2
-; CPU: ~20 cycles | Memory: ~30 bytes
-; =============================================================================
 
-CUSTOM      equ $dff000
-JOY1DAT     equ $00c            ; Joystick port 2 data (offset from CUSTOM)
-
-; Read joystick directions
-; Input:  A5 = CUSTOM chip base
-; Output: D0 = decoded directions
-;         Bit 8 = up, Bit 0 = down
-;         Bit 9 = left, Bit 1 = right
-read_joystick:
-            move.w  JOY1DAT(a5),d0      ; Read joystick data
-            move.w  d0,d1
-            lsr.w   #1,d1               ; Shift for XOR decode
-            eor.w   d1,d0               ; Decode vertical movement
-            rts
-```
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/input-to-sound/input.inc" lang="m68k" />
 
 **Usage:**
 
@@ -53,7 +41,7 @@ read_joystick:
 
 mainloop:
             bsr     wait_vblank
-            bsr     read_joystick       ; D0 = directions
+            bsr     read_controls       ; D0 = directions
 
             ; Check directions using BTST
             btst    #8,d0               ; Up?
@@ -79,8 +67,8 @@ mainloop:
 
 | Aspect | Cost |
 |--------|------|
-| CPU | ~20 cycles |
-| Memory | ~30 bytes |
+| CPU | Not measured for this caller; include the selected input, drawing and scheduling costs |
+| Memory | Assemble the selected routines and caller to obtain code and state sizes |
 | Limitation | No edge detection (continuous input) |
 
 **When to use:** Games with smooth, continuous movement (shooters, racing).
@@ -96,7 +84,7 @@ The Amiga joystick uses quadrature encoding (like a mouse). The `JOY1DAT` regist
 
 The XOR decode formula:
 ```
-decoded = raw XOR (raw >> 1)
+decoded = (raw AND $0202) OR ((raw XOR (raw >> 1)) AND $0101)
 ```
 
 This converts the quadrature signals into simple direction flags.
@@ -116,15 +104,15 @@ The fire button is read from CIA-A PRA (`$BFE001`), not the custom chips. The tw
 
 | Bit | Port | Common use |
 |-----|------|------------|
-| 7 | Port 0 (left) | Mouse / second joystick |
-| 6 | Port 1 (right) | Primary joystick |
+| 6 | Physical port 1 (`JOY0DAT`) | Mouse / second joystick |
+| 7 | Physical port 2 (`JOY1DAT`) | Primary joystick |
 
 ```m68k
-            btst    #6,$bfe001          ; Joystick port 1 fire (active low)
+            btst    #7,$bfe001          ; Physical port 2 fire (active low)
             beq.s   fire_pressed        ; Branch if pressed
 ```
 
-Use bit 7 if you're reading port 0 (`JOY0DAT`) for a mouse or second player.
+Use bit 6 with `JOY0DAT` for physical port 1. Configure the corresponding CIA-A direction bit as input without disturbing the other port bits. Commodore-Amiga’s *Hardware Reference Manual*, third edition, chapter 8, [Controller Port Interface](https://amigadev.elowar.com/read/ADCD_2.1/Hardware_Manual_guide/node017E.html), describes the controller registers; its Fire Button section assigns bits 6 and 7 to ports 1 and 2 respectively.
 
 ## Port 0 (mouse port) reading
 
@@ -137,7 +125,10 @@ read_port0:
             move.w  JOY0DAT(a5),d0
             move.w  d0,d1
             lsr.w   #1,d1
-            eor.w   d1,d0               ; Same XOR decode as port 1
+            eor.w   d0,d1
+            and.w   #$0101,d1
+            and.w   #$0202,d0
+            or.w    d1,d0               ; Keep original horizontal bits
             rts
 ```
 

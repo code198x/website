@@ -1,0 +1,83 @@
+---
+title: "Draw Pixels, Spans and Boxes in CPC MODE 1"
+summary: "Reusable four-pen plotting, readback, spans and rectangles, with CPC packing, partial-byte masks and explicit video ownership."
+platform: "amstrad-cpc"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["pixels", "spans", "rectangles", "pens", "bitmap", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Four pixels share each MODE 1 byte, but their colour bits are not adjacent. This backend handles that packing so your game can set, clear, XOR or read a pixel, then reuse the same work for spans and boxes.
+
+<Figure src="/images/amstrad-cpc/patterns/geometry.png" kind="capture" width={832} alt="CPC native output with green and blue filled shapes, white outlines and a clipped line" caption="The geometry component uses this backend for every dot and span. Pen selection and palette colour are separate." />
+
+## Include it and make a first call
+
+Copy `cpc.inc` and define BP at **48 private RAM bytes**. The complete geometry caller places it at $4300. Initialise a 320×200 MODE 1 screen at $C000 using the caller’s Gate Array/CRTC setup, clear it, and choose your palette. The include does not perform video setup or change the palette.
+
+To set pixel (1,20) to pen 3, store little-endian words 1 at BP+0 and 20 at BP+2, set BP+8 to 0 and BP+11 to 3, then `call bp_pixel`. BP+9 returns 1 when accepted. Set BP+8 to 0 and `call bp_read` at the same coordinates; BP+10 returns pen index 3. The native checks exercise those entry points through the complete caller. Its mailbox is verification transport; a game calls them directly.
+
+<CodeFromFile src="cross-platform/patterns/rendering/geometry/cpc.inc" from="bp_pixel:" to="bp_read:" lang="z80" title="The actual checked pixel entry, not a browser substitute" />
+
+## The calling contract
+
+Words are unsigned 16-bit, little-endian. Origin is top left; Y increases downwards.
+
+| BP offset | Supply or read |
+| --- | --- |
+| 0,2 | x0,y0 |
+| 4,6 | x1,y1, **exclusive** ends for spans/rectangles |
+| 8 | 0 replace with pen, 1 clear to pen 0, 2 XOR pen bits |
+| 9 | Output: accepted 1, rejected 0 |
+| 10 | Output: read pen 0–3, zero for other calls/rejection |
+| 11 | Input pen 0–3 |
+| 12–47 | Private scratch; word at 40 counts destination-byte writes |
+
+`bp_pixel`/`bp_read` use x0,y0; set operation 0 for a read. `bp_hspan` uses x0,x1,y0 and `bp_vspan` uses x0,y0,y1. `bp_fill` and `bp_box` use all four coordinates. Unused ends are ignored. Inputs 0–8 and 11 survive. Invalid pen, operation or used coordinates reject before writes. Empty/reversed spans and boxes reject; nothing is silently clipped. A 1×1 outlined box writes once under XOR. [Geometry](/patterns/amstrad-cpc/assembly/rendering/geometry/) supplies clipping above this backend.
+
+Replace really means replace: setting pen 2 over pen 1 must clear one pen bit and set the other. OR alone would produce pen 3. Clear ignores the selected pen and writes pen 0; XOR with pen 0 changes no bits. Read returns the stored pen index, not an RGB colour.
+
+## Find the byte, then the two bits
+
+`address = $C000 + (y & 7)*2048 + (y >> 3)*80 + (x >> 2)`
+
+At (13,20), scanline phase is 4, character row is 2 and byte column is 3: the byte is **$E0A3**. `13 mod 4 = 1` selects pixel phase 1. Its low pen bit uses bit 6 ($40), its high pen bit bit 2 ($04). Pen 2 inserts $04 into mask $44, keeping the byte’s other six bits.
+
+| Pixel phase | Pen-bit mask | Pen 1 bits | Pen 2 bits | Pen 3 bits |
+| --- | --- | --- | --- | --- |
+| 0 | $88 | $80 | $08 | $88 |
+| 1 | $44 | $40 | $04 | $44 |
+| 2 | $22 | $20 | $02 | $22 |
+| 3 | $11 | $10 | $01 | $11 |
+
+A span [1,5) covers four pixels but touches **two bytes**. The first selected mask is $77; the second is $88. Each edge must preserve its neighbours. Interior bytes can be handled together instead of recalculating each pixel address. The backend still uses checked read/modify/write work; a specialised full-byte store path can avoid reads for set/clear at the cost of another path.
+
+Each 2 KiB scanline bank contains 2,000 visible bytes and 48 unused bytes. The backend leaves those **384 unused bytes** unchanged. It supports this standard CRTC layout only; another start address, stride or MODE needs its own configuration and checks. [Native map regions](/patterns/amstrad-cpc/assembly/rendering/tile-region/) demonstrates another use of this physical display layout.
+
+## Costs and ownership
+
+The backend is **578 assembled bytes**, plus BP’s 48 RAM bytes. That excludes setup, stack, display and assets. A full clear writes 16,000 visible bytes. A four-pixel span can cost two byte writes when unaligned and one when aligned. These are destination-write counts, not cycles or a frame-budget guarantee.
+
+AF/BC/DE/HL and flags are clobbered. Reserve at least ten stack bytes including the direct caller, plus other calls and interrupts. BP is non-re-entrant. The routines neither change interrupt state nor coordinate another video user. Own the CRTC, Gate Array, palette and bitmap; a firmware-managed display needs a deliberate coexistence/loading path. The original reset fixture takes over the machine.
+
+<details>
+<summary>Open the complete reusable MODE 1 backend</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/geometry/cpc.inc" lang="z80" title="Include once; all six drawing/read entries share BP" />
+</details>
+
+## What was verified
+
+166 native backend calls cover all pen/phase combinations, replacement/clear/XOR/readback, partial-byte spans, boxes, full-screen bounds and rejected requests. Each checks the entire 16 KiB allocation with patterned neighbours and unused bytes, public inputs, status and write count. Another 216 calls include geometry and the direct startup ellipse. Selected whole native frames match independent composition. A completed wrong partial-byte mask and a wrong ellipse recurrence fail both memory and pixel comparisons.
+
+The tools are released Asm198x 0.0.71 and Emu198x 0.39.0, CPC 464. This verifies the original reset configuration, not stock-firmware loading, physical-machine timing or tear-free animation.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/dedcd9c9d51a0e8eaf8fe5e4d64d542bc355d8be/amstrad-cpc/patterns/assembly/rendering/geometry)
+- [Reusable CPC backend](https://github.com/code198x/code-samples/blob/dedcd9c9d51a0e8eaf8fe5e4d64d542bc355d8be/cross-platform/patterns/rendering/geometry/cpc.inc)
+- [Full contracts and primary references](https://github.com/code198x/code-samples/blob/dedcd9c9d51a0e8eaf8fe5e4d64d542bc355d8be/cross-platform/patterns/rendering/geometry/README.md)
+- [Compare pixels, spans and boxes](/patterns/cross-platform/rendering/pixels-and-boxes/)
+- [Draw with integer error](/craft/maths-for-games/unit-12/) · [Place a point](/craft/maths-for-games/unit-06/)
+
+[Draw bitmap text](/patterns/amstrad-cpc/assembly/rendering/bitmap-text/) reuses these spans for glyphs at arbitrary pixel positions, with an explicit font, advance and scissor.

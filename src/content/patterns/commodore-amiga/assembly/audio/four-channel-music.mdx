@@ -1,6 +1,6 @@
 ---
 title: "Four-Channel Music"
-summary: "Drive all four of Paula's channels from a note sequence, stepping the pattern on a timer interrupt and turning note numbers into periods — the skeleton of every Amiga tracker and MOD player."
+summary: "A complete eight-row sequencer for four Paula voices, with explicit startup, channel ownership and hold semantics. A small step toward music playback."
 platform: "commodore-amiga"
 category: "audio"
 difficulty: "advanced"
@@ -13,128 +13,54 @@ related:
   vault: ["paula", "commodore-amiga"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
 
-## Overview
 
-One channel plays [one sample](/patterns/commodore-amiga/assembly/audio/playing-a-sample); a [one-shot](/patterns/commodore-amiga/assembly/audio/one-shot-samples) fires it once. Music is the next step up: **all four channels at once**, each handed a fresh note on a regular beat. A tracker is little more than that — a table of notes per channel, a timer that steps through it, and the [period table](/patterns/commodore-amiga/assembly/audio/playing-a-sample) turning note numbers into Paula periods. Set the four channels running, and on every tick repoint whichever ones have a new note. That loop is the beating heart of the MOD format and every Amiga music routine built on it.
 
-## Code
+Four voices can turn one small waveform into a tune. The useful next step after [playing a sample](/patterns/commodore-amiga/assembly/audio/playing-a-sample/) is to give each voice its own sequence of pitches, then advance those sequences on a clock.
 
-```m68k
-; =============================================================================
-; FOUR-CHANNEL MUSIC - AMIGA (Paula)
-; A vertical-blank tick steps a pattern; each channel gets its note's sample+period
-; Assumes master interrupts on, and the level-3 (VERTB) autovector -> music_tick
-; =============================================================================
+This caller is deliberately small: eight rows, four word-sized note indices per row, one shared looping waveform and six updates between row starts. A zero holds the previous note. It does not mean silence. The complete data is included, so the player never wanders past an unfinished pattern.
 
-CUSTOM   equ $dff000
-DMACON   equ $096
-AUD0LC   equ $0a0            ; channel n block is at $a0 + n*$10
-AUDLEN   equ $04             ;   +$4 length (words)
-AUDPER   equ $06             ;   +$6 period (pitch)
-AUDVOL   equ $08             ;   +$8 volume
+## Run and connect it
 
-ALL4DMA  equ $820f           ; SET | DMAEN | AUD0..3 ($8000|$200|$f)
-ROWS     equ 64              ; a classic tracker pattern is 64 rows
+Target: A500 OCS PAL with Kickstart 1.3, booted from the sample's ADF. Press Fire on physical joystick port 2 to start. Reset to leave; this caller does not return to AmigaOS.
 
-            section code,code_c
+Build the sample with Asm198x and Build198x:
 
-; --- Kick every channel off once; volumes up, DMA on for all four ---
-music_init:
-            lea     CUSTOM,a5
-            move.w  #64,AUD0VOL(a5)
-            move.w  #64,$10+AUDVOL(a5)          ; ch1
-            move.w  #64,$20+AUDVOL(a5)          ; ch2
-            move.w  #64,$30+AUDVOL(a5)          ; ch3
-            clr.w   row
-            move.w  #ALL4DMA,DMACON(a5)         ; all four channels live
-            rts
-
-; --- VERTB tick: advance one row, feed each channel that has a new note ---
-music_tick:
-            lea     CUSTOM,a5
-            move.w  row,d7
-
-            ; four channels: base offset d6 = 0,$10,$20,$30 ; data ptr a0
-            lea     pattern,a0                  ; row-major: 4 notes per row
-            mulu    #4*2,d7                     ; each note is a word
-            adda.w  d7,a0                        ; a0 -> this row's four notes
-
-            moveq   #0,d6                        ; channel base offset
-            moveq   #4-1,d5                       ; channel counter
-.chan:
-            move.w  (a0)+,d0                     ; note number for this channel
-            beq.s   .next                        ; 0 = "hold" — leave it playing
-
-            add.w   d0,d0                         ; note*2 -> period-table index
-            lea     periods,a1
-            move.w  -2(a1,d0.w),d1               ; period for this note
-
-            lea     0(a5,d6.w),a2                ; a2 -> this channel's registers
-            move.l  #inst,AUD0LC-CUSTOM(a2)      ; same one-cycle instrument...
-            move.w  #inst_len,AUDLEN(a2)          ; ...for every voice here
-            move.w  d1,AUDPER(a2)                 ; pitch = period from the table
-.next:
-            add.w   #$10,d6                        ; next channel's register block
-            dbf     d5,.chan
-
-            addq.w  #1,row                          ; step the pattern
-            cmp.w   #ROWS,row
-            blo.s   .done
-            clr.w   row                             ; loop back to row 0
-.done:
-            rts
-
-            section data,data_c
-            even
-row:        dc.w    0
-; period table: one entry per note, note 1 = C-1 (856). 428 = C-2; two octaves shown.
-periods:    dc.w    856,808,762,720,678,640,604,570,538,508,480,453   ; octave 1: notes 1-12
-            dc.w    428,404,381,360,339,320,302,285,269,254,240,226   ; octave 2: notes 13-24
-; pattern: ROWS rows x 4 channels, note number or 0=hold  (one row shown)
-pattern:    dc.w    13, 0,20, 0        ; row 0: ch0 C-2 (13 -> 428), ch2 G-2 (20 -> 285)
-            ; ... 63 more rows ...
-inst:       dc.b    0,60,110,127,100,50,-10,-70,-120,-127,-90,-40,10,55,30,0
-inst_len    equ     (*-inst)/2
+```sh
+make -C commodore-amiga/patterns/assembly/audio/four-channel-music BUILD198X=/path/to/build198x
 ```
 
-## Trade-offs
+The caller owns the custom chips, all four audio channels and their DMA/interrupt requests. It disables audio modulation. Samples must be word-aligned in Chip RAM and stay there while DMA can read them. Before reusing `music_init` in another caller, turn audio DMA off and allow at least two sample periods for it to settle. A program sharing AmigaOS uses its audio facilities instead of this exclusive caller.
 
-| Aspect | Cost |
-|--------|------|
-| CPU | One tick a frame — cheap; the mixing is Paula's, not yours |
-| Memory | Samples + pattern + period table, all in chip RAM |
-| Limitation | Four voices, full stop — more needs software mixing into fewer channels |
+<CodeFromFile src="commodore-amiga/patterns/assembly/audio/four-channel-music/demo.asm" lang="m68k" title="Start, wait and advance" />
 
-**When to use:** Any in-game music or jingle. This *is* how Amiga music works.
+The main loop calls the existing vertical-blank wait, then `music_tick`. This is a subroutine returning with `RTS`, not an interrupt handler. An IRQ dispatcher would have to preserve working registers, acknowledge its interrupt and return with `RTE` itself.
 
-**When to avoid:** A single sound effect — that's a [one-shot](/patterns/commodore-amiga/assembly/audio/one-shot-samples), not a sequencer.
+## One channel block, four copies
 
-## The tick is the tempo
+Paula's channel blocks start at custom offsets `$A0`, `$B0`, `$C0` and `$D0`. Within each block, location is at +0, word length at +4, period at +6 and volume at +8. Using one consistent base avoids accidentally writing disk or display registers.
 
-Trackers keep time in **ticks**, not seconds: the routine runs once per vertical blank (50 Hz PAL), and a "speed" value says how many ticks make one row — speed 6 is the classic default, giving 50/6 ≈ 8.3 rows a second. Most ticks do nothing but run effects; only every *speed-th* one steps to the next row. The skeleton above steps every frame for clarity; a real player counts down a `speed` counter first, and that same per-tick call is where vibrato, slides and volume-ramps live.
+`music_init` configures **every** channel before enabling DMA. `music_tick` changes period and volume on a note; it leaves the looping sample running. A held row leaves that voice alone. There is no attack envelope, instrument retrigger or effect command hidden behind a note number.
 
-## Notes become periods
+<CodeFromFile src="commodore-amiga/patterns/assembly/audio/four-channel-music/music.inc" lang="m68k" title="Four-voice sequencer and complete pattern" />
 
-A channel doesn't understand "C-2" — it understands a **period**. The bridge is the period table: notes are numbered in semitones, the note number indexes the table, and the entry is the Paula period for that pitch. It's why the table above steps by the twelfth root of two each row (856 → 808 → 762 …), each value about 94% of the last — one equal-tempered semitone. Standard MOD replay tables cover three octaves this way; transpose by adding or subtracting twelve from the note index.
+`music_init` changes A2/A5/D5 and condition codes. `music_tick` changes A0/A1/A2/D0/D5/D7 and condition codes. The wait also changes D6. The pattern and period table are read-only after loading; `music_row` and `music_timer` are writable words. Include each routine once and keep competing writers out of that state and those channels.
 
-## Why four, and the stereo pairing
+## What its numbers mean
 
-Paula gives **four hardware voices and no more**, wired [0 and 3 left, 1 and 2 right](/patterns/commodore-amiga/assembly/audio/playing-a-sample). The four-channel MOD grew straight out of that hardware: two voices a side, typically bass and a lead against a drum and a counter-melody. Wanting a fifth voice means **software mixing** — summing several samples into one buffer on the CPU and feeding *that* to a single channel — which is exactly how later "multichannel" formats and the 14-bit playback tricks got more out of the same four DACs.
+At 50 updates per second, six intervals between rows give about 8.3 rows per second. At 60, the same counter gives 10. A missed update stretches the music; a different clock requires a deliberate timing choice.
 
-## From here to a real player
+The period table uses familiar tracker period values, but they do not give an absolute pitch independently of the sample. Here each waveform cycle has 16 samples: nominal PAL pitch is approximately `3546895 / (period × 16)`. A recorded instrument with a different cycle length will tune differently. Lower periods play the data faster.
 
-This skeleton holds the shape; a full MOD player adds three things on top:
+The four hardware channels have fixed stereo routing: 0/3 left and 1/2 right. Another voice needs a different resource plan, such as software mixing; it is not a fifth independent Paula channel.
 
-- **Instruments** — a sample per note-row entry, not one shared `inst`; the row carries a sample number as well as a note.
-- **Effects** — the second word per note in the MOD format: arpeggio, portamento, vibrato, volume slides, pattern jumps — all applied on the non-row ticks.
-- **Order list** — patterns are sequenced by an order table, so a song reuses a handful of 64-row patterns rather than storing every bar.
+## Verification and limits
 
-Add those and the [one-shot interrupt](/patterns/commodore-amiga/assembly/audio/one-shot-samples) for one-shot instruments, and you have ProTracker.
+**Code status: assembled and emulator-executed on the named configuration.** The check cold-boots the ADF, starts through real joystick input, observes all four channels over every row and verifies holds, six-update timing and wrap. It also checks actual stereo PCM. A caller with the DMA enable deliberately removed must fail the same audio guard, despite still writing plausible period and volume registers.
 
-## Related
+[Audit execution record](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/amiga-music.json) · [Scope and remaining checks](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/README.md)
 
-**Patterns:** [One-Shot Samples](/patterns/commodore-amiga/assembly/audio/one-shot-samples), [Playing a Sample](/patterns/commodore-amiga/assembly/audio/playing-a-sample)
+This proves the bounded waveform sequencer, not a MOD player. Loading a MOD adds a file decoder, sample ownership, loops, instrument rules, effects, order changes and their timing. This example gives us a readable place to begin those discussions without pretending they are already implemented.
 
-**Vault:** [Paula](/vault/hardware/paula) | [Commodore Amiga](/vault/systems/commodore-amiga)
+Related: [sample playback](/patterns/commodore-amiga/assembly/audio/playing-a-sample/), [one-shot samples](/patterns/commodore-amiga/assembly/audio/one-shot-samples/) and the [shared sequencer discussion](/patterns/cross-platform/audio/tune-sequencer/).

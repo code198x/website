@@ -1,0 +1,117 @@
+---
+title: "Sprites and Moving Objects"
+summary: "Draw animated objects with hardware sprites, software masking, blitter objects and combinations of them. Go beyond fixed hardware counts while making the compromises visible."
+platform: "cross-platform"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["sprites", "software-sprites", "multiplexing", "animation", "rendering"]
+related:
+  patterns: ["scrolling", "sprite-animation", "hardware-sprites", "masked-sprites", "multi-sprite-oam", "sprite-multiplexing"]
+  vault: ["sprites", "sprite-animation", "sprite-multiplexing", "sprite-flicker"]
+---
+
+A player, three enemies, a handful of shots and an explosion: the game sees moving objects. The video chip may see eight sprite channels, sixty-four small entries with a stricter per-line limit, or no sprites at all.
+
+Those are different starting points for drawing the same game. This family connects the routines that position, draw, animate and remove objects, then explores how to handle a scene that asks for more than the hardware supplies.
+
+| Machine | Reusable starting point | Ways to go further |
+| --- | --- | --- |
+| <span style="white-space: nowrap">Spectrum</span> | [Masked software drawing](/patterns/sinclair-zx-spectrum/assembly/rendering/masked-sprites/) | Save-under or tile redraw, pre-shifted graphics, dirty regions; colour remains a separate problem |
+| C64 | [Hardware sprites](/patterns/commodore-64/assembly/rendering/hardware-sprites/) | [A verified two-band multiplexer](/patterns/commodore-64/assembly/rendering/sprite-multiplexing/), larger composite objects, software objects for another workload |
+| NES | [Pack and rotate OAM entries](/patterns/nintendo-nes/assembly/rendering/multi-sprite-oam/) | Composite characters, reserved priority slots and scanline-aware admission; rotation shares dropout |
+| Amiga | [Save, draw and restore bobs](/patterns/commodore-amiga/assembly/rendering/sprite-lifecycle/) | A verified word-aligned blitter lifecycle; hardware-sprite positioning, shifts and DMA reuse retain their separate illustrative status |
+| BBC Micro | [Masked 8×8 software drawing and restoration](/patterns/bbc-micro/assembly/rendering/masked-sprites/) | Larger objects, arbitrary pixel alignment, redraw from tiles and CRTC-aware address mapping |
+
+Follow a machine page for actual code, startup, state ownership and evidence. Shared CPU ancestry does not qualify an implementation on another machine automatically.
+
+## An object is not necessarily one hardware sprite
+
+Keep the game object separate from its representation. Its world position, health, behaviour and collision shape do not need to fit the video chip's fields. A renderer can turn one large character into several hardware entries, or draw it into the background.
+
+Subtract the [camera](/patterns/cross-platform/rendering/scrolling/) to obtain signed screen coordinates. Clip before narrowing those coordinates to a hardware byte. Then choose graphics, palette, facing and drawing priority. Collision can use a small box even when the artwork is large or irregular; the rendered silhouette does not dictate the collision method.
+
+[Animation](/patterns/cross-platform/rendering/sprite-animation/) chooses the image to draw. It can drive hardware tile numbers, C64 sprite pointers, Spectrum mask/image pairs or Amiga bob data. Changing an animation frame is not the same operation as moving the object.
+
+## Hardware sprites: small changes, specific rules
+
+Hardware usually fetches the image independently of the playfield. Moving a sprite can be a coordinate update rather than an erase-and-redraw operation. That is valuable, but each video system has its own width, colour, priority, memory and scheduling rules.
+
+The C64's eight hardware sprites are not the same resource as the NES's sixty-four OAM entries. The NES has a separate limit of eight sprite entries on a scanline; a large character built from four small entries consumes four entries wherever those pieces overlap vertically. The Amiga OCS has eight sprite DMA channels; its basic sprites are sixteen pixels wide, with colour sharing and attachment rules.
+
+Hardware sprites also need correct publication. If an interrupt transfers the OAM page while the main thread is halfway through changing it, the picture can contain a mixture of two updates. The [NES caller](/patterns/nintendo-nes/assembly/rendering/multi-sprite-oam/) builds a finished page, publishes readiness last and waits for the transfer to acknowledge it.
+
+## Software sprites: own the pixels
+
+Software drawing modifies the playfield. A useful masked operation is:
+
+```text
+new_byte = (background_byte AND keep_mask) OR image_byte
+```
+
+Mask bits of one preserve background; image bits must be zero in those preserved positions. This convention is used by our Spectrum and BBC routines. Other renderers may use the opposite mask convention: check the contract before sharing assets.
+
+A bare OR can work over a suitable background, but it cannot clear background pixels where the object's dark pixels belong. XOR is reversible only while the underlying pixels remain unchanged, and its colours depend on that background. Neither is a universal substitute for masking.
+
+The Amiga blitter can perform a related masked combination using separate mask, image and destination channels. It saves CPU drawing work, but still consumes shared chip-memory bandwidth and needs scheduling.
+
+The [shared software-object lifecycle](/patterns/cross-platform/rendering/sprite-lifecycle/) now supplies separate-buffer implementations and complete overlapping-object callers on Spectrum, BBC Micro and Amiga.
+
+## Moving means removing the old picture
+
+Our [BBC Micro component](/patterns/bbc-micro/assembly/rendering/masked-sprites/) demonstrates the complete small cycle:
+
+```asm
+    ; screen_ptr selects the cell; pairs_ptr selects its mask/image pairs.
+    jsr save_background
+    jsr draw_masked_cell
+    ; ... later, before changing screen_ptr ...
+    jsr restore_background
+    ; Choose the new cell, save its background, and draw there.
+```
+
+One eight-byte save slot is sufficient for this one-object example. It is not an engine for overlapping objects. With several saved objects, restore in reverse drawing order, then save and draw the new frame in its chosen order. If scenery has changed, restoring old bytes can undo that change: redraw the damaged background from the map instead.
+
+Scrolling adds another dependency. Erase the old software objects before moving their background, and redraw them afterwards. Alternatively, rebuild a clean region or a back buffer. The correct order matters more than whether each individual routine is fast.
+
+## More objects than the hardware count
+
+### Reuse a channel later in the display
+
+A multiplexer reprograms a hardware sprite after the beam has finished using it. The [C64 example](/patterns/commodore-64/assembly/rendering/sprite-multiplexing/) displays sixteen objects in two fixed bands by reusing eight channels. Its checks cover the stated PAL/NTSC schedules, count validation and pixels.
+
+It cannot draw sixteen overlapping objects on the same line. An arbitrary-Y multiplexer needs a scheduler, often sorting, and a policy for impossible overlaps. Expansion and tall objects change the time at which a channel becomes free. The fixed-band implementation is a useful component with a clear boundary.
+
+The Amiga can also reuse sprite DMA channels within a field; the [Hardware Reference Manual, chapter 4](https://www.theflatnet.de/pub/cbm/amiga/AmigaDevDocs/hard_4.html) describes the mechanism. A reusable checked Amiga scheduler is still a coverage gap here.
+
+### Share the objects that disappear
+
+Our NES caller puts twelve objects on one row. The builder can put all twelve in OAM, but the PPU cannot display all twelve there. Rotating the starting object changes which eight receive priority, spreading the visible dropout over time.
+
+That is flicker management, not extra scanline capacity. It also changes overlap ordering and which object occupies slot zero. A game may keep the player and a sprite-zero marker in fixed slots while rotating less important effects; our simple builder does not implement that reservation policy.
+
+### Draw another kind of object
+
+Use hardware sprites for the player and software objects for particles. Draw a large explosion into tiles. On the Amiga, combine hardware sprites with bobs. The new costs may include extra redraws, restricted colours, shared palettes or time taken from game logic. Hardware collision flags will not necessarily describe objects drawn by another route.
+
+## Choose an overload policy before the busy scene arrives
+
+| Policy | Benefit | Visible or structural cost |
+| --- | --- | --- |
+| Keep the player first | Protect the most important object | Lower-priority objects may vanish repeatedly |
+| Rotate candidates | Share dropout | Flicker and changing overlap order |
+| Admit by scanline budget | Avoid submitting impossible combinations | Extra bookkeeping; grouping composite objects needs care |
+| Reuse channels in separated bands | More visible objects across the screen | Raster deadlines and restricted vertical overlap |
+| Draw some objects in software | Use another rendering resource | CPU/bandwidth, restoration and colour restrictions |
+| Limit spawned effects | Bound the worst case | Fewer effects; game rules must tolerate refusal |
+
+These choices can be combined. A pool's capacity is not a guarantee that the renderer can show every allocated object together.
+
+## Make the next version earn its complexity
+
+Useful onward components include clipped masked rectangles, pre-shift generation, composite-sprite definitions, animation states, dirty-tile redraw, fixed-priority OAM reservations and arbitrary-Y multiplexing. Each should have reusable code, a complete caller and checks that match its claims.
+
+The [family coverage inventory](https://github.com/code198x/code-samples/blob/9ebc7a16fba087f6e6211d0286a6d9dfac8a9599/docs/rendering-families.md) distinguishes existing code, new qualified routines, illustrative listings and gaps across the currently emulated systems. It keeps the wider catalogue open without making every machine pretend to have the same graphics hardware.
+
+[Viewport clipping](/patterns/cross-platform/rendering/clipping/) follows the software-object lifecycle: select the visible source region before forming a screen address. The first implementations cover Spectrum, BBC MODE4 and Amiga word-aligned bobs.
+
+[Prepared pixel phases](/patterns/cross-platform/rendering/pre-shifted-sprites/) offer software objects individual pixel X positions. Compare stored variants with runtime or hardware shifting; the first executable slice covers Spectrum, BBC MODE4 and Amiga.

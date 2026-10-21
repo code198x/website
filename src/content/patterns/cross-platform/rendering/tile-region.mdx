@@ -1,0 +1,109 @@
+---
+title: "Draw the Part of the Map You Need"
+summary: "Turn logical map cells into a native picture. Start with checked rectangles across twenty-one machines, while keeping patterns, colours and video ownership explicit."
+platform: "cross-platform"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["tilemaps", "regions", "native", "vdp", "bitmap"]
+related:
+  patterns: ["tile-map-queries", "scrolling"]
+  vault: ["tile-maps"]
+---
+
+import Figure from '@components/Figure.astro';
+
+Changing a tile in your map does not change the picture. Something has to turn that logical ID into the bytes the display understands. A region routine gives that job a clear boundary: take this rectangle of the world and draw it here.
+
+Start with a room. Then try a door opening, a wall breaking or the strip of scenery revealed by a moving camera. The map/query routines answer what is there; this component writes its appearance. Neither needs to know the game's whole main loop.
+
+## Choose your machine
+
+- [ColecoVision](/patterns/colecovision/assembly/rendering/tile-region/) — Graphics I
+- [Sord M5](/patterns/sord-m5/assembly/rendering/tile-region/) — Graphics I
+- [MTX](/patterns/memotech-mtx/assembly/rendering/tile-region/) — Graphics I
+- [Einstein TC01](/patterns/tatung-einstein/assembly/rendering/tile-region/) — Graphics I
+- [MSX1](/patterns/msx/assembly/rendering/tile-region/) — Graphics I
+- [SVI-328](/patterns/spectravideo-svi-328/assembly/rendering/tile-region/) — Graphics I
+- [SG-1000](/patterns/sega-sg-1000/assembly/rendering/tile-region/) — Graphics I
+- [Master System](/patterns/sega-master-system/assembly/rendering/tile-region/) — Mode 4
+- [Game Gear](/patterns/sega-game-gear/assembly/rendering/tile-region/) — Mode 4
+
+- [BBC Micro](/patterns/bbc-micro/assembly/rendering/tile-region/) — MODE 4, CPU bitmap
+- [Acorn Atom](/patterns/acorn-atom/assembly/rendering/tile-region/) — 256×192 monochrome, CPU bitmap
+- [Dragon 32](/patterns/dragon-32/assembly/rendering/tile-region/) — PMODE 4, CPU bitmap
+- [Amstrad CPC](/patterns/amstrad-cpc/assembly/rendering/tile-region/) — MODE 1, CPU bitmap
+
+- [Oric Atmos](/patterns/oric-atmos/assembly/rendering/tile-region/) — six-pixel HIRES cells and reserved attributes
+- [Atari 800XL](/patterns/atari-800/assembly/rendering/tile-region/) — ANTIC F and explicit LMS scanlines
+- [Game Boy](/patterns/game-boy/assembly/rendering/tile-region/) — LCD-off background-map transfer
+- [Amiga](/patterns/commodore-amiga/assembly/rendering/tile-region/) — two-plane CPU and synchronous blitter copies
+
+- [Acorn Electron](/patterns/acorn-electron/assembly/rendering/tile-region/) — MODE 4 bitmap
+- [Commodore PET](/patterns/commodore-pet/assembly/rendering/tile-region/) — 40-column character screen
+- [VIC-20](/patterns/commodore-vic-20/assembly/rendering/tile-region/) — unexpanded PAL RAM-character screen
+- [Mattel Aquarius](/patterns/mattel-aquarius/assembly/rendering/tile-region/) — unexpanded character and colour screen
+
+The first nine implementations deliberately reach beyond the launch machines. Seven use a TMS-family Graphics I name table; Master System and Game Gear use Mode 4 entries. Each machine was executed independently. Shared hardware makes code reusable; it does not transfer a result from one target to another.
+
+## Follow a rectangle
+
+The example world is twelve cells wide and eight high. It selects a 7×5 patch at (2,1) and puts it at logical screen cell (8,5). Moving to the next source row means advancing by twelve map bytes. Moving to the next destination row means advancing by thirty-two native entries. Mixing those strides makes a recognisable but increasingly misplaced picture.
+
+<Figure src="/images/colecovision/patterns/tile-region.png" kind="capture" alt="ColecoVision diagnostic showing a partial region, isolated corner tiles and a single-cell redraw" caption="The selected patch drawn through real VDP writes in Emu198x. A changed cell and separate edge writes are checked alongside it." />
+
+The checked variant rejects a source or destination rectangle that does not fit. It also scans all selected IDs before drawing: one invalid tile must not leave half a patch on screen. That guarantee assumes the caller keeps the map and descriptor table stable during the call.
+
+## IDs are not display bytes
+
+The game can call ID 1 a wall without saying how it is drawn. A descriptor table makes that choice for the current renderer.
+
+| Logical ID | Graphics I example | Sega Mode 4 example |
+| --- | --- | --- |
+| 0, empty | Pattern 0 | Pattern 0, no flags |
+| 1, wall | Pattern 8 | Pattern 1, no flags |
+| 2, hazard | Pattern 16 | Pattern 2, no flags |
+| 3, goal | Pattern 24 | Pattern 3, horizontal flip |
+
+Graphics I uses one name byte per cell, and its colours are shared across groups of eight patterns. Mode 4 uses two bytes: a pattern number and attributes for the ninth pattern bit, flips, palette and priority. Loading patterns and colours/palettes is separate from copying name entries. Those assets and the descriptor table must agree.
+
+## Paint cells into a bitmap
+
+BBC Micro, Acorn Atom, Dragon 32 and CPC add a different path: copy the picture itself into CPU-addressed display memory. A monochrome tile takes eight bytes; a CPC MODE 1 tile takes sixteen. There is no hardware name entry to change.
+
+The shared request still says “take this rectangle and put it here”. The address calculation changes. BBC MODE 4 keeps eight scanlines together per character; Atom and Dragon are linear; CPC separates scanlines by $800 bytes and interleaves each pixel’s colour bits. The 6502, 6809 and Z80 entries expose those differences in maintained reusable code.
+
+<Figure src="/images/amstrad-cpc/patterns/tile-region.png" kind="capture" alt="Amstrad CPC bitmap region with checkerboard, hollow squares and diagonal crosses in distinct pens" caption="The same map-to-picture boundary, now using packed bitmap pixels. The complete CPC allocation is checked, including gaps which must remain unchanged." />
+
+These variants use a 5×3 selection from a twelve-cell source row, a single-cell erase and a bottom-right edge draw. Their own caller-owned contexts and compile-time symbols are documented explicitly; the VDP and bitmap contexts are not interchangeable. Scanline tables spend space to make addressing clear. Cached map rows, row-span copies and queued updates offer different speed/space trade-offs.
+
+## A cell need not be eight pixels wide
+
+Oric adds six-pixel HIRES cells: its first two physical columns hold colour attributes, leaving 38 drawable cells. Atari adds ANTIC bitmap addressing across a 4 KB boundary. Amiga uses 16×8 cells and two separate bitplanes, with CPU and synchronous blitter backends. Game Boy copies background-map IDs while the LCD is off, with patterns uploaded separately.
+
+The same six request fields describe a rectangle on each machine. They do not promise identical context layouts, pixel packing or display ownership. Do not blindly apply eight-unit X conversion to Oric or Amiga; choose game-world units and convert using the actual cell width.
+
+## Copy a screen code instead of eight picture bytes
+
+PET, VIC-20 and Aquarius add native character-screen paths. A descriptor translates a logical ID into an installed glyph code, with a separate colour write on VIC-20 and Aquarius. PET and Aquarius have fixed character ROMs; VIC-20 can spend RAM on its own characters. Their entries keep those capabilities separate, including the explicitly original diagnostic fonts used for PET/Aquarius verification.
+
+Electron adds MODE 4 bitmap drawing through the existing 6502 routine. Its cell-interleaved addresses and ULA setup remain visible in its caller. Together these variants bring the family to twenty-one qualified configurations without requiring identical display hardware.
+
+## A valid write can be off screen
+
+<Figure src="/images/sega-game-gear/patterns/tile-region.png" kind="capture" alt="Game Gear crop of the same logical tile-region diagnostic, including its bottom-right visible arrow" caption="Game Gear shows a 20×18-cell window from the larger 32×24 logical name table. Its visible edge and the logical table's edge are different tests." />
+
+The handheld displays logical columns 6–25 and rows 3–20. The same data can sit safely in VRAM yet be outside that view. Treat camera coordinates, logical name-table coordinates and visible pixels as separate spaces. The diagnostic checks both VRAM and the picture so neither can stand in for the other.
+
+## Own the video access
+
+The caller reserves the map and region contexts, VRAM table, patterns, palette/colours and stack. It also owns the VDP address latch during the call. An interrupt handler changing that latch between two address bytes would send subsequent data somewhere else.
+
+The original callers take over the machine and blank the display while updating. They establish native output; they do not establish stock-OS coexistence or a whole-game frame budget. The routine itself does not disable interrupts. The machine entries show the actual initialisation and CALL contract.
+
+Port wiring also matters. MTX uses separate configured addresses for data and control, MSX obtains fast-access ports from its BIOS, and SVI reads video data from a different port to the one it writes. Keeping those bytes explicit makes a shared routine useful without hiding the machines.
+
+## Choose the next variant when you need it
+
+Bounds checking and a complete ID preflight cost CPU time. Cached row pointers, pretranslated buffers or a trusted-map variant can save work at the cost of memory or a weaker checking contract. A camera that reaches the map's edge needs clipping of source and destination together. A running game may need a bounded VBlank queue rather than one large synchronous transfer.
+
+Those are useful next components. This first one keeps the copy readable and its ownership clear. The nine VDP implementations retain video readback; the four bitmap implementations retain complete bitmap memory and fifteen isolated rejection runs each. The four additional adapters retain complete memory, both guards and native pixels; their five execution paths include matching Amiga CPU/blitter output and an explicit Game Boy LCD-on rejection. All twenty-one retain native captures and completed failure controls; four further cell-region configurations retain whole-screen/colour/tail/guard and native-pixel checks, isolated rejections and completed faults. The [coverage inventory](https://github.com/code198x/code-samples/blob/15f3b795e75e88c505bf47b020c3aa6555414643/docs/tilemaps/coverage.json) leaves the other nine machines awaiting their own native adapters.

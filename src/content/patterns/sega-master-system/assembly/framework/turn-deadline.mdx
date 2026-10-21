@@ -1,0 +1,62 @@
+---
+title: "Untimed and timed turns on the Master System"
+summary: "Commit one turn per press, then add a deadline without confusing the turn with the clock."
+platform: "sega-master-system"
+category: "framework"
+difficulty: "beginner"
+tags: ["turns", "timing", "input", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Press button 1 and the screen changes colour. Hold it and nothing else happens. You have made one move, rather than asking for a new move every time the program checks the controller.
+
+Now press button 2. A countdown runs while you wait, and the next turn begins when it expires. Press button 2 again and you can take as long as you like. The turn counter and the clock are separate pieces.
+
+## Build and try it
+
+```sh
+make -C sega-master-system/patterns/assembly/framework/turn-deadline
+```
+
+Start `build/demo.sms` in Emu198x for the Master System. The complete cartridge needs no firmware. The verified configuration is **NTSC Master System**. Reset to leave.
+
+## The reusable turn routines
+
+Reserve and zero the eight state bytes at `$C000`–`$C007`. Include `turn.inc` in your program, or adjust its equates to RAM you own. `commit_turn` increases the turn count and restarts the countdown at 120. `tick_deadline` advances the clock and ends a turn when its countdown reaches zero.
+
+Both routines change AF and HL. Neither reads input, waits or draws. Call `tick_deadline` only in timed mode with a nonzero countdown; the caller decides what provides each tick. The 16-bit turn/tick counts and 8-bit expiry count wrap around.
+
+<CodeFromFile src="cross-platform/assembly/framework/turn-deadline/turn.inc" lang="z80" />
+
+## Connect input, time and feedback
+
+The caller reads the two action buttons at `$DC`, converts their active-low bits and compares them with the previous sample. A new press of button 1 calls `commit_turn`; holding it does not repeat. Button 2 toggles the deadline and starts a fresh countdown.
+
+In untimed mode the caller keeps checking for input without a frame wait. In timed mode it accepts a fresh display announcement before ticking the countdown. If an action and expiry coincide in that iteration, the action goes first and restarts the deadline; that iteration's tick then consumes its first unit. We are choosing a rule rather than letting incidental call order choose it for us.
+
+Mode 4 backdrop colours use one byte per CRAM entry. This caller sets entries 17 and 18 to red and green. Its stack fits in system RAM.
+
+<CodeFromFile src="sega-master-system/patterns/assembly/framework/turn-deadline/demo.asm" lang="z80" />
+
+## Own the display interface
+
+The caller disables maskable interrupts and takes ownership of the VDP status/control ports. Reading status clears flags and resets the command latch. Another reader could consume the announcement or split a two-byte command, so an interrupt-driven renderer needs a different agreement.
+
+<CodeFromFile src="sega-master-system/patterns/assembly/framework/turn-deadline/frame.inc" lang="z80" />
+
+A missed announcement is lost, rather than stored as elapsed time. The deadline lasts **120 accepted ticks**, which need not be exactly two seconds. The caller deliberately disables tile/sprite rendering and uses the backdrop for visible feedback; it does not demonstrate safe uploads during a rendered game. Add display, audio and background servicing deliberately when adapting it. Short presses between samples may be missed.
+
+The stack is at `$C3F0`, away from our state. The `$0066` handler returns safely from Pause NMI, but supplies no pause behaviour; Game Gear Start is outside this example.
+
+## What was checked
+
+**Code status: assembled and emulator-executed.** The [retained record](https://github.com/code198x/code-samples/blob/9b867450b26605b283bea2f0d124b326d366a4fd/sega-master-system/patterns/assembly/framework/turn-deadline/verification/results.json) identifies the exact sources and emulator. Untimed state stays still for 120 frames; holding an action for 30 frames does not repeat; timed mode accepts 30 ticks in 30 native frames. The deadline can expire without input, an action restarts it, and disabling it stops the clock again. Captured output changes with the turn.
+
+Separate cartridge mutations remove the wait and the edge detector. The same timing/input guards reject them. This establishes the named configuration and workload, not original-hardware behaviour or a complete emulator test.
+
+See [choosing progression and clocks](/patterns/cross-platform/framework/game-loop-choices/) for other combinations. The [complete source instructions](https://github.com/code198x/code-samples/tree/9b867450b26605b283bea2f0d124b326d366a4fd/sega-master-system/patterns/assembly/framework/turn-deadline) explain integration and how to rerun the checks.
+
+## Hardware sources
+
+Sega’s [Mark III software reference manual](https://www.smspower.org/Development/SMSOfficialDocs), Interrupt System, VDP Register Description, Memory Management and Appendix B.

@@ -1,0 +1,67 @@
+---
+title: "Draw a Tile Region on Sord M5"
+summary: "Copy a checked rectangle of map cells into Sord M5's Graphics I name table, with reusable Z80 code, explicit video ownership and verified native output."
+platform: "sord-m5"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["tilemaps", "regions", "native", "vdp", "assembly"]
+related:
+  patterns: ["tile-region", "tile-map-queries"]
+  vault: ["tile-maps"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A door opens. Redraw its cell with a small, deliberate update. This routine takes a rectangle from your level map and writes the matching native cells at a chosen screen position. The same call can draw a room, a changed patch of scenery or one tile.
+
+<Figure src="/images/sord-m5/patterns/tile-region.png" kind="capture" alt="Sord M5 native output: a small coloured map region, a single-cell redraw and isolated edge tiles" caption="Original diagnostic in Emu198x 0.39.0. The rectangle is copied from a larger map; separate edge cells and a changed tile are checked too." />
+
+## Include and initialise
+
+The existing byte-map context, `TM`, holds the map pointer, width, height and highest logical ID. Add an **18-byte region context**, `NR`, for the rectangle, VDP ports, name-table base and descriptor pointer. Define `CELL_BYTES=1` and `NT_STRIDE=32`; include the existing Z80 map lookup and the region routine. Reserve your own CPU memory and VRAM before using the sample's addresses.
+
+<CodeFromFile src="sord-m5/patterns/assembly/rendering/tile-region/demo.asm" from="initialise_context:" to="initialise_video:" lang="z80" title="Initialise this machine's drawing context" />
+
+This caller uses data-write port `$10` and control-write port `$11`. Its diagnostic reads data from `$10`. These are the tested target's hexadecimal ports.
+
+One name-table byte selects a pattern. This Graphics I example translates IDs 0–3 to patterns 0, 8, 16 and 24, putting the coloured patterns in separate eight-pattern colour groups. Pattern and colour upload are separate from the region copy.
+
+The configured name table is at **$1800** in this caller, with 32×24 logical cells. The VDP registers must select that table; the table, patterns, colours/palette and sprites need separate, non-overlapping allocations. The diagnostic configures the display itself. A BIOS or another renderer will need an explicit agreement about those resources.
+
+## Draw a rectangle
+
+Set `NR+0..5` to source column, source row, destination column, destination row, width and height. Call `region_draw`, then check `NR+6`: one means the rectangle completed; zero means it was rejected before any VDP write.
+
+<CodeFromFile src="sord-m5/patterns/assembly/rendering/tile-region/demo.asm" from="example_call:" to="verification_cases:" lang="z80" title="Draw the 7×5 selection and record its result" />
+
+The sample's `main_rectangle` is `2,1,8,5,7,5`: take seven columns and five rows starting at map cell (2,1), then place them at logical screen cell (8,5). Source rows are twelve cells wide; destination rows are thirty-two native cells wide. Those strides have different jobs.
+
+Zero extents, source/destination overflow and IDs above the configured maximum are rejected. Coordinates are unsigned bytes. This variant checks bounds; it does not clip. Clip source and destination together before calling if your camera can reach a map edge.
+
+## The reusable routine
+
+<CodeFromFile src="cross-platform/patterns/rendering/tile-region/region.inc" lang="z80" title="Checked native region drawing" />
+
+The preflight reads every selected ID before the first output instruction. That costs another pass, but an invalid tile near the end cannot leave half a rectangle drawn. The map and descriptor table must stay unchanged throughout the call.
+
+AF, BC, DE and HL are clobbered, along with region scratch and the map-query column/row, valid flag and address scratch. The six rectangle inputs and region configuration survive. The 20-byte map context and 18-byte region context are caller-owned; the deepest call uses six stack bytes including the direct CALL and saved pointer. Add space for the rest of your program.
+
+## Fit it into your renderer
+
+The caller owns the VDP address latch and ports during the call. Exclude interrupts or other code that can use them. The routine neither installs handlers nor changes interrupt state. These examples disable interrupts and blank the display during updates, then enable it to inspect the result.
+
+The output helper deliberately spaces VDP accesses. At the tested clocks its minimum 62-T-state interval exceeds the TI manual's worst-case eight-microsecond access delay. This does not mean every rectangle fits VBlank. A running game can queue a bounded number of cells per frame, or use cached row pointers and pretranslated entries to trade memory for speed. Other display modes need their own asset and table contracts.
+
+## What was checked
+
+All **22 calls** completed on this Sord M5 target: a non-square selection, redraw, source/destination corners, zero and oversized extents, byte-coordinate extremes and an invalid ID after a valid one. The map crosses a CPU page boundary. The observer checks the complete name table and following guard through actual VDP readback, then compares every raw framebuffer pixel with an independent composition. Completed wrong-stride and unsafe-destination versions are rejected.
+
+The qualification is this original reset diagnostic in the selected Emu198x 0.39.0 default machine/video configuration, built with Asm198x 0.0.71. It establishes these VRAM writes and this native picture. Original hardware, stock-OS loading, concurrent interrupt use and frame throughput remain separate checks.
+
+- [Calling contract, ports, sources and alternatives](https://github.com/code198x/code-samples/blob/237689796fb73baa4a42526b7f1da683fa21790e/cross-platform/patterns/rendering/tile-region/README.md)
+- [Complete caller and retained execution evidence](https://github.com/code198x/code-samples/tree/237689796fb73baa4a42526b7f1da683fa21790e/sord-m5/patterns/assembly/rendering/tile-region)
+- [Native region family and other machines](/patterns/cross-platform/rendering/tile-region/)
+- [Separate map/query routines](/patterns/cross-platform/rendering/tile-map-queries/)
+
+For reusable picture installation and shared-instance changes, [custom characters](/patterns/sord-m5/assembly/rendering/custom-glyphs/) supplies the independently checked upload and cell-selection calls.

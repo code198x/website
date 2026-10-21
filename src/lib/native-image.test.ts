@@ -12,18 +12,13 @@ import {
 } from './native-image.ts';
 
 /**
- * Nine of the tests below reach the play198x decoder through renderNativeImage,
- * which throws unless PLAY198X_WASM_PATH points at a built wasm bundle.
- *
- * CI sets it — ci.yml builds the decoder before running these — so they run for
- * real on every pull request and nothing is traded away. Locally they skip,
- * because `npm run build` runs the test suite and a Rust toolchain plus a
- * sibling-repo checkout should not be a prerequisite for building a site whose
- * pages do not yet use the component.
- *
- * See code198x/website#385
+ * Nine of the tests below reach the play198x decoder through renderNativeImage.
+ * The decoder is the @play198x/web npm dependency, so they run wherever
+ * `npm ci` has run. Before 2026-10-20 it had to be built from a Play198x
+ * checkout and named in PLAY198X_WASM_PATH, and these tests skipped without it,
+ * which in practice was everywhere (code198x/website#385).
  */
-const testWithDecoder = process.env.PLAY198X_WASM_PATH ? test : test.skip;
+const testWithDecoder = test;
 
 
 test('a square pixel displays at its mode size', () => {

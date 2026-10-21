@@ -1,0 +1,49 @@
+---
+title: "Draw Text Beyond the Character Grid"
+summary: "Reusable 8×8 bitmap characters and counted strings on Spectrum, BBC Micro, Dragon, CPC and Amiga, with clipping and honest storage/work trade-offs."
+platform: "cross-platform"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["text", "fonts", "bitmap", "clipping", "maths"]
+---
+
+import Figure from '@components/Figure.astro';
+
+A score need not live on the character grid. Put a number above an enemy, centre a room name or slide a message into view. These entries give you the code to draw a fixed-width glyph or counted string into your bitmap, using a font and memory you own.
+
+## Choose the actual display
+
+| Machine | Maintained text component | Existing drawing backend |
+| --- | --- | --- |
+| [Spectrum 48K](/patterns/sinclair-zx-spectrum/assembly/rendering/bitmap-text/) | Z80, 256×192 | Mono spans and the Spectrum pixel-address helper |
+| [BBC Micro MODE 4](/patterns/bbc-micro/assembly/rendering/bitmap-text/) | 6502, 320×256 | Interleaved bitmap and 512-byte row table |
+| [Dragon 32 PMODE 4](/patterns/dragon-32/assembly/rendering/bitmap-text/) | 6809, 256×192 | Linear scanlines, native big-endian words |
+| [CPC 464 MODE 1](/patterns/amstrad-cpc/assembly/rendering/bitmap-text/) | Z80, 320×200 | Four pixels per byte and four palette pens |
+| [Amiga A500 single plane](/patterns/commodore-amiga/assembly/rendering/bitmap-text/) | 68000, 320×256 | CPU Chip RAM spans; distinct 32-bit-pointer context |
+
+Each entry begins with a real direct call, shows the reusable include, and explains its inputs, outputs, clipping and ownership. All five ran separately in native emulators. Sharing a CPU does not qualify every display or machine for the same code.
+
+## A cell, its ink and its advance
+
+<Figure src="/images/patterns/glyph-translation.svg" kind="image" rendering="smooth" alt="An eight-by-eight glyph cell at origin (21,37), with local dot (3,5) translated to screen (24,42), and the next cell starting at X29" caption="Moving the origin moves every dot by the same amount. Blank columns still occupy part of the eight-pixel advance." />
+
+A glyph is eight row bytes. Bit 7 is leftmost. Translate local pixels by the cell origin, clip against an exclusive scissor, then draw foreground runs with the existing span routine. Transparent mode preserves zero bits; opaque paints each clipped cell background before its foreground.
+
+The API accepts signed origins −512..511 and counted strings up to 255 codes. No terminator, newline handling or wrapping is hidden inside it. Unsupported codes use an explicit fallback. Blank or clipped glyphs still advance by eight. [Move a glyph, keep its shape](/craft/maths-for-games/unit-13/) works through the maths with actual screen positions.
+
+## Choose how much work to buy
+
+The original optional 64-glyph font costs 512 bytes. Ten digits need only 80. A full 256-glyph contiguous font needs 2,048. These are font-data choices; the sample design is original MIT-licensed Code198x work, not a ROM extraction.
+
+| Ten-code PIXEL TEXT | Transparent X24 / X31 | Opaque X24 / X31 |
+| --- | ---: | ---: |
+| Spectrum, BBC, Dragon | 77 / 77 byte writes | 157 / 237 |
+| CPC MODE 1 | 90 / 84 | 250 / 324 |
+
+These are observed destination stores, not cycles or a cross-machine speed ranking. Glyph gaps matter as well as cell alignment. Opaque drawing revisits foreground bytes after its background spans. This simple composition reuses a checked renderer; a dedicated masked glyph blitter could do less work.
+
+For a character-grid display, [Spectrum character printing](/patterns/sinclair-zx-spectrum/assembly/rendering/character-printing/) or [writable characters](/patterns/cross-platform/rendering/custom-glyphs/) may be the right tool. For bitmap text, [masked sprites](/patterns/sinclair-zx-spectrum/assembly/rendering/masked-sprites/) show KEEP/image composition, while [pre-shifted phases](/patterns/cross-platform/rendering/pre-shifted-sprites/) trade asset space for draw-time work. Amiga's existing word-aligned sprite paths offer another comparison; the [Amiga text component](/patterns/commodore-amiga/assembly/rendering/bitmap-text/) now supplies an independently checked CPU path with a distinct 32-bit-pointer context.
+
+Proportional widths, scaling and paragraph layout can build on a clear glyph/advance contract later. The current component reserves 96 text bytes plus the backend's 48, owns no game loop and changes no interrupt policy. The machine pages spell out the display and stack obligations.
+
+Across the five fixtures, **397 calls completed**, with full bitmap/source/guard comparisons and selected native-image comparisons. Ten completed faulty builds were detected. Read each entry's evidence and limits before changing its display allocation or OS integration.

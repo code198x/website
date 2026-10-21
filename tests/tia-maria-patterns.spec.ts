@@ -1,0 +1,52 @@
+import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import path from 'node:path';
+import {test,expect} from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
+const entries=[['atari-2600','playfield-kernel','pf_cell:','59,736'],['atari-7800','maria-objects','maria_append:','121 code bytes']];
+for(const [machine,name,routine,cost] of entries){
+ test(`@built ${machine} exposes the reusable native drawing contract`,async({page})=>{
+  await page.goto(`/patterns/${machine}/assembly/rendering/${name}/`);
+  const prose=page.locator('.pattern-prose');
+  await expect(page.locator('.code-error')).toHaveCount(0);
+  await expect(prose).toContainText(cost);
+  const original=prose.locator('details').filter({hasText:machine==='atari-2600'?'Read the reusable helpers and complete NTSC caller':'Read the builder and complete DMA setup caller'});
+  await original.locator('summary').click();
+  await expect(original.locator('code').first()).toContainText(routine);
+  await expect(prose.getByRole('link',{name:'Reusable source, caller and execution records'})).toHaveAttribute('href',/\/tree\/[0-9a-f]{40}\//);
+  const image=prose.locator('img').first();
+  await expect.poll(()=>image.evaluate((i:HTMLImageElement)=>i.complete&&i.naturalWidth>0)).toBe(true);
+  const links=await page.locator('main a[href^="/"]').evaluateAll(ns=>[...new Set(ns.map(n=>n.getAttribute('href')!))]);
+  for(const link of links)expect((await page.request.get(link)).status(),link).toBe(200);
+  for(const width of [1440,320]){await page.setViewportSize({width,height:900});expect(await page.evaluate(()=>document.documentElement.scrollWidth-innerWidth)).toBeLessThanOrEqual(1);}
+  for(const colorScheme of ['light','dark'] as const){await page.emulateMedia({colorScheme,reducedMotion:'reduce'});expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze()).violations).toEqual([]);}
+  await expect(prose.getByRole('heading',{name:'Common mistakes and their symptoms',exact:true})).toBeVisible();
+  const faultNames=machine==='atari-2600'?['wrong-bit','late-registers','wrong-period']:['short-width','wrong-position','bad-terminator'];
+  for(const fault of faultNames){
+   const broken=prose.locator(`img[src$="/mistakes/${fault}.png"]`);
+   await expect(broken).toHaveCount(1);
+   await broken.scrollIntoViewIfNeeded();
+   const response=await page.request.get(`/images/${machine}/patterns/mistakes/${fault}.png`);
+   expect(response.status()).toBe(200);
+   const source=path.join(process.env.CODE_SAMPLES_PATH||'../code-samples',machine,'patterns/assembly/rendering',name,'verification',fault+'.png');
+   expect(createHash('sha256').update(await response.body()).digest('hex')).toBe(createHash('sha256').update(readFileSync(source)).digest('hex'));
+   await expect.poll(()=>broken.evaluate((i:HTMLImageElement)=>i.complete&&i.naturalWidth>0)).toBe(true);
+  }
+  await expect(prose.getByRole('heading',{name:'Make it your own',exact:true})).toBeVisible();
+  const customNames=machine==='atari-2600'?['maze','reflected']:['ships'];
+  for(const variant of customNames){
+   const custom=prose.locator(`img[src$="/customise/${variant}.png"]`);
+   await custom.scrollIntoViewIfNeeded();
+   const response=await page.request.get(`/images/${machine}/patterns/customise/${variant}.png`);
+   expect(response.status()).toBe(200);
+   const source=path.join(process.env.CODE_SAMPLES_PATH||'../code-samples',machine,'patterns/assembly/rendering',name,'customise/verification',variant+'.png');
+   expect(createHash('sha256').update(await response.body()).digest('hex')).toBe(createHash('sha256').update(readFileSync(source)).digest('hex'));
+   await expect.poll(()=>custom.evaluate((i:HTMLImageElement)=>i.complete&&i.naturalWidth>0)).toBe(true);
+  }
+  await expect(prose).toContainText(machine==='atari-2600'?'144 picture bytes':'14 bytes to 16');
+  await expect(prose).toContainText('Deliberately wrong');
+  await expect(prose).toContainText(machine==='atari-2600'?'59,964':'second valid terminator');
+  await page.goto(`/patterns/platform/${machine}/`);
+  await expect(page.locator(`[data-pattern] a[href$="/${name}/"]`)).toHaveCount(1);
+ });
+}

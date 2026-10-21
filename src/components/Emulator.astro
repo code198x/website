@@ -71,6 +71,15 @@ import { inlineMarkdown } from '../lib/inline-markdown';
     #canvas!: HTMLCanvasElement;
     #poster: HTMLImageElement | null = null;
     #status!: HTMLParagraphElement;
+    #tapeButtons: {
+      stop: HTMLButtonElement;
+      play: HTMLButtonElement;
+      rewind: HTMLButtonElement;
+      previous: HTMLButtonElement;
+      next: HTMLButtonElement;
+    } | null = null;
+    #tapeState: HTMLSpanElement | null = null;
+    #sinceTapeCheck = 0;
     /** Only run while on screen: a lesson page may hold several of these. */
     #observer: IntersectionObserver | null = null;
 
@@ -103,8 +112,10 @@ import { inlineMarkdown } from '../lib/inline-markdown';
 
       this.#canvas = document.createElement('canvas');
       this.#canvas.className = 'emulator-screen';
+      // A width and a shape rather than a fixed height, so a narrow screen
+      // scales the picture down instead of squashing it.
       this.#canvas.style.width = `${width}px`;
-      this.#canvas.style.height = `${height}px`;
+      this.#canvas.style.aspectRatio = `${width} / ${height}`;
       this.#canvas.tabIndex = 0;
       this.#canvas.setAttribute('aria-label', 'ZX Spectrum screen');
 
@@ -115,7 +126,7 @@ import { inlineMarkdown } from '../lib/inline-markdown';
         this.#poster.alt = '';
         this.#poster.className = 'emulator-poster';
         this.#poster.style.width = `${width}px`;
-        this.#poster.style.height = `${height}px`;
+        this.#poster.style.aspectRatio = `${width} / ${height}`;
         this.append(this.#poster);
         // The canvas is empty until the machine runs; show the still instead.
         this.#canvas.hidden = true;
@@ -141,12 +152,99 @@ import { inlineMarkdown } from '../lib/inline-markdown';
           else if (this.#runner) this.#runner.wanted = false;
         });
 
-        bar.append(run, this.#status);
+        bar.append(run);
+        if (/\.(tap|tzx)$/i.test(this.dataset.src ?? '')) bar.append(this.#tapeControls());
+        bar.append(this.#status);
         this.append(bar);
       } else {
         this.append(this.#status);
       }
 
+    }
+
+    /**
+     * Stop and Play for the tape, as on a cassette deck.
+     *
+     * A 48K owner stopped the tape to change a loader before the game came in:
+     * `MERGE ""`, stop at `0 OK`, add a POKE, `RUN`, and play the rest. Stop
+     * keeps the tape's place and Play resumes from it.
+     */
+    #tapeControls(): HTMLElement {
+      const group = document.createElement('div');
+      group.className = 'emulator-tape';
+      group.setAttribute('role', 'group');
+      group.setAttribute('aria-label', 'Tape');
+
+      const stop = document.createElement('button');
+      stop.type = 'button';
+      stop.textContent = 'Stop tape';
+      const play = document.createElement('button');
+      play.type = 'button';
+      play.textContent = 'Play tape';
+      const rewind = document.createElement('button');
+      rewind.type = 'button';
+      rewind.textContent = 'Rewind tape';
+      const previous = document.createElement('button');
+      previous.type = 'button';
+      previous.textContent = 'Previous block';
+      const next = document.createElement('button');
+      next.type = 'button';
+      next.textContent = 'Next block';
+      this.#tapeState = document.createElement('span');
+      this.#tapeState.className = 'emulator-tape-state';
+
+      this.#tapeButtons = {stop, play, rewind, previous, next};
+      for (const button of Object.values(this.#tapeButtons)) button.disabled = true;
+      const press = (playing: boolean) => {
+        try {
+          this.#runner?.setTapePlaying(playing);
+          this.#showTape();
+        } catch (error) {
+          this.#fail(String(error));
+        }
+      };
+      stop.addEventListener('click', () => press(false));
+      play.addEventListener('click', () => press(true));
+      const act = (action: (runner: SpectrumRunner) => unknown) => () => {
+        try {
+          if (this.#runner) action(this.#runner);
+          this.#showTape();
+        } catch (error) {
+          this.#fail(String(error));
+        }
+      };
+      rewind.addEventListener('click', act(runner => runner.rewindTape()));
+      previous.addEventListener('click', act(runner => runner.seekTapeBlock('previous')));
+      next.addEventListener('click', act(runner => runner.seekTapeBlock('next')));
+
+      group.append(stop, play, rewind, previous, next, this.#tapeState);
+      return group;
+    }
+
+    /** Shows the tape's state, changing the text only when the state changes. */
+    #showTape() {
+      const runner = this.#runner;
+      if (!runner || !this.#tapeButtons || !this.#tapeState) return;
+      const buttons = this.#tapeButtons;
+      if (!runner.hasTapeControls) {
+        for (const button of Object.values(buttons)) button.disabled = true;
+        return;
+      }
+      const {loaded, playing, position, block, blocks} = runner.tapeState();
+      const finished = position >= 1;
+      const search = loaded && runner.hasTapeBlockSearch && blocks > 0;
+      buttons.stop.disabled = !loaded || !playing;
+      buttons.play.disabled = !loaded || playing || finished;
+      buttons.rewind.disabled = !loaded || !runner.hasTapeRewind || position === 0;
+      buttons.previous.disabled = !search || position === 0;
+      buttons.next.disabled = !search || block >= blocks - 1;
+      const where = blocks > 1 ? `block ${block + 1} of ${blocks}`
+        : `${Math.floor(position * 100)}% through`;
+      const text = !loaded ? '' : playing ? (blocks > 1 ? `Tape playing, ${where}` : 'Tape playing')
+        : finished ? 'Tape at the end'
+        : position === 0 ? 'Tape at the start'
+        : `Tape stopped, ${where}`;
+      if (this.#tapeState.textContent !== text) this.#tapeState.textContent = text;
     }
 
     #fail(message: string) {
@@ -168,6 +266,15 @@ import { inlineMarkdown } from '../lib/inline-markdown';
 
         const src = this.dataset.src;
         if (src) await this.#load(src);
+        if (this.#tapeButtons) {
+          // The tape stops by itself at the end; a few checks a second catch it.
+          this.#runner.observeFrame(() => {
+            if (++this.#sinceTapeCheck < 10) return;
+            this.#sinceTapeCheck = 0;
+            this.#showTape();
+          });
+          this.#showTape();
+        }
 
         this.#poster?.remove();
         this.#canvas.hidden = false;
@@ -202,48 +309,92 @@ import { inlineMarkdown } from '../lib/inline-markdown';
 </script>
 
 <style>
+  @layer legacy {
   .emulator-figure {
     margin: 1.5rem 0;
   }
   code198x-spectrum-player {
     display: block;
   }
-  .emulator-poster {
+  /* The player builds its picture and bar in script, so those elements carry
+     no scope attribute: these rules reach them through the scoped host. */
+  code198x-spectrum-player :global(.emulator-poster) {
     display: block;
     image-rendering: pixelated;
-    border: 1px solid var(--color-border, #444);
+    border: 1px solid var(--h-line);
     max-width: 100%;
+    height: auto;
   }
-  .emulator-screen {
+  code198x-spectrum-player :global(.emulator-screen) {
     display: block;
     /* The machine's pixels are the point; do not let the browser blur them. */
     image-rendering: pixelated;
     background: #000;
-    border: 1px solid var(--color-border, #444);
+    border: 1px solid var(--h-line);
     max-width: 100%;
+    height: auto;
   }
-  .emulator-screen:focus-visible {
-    outline: 2px solid var(--color-accent, #6cf);
+  /* display: block above would otherwise beat the hidden attribute, and an
+     empty canvas would show under the poster until the reader presses Run. */
+  code198x-spectrum-player :global(.emulator-screen[hidden]) {
+    display: none;
+  }
+  code198x-spectrum-player :global(.emulator-screen:focus-visible) {
+    outline: 2px solid var(--h-ink);
     outline-offset: 2px;
   }
-  .emulator-controls {
+  code198x-spectrum-player :global(.emulator-controls) {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    flex-wrap: wrap;
     margin-top: 0.5rem;
   }
-  .emulator-status {
+  code198x-spectrum-player :global(.emulator-controls button) {
+    min-height: 44px;
+    padding: 0.35rem 0.75rem;
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--h-ink);
+    background: var(--h-ground);
+    border: 1px solid var(--h-line);
+    border-radius: 0;
+    cursor: pointer;
+  }
+  code198x-spectrum-player :global(.emulator-controls button:hover:not(:disabled)) {
+    border-color: var(--h-ink);
+  }
+  code198x-spectrum-player :global(.emulator-controls button:focus-visible) {
+    outline: 2px solid var(--h-ink);
+    outline-offset: 2px;
+  }
+  code198x-spectrum-player :global(.emulator-controls button:disabled) {
+    opacity: 0.6;
+    cursor: default;
+  }
+  code198x-spectrum-player :global(.emulator-tape) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  code198x-spectrum-player :global(.emulator-tape-state) {
+    font-size: 0.85rem;
+    color: var(--h-ink-muted);
+  }
+  code198x-spectrum-player :global(.emulator-status) {
     margin: 0;
     font-size: 0.85rem;
-    color: var(--color-text-secondary, #555);
+    color: var(--h-ink-muted);
   }
-  .emulator-status[data-state='error'] {
+  code198x-spectrum-player :global(.emulator-status[data-state='error']) {
     color: var(--color-error, #c33);
   }
   .emulator-figure figcaption {
     margin-top: 0.5rem;
     font-size: 0.85rem;
-    color: var(--color-text-secondary, #555);
+    color: var(--h-ink-muted);
     text-align: center;
+  }
   }
 </style>

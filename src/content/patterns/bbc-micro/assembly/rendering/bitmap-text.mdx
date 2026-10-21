@@ -1,0 +1,99 @@
+---
+title: "Draw Bitmap Text on BBC Micro MODE 4"
+summary: "Reusable fixed-width characters and counted strings at any pixel position, with explicit clipping, font ownership and drawing costs."
+platform: "bbc-micro"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["text", "fonts", "bitmap", "clipping", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Put a score beside a moving object, label a map or draw a message inside a panel. This routine draws an 8×8 character or a counted string at a pixel position you choose. It uses the existing span backend, so your text and shapes agree about where pixels live.
+
+<Figure src="/images/bbc-micro/patterns/bitmap-text.png" kind="capture" alt="Native BBC Micro MODE 4 output with original bitmap text at several pixel positions" caption="Original Code198x font and caller, captured unchanged in Emu198x 0.39.0. The complete bitmap and selected native frames are checked independently." />
+
+## Include it, then draw a string
+
+Reserve **96 bytes at T plus 48 at BP**, separate from code, stack, font, string and bitmap. This complete caller uses 320×256 pixels, T at $0400 and BP at $40 in zero page. Include the 512-byte `bitmap_lo/hi` scanline tables. The caller owns the 6845, video ULA and $5800–$7FFF bitmap; horizontal bytes are eight addresses apart.
+
+Define `TEXT_WIDTH`, `TEXT_HEIGHT`, `TEXT_PEN_MAX` and `TEXT_PACKED` as shown in the caller. Include the text CPU component and its existing span backend once. Mono targets use pen maximum 1 and packed 0; CPC uses 3 and 1. BP must be zero page on 6502; T need not be. Scratch needs no initialisation; public inputs do.
+
+After the display setup, this is an ordinary game call. The mailbox which follows is just how the verifier submits more requests.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/bitmap-text/demo.asm" from="; A normal game call:" to="mailbox:" lang="6502" title="Draw PIXEL TEXT at (21,37)" />
+
+Call `text_string`, then read T+17. Change X/Y and the string address/length to draw another label. For one character, set T+9 and call `text_char`; string address and length are then ignored. There is no retained scene, cursor or game loop inside the routine.
+
+## The calling contract
+
+Words and the 32-bit count use **little-endian** order. The origin is the cell's top-left corner, with Y downwards. Pens are 0–1, selecting stored bitmap bits; the display palette/attributes determine their colours. Both pen inputs must be valid, even when transparent mode does not draw the background.
+
+| T offset | Supply or read |
+| --- | --- |
+| 0,2 | Signed 16-bit X,Y origin, each −512..511 |
+| 4 | Font address word |
+| 6,8 | String address word and byte length 0..255 |
+| 9 | Single code byte for `text_char` |
+| 10,11 | First code byte and glyph-count **word**, 1..256 |
+| 13 | Fallback code, which must exist in the font |
+| 14 | 0 transparent, 1 opaque |
+| 15,16 | Foreground and background pen bytes |
+| 17 | Output: 1 accepted, 0 rejected |
+| 18,20,22,24 | Scissor left,top,right,bottom words; right/bottom exclusive |
+| 26 | Output signed word: next X |
+| 28,29 | Output bytes: codes consumed, substitutions |
+| 30 | Output word: backend span calls |
+| 32 | Output 32-bit destination-byte writes |
+| 36–95 | Private scratch |
+
+
+A string is counted, not zero-terminated. A zero byte is a code; there is no newline, wrapping or implicit case conversion. An empty string is accepted without source reads or drawing, after declaration checks. A glyph always advances by eight: `nextX = inputX + 8*consumed`, including blank, substituted and fully clipped glyphs. That output is signed 16-bit, not a byte that wraps at 255.
+
+The scissor must be nonempty and inside this physical bitmap. The routine intersects glyph runs with it before calling the backend. A completely clipped valid string still succeeds. Bad coordinates, mode, pens, font range, fallback, scissor or a source/font end beyond $10000 reject **before destination writes**, with the original X returned and zero counters. An allocation ending exactly at $10000 is allowed by the arithmetic check.
+
+Inputs 0–16 and 18–25 survive. Source ranges must actually be readable in your machine's current mapping: arithmetic checks cannot establish memory ownership or negotiate a bank switch. Keep the font/string stable and disjoint from code, contexts, stack and destination for the whole call.
+
+## Supply a font you own
+
+Each glyph is eight bytes, top row first, bit 7 leftmost. The address of a row is `font + (code-first)*8 + row`. The optional **original Code198x font** supplies 64 glyphs for ASCII 32..95, occupying 512 bytes under the sample repository's MIT licence. It was drawn for these examples, not copied from a machine ROM. Its visible design is five columns by seven rows inside each 8×8 cell.
+
+You can supply a ten-digit font in just 80 bytes, or a contiguous 256-code font in 2,048. First code plus glyph count must not exceed 256; fallback must belong to that range. Unsupported codes use the fallback and increase the substitution count, even when clipped. Lowercase needs its own glyphs or explicit conversion in your caller.
+
+<details>
+<summary>Open the sample font data</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/bitmap-text/font-6502.inc" lang="6502" title="Original 64-glyph 8×8 font" />
+</details>
+
+## Translation and byte boundaries
+
+Glyph-local (3,5) at origin (21,37) lands at **(24,42)**. The next cell starts at X=29. A blank space moves the next cell too: ink, cell bounds and advance are different things. [Move a glyph, keep its shape](/craft/maths-for-games/unit-13/) works through that translation, clipping and division/remainder without requiring an algebra course.
+
+Eight pixels at an arbitrary X can touch two mono bytes, or three four-pixel CPC bytes. The component finds foreground runs in each glyph row and sends them to `bp_hspan`. Transparent mode leaves zero font bits alone. Opaque mode paints the cell's background row first, then its foreground runs; it replaces the visible clipped cell, including the blank rows/columns.
+
+For the ten-code `PIXEL TEXT`, transparent drawing at X=24 and X=31 makes 77 / 77 destination-byte writes; opaque makes 157 / 237. Foreground uses 77 spans; opaque adds 80 background spans. Gaps and edge masks affect those counts, so an unaligned cell is not automatically more expensive in every workload.
+
+This baseline favours understandable composition. Opaque drawing touches foreground bytes again after clearing their background. A masked KEEP/image blitter could combine those operations; pre-shifted glyph phases trade more font storage for less shifting/address work. Compare [masked sprites](/patterns/bbc-micro/assembly/rendering/masked-sprites/) and [pre-shifted sprites](/patterns/cross-platform/rendering/pre-shifted-sprites/). Those are design choices to measure, not invisible upgrades to this routine.
+
+The text component assembles to **2,456 bytes**, plus **526** for the backend, the chosen font/string and the contexts. BBC adds 512 bytes of scanline tables. Reset setup, display and stack are additional. These are storage and byte-write measurements, not cycle counts or a frame-budget promise.
+
+## Own the display and scratch
+
+Clobbers: A/X/Y/P; decimal mode is cleared. Reserve a conservative **64-byte stack budget** beyond your other calls/interrupts. T and BP are non-re-entrant. No call changes interrupt state, waits for a frame or synchronises video. On 6502, text temporarily uses BP+46/47 for indirect source reads, with no live source pointer carried over a span call. The caller owns banks, display access and interruption/coexistence policy.
+
+<details>
+<summary>Open the reusable 6502 text component</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/bitmap-text/6502.inc" lang="6502" title="Include the text component once alongside its backend" />
+</details>
+
+## What was verified
+
+**76 calls completed** using Asm198x 0.0.71 and native Emu198x 0.39.0 in this original reset configuration. Every call compares the full bitmap, guards, font/string preservation, inputs, acceptance, advance, consumption/substitutions and work counters with an independent pixel model. Cases include phases, negative origins, scissor edges, all pen pairs, empty/long strings, fallback, 256-code fonts and rejected declarations. Selected whole native frames also match independently composed pixels.
+
+Wrong glyph-bit and string-advance builds each completed accepted calls and failed both memory and picture checks. Retained records are bound to source and exact tools, with failure tests for missing/corrupted evidence. This establishes the stated reset fixture; stock-OS loading, real-hardware timing and tear-free live drawing need their own checks.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/ff68dcb33c316532b6d6b2f577bc95a31c86ba83/bbc-micro/patterns/assembly/rendering/bitmap-text)
+- [Full contract, costs and MIT attribution](https://github.com/code198x/code-samples/blob/ff68dcb33c316532b6d6b2f577bc95a31c86ba83/cross-platform/patterns/rendering/bitmap-text/README.md)
+- [Compare text paths](/patterns/cross-platform/rendering/bitmap-text/)
+- [Underlying pixels and spans](/patterns/bbc-micro/assembly/rendering/pixels-and-boxes/)

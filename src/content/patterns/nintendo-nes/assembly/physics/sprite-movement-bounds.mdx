@@ -14,7 +14,12 @@ related:
   vault: ["nintendo-nes"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+
+**Code status: maintained movement routine, executed on NTSC NROM.** The fixture checks 3,984 position/input cases against inclusive saturating bounds. Rendering and controller hardware are separate checks.
+
+[Audit execution record](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/nes-movement.json) · [Scope and remaining checks](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/README.md)
 
 ## Overview
 
@@ -22,92 +27,8 @@ Player sprites need to respond to D-pad input while staying on screen. Read the 
 
 ## Code
 
-```ca65
-; =============================================================================
-; SPRITE MOVEMENT WITH BOUNDS - NES
-; Move player sprite with screen boundary clamping
-; Taught: Game 1 (Neon Nexus), Unit 2
-; CPU: ~100 cycles | Memory: ~60 bytes
-; =============================================================================
 
-; Controller button masks
-BTN_UP     = %00001000
-BTN_DOWN   = %00000100
-BTN_LEFT   = %00000010
-BTN_RIGHT  = %00000001
-
-; Movement speed
-PLAYER_SPEED = 2                ; Pixels per frame
-
-; Screen boundaries (accounting for 8x8 sprite)
-SCREEN_LEFT   = 0
-SCREEN_RIGHT  = 248             ; 256 - 8 (sprite width)
-SCREEN_TOP    = 0
-SCREEN_BOTTOM = 224             ; 240 - 8 (sprite height) - 8 (NTSC bottom overscan)
-
-.segment "ZEROPAGE"
-player_x:    .res 1
-player_y:    .res 1
-buttons:     .res 1
-
-.segment "CODE"
-
-; Move player based on controller input
-; Call after read_controller
-move_player:
-        ; === Check UP ===
-        lda buttons
-        and #BTN_UP
-        beq @check_down
-
-        lda player_y
-        sec
-        sbc #PLAYER_SPEED       ; Move up (subtract)
-        bcc @check_down         ; SBC borrow = went below 0, ignore
-        cmp #SCREEN_TOP         ; Optional clamp when SCREEN_TOP > 0
-        bcc @check_down
-        sta player_y
-
-@check_down:
-        lda buttons
-        and #BTN_DOWN
-        beq @check_left
-
-        lda player_y
-        clc
-        adc #PLAYER_SPEED       ; Move down (add)
-        cmp #SCREEN_BOTTOM
-        bcs @check_left         ; Past bottom edge
-        sta player_y
-
-@check_left:
-        lda buttons
-        and #BTN_LEFT
-        beq @check_right
-
-        lda player_x
-        sec
-        sbc #PLAYER_SPEED       ; Move left (subtract)
-        bcc @check_right        ; SBC borrow = went below 0, ignore
-        cmp #SCREEN_LEFT
-        bcc @check_right
-        sta player_x
-
-@check_right:
-        lda buttons
-        and #BTN_RIGHT
-        beq @done
-
-        lda player_x
-        clc
-        adc #PLAYER_SPEED       ; Move right (add)
-        cmp #SCREEN_RIGHT
-        bcs @done               ; Past right edge
-        sta player_x
-
-@done:
-        rts
-```
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/physics/sprite-movement-bounds/movement.inc" lang="6502" />
 
 **Why `BCC` immediately after `SBC`:** `CMP` overwrites the carry flag with its own result, so a `CMP / BCC` after `SBC` doesn't catch underflow when the minimum is 0 — `$FF` (the wrapped result) is still ≥ 0 unsigned, so the carry stays set. The pattern above checks the SBC's borrow first (`BCC` reads SBC's carry), then optionally compares against a non-zero minimum.
 
@@ -115,8 +36,8 @@ move_player:
 
 | Aspect | Cost |
 |--------|------|
-| CPU | ~100 cycles |
-| Memory | ~60 bytes |
+| CPU | Not measured for this caller; include the selected input, drawing and scheduling costs |
+| Memory | Assemble the selected routines and caller to obtain code and state sizes |
 | Limitation | Fixed speed, no acceleration |
 
 **When to use:** Any game with player-controlled sprites.
@@ -195,3 +116,11 @@ nmi:
 **Patterns:** [Controller Reading](/patterns/nintendo-nes/assembly/input/controller-reading), [NMI Game Loop](/patterns/nintendo-nes/assembly/framework/nmi-game-loop)
 
 **Vault:** [NES](/vault/systems/nintendo-entertainment-system)
+
+## State and bounds
+
+The include owns `player_x`, `player_y` and `buttons` in zero page. Initialise coordinates within X = 0–248 and Y = 0–224; fill `buttons` from the same frame's input sample. Call once per update. A and flags change; X/Y registers survive. The movement order is up, down, left, right, so opposing directions can be asymmetric at a boundary.
+
+Crossing an edge clamps to that edge rather than discarding the whole step. Starting at X = 1 and moving left by two reaches 0. Moving right from 247 reaches 248. Both endpoints are valid positions.
+
+If copied directly into OAM, the stored Y is one less than the visible top scanline. Choose the game's margins with that encoding in mind; the sample's 224 is a chosen margin, not a promise to draw a sprite at every physical screen row. Initialise the OAM buffer and hide unused sprites separately.

@@ -14,146 +14,58 @@ related:
   vault: ["sinclair-zx-spectrum"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+
+**Code status: maintained Z80 routines, executed in a bounded CPU fixture.** The checks compare actual memory or emitted characters with independent expectations. They establish the stated routine contracts in uncontended 48K RAM; ROM startup, display timing and original hardware are separate checks.
+
+[Audit execution record](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/z80.json) · [Scope and remaining checks](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/README.md)
 
 ## Overview
 
 Convert a binary number to decimal digits for display. Uses repeated subtraction to extract the tens digit (no division instruction on Z80). Print both digits using the character printing routine. Perfect for scores, lives counters, and timers.
 
-## Code
+
+## Calling the routines
+
+Supply `print_char`: A is an ASCII character, B is the row and C is the column. It must preserve BC, DE and HL. The [character printer](/patterns/sinclair-zx-spectrum/assembly/rendering/character-printing/) meets that contract. Include `numeric.inc` once and allocate one writable `score_bcd` byte if using its BCD helpers.
+
+`print_two_digits` accepts A = 0–99 and writes two digits, including a leading zero. `print_three_digits` accepts HL = 0–999 and writes three. Both return C immediately after their digits and preserve B/DE; the three-digit routine also changes HL. `print_number` accepts A = 0–99, suppresses the leading zero and advances C by one or two. It preserves B/DE/HL. AF is working state.
+
+Choose a start column that leaves enough room: C ≤ 30 for two digits and C ≤ 29 for three. B is 0–23 for the bitmap printer. Invalid numeric values are outside these contracts. Call once after a value changes; doing the same division and drawing every update is unnecessary.
+
+The BCD helpers accept a valid packed decimal byte, from `$00` to `$99`. Adding ten wraps 90–99 to 00–09 and sets the processor's carry; inspect that carry before another instruction changes it if the game needs an overflow signal. The BCD printer advances C by two. A change from two visible digits to one also needs the caller to clear the old second cell.
+
+For example, after establishing the documented stack, state and data:
 
 ```z80
-; =============================================================================
-; NUMERIC DISPLAY - ZX SPECTRUM
-; Print 0-99 as two decimal digits
-; Taught: Game 1 (Ink War), Unit 4
-; CPU: ~250 cycles | Memory: ~30 bytes
-; =============================================================================
-
-; Print two-digit number
-; Input: A = number (0-99), B = row, C = column
-; Output: Advances C by 2
-print_two_digits:
-    push    bc
-    push    de
-
-    ; Extract tens digit by repeated subtraction
-    ld      d, 0                ; D = tens counter
-.tens_loop:
-    cp      10
-    jr      c, .print           ; Less than 10? Done counting
-    sub     10
-    inc     d
-    jr      .tens_loop
-
-.print:
-    push    af                  ; Save units digit
-
-    ; Print tens digit
-    ld      a, d
-    add     a, '0'              ; Convert to ASCII
-    call    print_char
-    inc     c                   ; Next column
-
-    ; Print units digit
-    pop     af
-    add     a, '0'
-    call    print_char
-    inc     c
-
-    pop     de
-    pop     bc
-    ret
+    ld a,42
+    ld b,10
+    ld c,3
+    call print_two_digits  ; prints 42; C is now5
+    ; Include numeric.inc and characters.inc once; allocate score_bcd if used.
 ```
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/numeric-display/numeric.inc" lang="z80" title="Decimal and BCD text" />
+
+## Code
+
+
 
 **Three-digit version (0-999):**
 
-```z80
-; Print three-digit number
-; Input: HL = number (0-999), B = row, C = column
-print_three_digits:
-    push    bc
-    push    de
 
-    ; Extract hundreds
-    ld      d, 0
-.hundreds:
-    ld      a, h
-    or      a
-    jr      nz, .sub_hundred
-    ld      a, l
-    cp      100
-    jr      c, .print_hundreds
-.sub_hundred:
-    ld      a, l
-    sub     100
-    ld      l, a
-    ld      a, h
-    sbc     a, 0
-    ld      h, a
-    inc     d
-    jr      .hundreds
-
-.print_hundreds:
-    ld      a, d
-    add     a, '0'
-    call    print_char
-    inc     c
-
-    ; Now L contains 0-99, use two-digit routine
-    ld      a, l
-    call    print_two_digits
-
-    pop     de
-    pop     bc
-    ret
-```
 
 **With leading zero suppression:**
 
-```z80
-; Print number without leading zeros
-; Input: A = number (0-99), B = row, C = column
-print_number:
-    push    bc
-    push    de
 
-    ld      d, 0
-.tens:
-    cp      10
-    jr      c, .check_tens
-    sub     10
-    inc     d
-    jr      .tens
-
-.check_tens:
-    push    af
-
-    ; Only print tens if non-zero
-    ld      a, d
-    or      a
-    jr      z, .skip_tens
-
-    add     a, '0'
-    call    print_char
-    inc     c
-
-.skip_tens:
-    pop     af
-    add     a, '0'
-    call    print_char
-
-    pop     de
-    pop     bc
-    ret
-```
 
 ## Trade-offs
 
 | Aspect | Cost |
 |--------|------|
-| CPU | ~250 cycles |
-| Memory | ~30 bytes |
+| CPU | Not measured for this caller; include the selected input, drawing and scheduling costs |
+| Memory | Assemble the selected routines and caller to obtain code and state sizes |
 | Limitation | Simple version limited to 0-99 |
 
 **When to use:** Displaying scores, lives, timers, level numbers.
@@ -183,33 +95,7 @@ The Z80 has no division instruction, so we use repeated subtraction:
 
 For score counters that increment frequently, **BCD** (Binary Coded Decimal) avoids the repeated-subtraction loop entirely. Store the score with each digit in 4 bits (so $99 holds 99, $123 spans two bytes), and use the Z80's `DAA` instruction after every add to keep the BCD encoding intact:
 
-```z80
-; Add 10 to a two-digit BCD score
-add_ten_bcd:
-    ld      a, (score_bcd)
-    add     a, $10              ; Add 1 to the tens digit
-    daa                         ; Adjust to keep BCD form
-    ld      (score_bcd), a
-    ret
 
-; To print, just split the byte and add '0' to each nibble
-print_score_bcd:
-    ld      a, (score_bcd)
-    push    af
-    rrca
-    rrca
-    rrca
-    rrca                        ; A = high nibble
-    and     $0f
-    add     a, '0'
-    call    print_char
-    inc     c
-    pop     af
-    and     $0f                 ; A = low nibble
-    add     a, '0'
-    call    print_char
-    ret
-```
 
 BCD pays for itself when the score updates many times per frame (combos, time bonuses) — no division loop, just one `DAA` per add. The trade-off is that BCD overflow needs explicit handling for scores beyond $99 / $9999.
 

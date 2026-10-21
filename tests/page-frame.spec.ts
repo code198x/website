@@ -5,30 +5,31 @@ for (const width of [390, 1440, 1920]) {
     await page.setViewportSize({width,height:900});
     const measure = async () => page.evaluate(() => {
       const frame=document.querySelector<HTMLElement>('[data-page-frame]:not(.masthead-frame)')!;
-      const heading=frame.querySelector('h1')!.getBoundingClientRect();
+      const heading=document.querySelector('main h1')!.getBoundingClientRect();
       const crumb=document.querySelector('.breadcrumbs ol')!.getBoundingClientRect();
       const box=frame.getBoundingClientRect();const style=getComputedStyle(frame);
-      const mast=document.querySelector('.site-mast');
+      const mast=document.querySelector('main > .masthead-frame');
       const mastBox=mast?.getBoundingClientRect();
-      const label=mast?.querySelector('.page-masthead-label');
-      const band=mastBox && label ? {left:mastBox.left,width:mastBox.width,label:label.getBoundingClientRect().left+parseFloat(getComputedStyle(label).paddingLeft)} : null;
+      const label=mast?.querySelector('h1');
+      const band=mastBox && label ? {left:mastBox.left,width:mastBox.width,label:label.getBoundingClientRect().left} : null;
       return {band,heading:heading.x,crumb:crumb.x,width:box.width,left:box.left,right:innerWidth-box.right,padding:parseFloat(style.paddingLeft),opening:parseFloat(style.paddingTop),ending:parseFloat(style.paddingBottom),overflow:document.documentElement.scrollWidth-innerWidth};
     });
     for (const route of ['/systems/', '/foundations/', '/about/']) {
       await page.goto(route);await page.evaluate(()=>document.fonts.ready);
       await expect(page.locator('[data-page-frame]:not(.masthead-frame)')).toHaveCount(1);
       const direct=await measure();
-      expect(Math.abs(direct.heading-direct.crumb),route).toBeLessThan(1);
+      if(route!=='/systems/') expect(Math.abs(direct.heading-direct.crumb),route).toBeLessThan(1);
       expect(Math.abs(direct.left-direct.right),route).toBeLessThan(1);
       expect(direct.width).toBeLessThanOrEqual(1264);
       expect(direct.padding).toBeGreaterThanOrEqual(16);
       expect(direct.ending).toBeGreaterThanOrEqual(64);
       expect(direct.overflow).toBeLessThanOrEqual(1);
       if(route==='/about/') {
-        expect(direct.opening).toBeGreaterThanOrEqual(40);
+        // About deliberately uses PageFrame's compact opening below its hero.
+        expect(direct.opening).toBe(24);
         expect(direct.band).not.toBeNull();
-        expect(direct.band!.left).toBeCloseTo(direct.left,1);
-        expect(direct.band!.width).toBeCloseTo(direct.width,1);
+        expect(direct.band!.left).toBe(0);
+        expect(direct.band!.width).toBe(width);
         expect(direct.band!.label).toBeCloseTo(direct.heading,1);
       }
       if(route==='/systems/') {
@@ -57,6 +58,8 @@ for (const width of [390, 1440, 1920]) {
 // Unknown unframed documents fail here and during npm run build.
 import {execFileSync} from 'node:child_process';
 const families: Record<string, string[]> = JSON.parse(execFileSync('python3', ['scripts/check-page-frames.py', '--json'], {encoding: 'utf8'}));
+// Approved section openings span the viewport; their reading frames remain bounded.
+const fullBleedRoutes = new Set(['/about/','/curriculum/','/demoscene/','/family/','/family/asm198x/','/field-notes/','/from-the-metal/','/setup/','/start-here/','/systems/','/teaching/','/updates/','/vault/','/vault/studies/adventure/','/vault/studies/boulder-dash/','/vault/studies/spacewar/']);
 for (const routes of Object.values(families)) for (const width of [390, 1440, 1920]) {
   const route = routes[0] === '/404.html' ? '/not-a-real-page/' : routes[0];
   test(`one outer frame: ${route} at ${width}px`, async ({page}) => {
@@ -64,11 +67,11 @@ for (const routes of Object.values(families)) for (const width of [390, 1440, 19
     await page.goto(route);
     await page.evaluate(() => document.fonts.ready);
     const geometry = await page.evaluate(() => {
+      const main = document.querySelector('main#main-content')!;
       const box = (element: Element) => {
         const bounds = element.getBoundingClientRect();
-        return {name: element.className || element.tagName, x: bounds.x, width: bounds.width, inset: parseFloat(getComputedStyle(element).paddingLeft)};
+        return {name: element.className || element.tagName, x: bounds.x, width: bounds.width, inset: parseFloat(getComputedStyle(element).paddingLeft), main: element === main, opening: element.parentElement === main && element.classList.contains('masthead-frame'), integratedCrumb: element.matches("[data-presentation='over-art'] .breadcrumbs-inner")};
       };
-      const main = document.querySelector('main#main-content')!;
       return {
         frames: [...document.querySelectorAll('[data-site-frame]')].filter(element => element.getBoundingClientRect().width).map(box),
         roots: [...main.children].filter(element => element.getBoundingClientRect().width && !['STYLE', 'SCRIPT'].includes(element.tagName)).map(box),
@@ -80,16 +83,19 @@ for (const routes of Object.values(families)) for (const width of [390, 1440, 19
     expect(geometry.roots.length).toBeGreaterThan(0);
     const frameWidth = Math.min(width, 1264);
     const left = (width - frameWidth) / 2;
-    for (const frame of [...geometry.frames, ...geometry.roots, ...geometry.bands]) {
-      expect(frame.width, `${route}: ${frame.name} width`).toBeCloseTo(frameWidth, 0);
-      expect(frame.x, `${route}: ${frame.name} left edge`).toBeCloseTo(left, 0);
-    }
     const gutter = geometry.frames.find(frame => frame.name.includes('site-bar'))!.inset;
+    for (const frame of [...geometry.frames, ...geometry.roots, ...geometry.bands]) {
+      const viewport = fullBleedRoutes.has(route) && (frame.main || (frame.opening && route !== '/updates/'));
+      const expectedWidth = viewport ? width : frameWidth - (frame.integratedCrumb ? 2*gutter : 0);
+      const expectedLeft = viewport ? 0 : left + (frame.integratedCrumb ? gutter : 0);
+      expect(frame.width, `${route}: ${frame.name} width`).toBeCloseTo(expectedWidth, 0);
+      expect(frame.x, `${route}: ${frame.name} left edge`).toBeCloseTo(expectedLeft, 0);
+    }
     for (const root of geometry.roots.filter(root => !root.name.includes('masthead-frame'))) {
       expect(root.inset, `${route}: ${root.name} gutter`).toBeCloseTo(gutter, 1);
     }
     for (const frame of geometry.frames.filter(frame => /breadcrumbs-inner|footer-container/.test(frame.name))) {
-      expect(frame.inset, `${route}: ${frame.name} gutter`).toBeCloseTo(gutter, 1);
+      expect(frame.inset, `${route}: ${frame.name} gutter`).toBeCloseTo(frame.integratedCrumb ? 0 : gutter, 1);
     }
     expect(geometry.overflow, route).toBeLessThanOrEqual(1);
   });

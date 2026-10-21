@@ -1,6 +1,6 @@
 ---
 title: "Blitter Copy"
-summary: "Move a rectangular block of graphics with the Amiga's blitter instead of the CPU — set four registers, write BLTSIZE, and Agnus streams the copy while the processor does something else."
+summary: "Copy an aligned tile plane with reusable Amiga code, with DMA ownership, pitches and completion made explicit."
 platform: "commodore-amiga"
 category: "rendering"
 difficulty: "intermediate"
@@ -9,91 +9,53 @@ evolution:
   previous: null
   next: "cookie-cut-blit"
 related:
-  patterns: ["cookie-cut-blit", "copper-list-basics"]
+  patterns: ["cookie-cut-blit", "copper-list-basics", "tile-region"]
   vault: ["blitter", "commodore-amiga"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
 
-## Overview
+The blitter can move a rectangle of pixels while the CPU handles other work. Before building that overlap into a game, start with a copy whose ownership and finish are unambiguous. This small component copies one **16×8 monochrome tile plane**, waiting for completion before it returns.
 
-The blitter is the engine inside [Agnus](/vault/hardware/agnus) that moves rectangular blocks of memory without the CPU — the single most important reason Amiga games move so much on screen. It has four DMA channels (**A, B, C, D**) and a logic unit that combines them, but its simplest job is a straight block copy: read source through A, write it to destination through D. You point two registers at the memory, tell it the shape, and one write to `BLTSIZE` sets it running. The processor is free the moment the blit starts.
+<Figure src="/images/commodore-amiga/patterns/tile-region-blitter.png" kind="capture" alt="Amiga two-plane region rendered through the hardware blitter, with white, green and red tile patterns" caption="Two calls per tile build this four-colour picture in the original A500 PAL diagnostic. The CPU backend produces identical plane memory and native pixels." />
 
-## Code
+## Supply the buffers
 
-```m68k
-; =============================================================================
-; BLITTER COPY - AMIGA (Agnus blitter)
-; Copy a rectangular block of one bitplane: D = A
-; =============================================================================
+Include `blit-plane.inc` once. Call `region_blit_plane` with **A1=source**, **A2=destination** and **A5=$DFF000**, the custom-chip base. Both buffers must be even-aligned Chip RAM. The source is eight consecutive words, one word per scanline. The destination has a forty-byte pitch: the next line starts forty bytes after the previous one.
 
-DMACONR  equ $002
-BLTCON0  equ $040
-BLTCON1  equ $042
-BLTAFWM  equ $044
-BLTALWM  equ $046
-BLTAPT   equ $050
-BLTDPT   equ $054
-BLTSIZE  equ $058
-BLTAMOD  equ $064
-BLTDMOD  equ $066
+Reserve the whole accessed destination rectangle, not just sixteen consecutive bytes. The helper preserves all address and data registers; CCR and the listed blitter registers change. Allow eight stack bytes for the direct BSR and its nested wait call, beyond your caller and interrupt needs.
 
-W_WORDS   equ 2                  ; block width  = 2 words = 32 px
-H_LINES   equ 16                 ; block height = 16 lines
-SCR_WORDS equ 20                 ; destination bitplane = 320 px = 20 words wide
+You must own the blitter exclusively and enable master/blitter DMA before calling. Keep buffers and register ownership stable until it returns. The helper neither disables interrupts nor obtains OS ownership. An OS application must arrange that separately; the linked reset diagnostic takes over the machine.
 
-; a0 = source, a1 = destination (both in chip RAM)
-blit_copy:
-            lea     $dff000,a5
-            bsr     wait_blit                        ; never touch regs mid-blit
+## The reusable copy
 
-            move.w  #$09f0,BLTCON0(a5)               ; USEA+USED, minterm $F0: D = A
-            move.w  #$0000,BLTCON1(a5)               ; no shift, no special mode
-            move.w  #$ffff,BLTAFWM(a5)               ; use every bit of the first...
-            move.w  #$ffff,BLTALWM(a5)               ; ...and the last word
+<CodeFromFile src="cross-platform/patterns/rendering/region-architectures/blit-plane.inc" lang="m68k" title="Copy one aligned tile plane and wait for completion" />
 
-            move.w  #0,BLTAMOD(a5)                   ; source is packed tight
-            move.w  #(SCR_WORDS-W_WORDS)*2,BLTDMOD(a5) ; dest skips the rest of the line
+`BLTCON0=$09F0` enables A as input and D as output, using the minterm for **D=A**. B and C are not inputs to this copy. Full first/last-word masks preserve all sixteen source bits. Source modulo is zero; `BLTDMOD=38` skips the destination's remaining nineteen words after each copied word. `BLTSIZE=$0201` means eight lines of one word, and writing it starts the operation.
 
-            move.l  a0,BLTAPT(a5)                    ; source pointer
-            move.l  a1,BLTDPT(a5)                    ; destination pointer
-            move.w  #H_LINES*64+W_WORDS,BLTSIZE(a5)  ; height*64 + width — STARTS IT
-            rts
+The helper changes BLTCON0/1, BLTAFWM/BLTALWM, BLTAPT/BLTDPT, BLTAMOD/BLTDMOD and BLTSIZE. It waits before setting those registers and before returning. The initial hardware read before busy-bit polling follows the Hardware Reference Manual's older-Agnus precaution. Never change blitter registers while an earlier operation owns them.
 
-; The classic blitter wait: btst the high byte, bit 6 = BBUSY
-wait_blit:
-            btst    #6,DMACONR(a5)                   ; dummy read (early-Agnus guard)
-.wb:        btst    #6,DMACONR(a5)
-            bne.s   .wb
-            rts
-```
+## Draw a coloured tile
 
-## Trade-offs
+A two-plane tile stores eight words for plane 0 followed by eight for plane 1. The region renderer calls the helper once for each plane. Its maintained caller shows the pointer setup and the direct calls:
 
-| Aspect | Cost |
-|--------|------|
-| CPU | Almost none — the blitter runs the copy; you only set it up |
-| Memory | Source and destination both in **chip** RAM |
-| Limitation | One bitplane per blit; the blitter and CPU contend for chip-RAM cycles |
+<CodeFromFile src="cross-platform/patterns/rendering/region-architectures/m68000.inc" from="region_blitter:" to="    include" lang="m68k" title="Use the copy once per destination plane" />
 
-**When to use:** Clearing the screen, copying backgrounds, restoring what a moving object erased — any bulk pixel move.
+The [complete region component](/patterns/commodore-amiga/assembly/rendering/tile-region/) validates map IDs, bounds, backend selection and pointer alignment before reaching this copy. The leaf helper itself assumes valid pointers, pitches, allocations and DMA ownership. Use the region component when you need those checks.
 
-**When to avoid:** A handful of bytes; the setup cost isn't worth it below a few hundred. And a *transparent* shape needs the [cookie-cut](/patterns/commodore-amiga/assembly/rendering/cookie-cut-blit) version.
+## Choose the right amount of work
 
-## The channels and the minterm
+Each call copies sixteen bytes, with setup and two waits as well. For a small tile, CPU word copies may be a better choice. Hardware acceleration does not remove setup or Chip RAM contention, and this blocking version does not demonstrate useful overlap. Measure your own workload before choosing a backend.
 
-The blitter has four sources — A, B, C, D — and `BLTCON0`'s low byte is a **minterm**: a truth table saying, for every combination of the A/B/C bits, whether the output bit is 1. All 256 logic functions are available. For a plain copy you enable just A and D (the `$0900` bits) and use minterm **`$F0`**, which means "output = A" — so `$09F0`. Enable more channels and change the minterm and the same hardware masks, merges or [cookie-cuts](/patterns/commodore-amiga/assembly/rendering/cookie-cut-blit); the copy is the degenerate case with one source.
+Larger rectangles can amortise setup. An asynchronous variant can return after submission, but must expose when its buffers and registers become available again. A masked sprite needs a different operation, such as [cookie-cut blitting](/patterns/commodore-amiga/assembly/rendering/cookie-cut-blit/). Changing width also changes source/destination modulo calculations; it is not just a new BLTSIZE value.
 
-## BLTSIZE starts it — then wait
+## What was checked
 
-Writing `BLTSIZE` is the trigger: the blit begins immediately, so it must be the **last** register you set. The value packs height and width — `height * 64 + width_in_words` — with width in the low 6 bits (max 64) and height in the top 10. From then the blitter owns those registers until it's done, so before the *next* blit (or any register change) you must wait for it. `BBUSY` in `DMACONR` says whether it's running; the `btst #6,$dff002` idiom tests it in the register's high byte (bit 6 there is bit 14 of the word — see the [Blitter vault entry](/vault/hardware/blitter)). The leading dummy `btst` guards a timing quirk on early Agnus revisions.
+The original reset diagnostic runs **22 calls per backend** on Emu198x 0.39.0 with Asm198x 0.0.71. CPU and blitter complete plane allocations match an independent expected layout and match each other byte for byte. Both mapped guards and every native capture pixel are checked. Fifteen rejected map/bounds/ID requests run separately per backend and leave the destination unchanged.
 
-## Modulos: minding the screen width
+A deliberately shortened blit completes but fails the memory and pixel checks. That establishes that the selected backend really exercises this hardware-copy path. Backend and alignment rejection cases also complete. These results qualify this A500 PAL configuration, not original-hardware timing, stock-Kickstart integration or throughput.
 
-A 32-pixel-wide block is 2 words, but the screen is 20 words wide — so after each copied line the destination pointer must skip the other 18 words to reach the next line down. That skip is the **modulo**: `(screen_words - blit_words) * 2` bytes, added automatically after every line. The source here is a tightly-packed image, so its modulo is 0. Modulos are what let the blitter carve a small rectangle out of, or into, a much wider bitmap.
-
-## Related
-
-**Patterns:** [Cookie-Cut Blit](/patterns/commodore-amiga/assembly/rendering/cookie-cut-blit), [Copper List Basics](/patterns/commodore-amiga/assembly/rendering/copper-list-basics)
-
-**Vault:** [Blitter](/vault/hardware/blitter) | [Commodore Amiga](/vault/systems/commodore-amiga)
+- [Maintained helper, contract and primary references](https://github.com/code198x/code-samples/tree/bc9c51d81b6c11b2e6393072f0e2f1776f27d2eb/cross-platform/patterns/rendering/region-architectures)
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/bc9c51d81b6c11b2e6393072f0e2f1776f27d2eb/commodore-amiga/patterns/assembly/rendering/tile-region)
+- [Copper List Basics](/patterns/commodore-amiga/assembly/rendering/copper-list-basics/)

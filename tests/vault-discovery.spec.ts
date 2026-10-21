@@ -19,7 +19,7 @@ for (const width of [1504, 1280, 512, 390, 320]) {
     }
     await page.evaluate(() => scrollTo(0, 0));
     const geometry = await page.evaluate(() => {
-      const frame = document.querySelector('.vault-mast')!.getBoundingClientRect();
+      const frame = document.querySelector('.vault-atlas .band-below')!.getBoundingClientRect();
       const header = document.querySelector('.site-bar')!.getBoundingClientRect();
       return {
         viewport: innerWidth, document: document.documentElement.scrollWidth,
@@ -63,8 +63,12 @@ test('Vault subject directory remains available on a phone', async ({ page }, te
   await page.goto('/vault/');
   await expect(page.locator('[data-vault-subjects]')).not.toHaveAttribute('open');
   await page.locator('.vault-subjects summary').click();
-  await expect(page.locator('.vault-subjects a')).toHaveCount(23);
-  await expect(page.locator('.vault-subjects a').first()).toBeVisible();
+  // Every subject the Vault counts is in the directory; the count comes from the
+  // page's own "N articles / N subjects" line, so a new subject doesn't break this.
+  const stated = Number((await page.locator('.opening-tools p').first().innerText()).match(/(\d+) subjects/)![1]);
+  expect(stated).toBeGreaterThan(0);
+  await expect(page.locator('.vault-subjects li a')).toHaveCount(stated);
+  await expect(page.locator('.vault-subjects li a').first()).toBeVisible();
   await page.locator('.vault-subjects summary').click();
   await page.locator('.vault-story-action').click();
   await expect(page).toHaveURL(/\/vault\/games\/commando\/?$/);

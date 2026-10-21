@@ -62,10 +62,12 @@ Run commands from this directory:
 | `npm run ui:fetch` | Fetch the pinned House198x kit and provision its self-hosted fonts. |
 | `npm run dev` | Start the Astro dev server at `localhost:4321`. |
 | `npm run build` | Build the production site, run redirect noindex marking, and index with Pagefind. |
-| `npm run build:wasm` | Build the `play198x-web` decoder that `NativeImage.astro` reads at build time. Run before `npm run build` on any page using `<NativeImage>`. |
+| `npm run bundles` | Copy the pinned browser player and NES assembler from `node_modules` into `public/`. `dev`, `build` and `check` run it first. |
+| `npm run workbook:build` | Rebuild the first-session learner and teacher PDFs; see [workbook editing instructions](public/workbooks/spectrum-basic-first-session/README.md). |
 | `npm run preview` | Preview the production build locally. |
 | `npm run check:content` | Run quick template, catalogue, imagery and Vault-link checks (also the small CI smoke check). |
-| `npm run check` | Run local unit, content and prepared-player/assembler checks. |
+| `npm run check:types` | Run `astro check` and fail on any type error not in `scripts/type-baseline.json` (the errors that predate it; the list may only shrink). |
+| `npm run check` | Run local unit, type, content and prepared-player/assembler checks. |
 | `npm run check:release` | Run local checks, announcement regressions, production build, focused browser/accessibility checks and offline built-site links. Needs prepared sibling assets, Playwright Chromium and lychee. |
 | `npm test` | Run the Vitest unit tests under `src/**/*.test.ts`. |
 | `npm run test:e2e` | Run Playwright end-to-end tests. |
@@ -76,11 +78,11 @@ Run commands from this directory:
 ### Local release checks
 
 Run `npm run check:release` before a release when you want the full local
-check. Prepare the sample downloads, decoder, NES assembler and browser players
-using the build commands below and `scripts/build-artefacts.sh ../code-samples`.
-Install Playwright Chromium with `npx playwright install chromium` and provide
-`lychee` on PATH. `CODE_SAMPLES_PATH` and `PLAY198X_WASM_PATH` override the
-usual family checkout paths. The command stops at the first failing check.
+check. Prepare the sample downloads with `scripts/build-artefacts.sh ../code-samples`;
+the player, assembler and decoder come from `npm ci`. Install Playwright
+Chromium with `npx playwright install chromium` and provide `lychee` on PATH.
+`CODE_SAMPLES_PATH` overrides the usual family checkout path. The command stops
+at the first failing check.
 
 `npm run build` generates the site and search index; it does not run tests.
 CI runs quick content checks only. Pages builds the required assets and site,
@@ -124,43 +126,22 @@ the underlying player components.
 ### `<NativeImage>` needs a Rust toolchain
 
 A page that imports `src/components/NativeImage.astro` decodes a retro image
-file (ZX Spectrum `SCREEN$`, C64, Amiga) at build time using `play198x-web`, a
-Rust/wasm crate from the sibling `play198x/play198x` repo — it is not an npm
-dependency. Building that page locally needs:
-
-1. A Rust toolchain (see `play198x/play198x/rust-toolchain.toml` for the pinned
-   channel) with the `wasm32-unknown-unknown` target, and `wasm-pack`.
-2. A checkout of `play198x/play198x` somewhere on disk.
-3. Two environment variables: `PLAY198X_PATH` (for `npm run build:wasm`,
-   pointing at that checkout) and `PLAY198X_WASM_PATH` (for `npm run build`
-   and `npm test`, pointing at
-   `<checkout>/crates/play198x-web/pkg-node`, the directory `build:wasm`
-   writes to).
-
-Tests that do not load the decoder can run without `PLAY198X_WASM_PATH`; decoder-dependent tests then skip. A production build containing native images needs the decoder. CI builds it or restores an exactly matching verified bundle before rendering.
+file (ZX Spectrum `SCREEN$`, C64, Amiga) at build time with the Play198x
+decoder, the `@play198x/web` npm dependency. `npm ci` is all it needs.
 
 House module overviews can supply `entryAdvice: { message, label, href }` in frontmatter to place a useful route beside their start links. Keep it optional advice rather than a completion gate.
 
-## Deployment bundle reuse
+## Browser bundles
 
-The Pages workflow caches the completed Play198x decoder, Asm198x NES assembler
-and Emu198x player distribution independently. Exact keys cover the source commit,
-Rust and wasm-pack versions, Node/runner environment, website builder and verifier,
-workflow, build flags and validated Spectrum firmware configuration. Website
-content or CSS changes reuse bundles; changes to those inputs rebuild them.
-There are no fallback keys. Raw firmware stays outside the cache.
-
-On a miss, the existing source build and its checks run before a file-hash receipt
-is saved with the bundle. On every run, `scripts/wasm-bundle.mjs` checks that receipt,
-required files, valid WASM and source metadata. The NES assembler also executes
-against the current lesson cartridge, and player distribution/firmware checks run.
-Full native/WASM player parity runs when producing the bundle; hits reuse those
-validated bytes without compiling the native tools again. Astro executes the
-decoder while rendering native images.
-
-A failed integrity check stops deployment. Delete that exact cache entry in the
-repository's Actions caches, then rerun to rebuild; do not add a fallback key or
-skip verification. Rust dependency caches remain available on bundle misses.
+The browser player (`@emu198x/player`), the NES assembler (`@asm198x/mos6502`)
+and the image decoder (`@play198x/web`) are npm dependencies at exact versions.
+Each is built once by the project that owns it and published from that
+project's release, with npm provenance (umbrella
+`decisions/browser-bundles-ship-as-npm-packages.md`). This site compiles no
+Rust and holds no firmware: the player's Spectrum module already carries the
+48K ROM. Dependabot opens a pull request when a new version is published; the
+deploy stages the pinned bundles, then checks the player and runs the NES
+assembler against the lesson cartridge before building.
 
 ## Discord announcements
 
@@ -189,13 +170,10 @@ The retained `new-items` artifact contains both the feed difference and prepared
 
 ## Browser players
 
-Run `npm run build:player` before the first development or site build. Set
-`EMU198X_SOURCE_ROOT` to the emulator checkout when it is outside the family
-layout. This needs the checkout's Rust toolchain, `wasm32-unknown-unknown` and
-`wasm-pack` (or a matching `WASM_BINDGEN` CLI). The existing Pages workflow
-prepares these assets before Astro; land the Emu198x source changes first.
-
-`public/emulators/` is generated and ignored. Both sites mount the same inline custom element, inheriting their typography
+The player is the pinned `@emu198x/player` package, staged into
+`public/emulators/` by `npm run bundles`; that directory is generated and
+ignored. To change the player, change Emu198x's `web-player/`, release Emu198x,
+and take the new version through the Dependabot pull request. Both sites mount the same inline custom element, inheriting their typography
 and theme colours. Cartridge selection starts play; firmware is disclosed only
 for computer systems. Both sites use the same source
 and catalogue in Emu198x's `web-player/`; change the player there, not here.
@@ -213,11 +191,9 @@ the binaries. Lessons with staged runnable outputs expose a Run this lesson play
 to the lesson model; cumulative-step units use their final built step.
 
 The NES introductory lesson uses `NesAssembleAndRun`: the maintained source is
-assembled in a worker by the existing Asm198x `mos6502` WASM shell, then handed to
-the shared player's `loadMedia()` API. Build it locally with
-`npm run build:nes-assembler` (`ASM198X_SOURCE_ROOT` selects an Asm198x checkout).
-Deployment builds it from source or restores a verified bundle from that source revision; no unpublished npm dependency is needed.
-`npm run build` compares its output with the native-built lesson download.
+assembled in a worker by the pinned `@asm198x/mos6502` package, then handed to
+the shared player's `loadMedia()` API. `npm run check` compares its output with
+the native-built lesson download.
 `inlinePlayer: true` on a unit means its authored content supplies the player,
 so the layout omits the additional generic launcher.
 

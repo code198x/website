@@ -8,13 +8,23 @@ for (const route of ['about', 'standards', 'press', 'teaching']) {
     const spacing = await frame.evaluate(element => {
       const style = getComputedStyle(element);
       const box = element.getBoundingClientRect();
-      const heading = element.querySelector('h1')!.getBoundingClientRect();
-      return { left: box.x, right: innerWidth - box.right, gutter: parseFloat(style.paddingLeft), opening: parseFloat(style.paddingTop), ending: parseFloat(style.paddingBottom), headingInset: heading.x - box.x };
+      // A full-bleed opening holds the page's h1 in its band, aligned to the
+      // same frame, so look for it in main rather than only inside the frame.
+      const heading = (element.querySelector('h1') ?? document.querySelector('main h1'))!.getBoundingClientRect();
+      const bar = document.querySelector('.breadcrumbs')!.getBoundingClientRect();
+      // The bar owns the space under it. When a full-bleed opening comes first
+      // it sits on the bar; otherwise the frame's content starts --bar-gap below.
+      const first = document.querySelector('main > :nth-child(1 of :not(style, script, link))')!;
+      const fullBleed = first.classList.contains('masthead-frame');
+      const below = fullBleed ? first.getBoundingClientRect().top : box.top + parseFloat(style.paddingTop);
+      return { left: box.x, right: innerWidth - box.right, gutter: parseFloat(style.paddingLeft), fullBleed, opening: below - bar.bottom, ending: parseFloat(style.paddingBottom), headingInset: heading.x - box.x };
     });
     expect(spacing.left).toBeCloseTo(spacing.right, 0);
     expect(spacing.gutter).toBeGreaterThanOrEqual(16);
     expect(spacing.headingInset).toBeCloseTo(spacing.gutter, 0);
-    expect(spacing.opening).toBe(route === 'press' ? 0 : 40);
+    // 48px under the bar, 32px on a phone, or none above a full-bleed opening
+    // (umbrella identity §7).
+    expect(spacing.opening).toBeCloseTo(spacing.fullBleed ? 0 : page.viewportSize()!.width <= 600 ? 32 : 48, 0);
     expect(spacing.ending).toBeGreaterThanOrEqual(64);
     const body = page.locator('.reading-body');
     const rail = page.locator('.reading-toc');

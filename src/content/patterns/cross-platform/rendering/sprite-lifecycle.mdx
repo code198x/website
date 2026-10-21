@@ -1,0 +1,96 @@
+---
+title: "Save, Draw and Restore Moving Objects"
+summary: "Move software objects over scenery without trails. Give each object its own saved background, handle overlaps in the right order, and choose when saved pixels stop being useful."
+platform: "cross-platform"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["sprites", "save-under", "restoration", "overlap", "bobs"]
+related:
+  patterns: ["sprites", "scrolling", "masked-sprites"]
+  vault: ["sprites", "sprite-animation", "software-scroll"]
+---
+
+Drawing a spaceship is only half the job. Move it and the old picture is still there. Draw another spaceship across it and the question becomes more interesting: what, exactly, should we put back when each one moves away?
+
+The small, useful answer is **save-under**. Before drawing an object, copy the pixels it will cover. Before moving it, restore those pixels at its old position. One object needs one buffer. Several overlapping objects need separate buffers and a deliberate order.
+
+This pattern has working implementations on three machines. The sequence is shared; the memory layouts, drawing hardware and buffer formats remain specific.
+
+| Implementation | Code you can reuse | Runnable caller |
+| --- | --- | --- |
+| [Spectrum](/patterns/sinclair-zx-spectrum/assembly/rendering/sprite-lifecycle/) | Bitmap rectangle save/restore beside the existing masked renderer | Two 16×16 objects; one moves in eight-pixel steps |
+| [BBC Micro](/patterns/bbc-micro/assembly/rendering/sprite-lifecycle/) | Explicit-buffer MODE4 cell save/restore beside existing masked drawing | Two 8×8 objects sharing and leaving the same cell |
+| [Amiga](/patterns/commodore-amiga/assembly/rendering/sprite-lifecycle/) | Synchronous blitter save, masked draw and restore | Two word-aligned 32×16 bobs on one bitplane |
+
+[Execution records](https://github.com/code198x/code-samples/blob/df5b3ae5bc07ffc82336908b5dd9aee3bc2045c4/docs/sprite-lifecycle/verification/results.json) compare actual guest bytes with independent expectations, including boundaries, overlaps and deliberately broken variants. The complete callers run separately. These are named configuration checks, not a universal frame-budget or original-hardware claim.
+
+## Keep the old address with the old pixels
+
+An object needs its game position, its previous screen address, and its own live background buffer. The game position can change; the previous address must stay associated with the buffer until restoration finishes.
+
+1. Restore the object at its OLD screen address.
+2. Choose its new screen position.
+3. Save the background at the NEW address.
+4. Paint the object at that address.
+5. Remember that address for the next update.
+
+The routines do not decide what the object is or how it moves. You can use them for a player, a cursor, a pickup or an effect. [Animation](/patterns/cross-platform/rendering/sprite-animation/) chooses which image to paint; [camera position](/patterns/cross-platform/rendering/scrolling/) helps calculate where to paint it.
+
+If the shape changes size, the saved rectangle still describes the **old** shape's footprint. Restore using its old dimensions before capturing the new one. Our fixed-size callers avoid hiding that bookkeeping inside the renderer.
+
+## Why overlaps reverse the erasing order
+
+Imagine the order is A, then B:
+
+1. Save the scenery beneath A. Draw A.
+2. Save beneath B. Where the objects overlap, B's buffer now contains part of A.
+3. Draw B over the top.
+
+To remove both, restore B first. That brings back the A pixels B covered. Restore A next, and the original scenery returns.
+
+Restore A first and then B, and B's saved pixels bring part of A back from the dead. The five failure controls include this wrong ordering on all three machines; the same restoration oracle rejects it.
+
+The full update is therefore:
+
+1. Restore previous objects in REVERSE drawing order.
+2. Update the background if needed.
+3. Save and draw new objects in the chosen drawing order.
+4. Present the result.
+
+All old objects come off before the next round of saves begins. Erasing, moving and redrawing A while old B is still present can save pixels from the wrong frame into A's new buffer.
+
+## Choose the implementation, not just the algorithm
+
+On the [Spectrum](/patterns/sinclair-zx-spectrum/assembly/rendering/sprite-lifecycle/), the new helpers walk the interleaved bitmap with the existing address routine. Buffers contain packed rows; attributes are a separate responsibility.
+
+On the [BBC](/patterns/bbc-micro/assembly/rendering/sprite-lifecycle/), the eight rows of a byte-aligned MODE4 character cell are adjacent in memory. A selected buffer pointer replaces the earlier single-save-slot example, allowing more than one live background without changing the existing mask renderer.
+
+On the [Amiga](/patterns/commodore-amiga/assembly/rendering/sprite-lifecycle/), the blitter transfers rectangles between a strided screen and packed save buffers, then combines mask, image and scenery. Every involved buffer must be in chip RAM. The routines wait for completion and require exclusive blitter ownership.
+
+Mask data is not interchangeable without conversion. The Spectrum/BBC keep mask uses 1 to preserve background; this Amiga opaque mask uses 1 to select the image. The storage layout also differs: interleaved byte pairs on the first two, separate word-aligned sources on the Amiga.
+
+## When the saved background becomes a lie
+
+Suppose a door opens while an object is covering it. The object's buffer may still contain the closed door. Restoring that buffer later can close the door's picture again even though the game state says it is open.
+
+When you control the update order, remove old objects first, change the background, then capture and draw the new objects. When changes arrive independently, mark the region dirty and rebuild it from the world instead of trusting stale saved pixels.
+
+Scrolling has the same consequence. Restore at the old screen addresses **before** scrolling. Then move or redraw the background, calculate new screen positions and capture/draw the objects again. A buffer from before the camera moved does not describe the scenery now under the new coordinates.
+
+## What each extra object costs
+
+For a packed byte-oriented object, save-under needs width-in-bytes × height saved bytes per live object. A 16×16 monochrome Spectrum object uses 32 saved bytes; the BBC cell uses eight. The Amiga caller's 32×16 object uses 64 per bitplane. A colour version needs separate saved background for every plane it changes.
+
+Saving and restoring add transfers around the masked draw. Several objects can touch the same screen bytes repeatedly. A successful two-object example does not promise that dozens of large objects will meet a deadline; the background, display DMA, audio and game logic share the machine too.
+
+| Next approach | Useful when | New work or cost |
+| --- | --- | --- |
+| Dirty-tile redraw | A map can rebuild the damaged scenery | Track touched tiles and draw them in a consistent order |
+| Clean back buffer | You can rebuild a complete frame away from the display | Another buffer and a finished-frame swap |
+| Clipped/pre-shifted software objects | Movement needs arbitrary pixel positions or screen edges | Extra address cases, masks, stored graphics or runtime shifts |
+| Hardware sprites | The chip can draw the object independently | Channel/scanline, colour and priority limits still apply |
+| An asynchronous blit queue | CPU work can overlap drawing | Completion dependencies and buffer lifetimes become explicit |
+
+Those are onward techniques, not hidden features of these routines. A C64 or NES hardware sprite does not normally paint itself into the background, so moving it does not need this save-under cycle. If a game draws some objects into tiles or a bitmap as well, the two drawing paths must agree about camera position and overlap. The [sprite family](/patterns/cross-platform/rendering/sprites/) connects those choices.
+
+Objects entering or leaving the screen need [clipping](/patterns/cross-platform/rendering/clipping/). Save and restore their previous clipped footprint, rather than reconstructing it from a new position.

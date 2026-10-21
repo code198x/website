@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('global search can find Asm198x, follow a result and reopen after navigation', async ({ page }, testInfo) => {
+test('global search can find Asm198x, follow a result and reopen after navigation @built', async ({ page }, testInfo) => {
   const warnings: string[] = [];
   page.on('console', message => { if (['warning', 'error'].includes(message.type())) warnings.push(message.text()); });
   await page.goto('/');

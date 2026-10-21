@@ -13,7 +13,12 @@ related:
   vault: ["blitter", "commodore-amiga"]
 ---
 
-**Code status: illustrative code.** Adapt the listing to your program and check it on your target machine. This page links no assembly or execution record for the listing itself.
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+
+**Code status: assembled and executed through the actual blitter on an A500 OCS PAL configuration.** The cold-boot fixture checks eight distinct octants against independent line geometry. A deliberately incorrect modulo calculation is rejected. Original-hardware checks remain separate.
+
+[Audit execution record](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/amiga-lines.json) · [Scope and remaining checks](https://github.com/code198x/code-samples/blob/790123e55224f4f42fb110bc34618ab37734d73c/docs/audit/2026-10-19-pattern-routines/README.md)
 
 ## Overview
 
@@ -21,88 +26,8 @@ Setting bit 0 of `BLTCON1` flips the blitter from a block mover into a **line dr
 
 ## Code
 
-```m68k
-; =============================================================================
-; BLITTER LINE DRAW - AMIGA (blitter line mode)
-; Draw a Bresenham line into one bitplane.
-; Inputs, already reduced to an octant so dx (major) >= dy (minor):
-;   d0 = dx    d1 = dy
-;   d2 = octant, as SUD/SUL/AUL already in BLTCON1 bits 4-2
-;   a1 = address of the bitplane word holding (x0,y0)
-;   d3 = x0 AND 15   (start column inside that word)
-; =============================================================================
 
-DMACONR  equ $002
-BLTCON0  equ $040
-BLTCON1  equ $042
-BLTAFWM  equ $044
-BLTALWM  equ $046
-BLTCPT   equ $048
-BLTAPTL  equ $052            ; A pointer, low word = the accumulator in line mode
-BLTDPT   equ $054
-BLTSIZE  equ $058
-BLTCMOD  equ $060
-BLTBMOD  equ $062
-BLTAMOD  equ $064
-BLTDMOD  equ $066
-BLTBDAT  equ $072
-BLTADAT  equ $074
-
-SCR_BYTES equ 40             ; bitplane row = 320 px = 40 bytes
-
-line_draw:
-            lea     $dff000,a5
-            bsr     wait_blit
-
-            ; --- Bresenham accumulator seed and the two step modulos ---
-            move.w  d1,d4
-            add.w   d4,d4
-            add.w   d4,d4                    ; d4 = 4*dy
-            move.w  d4,BLTBMOD(a5)           ; the step taken on every pixel
-            move.w  d4,d5
-            sub.w   d0,d5
-            sub.w   d0,d5                    ; d5 = 4*dy - 2*dx  (the seed)
-            move.w  d5,BLTAPTL(a5)
-            sub.w   d0,d4
-            sub.w   d0,d4                    ; d4 = 4*dy - 4*dx = 4*(dy-dx)
-            move.w  d4,BLTAMOD(a5)           ; the extra step when error turns over
-
-            move.w  #$8000,BLTADAT(a5)       ; the single accumulator bit
-            move.w  #$ffff,BLTBDAT(a5)       ; texture = a solid line
-            move.w  #$ffff,BLTAFWM(a5)       ; line mode: both masks MUST be $FFFF
-            move.w  #$ffff,BLTALWM(a5)
-
-            ; --- Control words: start column, channels, minterm, octant, LINE ---
-            move.w  d3,d6
-            ror.w   #4,d6                    ; x0&15 -> START (bits 12-15)
-            or.w    #$0bca,d6                ; USEA+USEC+USED (fixed) + minterm $CA
-            move.w  d6,BLTCON0(a5)
-
-            or.w    #$0001,d2                ; LINE = 1
-            tst.w   d5
-            bpl.s   .nosign
-            or.w    #$0040,d2                ; seed negative -> set SIGN (bit 6)
-.nosign:    move.w  d2,BLTCON1(a5)
-
-            move.l  a1,BLTCPT(a5)            ; read the bitplane...
-            move.l  a1,BLTDPT(a5)            ; ...and write it back
-            move.w  #SCR_BYTES,BLTCMOD(a5)
-            move.w  #SCR_BYTES,BLTDMOD(a5)
-
-            ; --- height = dx+1 pixels, width fixed at 2 words: this STARTS it ---
-            move.w  d0,d7
-            addq.w  #1,d7
-            lsl.w   #6,d7
-            addq.w  #2,d7
-            move.w  d7,BLTSIZE(a5)
-            rts
-
-wait_blit:
-            btst    #6,DMACONR(a5)
-.wb:        btst    #6,DMACONR(a5)
-            bne.s   .wb
-            rts
-```
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/blitter-line-draw/line.inc" lang="m68k" />
 
 ## Trade-offs
 
@@ -156,3 +81,19 @@ Line mode *is* Bresenham, with the A channel holding the running error. Three va
 **Patterns:** [Cookie-Cut Blit](/patterns/commodore-amiga/assembly/rendering/cookie-cut-blit), [Blitter Copy](/patterns/commodore-amiga/assembly/rendering/blitter-copy)
 
 **Vault:** [Blitter](/vault/hardware/blitter) | [Commodore Amiga](/vault/systems/commodore-amiga)
+
+## Calling and completion
+
+Enable master and blitter DMA and own the blitter registers. A1 points into a word-aligned Chip RAM bitplane with 40-byte rows. D0 is the major delta (0–1023), D1 the minor delta (0–D0), D2 only the chosen octant bits 4–2, and D3 the starting X modulo 16. The whole line must fit the allocated bitmap; clipping is the caller's job.
+
+The routine changes A5, D2, D4–D7 and condition codes. `BLTSIZE` starts work and the call returns while DMA can still be active. Call `wait_blit` before reading the completed result, changing blitter state or releasing its memory. The two error updates are different: `4 × dy` and `4 × (dy − dx)`. Confusing them can still produce a line of the right pixel count along the wrong path.
+
+## Compare the CPU route
+
+The [integer geometry family](/patterns/cross-platform/rendering/geometry/)
+provides reusable clipped lines and circle/ellipse outlines and span fills on
+Spectrum, BBC, Dragon and CPC. Its CPU calls finish synchronously; this blitter
+entry starts asynchronous hardware work. Clip before setup, keep the bitplane
+in Chip RAM, own DMA/registers, and wait for completion before inspecting,
+reusing or freeing the destination. Their new checks do not extend this entry’s
+existing A500 OCS PAL qualification.

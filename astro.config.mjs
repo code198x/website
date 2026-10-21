@@ -8,6 +8,7 @@ import {
   code198xTableAccessibilityPlugin,
 } from './src/lib/satteri-highlight.ts';
 import { legacySystemRedirects } from './src/lib/legacy-system-redirects.mjs';
+import { unreviewedStudyPaths } from './src/data/game-studies.mjs';
 import { unreviewedVaultPaths } from './src/lib/unreviewed-vault-paths.mjs';
 
 const unreviewedVault = unreviewedVaultPaths();
@@ -327,7 +328,7 @@ export default defineConfig({
     // Unreviewed Vault entries carry a robots noindex tag; leave them out of
     // the sitemap too, so search engines are not invited to the same pages.
     sitemap({
-      filter: (page) => !unreviewedVault.has(new URL(page).pathname),
+      filter: (page) => !new URL(page).pathname.startsWith('/catalogue/pattern-library/') && !unreviewedVault.has(new URL(page).pathname) && !unreviewedStudyPaths.has(new URL(page).pathname),
     }),
   ],
   markdown: {

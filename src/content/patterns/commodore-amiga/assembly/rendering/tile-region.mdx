@@ -1,0 +1,75 @@
+---
+title: "Draw a Native Region on Amiga"
+summary: "Reusable Amiga code for drawing a room, changed tile or strip of scenery, with explicit display ownership."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["tilemaps", "regions", "native", "assembly"]
+related:
+  patterns: ["tile-region", "tile-map-queries"]
+  vault: ["tile-maps"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Open a door, break a wall, reveal the next stretch of scenery. The map changes first; this routine makes the picture catch up. Give it a rectangle of byte-map IDs and a destination, and it draws just that part of the world.
+
+<Figure src="/images/commodore-amiga/patterns/tile-region.png" kind="capture" alt="Amiga native output showing a patterned map patch and a single-cell redraw" caption="Original diagnostic in Emu198x 0.39.0. A 5×3 patch and a single-cell erase are visible; a separate logical bottom-right write is also checked in memory." />
+
+## One picture, two bitplanes
+
+This A500 PAL example draws a 320×256 picture from two separate bitplanes. A cell is **16×8 pixels**, so the logical display has twenty columns and thirty-two rows. Each tile takes 32 bytes: eight words of plane 0, then eight words of plane 1. Combining their bits selects one of four colours.
+
+Each destination plane has a forty-byte scanline pitch and takes 10,240 bytes. The original caller places them at `$10000` and `$12800`, provides its Copper list and colours, and draws before enabling display DMA. Choose Chip RAM allocations which fit your own project; the source map and two planes are separate resources.
+
+## Give the routine its context
+
+Pass A0 pointing to an even-aligned, private 32-byte context. Bytes 0–5 are the request and byte 6 is the completion flag. Byte 7 selects backend **0 CPU, 1 blitter**. Longwords at 8, 12, 16 and 20 point to the byte map, tile pictures, plane 0 and plane 1. Bytes 24–26 hold map width, height and tile count; 27–31 are scratch.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/tile-region/demo.asm" from="    lea NR,a0" to="case_0:" lang="m68k" title="Initialise the pointers, dimensions and selected backend" />
+
+The map may be byte-aligned. Tile and plane pointers must be even; misalignment and unknown backend values are rejected before painting. The caller guarantees allocation sizes, pointer ranges and Chip RAM visibility. No routine can infer those allocations from a bare address.
+
+A0 and the six request bytes survive. D0–D7, A1–A5 and CCR are clobbered. Allow eight stack bytes on the CPU path or sixteen on the blitter path, including the direct BSR, beyond your own caller and interrupt needs. Include `m68000.inc` with its adjacent `blit-plane.inc` helper available at the maintained relative path.
+
+## Choose how to copy
+
+The CPU path copies eight words per plane. The blitter path calls the separate [Blitter Copy component](/patterns/commodore-amiga/assembly/rendering/blitter-copy/) once per plane. Both write 32 bytes per cell, or 480 bytes for the 5×3 patch, in addition to preflight work.
+
+The blitter helper copies one word across eight lines. Source pitch is two bytes; destination pitch is forty, so `BLTDMOD=38`. `BLTSIZE=$0201` starts the copy. It waits before setting registers and again before returning. This is **synchronous**: the example demonstrates the hardware path, not useful CPU/blitter overlap or an automatic speed win for small tiles.
+
+Your caller owns the blitter exclusively, enables master/blitter DMA and keeps all buffers stable. Neither backend changes interrupt state. An OS application needs an ownership protocol; the reset diagnostic owns the machine. Bigger spans, asynchronous submission, masks and clipping are useful further variants, each with different obligations.
+
+## Draw the patch
+
+These are the example caller's allocations and constants. Use addresses which fit your own memory plan.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/tile-region/demo.asm" from="NR" to="start:" lang="m68k" title="The caller owns its memory and display configuration" />
+
+Supply six unsigned bytes: source column, source row, destination column, destination row, width and height. Then call `region_draw`. `6(A0)` is one for a completed draw or zero for rejection. The six request bytes survive.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/tile-region/demo.asm" from="case_0:" to="case_1:" lang="m68k" title="Draw a 5×3 patch from map cell (2,1) at display cell (4,3)" />
+
+The result store after the call belongs to the diagnostic. In a game, inspect the completion flag and continue with your own logic. The routine rejects zero sizes, invalid starts, source/destination overruns and IDs outside the configured tile set. It checks every selected ID before writing any destination bytes, so a bad ID cannot leave half a patch behind. It rejects rather than clips.
+
+## Keep the reusable code
+
+<CodeFromFile src="cross-platform/patterns/rendering/region-architectures/m68000.inc" lang="m68k" title="Checked native region drawing" />
+
+The context is non-re-entrant. Your caller owns its memory, video setup and interrupt policy. Keep all inputs and display resources stable throughout the call. Drawing an opaque zero tile erases a cell; transparent sprites need masking or background restoration instead.
+
+## What was checked
+
+All **22 calls** completed per backend in the original reset diagnostic. Fifteen rejected map/bounds/ID requests were also executed **in isolation**, each after the same three accepted draws. The complete destination and both mapped guards were compared with an independent model, and every native capture pixel was compared with a separate composition. Completed wrong-layout and unsafe-destination controls fail those checks.
+
+Both CPU and blitter outputs match byte for byte. Backend and alignment rejection cases complete on each path; a deliberately shortened hardware blit fails the independent checks.
+
+These results qualify the selected Emu198x 0.39.0 configuration and Asm198x 0.0.71 fixture. They do not establish original-hardware timing, stock-OS loading, interrupt coexistence or a whole-game frame budget. The complete caller keeps reset setup separate from reusable drawing. Copy counts above are not measured timing claims.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/bc9c51d81b6c11b2e6393072f0e2f1776f27d2eb/commodore-amiga/patterns/assembly/rendering/tile-region)
+- [Calling contracts, costs and primary references](https://github.com/code198x/code-samples/blob/bc9c51d81b6c11b2e6393072f0e2f1776f27d2eb/cross-platform/patterns/rendering/region-architectures/README.md)
+- [Other native region routines](/patterns/cross-platform/rendering/tile-region/)
+- [Map storage and queries](/patterns/cross-platform/rendering/tile-map-queries/)
+
+[CPU pixels, spans and boxes](/patterns/commodore-amiga/assembly/rendering/pixels-and-boxes/) handle arbitrary pixel edges in one plane. [Bitmap text](/patterns/commodore-amiga/assembly/rendering/bitmap-text/) adds glyph lookup, clipping and counted layout over that backend. These have their own contexts and costs rather than silently inheriting this aligned region contract.
