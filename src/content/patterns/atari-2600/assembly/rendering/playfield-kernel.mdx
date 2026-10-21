@@ -1,0 +1,70 @@
+---
+title: Prepare a playfield, then race the beam
+summary: Reuse coarse cells and glyph stamps without losing sight of the TIA's scanline schedule.
+platform: atari-2600
+category: rendering
+difficulty: advanced
+tags: [playfield, tia, kernels, timing, glyphs, maths-for-games]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A chunky maze wall is a good fit for the TIA. So is a huge letter. Prepare their bits in RAM, then let a fixed kernel deliver them to the television. The preparation can be reusable code; the delivery still has to happen on time, every field.
+
+<Figure src="/images/atari-2600/patterns/playfield-kernel.png" kind="capture" alt="An original coarse A repeated across the Atari 2600 playfield, with a boundary cell at the bottom." caption="Native Emu198x NTSC capture. The 20-column half-playfield repeats across the right side. The bottom cell tests the last column and band. Original Code198x glyph data; no game or firmware artwork." />
+
+## Include, initialise, call
+
+Copy `playfield.inc` and `kernel.inc`, and include each once. Reserve **72 picture bytes** at `PF_BUFFER=$80` and **16 context bytes** at `PF=$C8`. The complete caller leaves results at $D8–$E7, guards at $E8–$EB and 20 stack bytes at $EC–$FF. Those allocations fit the machine's 128 bytes of RIOT RAM; they are not free space for another routine.
+
+First call `pf_clear`. To set or erase a cell, put column 0..19 at PF+2, band 0..23 at +3 and 1=set or 0=erase at +4, then call `pf_cell`. PF+5 returns 1 when accepted, 0 when rejected. Invalid requests reject before any buffer write. Inputs survive; A/X/Y/flags and PF+5..7 are clobbered. Clear zeroes the buffer without setting a status.
+
+This maintained caller stamps a letter, sets the boundary cell and tries an out-of-bounds request:
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/demo.asm" from="    jsr pf_clear" to="ready:" lang="asm" title="Prepare picture data outside the visible kernel" />
+
+`pf_stamp` takes a pointer at PF+0/1 and an origin at +2/+3. Its seven source bytes use five low bits per row, bit 4 leftmost. Bits 7..5 must be zero. It checks the entire request before drawing, including all seven rows. A whole 5×7 stamp fits only at `x<=15, y<=17`. Zero bits erase existing cells: this is an opaque stamp. Source pointer and origin survive; +4..12 are scratch/status, with +5 returning 1/0.
+
+Keep the source readable, stable, non-wrapping and disjoint from writable allocations. Use decimal mode clear. The shared context is not re-entrant. Reserve two stack bytes per direct call; stamping needs four because it calls the cell helper, plus your caller/interrupt depth. Neither helper changes interrupt state or video, sound or bank registers.
+
+## Give the kernel its own time
+
+`pf_kernel` emits 24 bands of eight scanlines. It owns WSYNC and PF0/1/2 while running, clobbering A/Y/flags and PF+13/14. Your field caller owns VSYNC, VBLANK, colours, repetition/reflection and blanking work. Clear stale PF registers before unblanking, call the kernel at its scheduled boundary, then finish its final line with WSYNC before blanking. The complete caller below shows that sequence.
+
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/kernel.inc" lang="asm" title="The fixed visible-line schedule" />
+
+At this allocation, each indexed buffer read takes four CPU cycles. After WSYNC releases, the three register writes finish at cycles **7, 14 and 21**. Visible output begins at colour clock 68: CPU cycle 22⅔. Moving the buffer so an indexed read crosses a page changes that schedule. Adding work inside the loop changes it too. Input, music and picture preparation belong outside this kernel.
+
+The caller measures **59,736 colour clocks per field: 262×228**. The picture contains 192 emitted lines. This emulator's 240-row capture includes the surrounding viewport; the first emitted line appears at y14 here. That capture offset is not a game-coordinate rule. PAL needs its own caller and verification.
+
+## Use the grid you actually have
+
+Each independent cell spans four colour clocks horizontally and eight scanlines vertically. There are **20 independent columns**. CTRLPF bit 0 chooses whether the right half repeats or reflects them. Forty positions on the television do not give this kernel forty independent columns.
+
+PF0 scans bits 4,5,6,7; PF1 scans 7..0; PF2 scans 0..7. The helper handles this awkward packing. A logical point (13,19) maps to cell (3,2), with remainders (1,3). A 5×7 glyph therefore occupies 20×56 colour clocks/scanlines before repetition or reflection. Its drawing grid need not be your game's collision grid.
+
+[Place a point](/craft/maths-for-games/unit-06/) develops grid conversion and remainders. [Move a glyph](/craft/maths-for-games/unit-13/) connects stored rows with positions. Here the maths also explains a useful constraint: reflection can give a maze symmetry without storing another half.
+
+## Pay for the picture
+
+The components assemble to **197 code bytes plus 64 table bytes**, with 72 picture bytes and 16 context bytes. Each glyph adds seven source bytes. Clear makes 72 writes; a cell makes one; a stamp makes 35 cell calls/writes after seven validation reads. These are work counts, not measured helper durations. Many stamps may exceed your blanking budget.
+
+The kernel's visible CPU cost recurs even when nothing changes. A ROM-only picture or fewer bands can save RAM. Independent right-side detail needs an asymmetric kernel with carefully timed mid-line writes. Players, missiles, the ball, changing colours and finer lettering need their own register and cycle contracts. This component supplies no general pixel, line, circle or arbitrary-size font API.
+
+<details>
+<summary>Read the reusable helpers and complete NTSC caller</summary>
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/playfield.inc" lang="asm" title="Reusable picture preparation" />
+<CodeFromFile src="atari-2600/patterns/assembly/rendering/playfield-kernel/demo.asm" lang="asm" title="Complete allocation, reset and field caller" />
+</details>
+
+## What was verified
+
+Asm198x 0.0.71 and released Emu198x 0.41.0 execute this original 4 KiB reset cartridge without firmware. Every native frame pixel and all 72 picture bytes are compared with a separate logical-grid model, in repetition and reflection builds. Native call markers and the measured field period guard against incomplete execution. Six rejected boundary calls leave the whole buffer unchanged. Completed wrong-bit, late-register and extra-scanline controls fail the same checks. The website's pinned Asm198x 0.0.65 also assembles it.
+
+This is evidence for this caller and emulator configuration, not original hardware, PAL, arbitrary relocation or coexistence with another kernel.
+
+- [Reusable source, caller and execution records](https://github.com/code198x/code-samples/tree/32081dccbfc2243f751f9aa675ea1042deef6837/atari-2600/patterns/assembly/rendering/playfield-kernel)
+- [Contracts, costs and reproduction](https://github.com/code198x/code-samples/blob/32081dccbfc2243f751f9aa675ea1042deef6837/cross-platform/patterns/rendering/tia-maria/README.md)
+- Steve Wright, Atari, [Stella Programmer's Guide](http://www.atarihq.com/danb/files/stella.pdf), playfield discussion and printed p39 serial-output diagram.
+- [Build objects for the very different MARIA display](/patterns/atari-7800/assembly/rendering/maria-objects/).
