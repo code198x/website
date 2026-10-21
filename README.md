@@ -66,7 +66,8 @@ Run commands from this directory:
 | `npm run workbook:build` | Rebuild the first-session learner and teacher PDFs; see [workbook editing instructions](public/workbooks/spectrum-basic-first-session/README.md). |
 | `npm run preview` | Preview the production build locally. |
 | `npm run check:content` | Run quick template, catalogue, imagery and Vault-link checks (also the small CI smoke check). |
-| `npm run check` | Run local unit, content and prepared-player/assembler checks. |
+| `npm run check:types` | Run `astro check` and fail on any type error not in `scripts/type-baseline.json` (the errors that predate it; the list may only shrink). |
+| `npm run check` | Run local unit, type, content and prepared-player/assembler checks. |
 | `npm run check:release` | Run local checks, announcement regressions, production build, focused browser/accessibility checks and offline built-site links. Needs prepared sibling assets, Playwright Chromium and lychee. |
 | `npm test` | Run the Vitest unit tests under `src/**/*.test.ts`. |
 | `npm run test:e2e` | Run Playwright end-to-end tests. |
