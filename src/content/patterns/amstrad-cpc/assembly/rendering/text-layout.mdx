@@ -1,0 +1,128 @@
+---
+title: "Measure, Align and Wrap Text on CPC 464 MODE 1"
+summary: "Reusable counted-line measurement, aligned labels and bounded multi-line panels, with explicit overflow and spacing rules."
+platform: "amstrad-cpc"
+category: "rendering"
+difficulty: "intermediate"
+tags: [text, layout, alignment, wrapping, maths, diagnostics]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Change a prompt and let the code find its position. A short label can sit in the middle of a panel; a longer message can continue on the next line. This component adds those calculations to the [existing bitmap-text renderer](/patterns/amstrad-cpc/assembly/rendering/bitmap-text/).
+
+<Figure src="/images/amstrad-cpc/patterns/text-layout/opening.png" kind="capture" alt="An original READY TO PLAY prompt and PRESS FIRE TO BEGIN line centred within the declared panel on CPC 464 MODE 1." caption="The complete native reset caller: a 176-pixel panel beginning at x21, two centred lines, and a 12-scanline pitch. Original Code198x font and message; Emu198x 0.41.0." />
+
+The capture shows the emulator's native raster, including its border and horizontal sampling. It does not establish a physical television aspect ratio. Layout uses logical bitmap pixels.
+
+## Include it, initialise it, call it
+
+MODE 1 gives 320×200 logical pixels and four pen indices. Each byte contains four pixels in the CPC packing order; its rows are interleaved too. The existing backend owns that work and preserves the unused bytes in the screen allocation.
+
+Reserve **64 bytes at TL=$4480**, **96 at T=$4400** and **48 at BP=$4300** for this caller. Keep them separate from source, font, bitmap, code and stack. Include the unchanged bitmap-text component before `text-layout/z80.inc`; the layout uses its aliases and renderer. Keep the existing backend and its helper/table. The [complete source](https://github.com/code198x/code-samples/tree/50a33a0f1ef1bc027ead0d9115a559f1158e33c1/amstrad-cpc/patterns/assembly/rendering/text-layout) shows every include and allocation.
+
+T supplies the font pointer, first code/count, fallback, transparent/opaque mode and foreground/background pens. Layout takes ownership of T and BP while running, including the scissor. Initialise those font/pen choices as in `caller.inc`, then supply TL:
+
+| Offset | Input |
+| --- | --- |
+| 0, 2 | Words: panel left, top |
+| 4, 6 | Words: panel width, height |
+| 8 | Byte: alignment, 0 left / 1 centre / 2 right |
+| 9 | Byte: line pitch, 8..255 scanlines |
+| 10 | Word: source address |
+| 12 | Byte: source length, 0..255 |
+
+Words are **little-endian**. Scratch needs no initialisation; inputs do. These are the maintained setup calls used by the working example:
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/rendering/text-layout/prepare.inc" lang="asm" title="Set the panel and call layout_block" />
+
+Use `layout_line` for one counted label or `layout_block` for LF-separated, character-wrapped text. TL+13 returns 1 when accepted and 0 when rejected. Inputs TL+0..12 survive; T/BP do not. 
+
+## Measure before subtracting
+
+`layout_measure` needs only TL+12. It returns `8*length` as a **word** at TL+18, accepted=1, and zeroes the other documented outputs. It reads no string or font. A 255-code line therefore measures 2,040 pixels rather than wrapping into a byte.
+
+<CodeFromFile src="cross-platform/patterns/rendering/text-layout/z80.inc" from="layout_measure:" to="layout_line:" lang="asm" title="Counted-line measurement without a string scan" />
+
+Five glyph cells need 40 pixels. A 177-pixel panel has 137 spare pixels. Centre alignment uses `left + floor(137/2)`: at left 21, the first cell begins at **89**, leaving the odd spare pixel on the right. Right alignment starts at 158. These are cell bounds; the visible ink can have blank columns inside them. [Coordinates and remainders](/craft/maths-for-games/unit-06/) and [glyph-local positions](/craft/maths-for-games/unit-13/) explain the calculations.
+
+A line wider than its panel rejects before drawing. Do not subtract first and hope an unsigned result stays sensible. A block also plans every row before rendering: a message too tall for its panel leaves the previous bitmap intact. Supply readable, stable, non-overlapping source/font allocations and keep mappings unchanged throughout both passes.
+
+## Decide what a line break means
+
+Block mode uses `width div 8` cells per line. It keeps spaces and **can split a word**. Byte 10 is LF; byte zero remains a character code and uses the configured fallback if unsupported. Line mode instead treats every byte, including 10, as a glyph slot. This counted-line rule is also what `layout_measure` measures.
+
+A full chunk consumes an immediately following LF as its own break. Consecutive LFs retain interior empty lines. A final LF ends its line without creating another trailing row. Empty input has zero lines and no drawing. The whole rectangle must fit the physical bitmap and be at least 8×8; an empty request still validates its declaration.
+
+Pitch is the distance between row origins. Five rows at pitch 16 need `(5-1)*16+8=72` scanlines. Opaque mode paints actual glyph cells, not the unused width or an empty line. Clear the panel you own before replacing a longer message, or old letters may remain. Word wrapping and incremental reveal can build on this, but are not supplied here.
+
+## Make it your own
+
+Build `customise.asm` with the same includes. It narrows the panel from 176 to 104 pixels, selects right alignment, changes pitch from 12 to 16 and supplies another original counted message. The result has five lines inside the existing 80-scanline height. PANEL splits at the 13-column boundary; that is the chosen character-wrap policy in action.
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/rendering/text-layout/customise.asm" lang="asm" title="Change the panel, alignment, pitch and counted message" />
+
+<Figure src="/images/amstrad-cpc/patterns/text-layout/customise.png" kind="capture" alt="The custom message wraps into five right-aligned lines inside a narrower panel on CPC 464 MODE 1." caption="Verified native customisation using the unchanged layout and drawing routines. Width changes the line count; pitch changes the vertical footprint." />
+
+Edit `customise-message.inc` and update `MESSAGE_LENGTH` together. The routine has no terminator scan to rescue an incorrect count. More rows or wider text can increase drawing work, even though code and context allocations stay the same. A proportional font, another glyph size, word-wrap policy or another video mode needs its own implementation and verification.
+
+For these exact original messages, native counters report:
+
+| Work | Two-line demo (33 source bytes) | Narrow custom panel (44 source bytes) |
+| --- | ---: | ---: |
+| Logical lines | 2 | 5 |
+| Backend spans | 511 | 709 |
+| Destination-byte writes | 1075 | 1453 |
+| Added layout RAM | 64 bytes | 64 bytes |
+
+Both the message and layout changed. This compares those two workloads, not the isolated cost of right alignment or narrowing a panel. The code and font remain the same.
+
+## Common mistakes and their symptoms
+
+The following are **deliberately broken diagnostic fragments**, kept outside the reusable implementation. Both complete bounded native calls. Their repairs also execute and assemble to the original working cartridge bytes.
+
+### The label moves right
+
+A missing shift measures four pixels per code while the renderer still advances eight. The calculation leaves too much supposedly unused space on the left. This is a disagreement between measurement and rendering, rather than a font or video-address problem.
+
+<CodeFromFile src="cross-platform/patterns/rendering/text-layout/mistakes/z80-width.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: stop multiplying at four" />
+
+<Figure src="/images/amstrad-cpc/patterns/text-layout/wrong-width.png" kind="capture" alt="The diagnostic READY label is shifted right because its measured width is too small." caption="Native width-error symptom. The independent full-memory and pixel checks detect it." />
+
+Restore the third shift and check that five codes measure 40 pixels:
+
+<CodeFromFile src="cross-platform/patterns/rendering/text-layout/mistakes/z80-width.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct: match the renderer's eight-pixel advance" />
+
+### The panel offset disappears
+
+The alignment calculation returns an offset **within the panel**. Writing that offset as a screen coordinate forgets the panel's left edge. Here the label moves 21 pixels left; other inputs can also make the scissor cut letters off.
+
+<CodeFromFile src="cross-platform/patterns/rendering/text-layout/mistakes/z80-origin.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Deliberately wrong: use a local offset as a screen coordinate" />
+
+<Figure src="/images/amstrad-cpc/patterns/text-layout/wrong-origin.png" kind="capture" alt="READY moves left because the diagnostic omits the panel's x21 origin." caption="The same source, font and panel, with the rectangle origin omitted." />
+
+Add the panel origin to the alignment offset:
+
+<CodeFromFile src="cross-platform/patterns/rendering/text-layout/mistakes/z80-origin.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Correct: translate from panel to screen coordinates" />
+
+<Figure src="/images/amstrad-cpc/patterns/text-layout/fixed.png" kind="capture" alt="The corrected READY label begins at x89 within the panel." caption="Both repaired diagnostic callers reproduce this correct native frame." />
+
+## Costs, ownership and results
+
+The layout adds **1,628 code bytes and 64 context bytes**. The reused text renderer is 2,268 bytes and its backend 578; their 96+48 context bytes, the 512-byte sample font, messages, video allocation and stack are separate. Reserve a conservative 80-byte stack budget plus caller/interrupt depth. A different ink value changes a palette choice, not the layout arithmetic. The caller owns Gate Array, CRTC and palette setup.
+
+Block mode makes two planning passes, then the renderer adds source/font reads and glyph/span work. The second pass interleaves planning and rendering after the complete first pass has qualified the request. TL+26 reports total span calls; TL+28 reports a 32-bit destination-byte-write count. These are work counts, not cycle measurements. Byte alignment, pen packing, glyph shapes and opacity affect them. Static labels can be cheaper to position or render once.
+
+Accepted calls return consumed bytes at TL+14, logical lines at +15, last-line glyph count at +16, maximum logical width at +18, first origin X at +20, last line end X at +22 and its origin Y at +24. Rejected calls return zero for all documented outputs and leave the bitmap untouched. T/BP scratch may change. Blank lines affect line count and position but cause no glyph/background writes.
+
+The component is non-re-entrant. It supplies no frame wait, OS negotiation, interrupt protection or video synchronisation. The reset caller owns the machine; a real game must choose safe display access and coordinate other users of T/BP, video, banks and interrupts. Native completion does not establish stock-OS loading, live tearing behaviour, original-hardware timing or a frame budget.
+
+<details>
+<summary>Read the reusable layout component</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/text-layout/z80.inc" lang="asm" title="Reusable layout over the existing text renderer" />
+</details>
+
+The [source and retained records](https://github.com/code198x/code-samples/tree/50a33a0f1ef1bc027ead0d9115a559f1158e33c1/amstrad-cpc/patterns/assembly/rendering/text-layout) contain 64 positive native calls for this machine, the custom caller, two completed faults and both repairs. The checks compare the whole bitmap allocation, public results, guards, unchanged source/font and selected entire native frames. Asm198x 0.0.71 and released Emu198x 0.41.0 are pinned. Retained replay and corruption tests support CI; they do not replace fresh execution on another machine or configuration.
+
+[Compare the four implementations](/patterns/cross-platform/rendering/text-layout/) and use the existing bitmap-text entry for the font, backend and original hardware sources.
