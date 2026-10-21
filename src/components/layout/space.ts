@@ -27,5 +27,5 @@ export function primitiveStyle(
   return all.length ? all.join('; ') : undefined;
 }
 
-/** A CSS length, so a typo fails `astro check` rather than the page. */
+/** A CSS length. An editor flags a typo; nothing in the build type-checks .astro files yet. */
 export type Length = `${number}${'px' | 'rem' | 'em' | 'ch' | '%' | 'vw' | 'vh' | 'vi' | 'svh'}` | '0';
