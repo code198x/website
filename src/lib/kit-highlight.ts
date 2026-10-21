@@ -25,7 +25,7 @@ import { createHighlighter, bundledLanguages, type Highlighter, type ThemeRegist
 import asmLang from 'shiki/langs/asm.mjs';
 import basicGrammar from '../syntax/basic.tmLanguage.json';
 import asm6502Grammar from '../syntax/6502.tmLanguage.json';
-import amosGrammar from '../syntax/amos.tmLanguage.json';
+import amosGrammar from '@lang198x/amos';
 import blitzGrammar from '../syntax/blitz.tmLanguage.json';
 import sinclairBasicGrammar from '../syntax/sinclair-basic.tmLanguage.json';
 import ca65Grammar from '../syntax/ca65.tmLanguage.json';
