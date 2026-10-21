@@ -1,0 +1,73 @@
+---
+title: Place ROM characters on the PET
+summary: Draw counted labels and character pictures with the machine's ROM, with explicit bounds and display ownership.
+platform: commodore-pet
+category: rendering
+difficulty: intermediate
+tags: [characters, fixed-rom, text, bounds, maths-for-games]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A label, a room wall, a face made from several characters: a fixed font can do useful work. Give this routine a row of native screen codes and a cell position. It checks the request, then replaces that span. Your game owns the choice of pictures; the ROM supplies their dots.
+
+<Figure src="/images/commodore-pet/patterns/fixed-characters.png" kind="capture" alt="Native PET output from the reusable character-span caller." caption="Code198x native capture: 40×25 monochrome cells. The caller is an original reset diagnostic with a local stock character ROM. It disables the cursor and owns the screen; it does not demonstrate loading under the PET editor. Character designs belong to the machine&#x27;s manufacturer; no firmware is distributed." />
+
+## Include, set up, call
+
+Copy `characters.inc` into your project and include it once. Reserve **24 private bytes** at `FC`, in zero page. The selected display layout is fixed in this machine-specific include. The first maintained call places a six-character span; the full caller below shows allocations and inclusion:
+
+<CodeFromFile src="commodore-pet/patterns/assembly/rendering/fixed-characters/demo.asm" from="case_0:" to="case_1:" lang="asm" title="Complete PET caller" />
+
+
+
+Put a source pointer at `FC+0..1` (low byte first), column at +2, row at +3 and nonzero count at +4. Offset +7 is unused on this machine. Call `character_span`. Byte +5 returns 1 when accepted, 0 when rejected; +6 returns the number of character writes, or 0. Inputs +0..4 and +7 survive. Scratch/status +5..23 belong to the routine.
+
+A request stays on one row. Zero counts, invalid starts and horizontal overruns reject before any display write. All 256 byte codes are accepted as names; their pictures depend on the installed character ROM and selected set. This variant rejects rather than clips: shorten a label deliberately if that is the behaviour you want.
+
+Keep the source long enough, readable, stable, non-wrapping and separate from anything the call can overwrite. Contexts are not re-entrant. A/X/Y/flags are clobbered; decimal mode must be clear. Reserve two stack bytes for the direct call and its helpers, plus your caller and interrupts.  The routine changes no interrupt state or display mode.
+
+## Use the actual display
+
+PET stores one screen code per cell at $8000–$83E7. Cell (2,3) is `$8000+3*40+2 = $807A`. The remaining 24 bytes in the 1 KiB span are padding. There is no per-cell colour RAM here.
+
+PETSCII is the language of PRINT; a direct screen code selects a ROM picture. Use the installed character set when choosing codes. This caller writes codes 1–6 to display A–F. Changing those name bytes does not change the font.
+
+This is the 40-column configuration. Its green display treatment is monochrome; it does not turn green into a programmable cell colour. An 80-column machine or graphics board needs a separate configuration.
+
+Caller ownership matters: the OS cursor, scrolling code and an interrupt cannot independently redraw these allocations without coordination. Keep gameplay tiles as logical IDs and translate them into screen codes only when drawing.
+
+For a room rectangle, reuse the existing [native region renderer](/patterns/commodore-pet/assembly/rendering/tile-region/). This smaller span is useful for labels or a changed row. It does not upload a font or turn a character cell into arbitrary pixels.
+
+## Connect cells, shapes and maths
+
+At an 8×8 character grid, cell (2,3) begins at active pixel (16,24). That multiplication places a whole glyph; it does not let you change one of its dots. Border coordinates are a separate matter.
+
+Block characters can supply a coarser drawing grid. With a genuine 2×2 block repertoire, coarse point (5,7) belongs to cell (2,3), quadrant (1,1): divide by two for the cell and take the remainders for the quadrant. You still need a lookup from the desired block mask to this ROM's actual codes. This routine accepts those codes; it does not invent a universal semigraphics table.
+
+[Place a point](/craft/maths-for-games/unit-06/) develops local/grid coordinates. [Move a glyph](/craft/maths-for-games/unit-13/) connects codes and stored shapes. A fixed font makes the distinction especially clear: a code can select a picture without giving the CPU writable picture memory. Use larger cell pictures or an approximation when the ROM lacks the shape; a high-resolution extension needs its own named configuration.
+
+<details>
+<summary>Read the reusable component and complete caller</summary>
+<CodeFromFile src="commodore-pet/patterns/assembly/rendering/fixed-characters/characters.inc" lang="asm" title="Reusable character-span routine" />
+<CodeFromFile src="commodore-pet/patterns/assembly/rendering/fixed-characters/demo.asm" lang="asm" title="Complete caller and configuration" />
+</details>
+
+## Pay for the work
+
+The component is **86 code bytes**, excluding caller and source, with 24 reserved context bytes. A six-character label needs six source bytes and **six destination writes**. PET writes names only. Those are storage/work counts, not measured cycles or a promise to fit one frame.
+
+PRINT is simpler when the ROM owns formatting, placement and scrolling. Direct spans suit a game that owns its cells. Cached row pointers or a trusted fast path can reduce work, but their validity depends on allocation lifetime and validated inputs. Clipping, transparent cells, proportional text and arbitrary-size lettering each change the contract.
+
+## What was verified
+
+The caller is an original reset diagnostic with a local stock character ROM. It disables the cursor and owns the screen; it does not demonstrate loading under the PET editor.
+
+Three builds per machine complete every call, including boundary and rejection cases. Completed wrong-stride controls fail the same memory and visible-output checks. A second control bypasses the horizontal bound and is rejected by the independent destination and image checks.
+
+The full native frame, padding and border are compared against a separate compositor using the local stock font. Retained CI checks source/image/memory hashes, call markers and independent destinations. Fresh execution needs separately supplied firmware. These observations do not establish original-hardware timing, tear-free updates or OS coexistence.
+
+- [Reusable source, caller and execution records](https://github.com/code198x/code-samples/tree/3a867b81134462c1b26d9ee1a779a91bf8288112/commodore-pet/patterns/assembly/rendering/fixed-characters)
+- [Contracts, costs and hardware sources](https://github.com/code198x/code-samples/blob/3a867b81134462c1b26d9ee1a779a91bf8288112/cross-platform/patterns/rendering/fixed-characters/README.md)
+- [Keep logical map queries separate from drawing](/patterns/commodore-pet/basic/rendering/tile-map/)
