@@ -60,6 +60,56 @@ Indirect character maps, 320-pixel modes, holey DMA, arbitrary vertical movement
 <CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/demo.asm" lang="asm" title="Complete RAM lists, DLL, palettes and original graphics" />
 </details>
 
+## Make it your own
+
+Use the same builder to place two original ships. The customisation caller supplies a wider picture, moves both objects and gives the second a blue palette. It still builds the lists once with DMA off and enables them during VBlank. The normal example above and its reusable include are unchanged.
+
+<Figure src="/images/atari-7800/patterns/customise/ships.png" kind="capture" alt="Two twelve-pixel-wide ship shapes, one pale and one blue, placed at different positions in the MARIA display." caption="Verified native direct 160A customisation. Both objects share the same original graphics bytes; their headers choose different positions and palettes." />
+
+### Supply a wider picture and move it
+
+Keep `customise/` beside `objects.inc`. Run `make` there and load `build/ships.bin`. `ships.asm` includes the parent builder and the original data in `ship.inc`. Copy those allocations and setup responsibilities when adapting the caller to your own project.
+
+The width changes from two bytes to three: **8 to 12 logical pixels**. The new positions are x24 and x100. Palette 0 draws the first ship; palette 1 draws the second. ML+4 and the graphics pointer remain set for the second call, so changing ML+5/ML+6 reuses the same shape.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/customise/ships.asm" from="; BEGIN CUSTOM OBJECTS" to="; END CUSTOM OBJECTS" lang="asm" title="Change width, position and palette through the existing inputs" />
+
+Check the whole width when moving an object: `x+4*width<=160`. The original x152 fits an eight-pixel picture, but cannot fit twelve pixels. At width three, the last accepted start is x148. This API rejects an overrun; it does not clip your ship for you.
+
+To replace the ship, pack four 2-bit pixels into each byte. Zero is transparent; 1, 2 and 3 choose palette colours. Three bytes describe a twelve-pixel row. With the existing sixteen-raster zone, store rows 256 bytes apart, bottom row first in ascending memory. Each useful three-byte row is followed by 253 padding bytes. For example, row `000001100000` packs as `$00,$14,$00`. Keep the source row within its page and every zone-offset address readable under the selected bank mapping.
+
+### Initialise the colours you select
+
+Choosing palette 1 in a header does not populate it. This setup supplies its three nonzero colours before enabling DMA. Palette 0 retains $0E/$06/$0A; palette 1 uses $86/$8C/$8E. The same pixel indices now produce a blue ship in the selected NTSC emulator. Transparent pixels still show the background.
+
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/customise/ships.asm" from="; BEGIN CUSTOM PALETTES" to="; END CUSTOM PALETTES" lang="asm" title="Initialise palette 1 before publishing the picture" />
+
+Choose your own colour values and check the native result in your target configuration. The capture verifies this emulator's palette interpretation, not a calibrated physical television colour or every video standard.
+
+### Pay for width as well as object count
+
+| Resource or work | Original caller | Ship caller |
+|---|---:|---:|
+| Reusable builder + context | 121 + 10 bytes | Same |
+| Four-slot list allocation | 18 bytes | Same |
+| Two headers + terminator | 10 bytes | Same |
+| Useful graphics across 16 rows | 32 bytes | 48 bytes |
+| Page-stepped graphics span | 4,096 bytes | Same |
+| Graphics bytes fetched per populated raster | 4 | 6 |
+| Startup instruction span, start to ready | 120 bytes | 126 bytes |
+
+The two headers and terminator still take ten fetched bytes per populated raster. Graphics fetches increase by two, so that raster's header/termination/graphics workload grows from 14 bytes to 16. The sixteen-raster zone repeats it. A wider picture can cost more DMA time even though the list size stays the same. These are byte/work counts; the startup span is code size, not an elapsed-time or worst-case-load measurement. Both cartridges remain 48 KiB.
+
+Picture data, fitting positions, initialised palette choices and widths within the documented limits use the existing interface. More objects require both capacity and DMA planning. For example, raising capacity from four to eight changes its allocation from `4*4+2=18` to `4*8+2=34` bytes; that arithmetic does not verify that eight chosen objects fit a scanline. Moving smoothly between zones, switching video mode or banks, and replacing a live list need separate design and execution checks. This example does not add an animation publisher.
+
+<details>
+<summary>Read the original ship data and complete caller</summary>
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/customise/ship.inc" lang="asm" title="Three useful bytes per page-stepped row" />
+<CodeFromFile src="atari-7800/patterns/assembly/rendering/maria-objects/customise/ships.asm" lang="asm" title="Complete customisation caller using the unchanged builder" />
+</details>
+
+The customisation was assembled and executed in the same released native emulator. Both headers, the terminator, every page-stepped source row, guards and the full native frame pass independent checks. The model checks the original ship shape, both placements and both palettes. The linked directory's `customise/README.md` and retained capture explain reproduction and limits.
+
 ## Common mistakes and their symptoms
 
 These are deliberately broken versions of the bounded caller. Keep the working builder above. Every example reaches the normal running state; its full native image and relevant list bytes are checked against a separately predicted result. Each corrected fragment was also assembled and executed.
@@ -116,6 +166,6 @@ All three corrected diagnostic fragments also reproduce the working frame. The n
 
 This does not establish stock BIOS loading, original-hardware timing, live publication, every palette/mode or a maximum-load benchmark.
 
-- [Reusable source, caller and execution records](https://github.com/code198x/code-samples/tree/7d7022971a21ec65ba8468d37326b183a518291e/atari-7800/patterns/assembly/rendering/maria-objects)
-- [Contracts, costs and reproduction](https://github.com/code198x/code-samples/blob/7d7022971a21ec65ba8468d37326b183a518291e/cross-platform/patterns/rendering/tia-maria/README.md)
+- [Reusable source, caller and execution records](https://github.com/code198x/code-samples/tree/6379a565b3066b7bc0c02bf6827f95e352de0b39/atari-7800/patterns/assembly/rendering/maria-objects)
+- [Contracts, costs and reproduction](https://github.com/code198x/code-samples/blob/6379a565b3066b7bc0c02bf6827f95e352de0b39/cross-platform/patterns/rendering/tia-maria/README.md)
 - Atari, [7800 Software Guide](https://atarihq.com/danb/files/7800%20Software%20Guide.pdf), “Display List”, “Display List List”, “DMA Modes”, “Starting up the 7800” and Appendix 3.
