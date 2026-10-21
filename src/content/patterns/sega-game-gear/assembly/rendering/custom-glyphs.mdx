@@ -1,0 +1,90 @@
+---
+title: "Change Shared Character Pictures on Game Gear"
+summary: "Reusable install, replace and select routines for Game Gear, with real code, native output and explicit video ownership."
+platform: "sega-game-gear"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["characters", "glyphs", "fonts", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A single door picture can appear in many places. Replacing it changes every cell using its number. Changing one cell's number affects only that instance. Here is reusable code for both jobs.
+
+<Figure src="/images/sega-game-gear/patterns/custom-glyphs.png" kind="capture" alt="Native Game Gear output with two cells showing the same replacement picture" caption="One replacement changes both cells. Later checks select a different picture in only one cell. Original Code198x patterns, captured from this machine's separately executed caller." />
+
+## Include, initialise and call
+
+Reserve **32 private RAM bytes** at `P` and set P+14=$BE, P+15=$BF. The machine include uses the shared four-plane Mode 4 implementation. Establish the caller-owned mode, palette and sprite-table allocation before calling `pattern_init`.
+
+<CodeFromFile src="sega-game-gear/patterns/assembly/rendering/custom-glyphs/demo.asm" from="kernel_start:" to="kernel_end:" lang="z80" title="Include the maintained component" />
+
+Init clears the owned patterns and names. It destroys their old contents; call it during your setup, not before every tile change. The complete caller establishes the video state. Then install two original sketches and put the first in two cells:
+
+<CodeFromFile src="sega-game-gear/patterns/assembly/rendering/custom-glyphs/demo.asm" from="    call pattern_init" to="; Diagnostic transport" lang="z80" title="Initialise, install pictures, then select the first twice" />
+
+To replace both instances, point the source at a new sketch, set first=1 and call `pattern_replace`. To change only one cell, select code 2 there. Games call these entries directly; the later mailbox and readback buffer are optional verification transport.
+
+## The calling contract
+
+Words are little-endian. `pattern_install` uploads a range, `pattern_replace` uploads one picture and ignores count, `pattern_select` changes one name. Status and data-write count reset on every call, including rejection.
+
+| Offset | Supply or read |
+| --- | --- |
+| 0 | CPU source address, word |
+| 2 | First pattern, word |
+| 4 | Count, word |
+| 6 | Selected pattern, word |
+| 8 | Linear cell, word |
+| 10 | Attribute byte |
+| 11 | Output: 1 accepted, 0 rejected |
+| 12 | Output: destination data bytes written, word |
+| 14, 15 | Data/control ports, preserved |
+| 16–31 | Private scratch |
+
+Valid patterns are **0–447**, cells **0–767**. Counts are words: 1–448 with `first+count <= 448`. Index 256 is real, not index zero after truncation. Zero/overflowing ranges, invalid indices/cells and forbidden attributes reject without destination writes.
+
+Keep the source readable, stable, long enough, non-wrapping and separate from the context and destination. These are trusted pointers, not a memory sandbox. The context is non-re-entrant. Inputs 0–10 and ports survive; AF/BC/DE/HL and flags are clobbered. Reserve eight stack bytes including the direct call. Add space for your own calls and interrupts.
+
+## Respect the display
+
+Mode 4 stores **four bitplanes**, not the SG-1000's one-bit Graphics I pictures. This allocation owns patterns **$0000–$37FF** and two-byte names **$3800–$3DFF**. The hardware has 512 slots; the component owns **448** because the upper area holds this caller's name/sprite allocation. It preserves the guarded neighbouring region and sprite table.
+
+Supply only attribute bits **$02 H flip, $04 V flip, $08 palette 1, $10 priority**. Index bit 8 comes from the selected pattern word. Bit 0 in the attribute input and bits 5–7 reject. Changing palette and flipping a cell reuse the same pattern bytes. Priority is checked as stored name data; a no-sprite fixture cannot establish sprite-priority interaction.
+
+Own the VDP latch, source bank, interrupt/NMI policy and VRAM allocation throughout each call. No DI/EI is hidden inside the routine. Two control writes select an address before data transfer. The fixed port spacing is conservative; it does not establish a physical-machine frame budget.
+
+Game Gear CRAM uses **two bytes per entry**. Its screen displays the centred **160×144** part of a 256×192 background: visible (0,0) corresponds to logical (48,24). The first example uses logical cell (8,5), so its top-left appears at visible coordinate (16,16). A valid name in a hidden margin need not be visible. This target is executed separately from Master System.
+
+## Turn a sketch into stored pixels
+
+Each 8×8 pattern has **32 bytes**: four plane bytes for row 0, then four for row 1, and so on. Bit 7 is the leftmost dot. Add the selected bits with weights 1, 2, 4 and 8 to choose one of 16 palette entries.
+
+Pattern 256 starts at `256*32 = 8192`, or $2000. Its name entry needs low byte $00 and index bit 8 in the high byte. The last owned pattern, 447, starts at $37E0. A cell at (31,23) has index `23*32+31 = 767`; its two-byte name begins at `$3800+767*2 = $3DFE`. These boundaries are exercised by the native checks.
+
+[Move a glyph](/craft/maths-for-games/unit-13/) connects these bit weights and cell indices with text drawing. [Place a point](/craft/maths-for-games/unit-06/) covers local-to-screen coordinates. These routines place fixed-grid pictures; they do not provide proportional text or arbitrary-size letters.
+
+<details>
+<summary>Read the complete reusable Z80 component</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/native-glyphs/mode4.inc" lang="z80" title="Initialise, install, replace and select" />
+</details>
+
+## Pay for what changes
+
+A single name costs **2 destination bytes**; replacing a picture costs **32**. Full init writes **15,872 bytes**. The assembled component takes **239 code bytes** and 32 context bytes; each source picture takes 32 bytes. These exclude the reset caller, video setup and assets.
+
+If many cells use one picture and all should change, a replacement can save writes. If one door should open, change its name. These are storage and data-write counts, not elapsed time. Control writes and fixed port spacing also cost work. Measure inside your actual game before promising a frame rate. Upload queues, caches and alternate allocations are useful further components.
+
+## What was verified
+
+**40 calls completed per build** with Asm198x 0.0.71 and Emu198x 0.39.0. Checks compare complete 16 KiB VRAM, guards, inputs, status and actual destination-write counts. They cover shared replacement, single-cell selection, last slots/cells, maximum uploads, zero/overflow requests and reset. Word counts and indices cross 255/256, and flips/palettes are checked in native frames.
+
+Selected whole native frames match a separate compositor. Completed **wrong-slot** and **wrong-name** builds fail both memory and visible-output comparisons. Retained checks independently rederive the expectations; corruption tests reject rehashed wrong memory and pictures.
+
+This is an original reset fixture, not proof of stock-OS loading, interrupt coexistence, hardware timing or tear-free live updates. Palette RGB values describe the pinned emulator release. Code and source pictures are MIT licensed.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/efb7b39db1f5f99b8a58a2a9d1414a3642211b48/sega-game-gear/patterns/assembly/rendering/custom-glyphs)
+- [Full contracts, costs and hardware references](https://github.com/code198x/code-samples/blob/efb7b39db1f5f99b8a58a2a9d1414a3642211b48/cross-platform/patterns/rendering/native-glyphs/README.md)
+- [Compare writable character systems](/patterns/cross-platform/rendering/custom-glyphs/)
+- [Map storage and drawing](/patterns/sega-game-gear/assembly/rendering/tile-region/)

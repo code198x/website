@@ -1,0 +1,83 @@
+---
+title: "Change Shared Character Pictures on C64"
+summary: "Reusable install, replace and select routines for C64, with real code, native output and explicit video ownership."
+platform: "commodore-64"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["characters", "glyphs", "fonts", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A single door picture can appear in many places. Replacing it changes every cell using its number. Changing one cell's number affects only that instance. Here is reusable code for both jobs.
+
+<Figure src="/images/commodore-64/patterns/custom-glyphs.png" kind="capture" alt="Native C64 output with two cells showing the same replacement picture" caption="One replacement changes both cells. Later checks select a different picture in only one cell. Original Code198x patterns, captured from this machine's separately executed caller." />
+
+## Include, initialise and call
+
+Reserve **24 private zero-page bytes** at `G`. Clear decimal mode, include the machine's component and establish the caller-owned video configuration before calling `glyph_init`.
+
+<CodeFromFile src="commodore-64/patterns/assembly/rendering/custom-glyphs/demo.asm" from="kernel_start:" to="kernel_end:" lang="6502" title="Include the maintained component" />
+
+Init clears the owned patterns and names. It destroys their old contents; call it during your setup, not before every tile change. The complete caller establishes the video state. Then install two original sketches and put the first in two cells:
+
+<CodeFromFile src="commodore-64/patterns/assembly/rendering/custom-glyphs/demo.asm" from="    jsr glyph_init" to="; Diagnostic transport" lang="6502" title="Initialise, install pictures, then select the first twice" />
+
+To replace both instances, point the source at a new sketch, set first=1 and call `glyph_replace`. To change only one cell, select code 2 there. Games call these entries directly; the later mailbox and readback buffer are optional verification transport.
+
+## The calling contract
+
+Words are little-endian. `glyph_install` uploads a range, `glyph_replace` uploads one picture and ignores count, `glyph_select` changes one name. Status and data-write count reset on every call, including rejection.
+
+| Offset | Supply or read |
+| --- | --- |
+| 0 | CPU source address, word |
+| 2, 3 | First slot and nonzero count, bytes |
+| 4 | Selected code, byte |
+| 5 | Linear cell, word |
+| 7 | Output: 1 accepted, 0 rejected |
+| 8 | Output: destination bytes written, word |
+| 10–23 | Private scratch |
+
+Valid slots/codes are **0–255**, cells **0–999**. Counts are bytes, **1–255**; an exclusive range end of 256 is legal. Zero counts, overflowing ranges and invalid cells reject without destination writes. Use multiple calls to install all 256 pictures.
+
+Keep the source readable, stable, long enough, non-wrapping and separate from the context and destination. These are trusted pointers, not a memory sandbox. The context is non-re-entrant. Inputs 0–6 survive; A/X/Y and flags are clobbered. Reserve six stack bytes including the direct call. Add space for your own calls and interrupts.
+
+## Respect the display
+
+The caller selects VIC bank 0 with CIA2, $D018=$18, $D011=$1B and $D016=$08. Pictures occupy **$2000–$27FF**, names **$0400–$07E7**. A character number is a screen code, not PETSCII. The component preserves the 24 padding bytes after the names and the separately owned colour RAM at $D800–$DBFF. Set high-resolution colours yourself; multicolour changes what the bits mean.
+
+The original reset caller uses CPU mapping $37 and blank RAM. It supplies its own pictures; it does not copy a ROM font or keep BASIC/KERNAL running. A wrapper that retains the standard character set is a useful separate variant. Your project must reserve the same RAM and avoid another renderer, OS or interrupt using it.
+
+## Turn a sketch into stored pixels
+
+Each picture has eight bytes, one row per byte, bit 7 on the left. Row `10000001` is 128+1 = **129**. Slot n, row r lives at `$2000+n*8+r`. Slot 255 begins at $27F8 and ends at $27FF.
+
+For cell (2,2), the index is `2*40+2 = 82`. Dot (3,5) within it appears at screen pixel `(2*8+3, 2*8+5) = (19,21)`. The colour byte belongs to that cell, while the shared picture belongs to its slot.
+
+[Move a glyph](/craft/maths-for-games/unit-13/) connects these bit weights and cell indices with text drawing. [Place a point](/craft/maths-for-games/unit-06/) covers local-to-screen coordinates. These routines place fixed-grid pictures; they do not provide proportional text or arbitrary-size letters.
+
+<details>
+<summary>Read the complete reusable 6502 component</summary>
+<CodeFromFile src="commodore-64/patterns/assembly/rendering/custom-glyphs/glyphs.inc" lang="6502" title="Initialise, install, replace and select" />
+</details>
+
+## Pay for what changes
+
+A single name costs **1 destination byte**; replacing a picture costs **8**. Full init writes **3,048 bytes**. The assembled component takes **238 code bytes** and 24 context bytes; each source picture takes 8 bytes. These exclude the reset caller, video setup and assets.
+
+If many cells use one picture and all should change, a replacement can save writes. If one door should open, change its name. These are storage and data-write counts, not elapsed time. Colour updates are separate work. Measure inside your actual game before promising a frame rate. Upload queues, caches and alternate allocations are useful further components.
+
+## What was verified
+
+**20 calls completed per build** with Asm198x 0.0.71 and Emu198x 0.39.0. Checks compare complete font, names, padding and colour RAM, guards, inputs, status and actual destination-write counts. They cover shared replacement, single-cell selection, last slots/cells, maximum uploads, zero/overflow requests and reset.
+
+Selected whole native frames match a separate compositor. Completed **wrong-slot** and **wrong-name** builds fail both memory and visible-output comparisons. Retained checks independently rederive the expectations; corruption tests reject rehashed wrong memory and pictures. Colour RAM is read by CPU code into a private buffer; debugger reads intentionally show underlying RAM.
+
+This is an original reset fixture, not proof of stock-OS loading, interrupt coexistence, hardware timing or tear-free live updates. Palette RGB values describe the pinned emulator release. Code and source pictures are MIT licensed.
+
+- [Complete caller and execution evidence](https://github.com/code198x/code-samples/tree/efb7b39db1f5f99b8a58a2a9d1414a3642211b48/commodore-64/patterns/assembly/rendering/custom-glyphs)
+- [Full contracts, costs and hardware references](https://github.com/code198x/code-samples/blob/efb7b39db1f5f99b8a58a2a9d1414a3642211b48/cross-platform/patterns/rendering/native-glyphs/README.md)
+- [Compare writable character systems](/patterns/cross-platform/rendering/custom-glyphs/)
+- [Map storage and drawing](/patterns/commodore-64/assembly/rendering/tile-map/)
