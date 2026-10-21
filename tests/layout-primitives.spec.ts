@@ -86,6 +86,12 @@ test.describe('layout primitives', () => {
       expect(columns).toBe(Math.min(fit, grid.children.length));
       for (const cell of grid.children) expect(cell.width).toBeGreaterThanOrEqual(Math.min(12 * grid.rem, grid.own.width) - 0.5);
 
+      // A capped Grid: as many 6rem columns as fit, but never more than three.
+      const capped = await boxes(page, 'grid-capped');
+      const cappedColumns = new Set(capped.children.map(child => Math.round(child.x))).size;
+      const cappedFit = Math.max(1, Math.floor((capped.own.width + capped.rem) / (6 * capped.rem + capped.rem)));
+      expect(cappedColumns).toBe(Math.min(cappedFit, 3));
+
       // Cover: at least 20rem tall, the marked child in the middle.
       const cover = await boxes(page, 'cover');
       expect(cover.own.height).toBeGreaterThanOrEqual(20 * cover.rem - 0.5);
