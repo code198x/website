@@ -43,9 +43,10 @@ its own parent commit, because other work lands on main in between.
 | Wrapped every rule in a layer (step 2, #877) | +5,982 | 434,765 |
 | Dropped 382 `body.magazine` prefixes (step 3, #879) | −5,348 | 429,417 |
 | Dropped 14 `!important` flags (step 3, #884) | −142 | 429,275 |
-| Kit names for 26 site aliases, 9 unread tokens removed (step 4.1) | −3,549 | 425,726 |
+| Kit names for 26 site aliases, 9 unread tokens removed (step 4.1, #886) | −3,549 | 425,726 |
+| Seven body-scoped tokens resolved to the kit (step 4.2) | −4,651 | 421,075 |
 
-Removals so far: 65,432 bytes, 13.7% of the starting point.
+Removals so far: 70,083 bytes, 14.7% of the starting point.
 
 **Correction.** Until 2026-10-20 evening this table used a line-based count
 that missed one-line `<style>` blocks and counted script text after a
@@ -271,7 +272,16 @@ stylesheets in step 7.
    disappearing. The off-scale `--space-5/10/14/20` and the tokens below stay.
 2. Scoped redefinitions with different values (`--color-text`,
    `--color-primary`, …): name what each scope means and give it its own
-   token. Zero differences.
+   token. Zero differences. Done: every page renders `body.magazine`, and
+   the sheets that redefine tokens on it load on every page, so `:root`'s
+   values only reached `html`, the nav progress bar appended to it, and
+   tokens computed at `:root`. Seven tokens became the kit token they held
+   on the body (`--color-text` → `--h-ink`, `--color-primary` → `--h-spot`,
+   `--font-family-read` → `--h-font-ui`, …), 422 uses. `--shadow-chunky`
+   was `none` and `--nav-height` `0px` (the header stopped being sticky on
+   2026-10-07), so 27 shadow declarations went and 10 offsets lost a zero
+   term. The one difference left is `#nav-progress`'s scroll margin, on a
+   fixed bar nothing links to. `--gutter` stays: `.setup-page` changes it.
 3. Raw hex values: replace those identical to an existing token. List the rest
    for Steve. Any change of value is an **intended change** and needs
    screenshots and approval.

@@ -164,7 +164,7 @@ export async function getPlatformsForPatternLibrary(): Promise<Array<{
   result.push({
     slug: 'cross-platform',
     name: 'Cross-Platform',
-    color: 'var(--color-primary)',
+    color: 'var(--h-spot)',
     gradient: 'linear-gradient(135deg, #1e3a5f 0%, #2d5a87 50%, #3d7ab5 100%)',
   });
 
