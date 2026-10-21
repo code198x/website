@@ -4,7 +4,7 @@ summary: "Reusable fixed-width characters and counted strings at any pixel posit
 platform: "bbc-micro"
 category: "rendering"
 difficulty: "intermediate"
-tags: ["rotation", "reflection", "scaling", "enlargement", "text", "fonts", "bitmap", "clipping", "maths"]
+tags: ["shrinking", "resampling", "rotation", "reflection", "scaling", "enlargement", "text", "fonts", "bitmap", "clipping", "maths"]
 ---
 
 import CodeFromFile from '@components/CodeFromFile.astro';
@@ -156,7 +156,7 @@ Doubling both factors quadruples a cell's background area. Horizontal enlargemen
 
 A separate pre-rendered size costs more assets but can avoid runtime expansion. Pre-shifted/masked blitters or precomposed hardware characters offer other trade-offs. Fully clipped cells skip raster work after resolving fallback, retaining logical advance and consumed/missing counts. This avoids expanding invisible rows in long offscreen strings.
 
-The component owns T/BP, is non-re-entrant and supplies no OS negotiation, banking, interrupt protection or safe display interval. Keep source, font, code, contexts, stack and bitmap distinct and stable. This is a direct character/string renderer: the current fixed/proportional text-layout wrappers assume eight-pixel cells and row heights and **cannot simply be placed over this include**. A scaled layout must agree on both dimensions. Scaled wrapping, baselines, kerning, fractional sizes and shrinking remain separate work. The glyph transform below supplies flips and quarter-turns before drawing.
+The component owns T/BP, is non-re-entrant and supplies no OS negotiation, banking, interrupt protection or safe display interval. Keep source, font, code, contexts, stack and bitmap distinct and stable. This is a direct character/string renderer: the current fixed/proportional text-layout wrappers assume eight-pixel cells and row heights and **cannot simply be placed over this include**. A scaled layout must agree on both dimensions. Scaled wrapping, baselines and kerning remain separate work. The bounded shrinking routine below resamples ink inside an eight-byte cell. The glyph transform below supplies flips and quarter-turns before drawing.
 
 The [complete source and retained records](https://github.com/code198x/code-samples/tree/b3b5eb21cb542770e9d349993f30bbe6abf91e5f/bbc-micro/patterns/assembly/rendering/scaled-text) contain **155 positive native calls**, the customisation and completed wrong/fixed observations. Full bitmap allocations, neighbours, public outputs, counted source/font immutability and selected entire native frames match independent expectations. Coverage includes all scale pairs, every horizontal bit phase, pens, partial/full clipping, empty/255-code input, a 256-glyph declaration and invalid declarations. Qualified tools are Asm198x 0.0.71 and Emu198x 0.41.0 for this named reset/display path; original hardware, stock-OS coexistence, live tearing and other modes need separate checks.
 
@@ -225,7 +225,7 @@ A valid call reads eight source bytes into its snapshot, clears eight output byt
 
 Cache the result while it is useful, or prepare the variants at build time. Eight orientations cost **64 bytes per glyph rather than eight**; eight whole 64-glyph banks cost 4,096 rather than 512. Stored variants avoid this transform call but still need drawing or transfer work. A hardware flip can be a better choice where the native display supports one; these bitmap backends do not gain that facility from this routine. No cycle or frame-budget claim follows from a correct still image.
 
-All eight transforms preserve every source bit exactly. Arbitrary-angle rotation, fractional resizing, larger pictures and pixel-aspect correction need different sampling and bounds decisions. Those remain separate extensions.
+All eight transforms preserve every source bit exactly. Arbitrary-angle rotation, larger pictures and pixel-aspect correction remain separate extensions. The bounded shrinking routine below supplies one explicit sampling policy.
 
 ### What the transform checks establish
 
@@ -239,6 +239,93 @@ This is the same original reset configuration as the enlargement example, with e
 <details>
 <summary>Open the glyph transform routine</summary>
 <CodeFromFile src="cross-platform/patterns/rendering/glyph-transform/6502.inc" lang="asm" title="Transform a glyph independently of the display" />
+</details>
+
+
+## Shrink the ink, keep the cell
+
+Need a smaller icon? **glyph_resize** resamples an 8×8 source into a width and height you choose, each **1..8**. The result still occupies eight bytes: useful pixels sit at the top-left, with zero padding to the right and below. Your existing renderer can draw that cell without learning a new asset format. The whole source cell is sampled, including blank margins: the requested rectangle is not a measured tight ink box.
+
+<Figure src="/images/bbc-micro/patterns/glyph-resize/opening.png" kind="capture" alt="Original F resampled into five by seven pixels and displayed at scale four" caption="The native caller resizes the ink to 5×7, then enlarges the padded 8×8 result for inspection. The renderer still owns a 32×32 drawn cell." />
+
+Define **RZ as 32 writable bytes** and include `cross-platform/patterns/rendering/glyph-resize/6502.inc` once. Define RP as two separate zero-page bytes too; RZ need not be zero page. Set both pointers and both dimensions before calling `glyph_resize`. Scratch needs no initialisation.
+
+These are the complete caller's scratch addresses. Choose free RAM in your own game; the address declaration does not allocate or protect it. The include is separate from the renderer and backend already shown above. Adjust repository-relative paths to match your project's files.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/glyph-resize/caller.inc" from="RZ" to="; SPDX-License-Identifier: MIT" lang="asm" title="Name the caller-owned scratch storage" />
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/glyph-resize/caller.inc" from='    !source "../../../../../cross-platform/patterns/rendering/glyph-resize/6502.inc"' to="text_backend_start" lang="asm" title="Include the reusable resize component once" />
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/glyph-resize/prepare.inc" lang="asm" title="Resample one glyph, then draw its padded cell" />
+
+The source is our original F; the caller assigns its resized output code 65 in a one-glyph font. The second part declares that font and calls the existing enlarged renderer. The resize routine itself draws nothing and changes no text metrics. Transparent drawing leaves zero padding alone. Opaque drawing still paints the background across the whole padded 8×8 cell (32×32 at the demo's scale four), not just the requested sampling rectangle.
+
+| RZ offset | Supply or read |
+| --- | --- |
+| 0 | Source address word, eight readable bytes |
+| 2 | Destination address word, eight writable bytes |
+| 4,5 | Width and height bytes, each 1..8 |
+| 6 | Output: 1 completed, 0 rejected |
+| 7..31 | Private scratch, including eight source snapshot bytes |
+
+Words are little-endian; inputs 0..5 survive. Dimensions outside 1..8 or either pointer above $FFF8 reject before source/destination access. An eight-byte range ending at $10000 passes the arithmetic check; you must still own its mapped memory. Source and destination **may overlap**, even exactly, because all source rows are copied before output is cleared. Keep RZ, RP, code and stack disjoint from both.
+
+Clobbers: A/X/Y and flags; decimal mode must be clear. Reserve RP as two zero-page bytes, separately from BP. The routine is non-re-entrant and changes no interrupt/display policy. Reserve a conservative 16-byte stack allowance beyond caller/interrupt requirements. An interrupt handler must preserve live registers and avoid its scratch and buffers. The later renderer retains its own stack, bank, display-access and interrupt obligations. This reset caller owns the same machine-specific display setup as the examples above; it is not a stock-OS launcher.
+
+### Sampling is a choice
+
+Destination (x,y) selects source `(x*8 div width, y*8 div height)`. This is an explicit top-left nearest-neighbour convention: select one source pixel, with no interpolation. Width five samples columns **0,1,3,4,6**; width four samples **0,2,4,6**. Height follows the same rule independently. An 8×8 request is the identity; 1×1 retains only the top-left source pixel.
+
+The 6502 implementation uses bounded error accumulators. Add eight after each output pixel, subtract width and advance the source column while the error is at least width. Reset that state at the next row. The independent oracle uses direct division, so it checks the recurrence against a different calculation. [Division and remainders](/craft/maths-for-games/unit-06/) explain the quotient and leftover; [local-to-screen coordinates](/craft/maths-for-games/unit-13/) place the resulting cell.
+
+A one-pixel vertical stroke in source column one **disappears at width four**: that column is never sampled. A specially drawn small icon can be clearer. Averaging, coverage filters and pixel-centre sampling would give different results; they are not hidden options in this routine. Logical bitmap pixels can also have non-square physical proportions, which these numeric dimensions do not correct.
+
+### Make it your own: a short, wide icon
+
+Change **GLYPH_WIDTH/GLYPH_HEIGHT from 5/7 to 8/4**. Horizontal detail returns while alternate source rows are omitted. The result still occupies eight bytes, and the renderer's cell and advance stay unchanged.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/rendering/glyph-resize/customise.asm" lang="asm" title="Keep all columns and halve the useful height" />
+
+<Figure src="/images/bbc-micro/patterns/glyph-resize/customise.png" kind="capture" alt="F resampled to eight by four useful pixels inside a padded cell" caption="The changed caller ran separately. Zero padding preserves the eight-byte asset format; the useful picture occupies only its top four rows." />
+
+Replace the eight source bytes to resize another icon. A larger input, target above eight, tightly packed variable-size output or proportional metrics needs a different contract. For a bank, validate the complete allocation before calling once per glyph. Per-call overlap safety does not make an overlapping bank traversal safe: an early result may overwrite a later source. Prefer separate banks or plan snapshots/traversal explicitly.
+
+### Common mistake: crop instead of resample
+
+The following fragment is **deliberately wrong**. It advances the source column by one per output pixel. At width five it takes columns 0..4 and drops the right side, rather than selecting across the whole source. Y still resamples correctly in this example. The F's bars acquire the wrong proportions despite a successful, in-bounds call.
+
+<CodeFromFile src="cross-platform/patterns/rendering/glyph-resize/mistakes/6502-sampling.inc" from="; BEGIN WRONG" to="; END WRONG" lang="asm" title="Wrong: take only the left source columns" />
+
+<Figure src="/images/bbc-micro/patterns/glyph-resize/wrong-sampling.png" kind="capture" alt="Faulty F crop differs from the intended resized F" caption="Wrong: the completed call stays in bounds but its output bytes and native picture differ from the independent sampling model." />
+
+Restore the accumulator which distributes eight source steps over the requested width:
+
+<CodeFromFile src="cross-platform/patterns/rendering/glyph-resize/mistakes/6502-sampling.inc" from="; BEGIN FIX" to="; END FIX" lang="asm" title="Resample across the whole source width" />
+
+<Figure src="/images/bbc-micro/patterns/glyph-resize/fixed-sampling.png" kind="capture" alt="Repaired F resampling matches the known-good native picture" caption="Fixed: the executed repair matches the positive program byte for byte, with complete bitmap and native-frame agreement." />
+
+### Work, storage and quality
+
+The component occupies **611 bytes**, including its eight masks. It needs 32 bytes at RZ, two at RP, and eight bytes per retained result. Font, renderer, backend, caller, display memory and stack remain additional.
+
+Each valid call snapshots eight source bytes, clears eight result bytes and samples **width×height pixels**, from 1 to 64. Each sampled set bit reads and writes its destination byte. These are glyph-buffer operations, **not all CPU accesses or measured cycles**. Smaller requests also perform repeated accumulator subtraction; cost does not fall simply in proportion to output area.
+
+The output always costs eight bytes, even for 1×1. This implementation preserves a convenient asset format rather than packing smaller glyphs. Cache a useful size or prepare it at build time. All 64 dimension pairs, including the 8×8 identity, cost **512 bytes per source glyph** if stored together; one source costs eight. Store only the sizes your game needs. A hand-designed small font may preserve strokes better, and enlargement after shrinking cannot recover discarded details.
+
+This does not change text advance, bearings or wrapping. A proportional font must keep its cropped pixels and metric table in agreement. Arbitrary angles, targets above eight and scale-aware layout remain separate extensions.
+
+### What the resize checks establish
+
+**543 native observations** completed for this machine with Asm198x 0.0.71 and Emu198x 0.41.0: all 64 size pairs on four source shapes, every source pixel at four representative dimensions, partial/exact overlap, rejected dimensions/addresses, normal/customised callers, and completed wrong/repaired sampling. Complete glyph/source/guard data and selected full bitmap/native frames match an independent division-based oracle. Retained controls reject missing, incomplete, corrupted and rehashed-but-wrong evidence.
+
+This qualifies the named original reset fixture, not stock-OS loading, original hardware, interrupt coexistence or cycle timing. Width/height are useful ink bounds inside the padded cell, not a promise of variable-size layout or hardware upload.
+
+- [Reusable caller and retained records](https://github.com/code198x/code-samples/tree/b6c126eedb7452a4815175081c5e8442e27513f4/bbc-micro/patterns/assembly/rendering/glyph-resize)
+- [Full shrinking contract and alternatives](https://github.com/code198x/code-samples/blob/b6c126eedb7452a4815175081c5e8442e27513f4/cross-platform/patterns/rendering/glyph-resize/README.md)
+
+<details>
+<summary>Open the glyph shrinking routine</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/glyph-resize/6502.inc" lang="asm" title="Resample independently of the display" />
 </details>
 
 <details>
