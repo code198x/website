@@ -135,7 +135,15 @@ test('turn callers are discoverable with usable code and explicit timing choices
   await page.goto('/patterns/');
   await page.getByRole('combobox',{name:'Machine',exact:true}).selectOption(system);
   const rows=page.locator('[data-pattern]:visible');
-  await expect(rows).toHaveCount(3);
+  await expect(rows).not.toHaveCount(0);
+  // New techniques may join this machine. Filtering and unique discovery are
+  // the invariants; the three required callers are still checked below.
+  for (const row of await rows.all()) {
+   await expect(row).toHaveAttribute('data-platform',system);
+  }
+  const hrefs=await rows.evaluateAll(nodes=>nodes.map(node=>node.querySelector('a')?.getAttribute('href')));
+  expect(hrefs.every(href=>href?.startsWith(`/patterns/${system}/`))).toBe(true);
+  expect(new Set(hrefs).size).toBe(hrefs.length);
   await expect(rows.locator(`a[href="/patterns/${system}/assembly/rendering/tile-region/"]`)).toHaveCount(1);
   await expect(rows.locator(`a[href="/patterns/${system}/assembly/rendering/tile-map/"]`)).toHaveCount(1);
   const turnLink=rows.locator(`a[href="/patterns/${system}/assembly/framework/turn-deadline/"]`);
