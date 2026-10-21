@@ -4,7 +4,7 @@ summary: "Reusable fixed-width characters and counted strings at any pixel posit
 platform: "sinclair-zx-spectrum"
 category: "rendering"
 difficulty: "intermediate"
-tags: ["scaling", "enlargement", "text", "fonts", "bitmap", "clipping", "maths"]
+tags: ["rotation", "reflection", "scaling", "enlargement", "text", "fonts", "bitmap", "clipping", "maths"]
 ---
 
 import CodeFromFile from '@components/CodeFromFile.astro';
@@ -156,9 +156,90 @@ Doubling both factors quadruples a cell's background area. Horizontal enlargemen
 
 A separate pre-rendered size costs more assets but can avoid runtime expansion. Pre-shifted/masked blitters or precomposed hardware characters offer other trade-offs. Fully clipped cells skip raster work after resolving fallback, retaining logical advance and consumed/missing counts. This avoids expanding invisible rows in long offscreen strings.
 
-The component owns T/BP, is non-re-entrant and supplies no OS negotiation, banking, interrupt protection or safe display interval. Keep source, font, code, contexts, stack and bitmap distinct and stable. This is a direct character/string renderer: the current fixed/proportional text-layout wrappers assume eight-pixel cells and row heights and **cannot simply be placed over this include**. A scaled layout must agree on both dimensions. Wrapping, baselines, kerning, fractional sizes, shrinking, flips and rotation remain separate work.
+The component owns T/BP, is non-re-entrant and supplies no OS negotiation, banking, interrupt protection or safe display interval. Keep source, font, code, contexts, stack and bitmap distinct and stable. This is a direct character/string renderer: the current fixed/proportional text-layout wrappers assume eight-pixel cells and row heights and **cannot simply be placed over this include**. A scaled layout must agree on both dimensions. Scaled wrapping, baselines, kerning, fractional sizes and shrinking remain separate work. The glyph transform below supplies flips and quarter-turns before drawing.
 
 The [complete source and retained records](https://github.com/code198x/code-samples/tree/b3b5eb21cb542770e9d349993f30bbe6abf91e5f/sinclair-zx-spectrum/patterns/assembly/rendering/scaled-text) contain **155 positive native calls**, the customisation and completed wrong/fixed observations. Full bitmap allocations, neighbours, public outputs, counted source/font immutability and selected entire native frames match independent expectations. Coverage includes all scale pairs, every horizontal bit phase, pens, partial/full clipping, empty/255-code input, a 256-glyph declaration and invalid declarations. Qualified tools are Asm198x 0.0.71 and Emu198x 0.41.0 for this named reset/display path; original hardware, stock-OS coexistence, live tearing and other modes need separate checks.
+
+
+## Turn or reflect a glyph
+
+An arrow can point in four directions without four hand-drawn assets. This separate **z80 glyph_transform routine** takes eight row bytes and writes eight transformed bytes. It can turn by 0°, 90°, 180° or 270° clockwise, then optionally reflect horizontally. It does not draw or rotate the arrangement of a string.
+
+<Figure src="/images/sinclair-zx-spectrum/patterns/glyph-transform/opening.png" kind="capture" alt="An original F glyph turned clockwise and drawn at four times its source size" caption="Native output: the F has turned clockwise inside its own 8×8 cell. The existing renderer enlarges that result to 32×32 pixels for inspection." />
+
+Define **F as 32 writable bytes**, include `cross-platform/patterns/rendering/glyph-transform/z80.inc` once, and set the source address, destination address and flags before calling `glyph_transform`. No extra zero-page or direct-page allocation is required. The complete caller owns the same display setup and text backend as the enlarged example above.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/glyph-transform/prepare.inc" lang="z80" title="Transform eight bytes, then draw the result" />
+
+The first call produces a one-glyph font in RAM. The rest declares that font to the existing renderer and draws it. The source is our original F glyph; the one-glyph output is deliberately assigned code 65. Change the source address to reuse the component for your own icon. No other part of the font is required by the transform.
+
+| F offset | Supply or read |
+| --- | --- |
+| 0 | Source address word, eight readable bytes |
+| 2 | Destination address word, eight writable bytes |
+| 4 | Flags 0..7: quarter-turns in bits 0..1, horizontal reflection in bit 2 |
+| 5 | Output: 1 completed, 0 rejected |
+| 6..31 | Private scratch, including an eight-byte snapshot |
+
+Use little-endian words. Inputs 0..4 survive. Flags above 7, or either address above $FFF8, reject before source/destination access. An allocation ending exactly at $10000 passes the arithmetic check; you still own its mapping and access permissions. Keep F, code and stack disjoint from both glyph buffers. Source and destination **may overlap**, including exact in-place operation: the routine snapshots all eight rows before clearing output.
+
+Clobbers: AF/BC/DE/HL and flags. Scratch is non-re-entrant. Reserve a conservative 16 stack bytes beyond the caller and interrupt requirements. The routine changes no interrupt policy or display state. An interrupt handler must preserve live registers and leave its buffers and scratch alone. The later drawing call retains the renderer's separate stack and hardware obligations.
+
+### The top-left dot must move to the top-right
+
+Coordinates inside the glyph run from 0 to 7, with Y down. A clockwise quarter-turn maps `(x,y)` to `(7−y,x)`: local (0,0) becomes (7,0). Twice gives `(7−x,7−y)`; three turns gives `(y,7−x)`; four returns the original. Reflection then maps final X to `7−X`. Doing the reflection first generally gives a different result.
+
+The transformed glyph still occupies an 8×8 cell. Scale 4 makes it a 32×32 drawn cell; [translation](/craft/maths-for-games/unit-13/) places it at the chosen screen origin. Layout advance and the order of characters do not rotate. Proportional widths and bearings need their own matching metrics; they are not updated by turning the ink. The [Maths for Games overview](/craft/maths-for-games/) places this alongside planned transform coverage without requiring that future lesson to use the routine.
+
+### Make it your own: a reflected icon
+
+Change **GLYPH_FLAGS from 1 to 4**: no turn, then horizontal reflection. The stem of F moves to the right and its top bar stays horizontal. The input/output sizes and reusable component stay the same.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/glyph-transform/customise.asm" lang="z80" title="Reflect the same source glyph" />
+
+<Figure src="/images/sinclair-zx-spectrum/patterns/glyph-transform/customise.png" kind="capture" alt="The original F reflected horizontally, with its stem at the right" caption="The changed caller ran independently. This reflects the glyph pixels; it does not reverse a string or change its advance." />
+
+To retain a whole transformed font, call once per glyph and move both pointers by eight. Check the whole bank in your caller. **Per-glyph overlap safety does not make an overlapping bank traversal safe**: one result could overwrite the next source glyph. Use separate banks or arrange traversal/snapshots deliberately.
+
+### Common mistake: a diagonal reflection instead of a turn
+
+Swapping X and Y alone produces `(y,x)`. That is a transpose: on this F, the long top bar points down from the left instead of becoming the right-hand vertical bar. The wrong routine returns success and stays inside its output buffer. Neither property proves that its picture is right.
+
+**Deliberately wrong mapping:**
+
+<CodeFromFile src="cross-platform/patterns/rendering/glyph-transform/mistakes/z80-rotation.inc" from="; BEGIN WRONG" to="; END WRONG" lang="z80" title="Swap coordinates without reversing an axis" />
+
+<Figure src="/images/sinclair-zx-spectrum/patterns/glyph-transform/wrong-rotation.png" kind="capture" alt="A completed faulty call transposes the F across its diagonal" caption="Wrong: the code completed, but its glyph bytes and displayed picture differ from a clockwise turn." />
+
+Restore the missing `7−y`:
+
+<CodeFromFile src="cross-platform/patterns/rendering/glyph-transform/mistakes/z80-rotation.inc" from="; BEGIN FIX" to="; END FIX" lang="z80" title="Turn the glyph clockwise" />
+
+<Figure src="/images/sinclair-zx-spectrum/patterns/glyph-transform/fixed-rotation.png" kind="capture" alt="The repaired F turns clockwise, matching the known-good output" caption="Fixed: the repaired program matches the positive fixture byte for byte, and the full native picture matches the independent model." />
+
+### Pay once, cache, or store the variants
+
+The transform component occupies **507 bytes**, including its eight masks; it needs 32 bytes at F, eight bytes for each retained result. Font, renderer, backend, bitmap, caller and stack are additional.
+
+A valid call reads eight source bytes into its snapshot, clears eight output bytes and scans all 64 source pixels. Each set pixel then reads and writes its destination byte. These are **glyph-buffer operations, not all CPU accesses or cycle timings**. More quarter-turns add coordinate arithmetic per set pixel. The original F contains 14 set pixels, so it makes that many destination read/modify/write operations after the eight clears.
+
+Cache the result while it is useful, or prepare the variants at build time. Eight orientations cost **64 bytes per glyph rather than eight**; eight whole 64-glyph banks cost 4,096 rather than 512. Stored variants avoid this transform call but still need drawing or transfer work. A hardware flip can be a better choice where the native display supports one; these bitmap backends do not gain that facility from this routine. No cycle or frame-budget claim follows from a correct still image.
+
+All eight transforms preserve every source bit exactly. Arbitrary-angle rotation, fractional resizing, larger pictures and pixel-aspect correction need different sampling and bounds decisions. Those remain separate extensions.
+
+### What the transform checks establish
+
+**596 native observations** completed on this machine with Asm198x 0.0.71 and Emu198x 0.41.0: all eight orientations, every single source pixel, asymmetric/full/empty glyphs, partial/exact overlap, invalid flags and wrapping addresses, plus normal, customised, faulty and repaired paths. Complete glyph/source/guard memory and selected full bitmap/native frames match an independent matrix-based oracle. The wrong rotation completed and failed the correct-image comparison; the repaired build matches the positive binary.
+
+This is the same original reset configuration as the enlargement example, with exclusive ownership of the display and buffers. Stock OS integration, original hardware, interrupt coexistence and cycle timing need separate qualification. Retained replay binds source and tools and rejects incomplete, missing, corrupted and rehashed-but-wrong evidence.
+
+- [Complete caller and records](https://github.com/code198x/code-samples/tree/9e725a15ba3208e6465c61ad6aae1cb8f5ee6923/sinclair-zx-spectrum/patterns/assembly/rendering/glyph-transform)
+- [Shared transform contract and alternatives](https://github.com/code198x/code-samples/blob/9e725a15ba3208e6465c61ad6aae1cb8f5ee6923/cross-platform/patterns/rendering/glyph-transform/README.md)
+
+<details>
+<summary>Open the glyph transform routine</summary>
+<CodeFromFile src="cross-platform/patterns/rendering/glyph-transform/z80.inc" lang="z80" title="Transform a glyph independently of the display" />
+</details>
 
 <details>
 <summary>Read the reusable integer-enlarged renderer</summary>
