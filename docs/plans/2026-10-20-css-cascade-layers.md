@@ -360,6 +360,21 @@ This replaces the earlier "settle a breakpoint scale" step: most breakpoints
 go rather than being standardised. Any that remain (navigation, say) are
 listed for Steve with a proposed scale.
 
+### 6b. Shared blocks (after every family is recomposed)
+
+Decided 2026-10-21. Recomposition alone takes about a quarter out of a
+family's CSS: the Vault went from about 50 KB to 42 KB with its pages
+nearly unchanged. Extrapolated, the site reaches roughly 340-360 KB, not
+the 238 KB target. Most of what remains is each family restating the same
+block styles: prose type, tables, captions, card and list items, section
+headings, mastheads. Of 418 KB on 2026-10-21, 257 KB sat in components'
+own `<style>` blocks.
+
+So once the families are recomposed, define a small set of shared blocks
+and move every family onto them. This harmonises how pages look, a little
+and on purpose, so each block's adoption is an **intended change**
+reviewed by screenshot at 320, 768 and 1440 px.
+
 ### 7. Files by purpose
 
 Rename or merge the files named after rollouts (`design-rollout.css`,
