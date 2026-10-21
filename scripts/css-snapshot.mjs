@@ -5,8 +5,12 @@
 // change how any page looks. Two snapshots, taken before and after a change and
 // compared with css-diff.mjs, show every property that moved.
 //
-// Usage: node scripts/css-snapshot.mjs <out-dir> [--only <route-name>]
+// Usage: node scripts/css-snapshot.mjs <out-dir> [--only <route-name>] [--states]
 // Serves dist/ with `astro preview`, so run `npm run build` first.
+//
+// --states also records each page with every element hovered and focused
+// (<route>.<viewport>.states.json.gz). A snapshot of a page as loaded cannot
+// see a :hover or :focus-visible rule that has started losing to another.
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { gzipSync } from 'node:zlib';
@@ -26,7 +30,8 @@ if (!outDir) {
   console.error('Usage: node scripts/css-snapshot.mjs <out-dir> [--only <route-name>]');
   process.exit(2);
 }
-const only = rest[0] === '--only' ? rest[1] : undefined;
+const only = rest.includes('--only') ? rest[rest.indexOf('--only') + 1] : undefined;
+const withStates = rest.includes('--states');
 const routes = JSON.parse(await fs.readFile(new URL('./css-routes.json', import.meta.url), 'utf8'))
   .filter(route => !only || route.name === only);
 if (routes.length === 0) {
@@ -97,6 +102,30 @@ function collect() {
   return elements;
 }
 
+// Runs in the page. Rewrites :hover, :focus-visible, :focus-within and :focus
+// in every rule to a class and gives every element those classes. A class
+// weighs the same as a pseudo-class and each rule keeps its place and layer,
+// so the cascade decides between state rules as it would for a real hover or
+// focus. Every element takes the states at once, which is more than a pointer
+// can do, but the same in both builds being compared.
+function forceStates() {
+  const states = [[/:focus-within/g, '.__state-fw'], [/:focus-visible/g, '.__state-fv'], [/:focus(?![\w-])/g, '.__state-f'], [/:hover/g, '.__state-h']];
+  const visit = rules => {
+    for (const rule of rules) {
+      if (rule.selectorText && /:(hover|focus)/.test(rule.selectorText)) {
+        let text = rule.selectorText;
+        for (const [pattern, replacement] of states) text = text.replace(pattern, replacement);
+        rule.selectorText = text;
+      }
+      if (rule.cssRules) visit(rule.cssRules);
+    }
+  };
+  for (const sheet of document.styleSheets) {
+    try { visit(sheet.cssRules); } catch { /* a sheet from another origin */ }
+  }
+  for (const element of document.querySelectorAll('*')) element.classList.add('__state-fw', '__state-fv', '__state-f', '__state-h');
+}
+
 async function settle(page) {
   // Load every declared face, not just those already requested: a face first
   // needed late (a display heading's italic, say) can still be loading when
@@ -151,6 +180,12 @@ try {
         const file = path.join(outDir, `${route.name}.${viewport}.json.gz`);
         await fs.writeFile(file, gzipSync(JSON.stringify({ route: route.path, viewport, elements })));
         console.log(`${route.name} ${viewport}: ${Object.keys(elements).length} elements`);
+        if (withStates) {
+          await page.evaluate(forceStates);
+          await settle(page);
+          const forced = await page.evaluate(collect);
+          await fs.writeFile(path.join(outDir, `${route.name}.${viewport}.states.json.gz`), gzipSync(JSON.stringify({ route: route.path, viewport, elements: forced })));
+        }
       } catch (error) {
         failed = true;
         console.error(`${route.name} ${viewport}: ${error.message.split('\n')[0]}`);
