@@ -27,3 +27,11 @@ for(const[machine,sourceMachine,language,slug]of configs){
   await page.goto(`/patterns/platform/${machine}/`);await page.getByLabel('Search patterns',{exact:true}).fill(basic?'Wait for a command':'new fire press');await expect(page.locator(`[data-pattern]:visible a[href="${route}"]`)).toHaveCount(1);
  });
 }
+
+test('comparison keeps earlier language routes and the next three callers together',async({page})=>{
+ await page.goto('/patterns/cross-platform/framework/game-loop-choices/');const prose=page.locator('.pattern-prose');
+ for(const[machine,,language,slug]of configs)await expect(prose.locator(`a[href="/patterns/${machine}/${language}/framework/${slug}/"]`)).toHaveCount(1);
+ for(const machine of ['acorn-atom','amstrad-cpc'])for(const language of ['basic','assembly'])await expect(prose.locator(`a[href="/patterns/${machine}/${language}/framework/command-loop/"]`)).toHaveCount(1);
+ for(const machine of ['bbc-micro','acorn-electron'])await expect(prose.locator(`a[href="/patterns/${machine}/basic/framework/turn-loop/"]`)).toHaveCount(1);
+ for(const machine of ['atari-2600','atari-5200','atari-7800'])await expect(prose.locator(`a[href="/patterns/${machine}/assembly/framework/turn-loop/"]`)).toHaveCount(1);
+});
