@@ -1,0 +1,92 @@
+---
+title: "Sample keys without repeating turns on Acorn Electron"
+summary: "A reusable BASIC press-edge update with a MOS-paced caller, separate display work and verified held-key and missing-wait mistakes."
+platform: "acorn-electron"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "BASIC", "input", "press-detection", "timing"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Tap **Space**: the turn counter advances. Hold it down: the loop keeps sampling, but the world takes just one turn. Release it and press again for the next move.
+
+That gives us a useful split. The caller owns pacing, input and drawing. A small callable routine decides whether the current key sample represents a **new press**. You can keep that routine when the game around it grows.
+
+![The Acorn Electron BASIC caller after two presses, showing TURN 2.](/images/acorn-electron/patterns/basic-turn-loop/working.png)
+
+## Enter the working program
+
+Enter the caller, then the routines below, as **one numbered BASIC program**. Type `RUN`. Use a stock Electron with its own MOS and BASIC; this caller selects **MODE 6** and keeps normal operating-system interrupt handling.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/turn-loop/caller.bas" lang="basic" title="The complete caller: wait, sample, apply a turn and draw changes" />
+
+Startup happens once. Each pass waits through MOS, reads Space with `INKEY(-99)`, applies the rule and redraws only if a turn was accepted. `F%` counts loop iterations; it is not the turn counter and is not a reliable elapsed-time clock.
+
+The addresses above `HIMEM=&3000` are a diagnostic mirror: `&3000` holds the counter, `&3001–&3002` the iteration count and `&3003` the accepted flag. Two guard bytes follow at `&3004–&3005`. The reusable routines do not require those six bytes. Remove the mirror writes if your game does not need them, and reserve any memory you do keep against BASIC’s growing program and variable workspace.
+
+## The reusable pieces
+
+Copy lines **1000–1130** to free line numbers, or renumber them and the call sites together. `GOSUB 1000` performs the wait. `GOSUB 1100` applies the press rule.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/turn-loop/routines.bas" lang="basic" title="MOS pacing and a reusable press-edge turn update" />
+
+`*FX 19` uses the same documented MOS synchronisation service as the [assembly wait](/patterns/acorn-electron/assembly/framework/mos-game-loop/). It passes through the MOS command interpreter, so it costs more than a short assembly call. Keep the normal IRQ service running; this is not a replacement for a takeover game’s timing code.
+
+For the rule update, put a TRUE/FALSE sample in `K%`. Keep `P%`, the previous sample, between calls. The key is newly pressed when it is held now and was not held previously.
+
+| Global | Ownership and result |
+| --- | --- |
+| `N%` | Counter; new presses add the step modulo 256 |
+| `S%` | Step; input, preserved |
+| `K%` | Current TRUE/FALSE sample; input, preserved |
+| `P%` | Previous sample; replaced with K% on every call |
+| `C%` | Result: 1 for a new accepted press, 0 otherwise |
+
+Initialise `P%=FALSE` once. Do not clear it inside the loop, or every held sample looks new. Consume `C%` before another routine reuses that global. These are BASIC globals, not local variables; rename them consistently to avoid collisions. Each GOSUB uses an interpreter return frame. The press routine owns no display, keyboard driver, heap or interrupt handler.
+
+## Customise the useful parts
+
+Change `S%=1` to `S%=2`. Two presses now produce **0 → 2 → 4**. Holding the first press still adds only two once. No extra routine or state variable is needed.
+
+![The customised Acorn Electron BASIC caller after two presses, showing TURN 4.](/images/acorn-electron/patterns/basic-turn-loop/step-two.png)
+
+Start `N%` at 254 to check **254 → 255 → 0**. The mask makes this a byte counter even though BASIC integers are wider. If you need a larger move count, change the representation and wrap policy deliberately.
+
+To use another key, replace the negative INKEY key number with the documented one. An ASCII code is a different kind of query. A short tap entirely between samples can be missed; an input queue or interrupt capture needs a different contract.
+
+## Common mistake: treating held as newly pressed
+
+This replacement is **deliberately broken**. It looks only at the current sample, so holding Space pours turns into the counter.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/turn-loop/mistakes/no-edge.bas" lang="basic" title="Broken routine: held input becomes repeated turns" />
+
+![The faulty Acorn Electron caller after holding Space, showing multiple unwanted turns.](/images/acorn-electron/patterns/basic-turn-loop/no-edge.png)
+
+Restore the original routine and keep `P%` between calls. The native checks run the repair afresh: press once, hold, release and press again. The working progression is **0 → 1 → 1 → 2**.
+
+## Common mistake: removing the wait
+
+The next replacement removes the MOS wait while keeping the press rule intact. The iteration counter now follows interpreter work rather than display fields.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/turn-loop/mistakes/no-wait.bas" lang="basic" title="Broken pacing: RETURN without waiting for a field" />
+
+The tested faulty Electron caller completes **43 iterations in 30 native fields**, so the same field-rate guard rejects it. Restore `*FX 19` in the wait routine. A program that prints its speed to the screen can be misleading: printing itself adds work and can conceal the missing wait.
+
+## Keep enough time for the work
+
+A wait supplies a synchronisation point; it cannot make slow work fit. In our diagnostic, redrawing the text every pass made the Electron miss alternate fields. Drawing only when state changes restores **30 idle iterations in 30 native fields** on each tested machine. A frame containing a redraw can still take longer. That is a workload observation, not a promise for every game.
+
+The Electron’s display and CPU share access to RAM. Similar BASIC and MOS interfaces do not give it the BBC Micro’s available CPU budget. Keep expensive drawing separate from rules, measure your real workload, and choose an elapsed-time source if the game has timed turns. A missed field is not a reason to take extra player turns.
+
+[Choose how your game advances](/patterns/cross-platform/framework/game-loop-choices/) separates progression from timing and presentation. The [other Acorn BASIC port](/patterns/bbc-micro/basic/framework/turn-loop/) uses the same maintained source and has its own native execution record.
+
+## What we checked
+
+**Code status: firmware-entered and emulator-executed.** Released Emu198x 0.44.0 cold-boots the Electron, types the whole program and drives actual key press/release events. The [native record](https://github.com/code198x/code-samples/blob/bda0f0561d2b884a6ee75d6d392ca3953158f88f/acorn-electron/patterns/basic/framework/turn-loop/verification/results.json) identifies its own tool binary, firmware, source and captures.
+
+Seven fresh cases cover default and step-two input, a nonzero start, byte wrap, the held-key fault, a repaired run and an isolated missing-wait fault. Checks observe guest state and guards, measure field pacing and reject idle advancement or repeated working turns. The retained checker rejects incomplete cases and altered inputs; it does not stand in for fresh emulation. No original-hardware or complete-game performance claim is implied.
+
+## Primary references
+
+Acorn’s [*BBC Microcomputer User Guide*](https://www.bbcmicrobot.com/docs/BBC_User_Guide.pdf), `INKEY`, its negative-key table and `*FX 19`; Acorn’s [*Electron User Guide*](https://www.acornelectron.co.uk/ugs/electron/acorn_computers/ug-english/contents_eng.html), the corresponding BASIC and operating-system commands.
