@@ -82,14 +82,13 @@ test('@built glyph entries, captures and the comparison fit 320px with usable co
   }
 });
 
-test('@built glyph readers remain accessible in light and dark themes', async ({page}) => {
-  for(const colorScheme of ['light','dark'] as const){
+// One scan per test, so each of the sixteen has the whole test timeout.
+for (const colorScheme of ['light', 'dark'] as const) for (const url of routes) {
+  test(`@built ${url} glyph reader remains accessible in the ${colorScheme} theme`, async ({page}) => {
     await page.emulateMedia({colorScheme,reducedMotion:'reduce'});
-    for(const url of routes){
-      await page.goto(url);
-      await page.evaluate(()=>document.fonts.ready);
-      await page.addStyleTag({content:'*,*::before,*::after{animation:none!important;transition:none!important}'});
-      expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations,url).toEqual([]);
-    }
-  }
-});
+    await page.goto(url);
+    await page.evaluate(()=>document.fonts.ready);
+    await page.addStyleTag({content:'*,*::before,*::after{animation:none!important;transition:none!important}'});
+    expect((await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21a','wcag21aa']).analyze()).violations,url).toEqual([]);
+  });
+}
