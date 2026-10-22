@@ -1,0 +1,89 @@
+---
+title: "Wait for a command on Amstrad CPC"
+summary: "Read a command, update the world once and wait again, with a callable BASIC routine you can put in your own game."
+platform: "amstrad-cpc"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "BASIC", "input"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Type `GO` and press Return. The screen changes from **TURN 0** to **TURN 1**. Make another move and it becomes **TURN 2**. You can take your time choosing: the rules wait for you.
+
+That is enough of a game loop for an untimed command game. The useful split is between getting a command, deciding what it does and showing the result. We can replace any one of those without hiding the others inside a giant routine.
+
+![The working Amstrad CPC caller after two accepted commands, showing TURN 2.](/images/amstrad-cpc/patterns/command-loop/working.png)
+
+## Put it in a program
+
+Enter the caller below, then the routine underneath it, into **a CPC464’s Locomotive BASIC**. They form **one numbered program**. Type `RUN` after entering both. Use uppercase commands as shown; this small reader compares the exact string GO, not a full adventure vocabulary. `NO` is a useful rejected command. Other strings leave the counter unchanged.
+
+<CodeFromFile src="amstrad-cpc/patterns/basic/framework/command-loop/caller.bas" lang="basic" title="A complete caller: initialise, draw, read, update, repeat" />
+
+The line numbered 20 initialises the state **once**. The loop returns to the drawing line, then waits at `INPUT`. There is no game clock here. The machine’s own services continue, but our rules do not advance until a command is submitted.
+
+## The reusable routine
+
+Copy lines 1000–1040 into free line numbers in your program. Set `N` to the current counter and `S` to the amount an accepted command should add. Put the submitted command in `A$` and call `GOSUB 1000`.
+
+<CodeFromFile src="amstrad-cpc/patterns/basic/framework/command-loop/routines.bas" lang="basic" title="A rule update with no input or screen ownership" />
+
+| State | Meaning |
+| --- | --- |
+| `N` | Current progress; updated only for an accepted command |
+| `S` | Amount to add; preserved by the routine |
+| `A$` | Submitted command; preserved by the routine |
+| `C` | Result: 1 for accepted, 0 for rejected; replaced on every call |
+
+`C` lets your caller decide whether to move enemies, spend a move or redraw a room. Check it before another routine reuses that variable. The counter demonstrates the update point; a complete adventure still needs its own world state and command rules.
+
+Use integer N and S values from 0 to 255. AND 255 wraps the result into that range, so 255 plus 1 becomes 0. This is a rule for the counter, not a claim that a BASIC numeric variable occupies one byte.
+
+## Own the state and line numbers
+
+The four variables are BASIC globals. The routine uses the interpreter’s `GOSUB`/`RETURN` stack, changes only `N` and `C`, and assumes a normal single caller. Do not jump into it with `GOTO`, or nest another owner of these same variables while a call is in progress.
+
+The caller uses MEMORY 39999 to reserve addresses 40000 and 40001, then mirrors N and C there for the verifier. The routine itself never touches them. Your game can remove both POKEs and the reservation together. If you keep them, reserve those bytes against every other user. MODE 1 and CLS belong to this caller’s screen setup, not to the reusable rule update.
+
+When combining programs, keep these line numbers free or change every call target along with them. Rename globals consistently if they clash. In particular, the [map-query routines](/patterns/amstrad-cpc/basic/rendering/tile-map/) also use `C`: consume or save the acceptance result before asking a map question.
+
+## Make it your own
+
+Use this caller in place of the first one and keep the same `routines.bas`. The change is `S=2`. Two accepted commands now show **TURN 2**, then **TURN 4**.
+
+<CodeFromFile src="amstrad-cpc/patterns/basic/framework/command-loop/customise.bas" lang="basic" title="Add two progress units per accepted command" />
+
+![The customised Amstrad CPC caller after two commands, showing TURN 4.](/images/amstrad-cpc/patterns/command-loop/step-two.png)
+
+Each submitted command still causes one call. We changed the amount added; we did not read a second command or update a whole world twice. That distinction matters when a move spends two energy units but gives enemies only one response.
+
+This changes an initial value, with no extra routine, scratch variable or artwork. The screen is still cleared and reprinted after each command. Avoid treating the short rule update as a measurement of how quickly your eventual game can redraw.
+
+## Common mistake: starting again every move
+
+**The next caller is deliberately broken.** It resets `N` immediately before the call. The first move seems fine. The second leaves the screen at **TURN 1** again.
+
+<CodeFromFile src="amstrad-cpc/patterns/basic/framework/command-loop/mistakes/reset-each-turn.bas" lang="basic" title="Broken caller: state reset inside the loop" />
+
+![The faulty Amstrad CPC caller after two accepted commands, still showing TURN 1.](/images/amstrad-cpc/patterns/command-loop/reset-mistake.png)
+
+The routine cannot remember state that its caller has just erased. A rejected command is worse: it resets the count to zero without taking a turn. Keep the startup assignment before the loop and use the original caller above. Its two accepted commands give **0 → 1 → 2**; the broken one gives **0 → 1 → 1**. The captures and measured states come from separate cold runs of those callers.
+
+## When a blocking reader stops being enough
+
+This loop is useful while the world can wait. A countdown, animated cursor or sound player that needs regular calls cannot rely on `INPUT` returning soon. Keep the rule routine, but give that work a non-blocking input loop or an explicitly owned interrupt service, and choose what happens when input and a deadline coincide. That is an extension needing its own checks.
+
+[Choose how your game advances](/patterns/cross-platform/framework/game-loop-choices/) separates progression, clocks and presentation, and links callers that service a deadline while waiting. A turn-based game can have a timer; this particular caller deliberately has none.
+
+## Take the code and check it
+
+**Code status: firmware-entered and emulator-executed**, using Emu198x **0.44.0**, CPC464 PAL, MODE 1 and the exact firmware/tool identities in the [native record](https://github.com/code198x/code-samples/blob/c64a195517c5dae67f7e65220adcbee688761099/amstrad-cpc/patterns/basic/framework/command-loop/verification/reusable/results.json).
+
+The checks wait 120 native frames before and after commands, submit rejected input, observe accepted and rejected flags, and repeat with `N=37`. The step-two caller and the reset mistake run independently. The CPC check also executes the 254 → 255 → 0 wrap. The record checker rejects missing source bindings and falsified progression; it checks retained evidence, while the native verifier reruns the machine. These observations establish this workload, not physical-hardware timing or a complete emulator.
+
+[Callers, routine, reproduction instructions and native captures](https://github.com/code198x/code-samples/tree/c64a195517c5dae67f7e65220adcbee688761099/amstrad-cpc/patterns/basic/framework/command-loop) are kept together. The deliberately broken caller stays in `mistakes/`, separate from the recommended one.
+
+## Language reference
+
+Amstrad, [*CPC464 User Manual*](https://www.mypccollection.altervista.org/downloads/manuali/Amstrad/CPC464_Manual%20%28eng%29.pdf), BASIC keywords: `GOSUB`, `RETURN`, `INPUT`, `MEMORY`, `POKE` and `AND`.
