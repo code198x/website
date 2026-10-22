@@ -1,0 +1,53 @@
+---
+title: "Trigger a sound on BBC Micro"
+summary: "Reuse a small real effect, understand who stops it, and compare its native output with an omitted-trigger control."
+platform: "bbc-micro"
+category: "audio"
+difficulty: "beginner"
+tags: ["audio", "assembly", "ownership", "effects"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Give an accepted action a sound. The same caller changes its picture and triggers this effect; a second version performs the action with the trigger removed. Listen to both.
+
+<p>Working effect</p>
+<audio controls preload="none" aria-label="BBC Micro working effect" src="/audio/patterns/bbc-micro/assembly/sound.wav"><a href="/audio/patterns/bbc-micro/assembly/sound.wav">Listen to the working native recording</a></audio>
+
+<p>Trigger omitted</p>
+<audio controls preload="none" aria-label="BBC Micro omitted-trigger control" src="/audio/patterns/bbc-micro/assembly/sound-negative.wav"><a href="/audio/patterns/bbc-micro/assembly/sound-negative.wav">Listen to the native control recording</a></audio>
+
+## Take the effect
+
+<CodeFromFile src="bbc-micro/patterns/assembly/input/mos-controls/sound.inc" lang="6502" title="The reusable effect" />
+
+The SOUND block is eight bytes: channel 17 flushes and uses channel 1, amplitude -15, pitch 100, duration 2. OSWORD 7 copies it into MOS audio state. Playback is asynchronous; call from main with MOS IRQ services intact. A/X/Y/flags change.
+
+Define OSWORD=$FFF1, include the routine and its eight-byte block, then JSR trigger_sound from main. The MOS copies the block; its IRQ-driven sound system handles playback after the call. Channel 17 requests a flush of channel 1’s queue. That policy deliberately replaces a previous effect on that channel.
+
+## Change it and recognise a mistake
+
+Change the SOUND block. Queuing versus flushing is a deliberate channel policy; copying the block gives the OS its own queued parameters.
+
+The omitted-trigger control still accepts the action but fails the same audio guard as the working caller. Keyboard clicks or other machine output are not enough: the BASIC checks compare against a separate rejected-command recording.
+
+The working implementation above repairs that omission. If an effect instead drones on, check the mute/service path and that its state is initialised. Servicing twice makes a counted effect shorter; servicing only after input can leave it running while the player waits. Those are lifecycle decisions to test when adapting it.
+
+## Run the caller
+
+Build `bbc-micro/patterns/assembly/input/mos-controls`, type the generated `build/loader.bas` in the recorded BASIC, then RUN. Move with **Q/A/O/P**; Space restarts. Holding a direction keeps moving; holding Space must allow movement after the first restart.
+
+<Figure src="/images/bbc-micro/patterns/column-expansion/assembly/collected.png" alt="BBC Micro native caller after accepted input." caption="Captured from the running caller in the configuration below." />
+
+<CodeFromFile src="bbc-micro/patterns/assembly/input/mos-controls/demo.asm" lang="6502" title="Where setup, trigger and service belong" />
+
+Compare [blocking, serviced and queued sound](/patterns/cross-platform/audio/making-a-sound/) when choosing the next step.
+
+## Verification and sources
+
+Target: **BBC Model B MOS 1.20/BASIC II, MODE 6**. These callers were executed with released Emu198x **0.44.1**; assembly uses Asm198x **0.0.71**. The [sample folder](https://github.com/code198x/code-samples/tree/d385b67e471a8d9e8b6c452c9e090fa22576adaf/bbc-micro/patterns/assembly/input/mos-controls) contains reproduction instructions and [retained observations](https://github.com/code198x/code-samples/blob/d385b67e471a8d9e8b6c452c9e090fa22576adaf/bbc-micro/patterns/assembly/input/mos-controls/verification/results.json). The independent checker binds source, native captures and actual output; its rejection tests exercise wrong state, missing files and false audio claims.
+
+This qualifies the named emulator/firmware path. Pitch accuracy, original hardware and other peripherals require their own observations. The muted MOS run is an explicit diagnostic RAM patch to RTS at trigger_sound, restored after the check.
+
+Acorn, BBC Microcomputer Advanced User Guide / Electron technical documentation: OSBYTE &81 negative INKEY and OSWORD &07 SOUND block; MOS IRQ ownership.

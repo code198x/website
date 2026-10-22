@@ -1,0 +1,46 @@
+---
+title: "Read keyboard controls on BBC Micro"
+summary: "Reuse the actual machine-specific reader, with its caller, state, ownership and a diagnosed input mistake."
+platform: "bbc-micro"
+category: "input"
+difficulty: "beginner"
+tags: ["input", "assembly", "ownership", "press-edges"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Build `bbc-micro/patterns/assembly/input/mos-controls`, type the generated `build/loader.bas` in the recorded BASIC, then RUN. Move with **Q/A/O/P**; Space restarts. Holding a direction keeps moving; holding Space must allow movement after the first restart.
+
+<Figure src="/images/bbc-micro/patterns/column-expansion/assembly/collected.png" alt="BBC Micro native caller after accepted input." caption="Captured from the running caller in the configuration below." />
+
+## Take the reader
+
+Copy the input routine with its two tables and private key_index byte. Define OSBYTE=$FFF4 and provide one byte called controls. The caller shows read_controls followed by detect_edges; previous, pressed and released each need their own byte. Initialise previous before the first read.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/input/mos-controls/input.inc" lang="6502" title="The reusable reader" />
+
+read_controls scans Q/A/O/P/Space through MOS OSBYTE 129. It returns controls bits 1/2/4/8/16 for up/down/left/right/action, without consuming the character buffer. A/X/Y/flags change; key_index is private scratch.
+
+Call from main with MOS IRQ services active. The routine samples five keys without draining the character buffer. Its private scratch makes it non-reentrant; an interrupt must not call it halfway through another scan.
+
+
+## Change it and recognise a mistake
+
+Change the key-number/mask tables together. Read once, then derive pressed/released before replacing previous.
+
+If a held Space keeps restarting the player, the action path is testing controls instead of pressed, or clearing previous during reset. The working caller is checked while Space stays held and a direction is pressed: movement must still occur. Keep held directions and restart edges separate.
+
+## The complete caller
+
+<CodeFromFile src="bbc-micro/patterns/assembly/input/mos-controls/demo.asm" lang="6502" title="Working setup and integration" />
+
+For more responsive controls, compare polling, buffering and press edges in [input choices](/patterns/cross-platform/input/edge-detection/).
+
+## Verification and sources
+
+Target: **BBC Model B MOS 1.20/BASIC II, MODE 6**. These callers were executed with released Emu198x **0.44.1**; assembly uses Asm198x **0.0.71**. The [sample folder](https://github.com/code198x/code-samples/tree/d385b67e471a8d9e8b6c452c9e090fa22576adaf/bbc-micro/patterns/assembly/input/mos-controls) contains reproduction instructions and [retained observations](https://github.com/code198x/code-samples/blob/d385b67e471a8d9e8b6c452c9e090fa22576adaf/bbc-micro/patterns/assembly/input/mos-controls/verification/results.json). The independent checker binds source, native captures and actual output; its rejection tests exercise wrong state, missing files and false audio claims.
+
+This qualifies the named emulator/firmware path. Pitch accuracy, original hardware and other peripherals require their own observations. The muted MOS run is an explicit diagnostic RAM patch to RTS at trigger_sound, restored after the check.
+
+Acorn, BBC Microcomputer Advanced User Guide / Electron technical documentation: OSBYTE &81 negative INKEY and OSWORD &07 SOUND block; MOS IRQ ownership.

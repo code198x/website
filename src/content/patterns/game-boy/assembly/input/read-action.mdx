@@ -1,0 +1,52 @@
+---
+title: "Read a button on Game Boy"
+summary: "Reuse the actual machine-specific reader, with its caller, state, ownership and a diagnosed input mistake."
+platform: "game-boy"
+category: "input"
+difficulty: "beginner"
+tags: ["input", "assembly", "ownership", "press-edges"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Build the complete caller with `make -C nintendo-game-boy/patterns/assembly/input/read-action`. Press **A** once, keep it held, then release and press again. The piece moves on each new press and returns to its starting position after two; holding does not repeat the action. Load the cartridge produced by the Makefile in the named configuration; retain its reset/header setup.
+
+<Figure src="/images/game-boy/patterns/column-expansion/assembly/second-press.png" alt="Game Boy native caller after accepted input." caption="Captured from the running caller in the configuration below." />
+
+## Take the reader
+
+`sample.inc` is an inline hardware sampler: include it where the caller samples input. It has no RET/RTS and must not be called as a subroutine. It supplies the held state described below; the caller supplies previous-state storage and decides what a new press does.
+
+<CodeFromFile src="nintendo-game-boy/patterns/assembly/input/read-action/sample.inc" lang="sm83" title="The reusable reader" />
+
+Writing $10 to JOYP selects action buttons. Six settling reads precede active-low bit-0 normalisation; B receives 0/1 for A. AF/B change, and the row remains selected.
+
+Calculate a new-press mask as current AND NOT previous, then store current as previous on every update, including release. Test held state for continuous movement and the new-press mask for an action that should happen once. A key already held at the caller’s first sample counts as a press because previous starts at zero.
+
+Caller storage: previous=$C001; turn=$C000, field clock=$C002/$C003; SP=$FFFE, interrupts disabled. The sample’s display initialiser and any interrupts have their own ownership requirements; keep them with this complete example.
+
+
+## Change it and recognise a mistake
+
+Use another JOYP row or combine rows deliberately. Hardware switch bounce and input lost between polls are separate from the release/press filter.
+
+The broken caller feeds held state into the action decision. Keeping the button down advances repeatedly; the native fault run reaches 32 instead of remaining at one. Restore the previous-state comparison and update previous on release as well.
+
+<CodeFromFile src="nintendo-game-boy/patterns/assembly/input/read-action/mistakes/no-edge.asm" lang="sm83" title="Deliberately broken input/update path" />
+
+<Figure src="/images/game-boy/patterns/column-expansion/assembly/no-edge.png" alt="Game Boy deliberately broken input caller." caption="Observed fault; use the working caller to repair it." />
+
+## The complete caller
+
+<CodeFromFile src="nintendo-game-boy/patterns/assembly/input/read-action/demo.asm" lang="sm83" title="Working setup and integration" />
+
+For more responsive controls, compare polling, buffering and press edges in [input choices](/patterns/cross-platform/input/edge-detection/).
+
+## Verification and sources
+
+Target: **DMG default reset without boot ROM, 32 KiB cartridge**. These callers were executed with released Emu198x **0.44.1**; assembly uses Asm198x **0.0.71**. The [sample folder](https://github.com/code198x/code-samples/tree/d385b67e471a8d9e8b6c452c9e090fa22576adaf/nintendo-game-boy/patterns/assembly/input/read-action) contains reproduction instructions and [retained observations](https://github.com/code198x/code-samples/blob/d385b67e471a8d9e8b6c452c9e090fa22576adaf/nintendo-game-boy/patterns/assembly/input/read-action/verification/results.json). The independent checker binds source, native captures and actual output; its rejection tests exercise wrong state, missing files and false audio claims.
+
+This qualifies the named emulator/firmware path. Pitch accuracy, original hardware and other peripherals require their own observations. 
+
+Nintendo, Game Boy Programming Manual v1.1: P1/JOYP scan example (six action-button reads), LCDC/LY access rules and NR10–NR14/NR50–NR52.

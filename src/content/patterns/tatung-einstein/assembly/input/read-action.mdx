@@ -1,0 +1,52 @@
+---
+title: "Read a button on Tatung Einstein"
+summary: "Reuse the actual machine-specific reader, with its caller, state, ownership and a diagnosed input mistake."
+platform: "tatung-einstein"
+category: "input"
+difficulty: "beginner"
+tags: ["input", "assembly", "ownership", "press-edges"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Build the complete caller with `make -C tatung-einstein/patterns/assembly/input/read-action`. Press **Space** once, keep it held, then release and press again. The piece moves on each new press and returns to its starting position after two; holding does not repeat the action. Attach `build/demo.dsk` and use Control-BREAK to let MOS boot it. This is a disk-boot program, not a CP/M or BASIC loader.
+
+<Figure src="/images/tatung-einstein/patterns/column-expansion/assembly/second-press.png" alt="Tatung Einstein native caller after accepted input." caption="Captured from the running caller in the configuration below." />
+
+## Take the reader
+
+`sample.inc` is an inline hardware sampler: include it where the caller samples input. It has no RET/RTS and must not be called as a subroutine. It supplies the held state described below; the caller supplies previous-state storage and decides what a new press does.
+
+<CodeFromFile src="tatung-einstein/patterns/assembly/input/read-action/sample.inc" lang="z80" title="The reusable reader" />
+
+Select AY register 14 and write $FE for keyboard row 0, then select register 15 and read port $02. Space is active-low bit 6. B receives 0/$40; AF/B and the AY register selection change.
+
+Calculate a new-press mask as current AND NOT previous, then store current as previous on every update, including release. Test held state for continuous movement and the new-press mask for an action that should happen once. A key already held at the caller’s first sample counts as a press because previous starts at zero.
+
+Caller storage: previous=$8001; turn=$8000, field clock=$8002/$8003; stack below $FFF0. The sample’s display initialiser and any interrupts have their own ownership requirements; keep them with this complete example.
+
+
+## Change it and recognise a mistake
+
+Keep the dedicated keyboard interrupt masked as in startup, or synchronise all AY register selections. An interrupt between address and data accesses can redirect a write.
+
+The broken caller feeds held state into the action decision. Keeping the button down advances repeatedly; the native fault run reaches 32 instead of remaining at one. Restore the previous-state comparison and update previous on release as well.
+
+<CodeFromFile src="tatung-einstein/patterns/assembly/input/read-action/mistakes/no-edge.asm" lang="z80" title="Deliberately broken input/update path" />
+
+<Figure src="/images/tatung-einstein/patterns/column-expansion/assembly/no-edge.png" alt="Tatung Einstein deliberately broken input caller." caption="Observed fault; use the working caller to repair it." />
+
+## The complete caller
+
+<CodeFromFile src="tatung-einstein/patterns/assembly/input/read-action/demo.asm" lang="z80" title="Working setup and integration" />
+
+For more responsive controls, compare polling, buffering and press edges in [input choices](/patterns/cross-platform/input/edge-detection/).
+
+## Verification and sources
+
+Target: **TC-01 PAL, MOS 1.2, Ctrl-BREAK disk boot**. These callers were executed with released Emu198x **0.44.1**; assembly uses Asm198x **0.0.71**. The [sample folder](https://github.com/code198x/code-samples/tree/d385b67e471a8d9e8b6c452c9e090fa22576adaf/tatung-einstein/patterns/assembly/input/read-action) contains reproduction instructions and [retained observations](https://github.com/code198x/code-samples/blob/d385b67e471a8d9e8b6c452c9e090fa22576adaf/tatung-einstein/patterns/assembly/input/read-action/verification/results.json). The independent checker binds source, native captures and actual output; its rejection tests exercise wrong state, missing files and false audio claims.
+
+This qualifies the named emulator/firmware path. Pitch accuracy, original hardware and other peripherals require their own observations. 
+
+Tatung, Einstein Hardware Manual: programmable sound generator/keyboard interface and port decoding; MOS disk boot header; General Instrument AY-3-8910 data manual.
