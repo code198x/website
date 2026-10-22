@@ -91,6 +91,12 @@ test.describe('layout primitives', () => {
       const cappedColumns = new Set(capped.children.map(child => Math.round(child.x))).size;
       const cappedFit = Math.max(1, Math.floor((capped.own.width + capped.rem) / (6 * capped.rem + capped.rem)));
       expect(cappedColumns).toBe(Math.min(cappedFit, 3));
+      // Its rows are 2rem apart (rowSpace 8) while its columns keep 1rem.
+      const cappedRows = [...new Set(capped.children.map(child => Math.round(child.y)))].sort((a, b) => a - b);
+      const firstRow = capped.children.filter(child => Math.round(child.y) === cappedRows[0]);
+      const secondRow = capped.children.filter(child => Math.round(child.y) === cappedRows[1]);
+      expect(secondRow[0].y - Math.max(...firstRow.map(child => child.y + child.height))).toBeCloseTo(2 * capped.rem, 0);
+      if (firstRow.length > 1) expect(firstRow[1].x - (firstRow[0].x + firstRow[0].width)).toBeCloseTo(capped.rem, 0);
 
       // Cover: at least 20rem tall, the marked child in the middle.
       const cover = await boxes(page, 'cover');
