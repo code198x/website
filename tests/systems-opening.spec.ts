@@ -69,3 +69,14 @@ test('catalogue search, availability and other arrangements remain intact', asyn
   await expect(page.locator('.systems-opening')).toHaveCount(0);
   await expect(page.getByRole('searchbox', { name: 'Find a machine' })).toBeVisible();
 });
+
+test('switching arrangement lands on the catalogue, open, not the top of the page', async ({ page }) => {
+  await page.goto('/systems/by-maker/');
+  for (const [name, url] of [['By region', /\/systems\/by-region\/#catalogue$/], ['By era', /\/systems\/#catalogue$/]] as const) {
+    await page.locator('[data-catalogue] .lenses').getByRole('link', { name, exact: true }).click();
+    await expect(page).toHaveURL(url);
+    await expect(page.locator('[data-catalogue] details')).toHaveAttribute('open', '');
+    await expect(page.getByRole('heading', { name: 'The wider catalogue.' })).toBeInViewport();
+    await expect(page.getByRole('searchbox', { name: 'Find a machine' })).toBeInViewport();
+  }
+});
