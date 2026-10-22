@@ -1,0 +1,76 @@
+---
+title: "Query a Byte Map on Commodore VIC-20"
+summary: "Read and change map cells, look up tile properties and convert world positions with reusable 6502 code and an explicit memory contract."
+platform: "commodore-vic-20"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["tilemaps", "maps", "queries", "collision", "assembly"]
+related:
+  patterns: ["tile-map-queries"]
+  vault: ["tile-maps", "tile-collision"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+A level does not need to be on screen for the game to ask what is there. Give it a byte per cell, keep those bytes in row order, and the same map can answer questions about walls, hazards, goals or scenery that has changed.
+
+This implementation supplies four routines: checked get, checked set, property lookup and conversion from unsigned world positions to eight-unit cells. It does not draw or wait for a frame. The [shared entry](/patterns/cross-platform/rendering/tile-map-queries/) explains the arrangement and links the implementations across all 30 machines.
+
+## Include and initialise
+
+Define TM as the start of a reserved 20-byte context, then include the routine. The map contains W×H consecutive bytes, with width and height each from 1 to 255. Its property table contains one byte per possible ID, through the configured highest ID. Both ranges must remain addressable without crossing an address-space end, bank window or unmapped boundary. Use writable RAM for `tile_set`; a ROM map needs another way to record changes.
+
+The 6502 context must fit entirely in zero page, and decimal mode must be clear.
+
+Context offsets: **0–1 map pointer; 2/3 width/height; 4/5 column/row; 6 tile; 7 valid; 8–10 scratch; 11 property; 12–13 property pointer; 14 highest tile ID; 15 scratch; 16–17 X; 18–19 Y.** Initialise the pointers, dimensions and highest ID before a call. Scratch bytes belong to the routine.
+
+<CodeFromFile src="commodore-vic-20/patterns/assembly/rendering/tile-map/demo.asm" from="start:" to="valid_0:" lang="asm" title="Initialise the diagnostic map and make its first checked query" />
+
+The diagnostic uses a PAL VIC-20 with no RAM expansion. Its original KERNAL starts at $E000; results at $1000 and the map at $11F0 fit the unexpanded RAM map. They replace interpreter workspace in this takeover caller. Do not copy the PET addresses: $2000 is not unexpanded VIC-20 RAM. The context occupies `$0070`–`$0083`; the 6502 stack uses page one. Reserve those locations too.
+
+## Call the routine
+
+Set column and row, call `tile_get`, then check the valid byte. A successful call returns the tile ID. Failure returns valid=0 and tile=0, so **tile zero alone does not mean success**. This compact variant uses unsigned byte coordinates; wider maps can use a wider-coordinate variant rather than treating this as a machine limit. Translate a signed or wider world into this representation explicitly.
+
+For a write, set column/row/tile and call `tile_set`. Invalid coordinates or an ID above the configured maximum leave the map unchanged. To classify a tile, call `tile_property`; it returns the table byte and a separate valid flag. Your game decides whether those property bits mean blocking, damage, a goal or something else.
+
+<CodeFromFile src="cross-platform/patterns/rendering/tile-map/6502.inc" lang="asm" title="Reusable 6502 map/query implementation" />
+
+For `tile_pixel8`, set unsigned 16-bit X and Y in world coordinates. It divides by eight, rejects a cell coordinate too large for a byte, then performs the checked lookup. Read cell/tile outputs only after checking valid. X/Y inputs remain unchanged. Eight-unit square cells are this routine’s deliberate fast conversion; other sizes, wrapping or a signed origin need a corresponding variant.
+
+## State, stack and cost
+
+A, X, Y and flags are clobbered. The routines use the current stack and the supplied context. They do not mask or install interrupts. An interrupt caller needs its own context and must preserve the state that the interrupted code needs.
+
+Get/set use 4 bytes of return addresses at their deepest point, including the direct caller’s call into the library. Pixel conversion uses 6; property lookup uses 2. Add the surrounding caller stack and any interrupt frames.
+
+Map storage is W×H bytes, plus highest-ID+1 property bytes, context, code and stack. This readable version adds the row width repeatedly; later rows cost more work. Row-pointer tables or fixed-width shifts are alternatives when query speed matters. There is no whole-game frame-rate claim.
+
+## Customise it without losing the checks
+
+Change dimensions, map data and property meanings together. A solid wall might have property bit 0 set, a hazard bit 1; a tile can carry both. Keep classification separate from artwork so recolouring or changing a character does not change the rules.
+
+The offset is **row × width + column**. A 7×5 room exposes width/height swaps, and the fixture deliberately crosses a 256-byte boundary to exercise pointer carry. World-to-cell conversion divides by eight and rounds down: world X=23 belongs to column 2. It is a direct use of the coordinate and representation ideas in [Maths for Games](/craft/maths-for-games/). Logical cells need not be eight physical screen pixels; choose and document your units.
+
+For a busy game, row-pointer tables avoid repeated additions at the cost of two bytes per row. Packed tile IDs save map RAM but need extra work to extract and update a cell. Larger or signed worlds need a corresponding coordinate variant. These are possible extensions, not timings measured for this caller.
+
+## When it goes wrong
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| The first row works, later rows read the wrong tiles | Address arithmetic uses stride 6 for a seven-wide map | Add the map width, independently of the screen layout |
+| A rejected edit corrupts a map cell or its neighbour | The write ignores the failed coordinate check | Retain the early return in `tile_set` and check valid in the caller |
+| Empty floor behaves like an invalid position | Tile zero is used as the success flag | Read the separate valid byte |
+
+Both faulty stride and faulty write variants ran to completion in this machine's emulator. At column 0, row 1, the stride fault returns tile **2** instead of **3**. Removing the invalid-write guard changes the diagnostic's unchanged-map/guard result from **1** to **0**. The third row explains the interface contract; it is not an additional executed fault. The records contain actual RAM bytes rather than a screenshot of a display this test never draws.
+
+## Run and adapt it
+
+`make ASM198X=/path/to/asm198x` builds an original reset ROM fixture. The maintained verifier runs it in Emu198x, checks all 44 result bytes against explicit expected map rows, then builds and rejects the two faulty variants. The shared routine is unchanged from the other 6502 implementations.
+
+Executed with **Asm198x 0.0.71** and **Emu198x 0.44.1**. This qualifies the CPU code and declared RAM layout. It does not establish stock BASIC loading, display output, interrupt coexistence or a frame deadline. The diagnostic replaces firmware and takes over the machine; a game using firmware must reserve suitable memory and supply its own loading and interrupt policy.
+
+- [Complete caller, build command and execution records](https://github.com/code198x/code-samples/tree/2431e6aff20b9e0d0bc0f7446cd29cda98af5b7b/commodore-vic-20/patterns/assembly/rendering/tile-map)
+- [Reusable 6502 implementation and calling contract](https://github.com/code198x/code-samples/tree/2431e6aff20b9e0d0bc0f7446cd29cda98af5b7b/cross-platform/patterns/rendering/tile-map)
+
+The [BASIC map entry](/patterns/commodore-vic-20/basic/rendering/tile-map/) solves the same problem with interpreter-managed arrays. Its loader, indexing and costs are qualified separately.
