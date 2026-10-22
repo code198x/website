@@ -1,5 +1,6 @@
 import {test,expect} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import {readFileSync} from 'node:fs';
 test.skip(process.env.PATTERN_PROTOTYPE !== '1', 'Review-only routes require an opt-in build.');
 const root='/catalogue/pattern-library/';
 test('find techniques by task and matching implementation',async({page})=>{
@@ -49,9 +50,11 @@ test('audio schedules one real tone per edge and renders a bounded waveform',asy
  expect(await page.evaluate(()=>(window as any).toneCount)).toBe(1);
  await page.locator('[data-audio]').click();await page.locator('[data-button=fire]').uncheck();await page.locator('[data-sample]').click();await page.locator('[data-button=fire]').check();await page.locator('[data-sample]').click();
  expect(await page.evaluate(()=>(window as any).toneCount)).toBe(1);
- const {build}=await import('esbuild');
- const result=await build({entryPoints:['src/lib/pattern-experiment.ts'],bundle:true,format:'iife',globalName:'PatternAudio',write:false});
- await page.addScriptTag({content:result.outputFiles[0].text});
+ // The module imports nothing, so stripping its types is enough to run it in the page.
+ const ts=(await import('typescript')).default;
+ const {outputText}=ts.transpileModule(readFileSync('src/lib/pattern-experiment.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}});
+ await page.addScriptTag({content:`var PatternAudio=(()=>{const exports={};${outputText}
+return exports;})();`});
  const rendered=await page.evaluate(async()=>{
   const context=new OfflineAudioContext(1,22050,44100);(window as any).PatternAudio.scheduleTone(context,0.1);
   const buffer=(await context.startRendering()).getChannelData(0);
