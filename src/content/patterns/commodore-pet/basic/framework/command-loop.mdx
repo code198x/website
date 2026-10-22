@@ -1,0 +1,83 @@
+---
+title: "Wait for a command on PET in BASIC"
+summary: "Keep an untimed game waiting for the player, with a reusable command update, a working variation and a diagnosed state-reset mistake."
+platform: "commodore-pet"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "commands", "turns", "BASIC", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press **A** and Return. **TURN 0** becomes **TURN 1**. Do it again for **TURN 2**. Walk away for a cup of tea and the world waits for you. That is a useful game loop for an adventure, a board game or any other untimed decision.
+
+**X** leaves the count alone. **Q** returns to BASIC. The counter stands in for the world update: spend a move, change a room or let the opponents respond only when the command earns it.
+
+<Figure src="/images/commodore-pet/patterns/basic-command-loop/working.png" alt="PET BASIC caller after two accepted commands, showing TURN 2." caption="Two commands, two updates. The firmware still looks after the keyboard and screen." />
+## Put it in a program
+
+Enter this caller and the routine below as **one numbered program** on a **40-column PET with the pinned BASIC, editor and KERNAL ROMs**, then type `RUN`. Use uppercase commands as shown. `INPUT` waits for Return; this is a tiny command decision, not an adventure parser. Empty input, commas and quoted strings follow BASIC's own input rules.
+
+<CodeFromFile src="commodore-pet/patterns/basic/framework/command-loop/caller.bas" lang="basic" title="Initialise once; draw, read, decide and repeat" />
+
+`N=0:S=1` happens once. The jump returns to line 20, so the next move uses the state left by the last one. `Q` belongs to the caller: it ends the program before the rule routine runs.
+
+## Take the reusable part
+
+Copy lines 1000–1050 into free line numbers and call `GOSUB 1000`. Put the command in `A$`, the current count in `N` and the amount to add in `S`.
+
+<CodeFromFile src="commodore-pet/patterns/basic/framework/command-loop/routines.bas" lang="basic" title="A rule update that owns no keyboard or screen" />
+
+| Variable | Contract |
+| --- | --- |
+| `N` | Integer 0–255; becomes `(N+S)` modulo 256 for A |
+| `S` | Integer 0–255; preserved |
+| `A$` | Submitted command; preserved |
+| `C` | Replaced on every call: 1 for accepted, 0 for rejected |
+
+These are ordinary BASIC numbers, stored in the interpreter's floating-point format. The integer bounds are our agreement with the routine. Their sum is at most 510, so subtracting 256 once is sufficient. Fractional, negative or larger inputs need a different contract.
+
+Use `C` immediately if it decides whether enemies move. Another routine may reuse that global. Names share BASIC's namespace; only the first two characters distinguish a numeric name. Rename consistently, reserve the line numbers, and change every call target if you renumber. `GOSUB` needs its matching `RETURN`; jumping in with `GOTO` does not supply one.
+
+The routine reserves no fixed RAM and does no input or drawing. The caller clears and redraws the whole text screen. Move that presentation into your own UI if a status panel must survive each turn.
+
+## Make it your own
+
+Replace the caller with this one and keep the same routine. `S=3` gives **0 → 3 → 6** for two As.
+
+<CodeFromFile src="commodore-pet/patterns/basic/framework/command-loop/customise.bas" lang="basic" title="Three progress units for one accepted command" />
+<Figure src="/images/commodore-pet/patterns/basic-command-loop/step-three.png" alt="PET customised BASIC caller showing TURN 6." caption="The amount changed; the player still submitted two commands." />
+
+That might spend three energy units while opponents respond once. It does not mean “run the whole game three times”. The change adds no scratch variable or artwork. BASIC still scans the command and redraws after every submission; no speed benchmark follows from the listing's size.
+
+## Common mistake: forgetting the previous turn
+
+**This caller is deliberately broken.** Line 50 resets `N` before every rule call.
+
+<CodeFromFile src="commodore-pet/patterns/basic/framework/command-loop/mistakes/reset-each-command.bas" lang="basic" title="Broken: persistent state reset inside the loop" />
+<Figure src="/images/commodore-pet/patterns/basic-command-loop/reset-mistake.png" alt="PET broken BASIC caller still showing TURN 1 after the second A." caption="The second accepted command starts from zero again." />
+
+A, X, A now gives **1 → 0 → 1**, rather than **1 → 1 → 2**. Even the rejected command appears to erase progress. The reset belongs before the loop: restore the original caller. The repaired caller was run independently and gives the expected sequence.
+
+## When the world cannot wait
+
+`INPUT` blocks until the player submits a line. Neither approach supplies a turn deadline. The machine's clocks continue, but the rule state waits. For a countdown, animated cursor or sound service that needs regular calls, retain the rule and replace the waiting policy. Decide what happens if a valid command and an expired deadline arrive together.
+
+The [loop comparison](/patterns/cross-platform/framework/game-loop-choices/) separates progression, time, input and presentation. These choices can be combined; they are not a compulsory ladder from BASIC to assembly.
+
+The [PET assembly caller](/patterns/commodore-pet/assembly/framework/command-loop/) implements the same small rule with its own language contract. BASIC owns variable storage and line input.
+
+## Take the source and evidence
+
+**Code status: native-emulator executed**, using Emu198x **0.44.1** and the named configuration above. The complete numbered source is typed from a fresh firmware boot. No host write supplies the counter state.
+
+The [source folder](https://github.com/code198x/code-samples/tree/1438dfea461624ed7aafc472de236ff1c954774f/commodore-pet/patterns/basic/framework/command-loop) keeps the caller, routine, customisation, deliberately broken caller and [native record](https://github.com/code198x/code-samples/blob/1438dfea461624ed7aafc472de236ff1c954774f/commodore-pet/patterns/basic/framework/command-loop/verification/reusable/results.json) together. `complete.bas` combines the recommended caller and routine for typing.
+
+Six separately started variants cover normal use, step three, the reset fault and repair, byte wraparound and a nonzero start with step 255. Each waits 120 native fields before and after an action, submits X and two As, checks the visible counter and returns to BASIC with Q. The retained checker decodes screen RAM and compares it with independent arithmetic; altered counts, blank screens, absent observations and changed image hashes must fail. The figures are actual framebuffer captures.
+
+These checks establish this small workload. They do not qualify original hardware, every firmware/display variant, a full parser, or the whole emulator.
+
+## Original references
+
+Commodore, [*BASIC Version 4.0 User’s Reference Manual*](https://www.commodore.ca/manuals/pdfs/Commodore_Basic_4_Users_Reference%20Manual.pdf), section 1.6.1 (names), sections 2.21 (`GOSUB`/`RETURN`) and 2.25 (`INPUT`).
