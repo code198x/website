@@ -1,0 +1,93 @@
+---
+title: "Wait for a command in Acorn Atom assembly"
+summary: "A reusable character-driven turn update, with a stock-firmware caller, owned state and verified mistakes and repairs."
+platform: "acorn-atom"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "assembly", "input", "firmware"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Press **G**. **TURN 00** becomes **TURN 01**. Press it again for **TURN 02**. Try **X**: the counter stays where it is. While you decide what to do, the game rules wait.
+
+That makes a useful starting point for an untimed command game. The reusable piece accepts a character and updates state. Reading the keyboard and drawing the result belong to its caller, so you can replace either without rewriting the rule routine.
+
+![The Acorn Atom assembly caller after two accepted commands, showing TURN 02.](/images/acorn-atom/patterns/assembly-command-loop/working.png)
+
+## Run the complete caller
+
+Choose the **full 32 KiB Atom**, with the integer BASIC ROM and normal firmware. This executable does not fit the base 2.5 KiB configuration. The loader uses Atom byte indirection (`?#2800=...`), rather than DATA/READ, which Atom BASIC does not provide.
+
+The 139-byte default executable starts at **$2800** and ends before the expanded machine’s BASIC text at **$2900**. Four context bytes start at **$2700**; two diagnostic guards follow them. This uses the space normally available to floating-point extensions: leave those extensions out of this layout. Moving the code means changing its origin and loader together, then checking that BASIC text, variables and stack cannot reach it.
+
+Download the [caller and shared include at the recorded revision](https://github.com/code198x/code-samples/tree/bda0f0561d2b884a6ee75d6d392ca3953158f88f/acorn-atom/patterns/assembly/framework/command-loop) as part of the samples tree, keeping their relative paths. With released Asm198x 0.0.71 available as `asm198x`, run `make` in the caller folder. Enter the **whole generated `build/loader.bas` listing**, then type `RUN`. No manufacturer ROM is included in the download.
+
+<CodeFromFile src="acorn-atom/patterns/assembly/framework/command-loop/demo.asm" lang="6502" title="The firmware caller: initialise once, read, dispatch and draw" />
+
+`OSRDCH` at **$FFE3** waits for a delivered character; `OSWRCH` at **$FFF4** writes one. These are Atom vectors. The BBC Micro uses different entry addresses, despite having the same CPU family. Keep the normal firmware environment and enough stack for its calls.
+
+The demo owns the text screen and clears it after every delivered character. That is presentation code, not part of the reusable state update. Its two hexadecimal digits make byte wrap visible: **FE → FF → 00** means **254 → 255 → 0**.
+
+## Include, initialise and call
+
+Define `TURN` as **four private, consecutive writable bytes** and `ACCEPT_KEY` as the character code you want to accept. Include the routine once. Pass the starting counter in A and call `init_turn` once, before the recurring input path.
+
+<CodeFromFile src="cross-platform/patterns/framework/command-turns/6502.inc" lang="6502" title="The reusable rule update: no keyboard or display ownership" />
+
+`init_turn` stores the starting counter, sets the step to one and clears the acceptance result and saved input. Set `TURN+1` after that call if you want another step. For each delivered character, put it in A and call `accept_command`.
+
+| Offset | Meaning after a call |
+| --- | --- |
+| `TURN+0` | Counter; accepted input adds the step modulo 256 |
+| `TURN+1` | Step; preserved by the update |
+| `TURN+2` | 1 for accepted, 0 for rejected; replaced on every call |
+| `TURN+3` | Last delivered character; replaced on every call |
+
+Test `TURN+2` before another owner reuses the context. A rejected command leaves the counter unchanged. Your game can use the accepted flag to spend a turn or move enemies; the tiny counter is just a visible way to expose that decision.
+
+Clear **decimal mode** before calling: the complete caller uses `CLD`. The routine changes A and status flags and preserves X/Y. A direct JSR uses two return-address stack bytes; the caller and firmware need their own stack space too. The code uses absolute context addresses, so it takes no private zero-page bytes.
+
+The two routines occupy **48 code bytes**, including their returns, plus the four-byte context. Firmware input and output costs are additional. Keep this context exclusive to one caller at a time; the routine is not safe for concurrent foreground and interrupt calls using the same bytes.
+
+## Change the rule without losing the loop
+
+<CodeFromFile src="acorn-atom/patterns/assembly/framework/command-loop/settings.inc" lang="6502" title="Memory ownership, accepted character, initial value and step" />
+
+Change `STEP` to 2, rebuild and start the generated program again. Two accepted commands now give **00 → 02 → 04**. We changed the amount added, not the number of commands consumed. No extra context byte or routine is required.
+
+![The customised Acorn Atom caller after two commands, showing TURN 04.](/images/acorn-atom/patterns/assembly-command-loop/step-two.png)
+
+Change `INITIAL` to 254 to exercise **FE → FF → 00**. That wrap is the chosen policy. A score or move count that must exceed 255 needs a wider representation; a limited resource may need saturation instead. Those choices change arithmetic and code cost, so make them explicit rather than quietly relying on overflow.
+
+`ACCEPT_KEY` can select another delivered character. This is a character reader: firmware autorepeat can supply several characters from one held key. **Character arrival is not physical press detection.** Use held-key sampling and an edge filter if that is the behaviour you need.
+
+## Common mistake: erasing the previous move
+
+The next dispatch is **deliberately wrong**. Replacing `dispatch.inc` with it resets the counter before every command. The first accepted command looks fine; the second still shows **TURN 01**. A rejected character can erase progress too.
+
+<CodeFromFile src="acorn-atom/patterns/assembly/framework/command-loop/mistakes/reset-each-command.inc" lang="6502" title="Broken dispatch: reset state before applying the command" />
+
+![The faulty Acorn Atom caller after two accepted commands, still showing TURN 01.](/images/acorn-atom/patterns/assembly-command-loop/reset-mistake.png)
+
+Restore the original dispatch and rebuild. Initialisation stays outside the loop; the same two commands now give **00 → 01 → 02**. The repaired caller runs separately from cold firmware in the native checks.
+
+<CodeFromFile src="acorn-atom/patterns/assembly/framework/command-loop/dispatch.inc" lang="6502" title="Fixed dispatch: preserve state between commands" />
+
+## When this reader needs more help
+
+The firmware can keep doing its own work while the caller waits. Your game code cannot rely on getting control back in time for an animation, a countdown or regular sound updates. A timed turn needs an explicit deadline and a non-blocking reader, or an independently owned service with a clear contract.
+
+[Choose how your game advances](/patterns/cross-platform/framework/game-loop-choices/) explains that distinction. The [BASIC command caller](/patterns/acorn-atom/basic/framework/command-loop/) demonstrates the same untimed policy in another language; its interpreter and input conventions are different.
+
+## What we checked
+
+**Code status: firmware-entered and emulator-executed.** Released Emu198x 0.44.0 ran the whole typed loader, then real keyboard input. The [native record](https://github.com/code198x/code-samples/blob/bda0f0561d2b884a6ee75d6d392ca3953158f88f/acorn-atom/patterns/assembly/framework/command-loop/verification/results.json) binds the maintained sources, observer, tool binaries, firmware identities and captures.
+
+Six cold cases cover the default, step two, a nonzero start, byte wrap, the faulty reset and a repaired caller. Checks compare installed executable bytes with the assembly output, verify state stays still during idle and rejected commands, and check adjacent guards. A retained-record checker also rejects missing cases, stale inputs and falsified results. It checks saved evidence; the native verifier executes the machines again.
+
+This qualifies the named emulator and firmware configuration. It does not establish original-hardware timing, all ROM revisions or the budget for a complete game.
+
+## Primary reference
+
+David Johnson-Davies, [*Atomic Theory and Practice*](https://www.theoddys.com/acorn/acorn_system_computers/atom/Atomic%20Theory%20and%20Practice.pdf), sections 13.14 (OS calls), 14.2 (LINK), chapter 26 (memory allocation) and Appendix D (memory map).

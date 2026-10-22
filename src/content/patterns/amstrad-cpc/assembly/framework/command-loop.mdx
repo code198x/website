@@ -1,0 +1,93 @@
+---
+title: "Wait for a command in Amstrad CPC assembly"
+summary: "A reusable character-driven turn update, with a stock-firmware caller, owned state and verified mistakes and repairs."
+platform: "amstrad-cpc"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "assembly", "input", "firmware"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Press **G**. **TURN 00** becomes **TURN 01**. Press it again for **TURN 02**. Try **X**: the counter stays where it is. While you decide what to do, the game rules wait.
+
+That makes a useful starting point for an untimed command game. The reusable piece accepts a character and updates state. Reading the keyboard and drawing the result belong to its caller, so you can replace either without rewriting the rule routine.
+
+![The Amstrad CPC assembly caller after two accepted commands, showing TURN 02.](/images/amstrad-cpc/patterns/assembly-command-loop/working.png)
+
+## Run the complete caller
+
+Use a **CPC464 with stock firmware**, starting in Locomotive BASIC. The generated loader selects MODE 1 and lowers BASIC’s memory limit with `MEMORY &8FEF` before it installs the code. It reads original executable bytes from DATA, writes them above that boundary and enters them with `CALL &9000`.
+
+The 141-byte default executable starts at **&9000**. Four context bytes start at **&8FF0**, with two diagnostic guards immediately afterwards. Keep those addresses out of BASIC’s workspace and any other machine-code allocation. If you relocate the code, change its origin, loader address and memory reservation together.
+
+Download the [caller and shared include at the recorded revision](https://github.com/code198x/code-samples/tree/bda0f0561d2b884a6ee75d6d392ca3953158f88f/amstrad-cpc/patterns/assembly/framework/command-loop) as part of the samples tree, keeping their relative paths. With released Asm198x 0.0.71 available as `asm198x`, run `make` in the caller folder. Enter the **whole generated `build/loader.bas` listing**, then type `RUN`. No manufacturer ROM is included in the download.
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/framework/command-loop/demo.asm" lang="z80" title="The firmware caller: initialise once, read, dispatch and draw" />
+
+`KM WAIT CHAR` at **&BB06** waits for the next character and returns it in A; `TXT OUTPUT` at **&BB5A** writes it. The caller leaves normal firmware interrupt servicing enabled with `EI`. It neither takes over the display hardware nor replaces the firmware keyboard scanner.
+
+The demo owns the text screen and clears it after every delivered character. That is presentation code, not part of the reusable state update. Its two hexadecimal digits make byte wrap visible: **FE → FF → 00** means **254 → 255 → 0**.
+
+## Include, initialise and call
+
+Define `TURN` as **four private, consecutive writable bytes** and `ACCEPT_KEY` as the character code you want to accept. Include the routine once. Pass the starting counter in A and call `init_turn` once, before the recurring input path.
+
+<CodeFromFile src="cross-platform/patterns/framework/command-turns/z80.inc" lang="z80" title="The reusable rule update: no keyboard or display ownership" />
+
+`init_turn` stores the starting counter, sets the step to one and clears the acceptance result and saved input. Set `TURN+1` after that call if you want another step. For each delivered character, put it in A and call `accept_command`.
+
+| Offset | Meaning after a call |
+| --- | --- |
+| `TURN+0` | Counter; accepted input adds the step modulo 256 |
+| `TURN+1` | Step; preserved by the update |
+| `TURN+2` | 1 for accepted, 0 for rejected; replaced on every call |
+| `TURN+3` | Last delivered character; replaced on every call |
+
+Test `TURN+2` before another owner reuses the context. A rejected command leaves the counter unchanged. Your game can use the accepted flag to spend a turn or move enemies; the tiny counter is just a visible way to expose that decision.
+
+`init_turn` changes AF. `accept_command` changes AF and HL and preserves BC/DE. A direct CALL needs two return-address stack bytes, in addition to the caller and firmware stack use. There is no heap allocation, index-register state or private interrupt handler.
+
+The two routines occupy **45 code bytes**, including their returns, plus the four-byte context. Firmware input and output costs are additional. Keep this context exclusive to one caller at a time; the routine is not safe for concurrent foreground and interrupt calls using the same bytes.
+
+## Change the rule without losing the loop
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/framework/command-loop/settings.inc" lang="z80" title="Memory ownership, accepted character, initial value and step" />
+
+Change `STEP` to 2, rebuild and start the generated program again. Two accepted commands now give **00 → 02 → 04**. We changed the amount added, not the number of commands consumed. No extra context byte or routine is required.
+
+![The customised Amstrad CPC caller after two commands, showing TURN 04.](/images/amstrad-cpc/patterns/assembly-command-loop/step-two.png)
+
+Change `INITIAL` to 254 to exercise **FE → FF → 00**. That wrap is the chosen policy. A score or move count that must exceed 255 needs a wider representation; a limited resource may need saturation instead. Those choices change arithmetic and code cost, so make them explicit rather than quietly relying on overflow.
+
+`ACCEPT_KEY` can select another delivered character. This is a character reader: firmware autorepeat can supply several characters from one held key. **Character arrival is not physical press detection.** Use held-key sampling and an edge filter if that is the behaviour you need.
+
+## Common mistake: erasing the previous move
+
+The next dispatch is **deliberately wrong**. Replacing `dispatch.inc` with it resets the counter before every command. The first accepted command looks fine; the second still shows **TURN 01**. A rejected character can erase progress too.
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/framework/command-loop/mistakes/reset-each-command.inc" lang="z80" title="Broken dispatch: reset state before applying the command" />
+
+![The faulty Amstrad CPC caller after two accepted commands, still showing TURN 01.](/images/amstrad-cpc/patterns/assembly-command-loop/reset-mistake.png)
+
+Restore the original dispatch and rebuild. Initialisation stays outside the loop; the same two commands now give **00 → 01 → 02**. The repaired caller runs separately from cold firmware in the native checks.
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/framework/command-loop/dispatch.inc" lang="z80" title="Fixed dispatch: preserve state between commands" />
+
+## When this reader needs more help
+
+The firmware can keep doing its own work while the caller waits. Your game code cannot rely on getting control back in time for an animation, a countdown or regular sound updates. A timed turn needs an explicit deadline and a non-blocking reader, or an independently owned service with a clear contract.
+
+[Choose how your game advances](/patterns/cross-platform/framework/game-loop-choices/) explains that distinction. The [BASIC command caller](/patterns/amstrad-cpc/basic/framework/command-loop/) demonstrates the same untimed policy in another language; its interpreter and input conventions are different.
+
+## What we checked
+
+**Code status: firmware-entered and emulator-executed.** Released Emu198x 0.44.0 ran the whole typed loader, then real keyboard input. The [native record](https://github.com/code198x/code-samples/blob/bda0f0561d2b884a6ee75d6d392ca3953158f88f/amstrad-cpc/patterns/assembly/framework/command-loop/verification/results.json) binds the maintained sources, observer, tool binaries, firmware identities and captures.
+
+Six cold cases cover the default, step two, a nonzero start, byte wrap, the faulty reset and a repaired caller. Checks compare installed executable bytes with the assembly output, verify state stays still during idle and rejected commands, and check adjacent guards. A retained-record checker also rejects missing cases, stale inputs and falsified results. It checks saved evidence; the native verifier executes the machines again.
+
+This qualifies the named emulator and firmware configuration. It does not establish original-hardware timing, all ROM revisions or the budget for a complete game.
+
+## Primary reference
+
+Amstrad’s original [*CPC464/664/6128 Firmware*, Key Manager chapter](https://cpctech.cpcwiki.de/docs/manual/s968se03.pdf), KM WAIT CHAR, and [firmware jumpblocks](https://cpctech.cpcwiki.de/docs/manual/s158se13.pdf), TXT OUTPUT.
