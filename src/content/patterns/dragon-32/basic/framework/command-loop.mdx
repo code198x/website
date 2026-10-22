@@ -1,0 +1,71 @@
+---
+title: "Wait for a player action on Dragon 32 in BASIC"
+summary: "Keep an untimed world waiting for the player, with machine-specific code, a working variation and a state-reset mistake you can recognise."
+platform: "dragon-32"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "basic", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press **1**, then Return. The count advances once. Leave the machine alone and the world waits for you. That is enough to give an adventure its rhythm: look around, make a choice, then let the world respond.
+
+Here the world is just a counter. Replace that update with a room change, a board move or an opponent's response. Input, persistent state and presentation still have different jobs.
+
+<Figure src="/images/dragon-32/patterns/basic-command-loop/working.png" alt="Dragon 32 basic caller after its second accepted action." caption="Two actions, two updates. Waiting does not spend a turn." />
+
+## Put it in your project
+
+Enter this source on a **Dragon 32 PAL with its normal BASIC ROM**, then type RUN. It uses the real interpreter's input and display routines.
+
+<CodeFromFile src="dragon-32/patterns/basic/framework/command-loop/demo.bas" lang="basic" title="A complete untimed caller" />
+
+`N` is persistent rule state; `A` is the submitted numeric command. Keep `N=0` outside the loop. Reuse the conditional update where your own program decides whether an action spends a turn, and put your room/board change there. The jump goes to line 20 so the next command sees the previous result.
+
+`INPUT` waits for Return. **1** advances, **0** does not; other malformed numeric input follows Dragon BASIC's own handling. This is not a parser. BASIC owns variables, keyboard scanning, interrupts and `CLS`/`PRINT`. Renumber the lines and reserve names consistently when combining the listing with another program. Its ordinary BASIC number is not an unlimited integer or an enforced 8-bit counter.
+
+The caller clears the whole text screen after each submission. Move that presentation into a status panel if other UI must survive; the update itself does not need a clear.
+
+## Customise the update
+
+This alternative adds three units for each accepted action: **0 → 3 → 6**. It is still one action, rather than running the entire game three times.
+
+<CodeFromFile src="dragon-32/patterns/basic/framework/command-loop/customise.bas" lang="basic" title="Three progress units per action" />
+<Figure src="/images/dragon-32/patterns/basic-command-loop/step-three.png" alt="Dragon 32 basic caller showing six after two accepted actions." caption="The same waiting policy supports a different update." />
+
+## Common mistake: erasing the previous turn
+
+**This listing is deliberately broken.** Its jump goes back through the initialiser at line 10. Each redraw shows zero again, even after an accepted action.
+
+<CodeFromFile src="dragon-32/patterns/basic/framework/command-loop/mistakes/reset-each-command.bas" lang="basic" title="Broken: initialisation inside the iteration" />
+<Figure src="/images/dragon-32/patterns/basic-command-loop/reset-mistake.png" alt="Dragon 32 faulty caller showing zero after two actions." caption="Persistent state needs to survive the journey round the loop." />
+
+Restore the original loop target to repair it. The repaired source is executed separately, as is a nonzero initial count; an absent initialiser must not pass simply because zero happens to be there already.
+
+## Add presentation deliberately
+
+The companion probe keeps the input policy and adds an original text-cell box and a blocking SOUND call:
+
+<CodeFromFile src="dragon-32/patterns/basic/capabilities/input-drawing-sound/demo.bas" lang="basic" title="Input, text-cell drawing and sound" />
+
+These are separate jobs. The retained run omits sound to check that its audio guard rejects silence. The drawing call is also omitted in a separate cold run. Text cells are not a bitmap drawing primitive. A blocking tone delays the next input sample; a background sound service would need a different loop.
+
+## Decide when time matters
+
+This loop spends CPU waiting, but does not spend a game turn. A timed decision needs a separate clock, an input policy that checks it and a rule for a command arriving with the deadline. Continuing display or firmware interrupts do not imply that the world should advance on every tick.
+
+Compare the [loop choices](/patterns/cross-platform/framework/game-loop-choices/) and the [assembly version](/patterns/dragon-32/assembly/framework/command-loop/). These are different resource and input agreements, not a compulsory ladder from one language to another.
+
+## Source and verification
+
+**Native-emulator executed:** Emu198x **0.44.1**, the named machine and firmware configuration above. Actual keyboard input drives the program; host writes do not supply the count. The images are native framebuffer captures.
+
+The [maintained source](https://github.com/code198x/code-samples/tree/e8f5e36c6ca483ac5131e372a639e23a1409da90/dragon-32/patterns/basic/framework/command-loop) includes the working variation and deliberate fault. The [retained record](https://github.com/code198x/code-samples/blob/e8f5e36c6ca483ac5131e372a639e23a1409da90/dragon-32/patterns/basic/framework/command-loop/verification/variants.json) identifies sources and observations. Five cold starts check normal use, step three, the reset mistake and repair, and a nonzero start. The refreshed baseline also checks idle and ignored input. An independent checker decodes screen RAM and rejects altered counts, missing stages, changed sources and changed captures.
+
+This qualifies the small workload and named configuration. It is not an original-hardware, pitch, cassette-transfer or whole-emulator claim.
+
+## Primary references
+
+*Inside the Dragon* (Addison-Wesley, 1983), pp. 103–104 and Appendix 3, pp. 348–349 (ROM input/output contracts), pp. 212–213 (single-bit sound). The direct keyboard entry is **$8006**; **$800C** is screen output.

@@ -1,0 +1,90 @@
+---
+title: "Wait for a player action on Dragon 32 in 6809 assembly"
+summary: "Keep an untimed world waiting for the player, with machine-specific code, a working variation and a state-reset mistake you can recognise."
+platform: "dragon-32"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "assembly", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press **1**. The count advances once. Leave the machine alone and the world waits for you. That is enough to give an adventure its rhythm: look around, make a choice, then let the world respond.
+
+Here the world is just a counter. Replace that update with a room change, a board move or an opponent's response. Input, persistent state and presentation still have different jobs.
+
+<Figure src="/images/dragon-32/patterns/assembly-command-loop/working.png" alt="Dragon 32 assembly caller after its second accepted action." caption="Two actions, two updates. Waiting does not spend a turn." />
+
+## Start under the normal firmware
+
+This is a **Dragon 32 PAL** caller, not a replacement ROM. Keep the three maintained source files together and build from the code-samples root:
+
+```sh
+python3 scripts/build-dragon-ace-loops.py --assembler /path/to/asm198x --system dragon-32
+```
+
+Enter the generated `build/working/load.bas` line by line after a fresh firmware boot. The loader is generated from the assembled payload; you do not have to transcribe a second hand-maintained list of bytes.
+
+Dragon uses `CLEAR 200,&H6FFF` to keep BASIC below the payload at **$7000–$70E9**. A small numbered READ/POKE program installs its 234 bytes, then `CLS:EXEC &H7000` starts it. This verifies keyboard entry and EXEC, rather than cassette loading. Reserve that range in a mixed BASIC/assembly project.
+
+<CodeFromFile src="dragon-32/patterns/assembly/framework/command-loop/demo.asm" lang="6809" title="Origin, settings and the two includes" />
+<CodeFromFile src="dragon-32/patterns/assembly/framework/command-loop/caller.inc" lang="6809" title="Initialise once; wait, update and show the result" />
+
+**Q** returns to BASIC through EXEC’s original stack frame. Other keys leave the state alone. The display uses hexadecimal: **$0A means ten**, **$FF means 255**, and the next accepted action wraps to **$00**.
+
+## Take the reusable parts
+
+Include `routines.inc` once. Put the starting byte in A and call `turn_init` once; call `turn_advance` when your own command handler accepts an action. STEP is a compile-time byte. Neither routine reads input or touches the screen.
+
+<CodeFromFile src="dragon-32/patterns/assembly/framework/command-loop/routines.inc" lang="6809" title="State update, presentation and diagnostic sound as separate calls" />
+
+| Routine | Inputs and result | Resources changed |
+| --- | --- | --- |
+| `turn_init` | A becomes `turn_count` | One labelled byte; flags |
+| `turn_advance` | Add STEP modulo 256 | A, flags and that byte |
+| `show_turn` | Display the current byte | A/X/flags and eight text cells |
+| `draw_box` | Draw three rows of original text | A/flags and nine text cells |
+| `trigger_sound` | Blocking diagnostic pulse train | A/B/X/flags and temporary PIA state |
+
+The Dragon caller asks the ROM for delivered characters through **$8006**. A zero result means no input; `TSTA` makes that branch explicit. The retained Dragon 32 run checks a held 1, but other firmware and Dragon 64 repeat policies need their own checks. This is not a simultaneous-key scanner.
+
+The complete entry saves CC, DP, D, X, Y and U on the existing S stack. It keeps ROM interrupts running and returns with the original stack intact. Do not replace S or the firmware services while relying on this reader.
+
+The text adapter writes MC6847 codes at **$0400–$0407**, then the box at **$0440/$0460/$0480**, three cells per row. X is code 24 here, not ASCII 88. It assumes normal 32-column text mode; PMODE graphics needs a different adapter. The routine leaves the cursor alone and does not clear your other UI.
+
+Sound temporarily selects single-bit PIA1 PB1 output and disables the sound multiplexer. It saves and restores the control, direction and data registers, preserving other data bits. Do not share those registers concurrently with cassette or another sound driver. The pulse loop blocks, and interrupts can stretch it: this is an audible effect, not a measured pitch or background player. The complete caller's initial register save needs ten stack bytes; the sound call adds five for its return and saved PIA values, with firmware/interrupt stack needs in addition.
+
+## Customise it
+
+Build with `--variant step-three` to use this complete alternative. Two actions now produce **$03 → $06**. Code and state size stay the same.
+
+<CodeFromFile src="dragon-32/patterns/assembly/framework/command-loop/customise.asm" lang="6809" title="Same caller, three units per accepted action" />
+<Figure src="/images/dragon-32/patterns/assembly-command-loop/step-three.png" alt="Dragon 32 customised caller showing hexadecimal six." caption="The amount changed; the player still acted twice." />
+
+## Common mistake: resetting inside the loop
+
+**This variant is deliberately broken.** `RESET_EACH=1` runs initialisation inside each iteration. An action updates the byte, then the next redraw erases the result. The screen stays at **$00**.
+
+<CodeFromFile src="dragon-32/patterns/assembly/framework/command-loop/mistakes/reset-each-command.asm" lang="6809" title="Broken: erase persistent state before each redraw" />
+<Figure src="/images/dragon-32/patterns/assembly-command-loop/reset-mistake.png" alt="Dragon 32 faulty caller showing zero after two actions." caption="The update cannot preserve progress that the caller immediately throws away." />
+
+Use the original startup-only initialisation to repair it. The repaired caller is run separately. A bad return convention or a conflicting screen allocation would be different faults; these images show the state-lifetime mistake.
+
+## Decide when time matters
+
+This loop spends CPU waiting, but does not spend a game turn. A timed decision needs a separate clock, an input policy that checks it and a rule for a command arriving with the deadline. Continuing display or firmware interrupts do not imply that the world should advance on every tick.
+
+Compare the [loop choices](/patterns/cross-platform/framework/game-loop-choices/) and the [BASIC version](/patterns/dragon-32/basic/framework/command-loop/). These are different resource and input agreements, not a compulsory ladder from one language to another.
+
+## Source and verification
+
+**Native-emulator executed:** Emu198x **0.44.1**, Asm198x **0.0.71**, the named machine and firmware configuration above. Actual keyboard input drives the program; host writes do not supply the count. The images are native framebuffer captures.
+
+The [maintained source](https://github.com/code198x/code-samples/tree/e8f5e36c6ca483ac5131e372a639e23a1409da90/dragon-32/patterns/assembly/framework/command-loop) includes the working variation and deliberate fault. The [retained record](https://github.com/code198x/code-samples/blob/e8f5e36c6ca483ac5131e372a639e23a1409da90/dragon-32/patterns/assembly/framework/command-loop/verification/results.json) identifies sources and observations. Eight cold starts also check 254 → 255 → 0, a nonzero start, loaded-byte equality, held input, omitted drawing/sound and a return to interpreter arithmetic. An independent checker decodes screen RAM and rejects altered counts, missing stages, changed sources and changed captures.
+
+This qualifies the small workload and named configuration. It is not an original-hardware, pitch, cassette-transfer or whole-emulator claim.
+
+## Primary references
+
+*Inside the Dragon* (Addison-Wesley, 1983), pp. 103–104 and Appendix 3, pp. 348–349 (ROM input/output contracts), pp. 212–213 (single-bit sound). The direct keyboard entry is **$8006**; **$800C** is screen output.
