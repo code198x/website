@@ -1,0 +1,101 @@
+---
+title: "Wait for a player action on Game Boy DMG in assembly"
+summary: "Reuse a bounded turn update with a native caller, clear ownership, a custom step and an observed reset mistake."
+platform: "game-boy"
+category: "framework"
+difficulty: "intermediate"
+tags: ["game-loop", "turns", "assembly", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press **A** and the background changes from white to black. Holding A does not spend another turn. Release and press again to bring white back. The display keeps running while the world waits for you.
+
+Here the shade shows whether a byte is odd or even. It deliberately does not pretend to show the exact count: that belongs to the reusable rule state.
+
+<Figure src="/images/game-boy/patterns/assembly-command-loop/working.png" alt="Game Boy DMG native caller after one A press, showing a black background." caption="One accepted press changes the shade; display refresh alone does not spend a turn." />
+
+## Put it in your project
+
+Build from the repository root:
+
+```sh
+python3 scripts/build-msx-gameboy-loops.py --assembler /path/to/asm198x --system nintendo-game-boy
+```
+
+Load generated `build/working/demo.gb` as a cartridge. Asm198x finalises the 32 KiB ROM-only header/checksums. Qualified reset is DMG default state without a boot ROM. It is not a CGB/double-speed or real-boot-ROM qualification.
+
+<CodeFromFile src="nintendo-game-boy/patterns/assembly/framework/command-loop/demo.asm" lang="sm83" title="Origin, settings and includes" />
+
+<CodeFromFile src="nintendo-game-boy/patterns/assembly/framework/command-loop/caller.inc" lang="sm83" title="Startup and the machine-specific outer loop" />
+
+## Reuse the rule
+
+Keep demo.asm, caller.inc, routines.inc and presentation.inc together; include each implementation once. `turn_init` stores A into CTX, preserving A and flags. `turn_advance` adds compile-time STEP modulo 256, changing A, flags and count. Neither routine reads buttons, draws or waits.
+
+CTX names four private WRAM bytes. This caller uses $C000–$C003 for count, previous A sample and a little-endian 16-bit display-service counter. Initialising count does not initialise the other bytes; the caller clears those once too. Previous input begins released, so a key held at entry is accepted on the first sample. Reserve these bytes in your own game's memory plan.
+
+<CodeFromFile src="nintendo-game-boy/patterns/assembly/framework/command-loop/routines.inc" lang="sm83" title="Rule state and the input/wait adapters" />
+
+<CodeFromFile src="nintendo-game-boy/patterns/assembly/framework/command-loop/presentation.inc" lang="sm83" title="The native output adapter" />
+
+## Machine ownership
+
+The caller disables maskable interrupts, sets a descending stack at $FFFE and owns LCD/VRAM, scrolling, BGP and JOYP. It does not return to firmware. The two-byte return addresses of internal CALLs still need stack space; plan your own call depth and avoid collision with other HRAM use.
+
+It checks whether LCD is enabled, waits for VBlank before disabling it, then clears $8000–$9FFF with LCD off. It clears SCY/SCX, selects the palette and enables LCD/background with LCDC=$91. Replacing this setup inside a running game requires the same LCD shutdown constraint; it is not a per-frame clear.
+
+`wait_frame` reads LY ($FF44): leave any current LY>=144 interval, then accept the next one. AF changes; LCD must remain enabled. It polls with interrupts disabled and does not count missed fields or guarantee the update fits. It spends CPU while waiting. A low-power HALT/interrupt caller is another ownership agreement, not a drop-in RET replacement.
+
+`sample_action` selects action buttons with JOYP ($FF00)=$10, performs six settling reads, converts active-low bit 0 and resets the selection to $30. It stores the previous sample on every call, including holds/rejections. Return A=1 for a new press, else zero; AF/BC change. It claims the A button only, not a full directional or remappable controller API.
+
+`show_turn` selects BGP=$E4 or $1B from count parity. AF changes. The cleared tile/map show colour zero across the background. This is a palette adapter, not a moving sprite or a numeric display. A step of three still flips parity once per action; read the count byte to check magnitude.
+
+The service counter increments once per accepted display field and wraps after 65535. It is diagnostic service state, separate from the byte rule state. A real game needs its own explicit simulation/deadline policy and measured CPU/rendering budget.
+
+| Routine | Contract |
+| --- | --- |
+| `turn_init` | Store A in CTX; preserve A and flags. |
+| `turn_advance` | Add STEP modulo 256; change A, flags and count. |
+| `sample_action` | Return A=1 only for a new press; update previous sample; change AF/BC. |
+| `wait_frame` | Accept a fresh VBlank with LCD enabled; change AF. |
+| `show_turn` | Change BGP from count parity; change AF. |
+
+## Customise and diagnose
+
+`customise.asm` uses STEP=3: two actions give 0 → 3 → 6. One action still invokes the rule once. The byte contract needs a whole-number starting value and step from 0 through 255. Adding them gives at most 510, so one subtraction of 256 suffices in BASIC; the CPU's byte addition wraps naturally in assembly. The nonzero check starts at 100 with step 255 and reaches 99 then 98.
+
+<CodeFromFile src="nintendo-game-boy/patterns/assembly/framework/command-loop/customise.asm" lang="sm83" title="Three progress units for one accepted action" />
+
+<Figure src="/images/game-boy/patterns/assembly-command-loop/step-three.png" alt="Game Boy DMG custom-step caller after two actions." caption="Two actions reach six. The DMG shade returns to white because six is even." />
+
+`mistakes/reset-each-command.asm` is deliberately broken: initialisation runs inside the repeated path, so the next iteration erases progress. Keep initialisation at startup and jump back to the command/update path to repair it. The repaired caller is checked in a separate cold start.
+
+<CodeFromFile src="nintendo-game-boy/patterns/assembly/framework/command-loop/mistakes/reset-each-command.asm" lang="sm83" title="Deliberately broken: reset inside the repeated path" />
+
+<Figure src="/images/game-boy/patterns/assembly-command-loop/reset-mistake.png" alt="Game Boy DMG faulty caller after accepted input, showing its initial state." caption="The next iteration erases the progress the action just made." />
+
+`--variant no-edge` treats a held A as another action each field. `--variant no-wait` removes display pacing: its service counter must fail the normal one-per-native-field guard. These are distinct deliberate faults, not advanced alternatives; their normal counterparts and the reset repair are executed separately.
+
+An untimed world waits for an accepted action. A timed turn needs its own clock, expiry policy and ordering when a command arrives at the deadline. Display refresh or firmware interrupt activity does not automatically advance game rules. Blocking input is useful when nothing else needs main-loop service; continuing animation, music or deadlines require a different input/service policy.
+
+## Related choices
+
+An interrupt-driven caller could reduce the CPU time spent polling; it needs its own interrupt and clock ownership contract.
+
+The [loop choices](/patterns/cross-platform/framework/game-loop-choices/) explain untimed actions, timed turns and display servicing as separate decisions.
+
+## Verification
+
+**Native-emulator executed:** Emu198x **0.44.1**, Asm198x **0.0.71**, on the configuration above. The source README gives the reproduction command; the retained record identifies the exact inputs and tools.
+
+The six common cold starts check normal use, step three, reset fault/repair, wraparound and nonzero initialisation. Idle, first accepted action, waiting/holding, ignored input and a second accepted action are retained as native captures and actual observations. Assembly adds no-edge and no-wait controls for eight cold starts. The complete 32 KiB CPU-visible ROM is compared with the finalised cartridge. The checker compares actual palette framebuffers for both parity states and checks the service counter against 120 native frames. This does not establish calibrated real-world speed or a catch-up policy.
+
+`scripts/check-msx-gameboy-loops.py` independently decodes the records; falsification tests reject missing cases/stages, altered source/capture/payload/counts and false repairs. The additive three-route inventory does not expand the broad input/drawing/sound probe count or qualify new audio. No original-hardware, cassette-transfer, other model/firmware or whole-emulator claim follows.
+
+The [maintained source](https://github.com/code198x/code-samples/tree/582b3cb54f261ca29fc9f3df3e43c750c5af2103/nintendo-game-boy/patterns/assembly/framework/command-loop) includes the complete caller, settings, customisation and deliberate fault. The [retained record](https://github.com/code198x/code-samples/blob/582b3cb54f261ca29fc9f3df3e43c750c5af2103/nintendo-game-boy/patterns/assembly/framework/command-loop/verification/reusable-results.json) binds the executed source, observations, native images and released-tool identities.
+
+## Primary references
+
+Nintendo, *Game Boy Programming Manual*, version 1.1: P1 input/settling example; LCDC/LCD shutdown caution; LY values 0–153 and VBlank lines 144–153. This implementation follows the six-read action-button example; the retained older probe remains a separate observation.

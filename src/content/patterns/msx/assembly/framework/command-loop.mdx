@@ -1,0 +1,90 @@
+---
+title: "Wait for a player action on MSX1 in Z80 assembly"
+summary: "Reuse a bounded turn update with a native caller, clear ownership, a custom step and an observed reset mistake."
+platform: "msx"
+category: "framework"
+difficulty: "intermediate"
+tags: ["game-loop", "turns", "assembly", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press **Space** and the byte advances once. Hold it and it stays put; release it before the next action. **Escape** returns to BASIC. The firmware keeps doing its job while your game waits.
+
+<Figure src="/images/msx/patterns/assembly-command-loop/working.png" alt="MSX1 native caller after two accepted actions, showing turn two." caption="Two accepted actions. Waiting preserves the result." />
+
+## Put it in your project
+
+Build from the repository root:
+
+```sh
+python3 scripts/build-msx-gameboy-loops.py --assembler /path/to/asm198x --system msx
+```
+
+Keep demo.asm and the three includes together. Enter generated `build/working/load.bas` under the normal recorded MSX1 NTSC BIOS/BASIC; it reserves memory with CLEAR 200,49151, reads/POKEs the actual 164-byte image at $C000–$C0A3 and defines USR at $C000. Allow RUN to finish before entering `SCREEN 0:WIDTH 40:CLS:A=USR(0)`. The verifier requires exact loaded-byte equality before entry, rather than assuming typing completion means the BASIC loader completed.
+
+<CodeFromFile src="msx/patterns/assembly/framework/command-loop/demo.asm" lang="z80" title="Origin, settings and includes" />
+
+<CodeFromFile src="msx/patterns/assembly/framework/command-loop/caller.inc" lang="z80" title="Startup and the machine-specific outer loop" />
+
+## Reuse the rule and adapters
+
+`turn_init`: A becomes the labelled turn_count byte. A and flags are preserved. Call once at startup. `turn_advance`: add compile-time byte STEP modulo 256; changes A, flags and turn_count. Neither routine reads input, draws or checks time. Include each implementation once in your own build, supplying origin and settings as demo.asm does.
+
+The small image includes its state byte and eight-byte mutable display buffer. CLEAR reserves the entire area above BASIC's new ceiling, including unused space; it is not a claim that BASIC loses only 164 bytes. Do not overlap another buffer or code image. The normal BIOS/BASIC mapping and enabled firmware interrupts must remain available; no slot or mapper is changed here.
+
+`new_action` uses BIOS SNSMAT ($0141): row 8 bit 0 is Space; row 7 bit 2 is Escape; zero means down. SNSMAT and the command reader change AF. The reader waits for Space release before accepting a fresh action, so a key already held at startup is not immediately accepted. KILBUF ($0156) clears buffered firmware repeats before return. This is two-command input, not a general keyboard scanner or autorepeat policy.
+
+`show_turn` forms TURN $hh in the image's eight-byte buffer and calls BIOS LDIRVM ($005C) with HL=source, DE=0, BC=8. It writes the first eight cells of the selected SCREEN 0 default name table and leaves the cursor alone. Treat all main registers/flags as clobbered by this adapter; the top-level caller saves/restores AF/BC/DE/HL/IX/IY around the complete session. Those saves use 12 stack bytes plus nested helper/BIOS/interrupt needs on the existing balanced BASIC stack. The caller returns through RET, not a jump into a guessed interpreter address.
+
+The displayed byte is hexadecimal: $0A is ten, $FF is 255, then a unit step wraps to $00. Change the presentation adapter for another mode or table base. BIOS access preserves manufacturer-specific hardware handling; it does not make an arbitrary display layout portable.
+
+<CodeFromFile src="msx/patterns/assembly/framework/command-loop/routines.inc" lang="z80" title="Rule state and the input/wait adapters" />
+
+<CodeFromFile src="msx/patterns/assembly/framework/command-loop/presentation.inc" lang="z80" title="The native output adapter" />
+
+| Routine | Contract |
+| --- | --- |
+| `turn_init` | Store A in count; preserve A and flags. |
+| `turn_advance` | Add STEP modulo 256; change A, flags and count. |
+| `new_action` | Return A=1 for a new Space press, 0 for Escape; change AF. |
+| `show_turn` | Change eight display cells, two buffer bytes and main registers/flags. |
+
+## Customise and diagnose
+
+`customise.asm` uses STEP=3: two actions give 0 → 3 → 6. One action still invokes the rule once. The byte contract needs a whole-number starting value and step from 0 through 255. Adding them gives at most 510, so one subtraction of 256 suffices in BASIC; the CPU's byte addition wraps naturally in assembly. The nonzero check starts at 100 with step 255 and reaches 99 then 98.
+
+<CodeFromFile src="msx/patterns/assembly/framework/command-loop/customise.asm" lang="z80" title="Three progress units for one accepted action" />
+
+<Figure src="/images/msx/patterns/assembly-command-loop/step-three.png" alt="MSX1 custom-step caller after two actions." caption="The count reaches six while the input policy stays the same." />
+
+`mistakes/reset-each-command.asm` is deliberately broken: initialisation runs inside the repeated path, so the next iteration erases progress. Keep initialisation at startup and jump back to the command/update path to repair it. The repaired caller is checked in a separate cold start.
+
+<CodeFromFile src="msx/patterns/assembly/framework/command-loop/mistakes/reset-each-command.asm" lang="z80" title="Deliberately broken: reset inside the repeated path" />
+
+<Figure src="/images/msx/patterns/assembly-command-loop/reset-mistake.png" alt="MSX1 faulty caller after accepted input, showing its initial state." caption="The next iteration erases the progress the action just made." />
+
+`--variant no-edge` deliberately removes release gating. A held Space then spends repeated turns and must fail the normal press guard. Deliberate auto-repeat needs an explicit delay and repeat interval.
+
+An untimed world waits for an accepted action. A timed turn needs its own clock, expiry policy and ordering when a command arrives at the deadline. Display refresh or firmware interrupt activity does not automatically advance game rules. Blocking input is useful when nothing else needs main-loop service; continuing animation, music or deadlines require a different input/service policy.
+
+## Related choices
+
+[Compare the MSX BASIC caller](/patterns/msx/basic/framework/command-loop/) when a submitted line suits your commands.
+
+The [loop choices](/patterns/cross-platform/framework/game-loop-choices/) explain untimed actions, timed turns and display servicing as separate decisions.
+
+## Verification
+
+**Native-emulator executed:** Emu198x **0.44.1**, Asm198x **0.0.71**, on the configuration above. The source README gives the reproduction command; the retained record identifies the exact inputs and tools.
+
+The six common cold starts check normal use, step three, reset fault/repair, wraparound and nonzero initialisation. Idle, first accepted action, waiting/holding, ignored input and a second accepted action are retained as native captures and actual observations. Assembly adds a seventh no-edge cold start, full exact payload readback before USR, actual VDP I/O write traces (address zero followed by eight character bytes), and working BASIC arithmetic after return. Raw I/O traces are bounded to one native frame and 4096 sampled events; retained records identify the VDP-write subset. The state byte and the actual emitted character bytes must agree.
+
+`scripts/check-msx-gameboy-loops.py` independently decodes the records; falsification tests reject missing cases/stages, altered source/capture/payload/counts and false repairs. The additive three-route inventory does not expand the broad input/drawing/sound probe count or qualify new audio. No original-hardware, cassette-transfer, other model/firmware or whole-emulator claim follows.
+
+The [maintained source](https://github.com/code198x/code-samples/tree/582b3cb54f261ca29fc9f3df3e43c750c5af2103/msx/patterns/assembly/framework/command-loop) includes the complete caller, settings, customisation and deliberate fault. The [retained record](https://github.com/code198x/code-samples/blob/582b3cb54f261ca29fc9f3df3e43c750c5af2103/msx/patterns/assembly/framework/command-loop/verification/reusable-results.json) binds the executed source, observations, native images and released-tool identities.
+
+## Primary references
+
+ASCII/Microsoft, *MSX Technical Data Book*: Advanced Programming Guide BIOS entries SNSMAT ($0141), KILBUF ($0156), LDIRVM ($005C); BASIC Reference Guide CLEAR and DEFUSR/USR. The MSX standard requires BIOS access for portable non-VDP I/O; this caller also uses BIOS for video transfer.
