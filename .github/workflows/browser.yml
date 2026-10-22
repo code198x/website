@@ -45,10 +45,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Two parallel runs of the same setup: the suite against the dev server, and
+  # the tests tagged @built against `astro preview`. Each has room to finish
+  # when the runner is slow to install Chromium's system libraries.
   playwright:
-    name: Playwright
+    name: Playwright (${{ matrix.server }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        server: [dev, built]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -98,6 +105,7 @@ jobs:
         run: npx playwright install-deps chromium
 
       - name: Run the browser suite
+        if: matrix.server == 'dev'
         env:
           CODE_SAMPLES_PATH: ${{ github.workspace }}/code-samples
         run: npx playwright test
@@ -105,7 +113,7 @@ jobs:
       # Tests tagged @built need the production build (search's index, for
       # one); they run against `astro preview` of the site built above.
       - name: Run the built-site tests
-        if: success() || failure()
+        if: matrix.server == 'built'
         env:
           PLAYWRIGHT_BUILT: '1'
           CODE_SAMPLES_PATH: ${{ github.workspace }}/code-samples
@@ -115,7 +123,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.server }}
           path: |
             playwright-report
             test-results
