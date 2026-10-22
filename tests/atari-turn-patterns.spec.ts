@@ -26,3 +26,9 @@ for(const machine of ['atari-2600','atari-5200','atari-7800']){
   await page.goto(`/patterns/platform/${machine}/`);await page.getByLabel('Search patterns',{exact:true}).fill('new press');await expect(page.locator(`[data-pattern]:visible a[href="${route}"]`)).toHaveCount(1);
  });
 }
+
+test('progression comparison preserves BASIC and Atari routes together',async({page})=>{
+ await page.goto('/patterns/cross-platform/framework/game-loop-choices/');const prose=page.locator('.pattern-prose');
+ for(const machine of ['acorn-atom','amstrad-cpc'])await expect(prose.locator(`a[href="/patterns/${machine}/basic/framework/command-loop/"]`)).toHaveCount(1);
+ for(const machine of ['atari-2600','atari-5200','atari-7800'])await expect(prose.locator(`a[href="/patterns/${machine}/assembly/framework/turn-loop/"]`)).toHaveCount(1);
+});
