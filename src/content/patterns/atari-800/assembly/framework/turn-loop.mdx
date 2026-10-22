@@ -1,0 +1,105 @@
+---
+title: "Wait for a new fire press on Atari XL"
+summary: "Reusable assembly turn state, independent field servicing and verified faulty/fixed callers, with Atari XL hardware ownership kept explicit."
+platform: "atari-800"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "assembly", "press-detection", "timing"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Press **joystick-one fire**: **TURN 00** becomes **TURN 01**. Hold it: the loop keeps running, but the turn counter waits. Release and press again for **TURN 02**. The digits are hexadecimal.
+
+The reusable routine decides whether a sampled button is newly pressed. A separate wait controls when the caller samples; another routine draws the result. That keeps “take a turn” separate from “service the display”.
+
+![The working Atari XL caller after two new presses, showing TURN 02.](/images/atari-800xl/patterns/assembly-turn-loop/working.png)
+
+## Start the complete caller
+
+Build with `make`. In **stock Atari BASIC on an 800XL NTSC**, enter the complete generated `build/loader.bas`, then `RUN`. Each numbered line needs time to be accepted. The loader selects GRAPHICS 0, positions `TURN 00` at column zero, installs the 177-byte program at **$0600**, then uses `X=USR(1536)` to enter it.
+
+The code ends at **$06B1**, before the seven-byte context at **$06E0–$06E6**. Two diagnostic guards follow at **$06E7–$06E8**. The assembler rejects code/context overlap. Page six is available under the stock OS/BASIC setup used here; another language, extension or page-six routine can already own it. Long BASIC INPUT operations can use part of it as an overflow buffer. Do not assume the whole page is free in every project.
+
+Download the [caller and shared files](https://github.com/code198x/code-samples/tree/ff95272ccf7ad6c58f51404373fe7106242d124f/atari-800xl/patterns/assembly/framework/turn-loop) as part of the samples tree, preserving relative include paths. The checked assembler is **Asm198x 0.0.71**. No manufacturer firmware is included.
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/turn-loop/demo.asm" lang="6502" title="Initialise once, service a field, sample fire and draw accepted turns" />
+
+## Put the routine in your project
+
+Define `T` as **seven private, consecutive RAM bytes**. Include the routine once. Pass the starting counter in A and call `init_turn` at startup; it clears the other state and sets the step to one. Store another step in `T+5` after that call if needed.
+
+<CodeFromFile src="cross-platform/patterns/framework/atari-turn-loops/turn.inc" lang="6502" title="Reusable turn and service counters, with no hardware access" />
+
+Pass an active-high button sample in A to `sample_turn`, using the same bit convention every time. Test `T+6` for a newly accepted press. Keep the previous sample between calls.
+
+| Offset | Meaning |
+| --- | --- |
+| `T+0` | Counter; accepted input adds the step modulo 256 |
+| `T+1` | Previous sample |
+| `T+2` / `T+3` | Serviced-field diagnostic, little-endian, modulo 65536 |
+| `T+4` | Current sample |
+| `T+5` | Step; preserved by updates |
+| `T+6` | Accepted flag: 1 new press, 0 otherwise |
+
+Call `service_tick` once per serviced field if you want that diagnostic. Its counter keeps advancing while the player waits; the turn counter does not. It is not an elapsed-time clock when work misses fields.
+
+Keep **decimal mode clear**; the complete caller uses `CLD`. `init_turn` and `sample_turn` clobber A/flags and preserve X/Y. `service_tick` changes flags and preserves A/X/Y. The reusable code occupies **77 bytes** in this layout, plus the seven-byte context. A direct JSR needs two return-address stack bytes; the caller and OS interrupts need additional stack space. The routines allocate no heap, install no handler and touch no video or input hardware. Give the context one owner at a time.
+
+## Why this wait belongs to this machine
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/turn-loop/frame.inc" lang="6502" title="The hardware-specific synchronisation point" />
+
+`wait_frame` waits for the low byte of **RTCLOK at $14** to change. The normal OS vertical-blank service maintains that clock and the active-low **STRIG0 shadow at $0284**. The caller inverts and masks the trigger to get an active-high sample. It keeps normal interrupts running and installs no handler.
+
+The wait clobbers A/flags and preserves X/Y. A stopped or replaced OS VBI can make it stall. A changed clock byte is a synchronisation opportunity; it does not tell us how many fields passed. A long operation can miss fields, and a delay of 256 ticks can hide whole low-byte wraps. Deadlines need a properly sampled elapsed-time source and an expiry policy.
+
+The display helper follows **SAVMSC at $58/$59**. The caller owns the first text row, while the OS continues to own its normal display and keyboard services. Its USR entry consumes the argument-count byte with `PLA`; that belongs to the BASIC entry wrapper, not inside ordinary JSR routines. This complete caller stays in its loop and does not return a BASIC result. Reset/reload to leave it.
+
+Both implementations accept one observation per serviced field. A very short tap between samples can be missed. An event queue, deliberate key repeat or independent animation clock needs a separate contract.
+
+## Make it your own
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/turn-loop/settings.inc" lang="6502" title="Allocate the context and choose initial count and step" />
+
+Replace `settings.inc` with the maintained customisation below and rebuild. Two presses now give **00 → 02 → 04**, while holding either press adds nothing further.
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/turn-loop/customise.inc" lang="6502" title="Customisation: add two per newly pressed fire" />
+
+![The customised Atari XL caller after two new presses, showing TURN 04.](/images/atari-800xl/patterns/assembly-turn-loop/step-two.png)
+
+This changes an initial constant; it does not enlarge the routine or context. A wider counter, saturating arithmetic, another input device or different interrupt ownership needs new code and checks. The maintained wrap case starts at 254 for **254 → 255 → 0**; a nonzero start of 37 checks that initialisation actually arrives.
+
+## Common mistake: held input becomes repeated turns
+
+The next filter is **deliberately wrong**. It keeps the current held sample without excluding the previous one. The counter runs away while fire stays down.
+
+<CodeFromFile src="cross-platform/patterns/framework/atari-turn-loops/mistakes/held-as-press.inc" lang="6502" title="Broken filter: held fire is treated as newly pressed" />
+
+![The faulty Atari XL caller after holding fire, showing unwanted repeated turns.](/images/atari-800xl/patterns/assembly-turn-loop/held-mistake.png)
+
+Restore the original filter and preserve previous state between calls. The verified working progression is **0 → 1 → 1 → 2**: first press, continued hold, release and second press. The native checks also build and execute an independent repair.
+
+## Common mistake: counting CPU iterations as fields
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/turn-loop/mistakes/no-wait.inc" lang="6502" title="Deliberately broken wait: return immediately" />
+
+Removing the wait leaves the rule’s press filter intact, but the service counter now follows instruction speed. This faulty build produces **6015 service ticks in 30 native fields**, so the normal field-rate guard rejects it. A still screenshot cannot show that timing failure. Restore `frame.inc`, then measure again; the repaired build returns to 30 service ticks in the measured 30-field window.
+
+Neither a wait nor assembly makes unlimited work fit. Measure the real game’s rendering and simulation costs. These small NTSC callers establish one workload; they do not qualify PAL timing or a complete frame budget.
+
+## Keep presentation outside the rule
+
+The text helper converts the byte count into Atari internal screen codes and writes two cells in the first row. Explicit cursor placement matters: BASIC’s normal left margin is not column zero. Moving the label without moving those writes gives a visibly damaged label even though the turn state itself is correct.
+
+The [game-loop comparison](/patterns/cross-platform/framework/game-loop-choices/) explains progression, input and time as separate choices. The [Atari XL BASIC command loop](/patterns/atari-800/basic/framework/command-loop/) keeps a blocking numeric reader instead. It is useful for a world that can wait for a submitted command.
+
+## What we checked
+
+**Code status: native emulator-executed**, using Emu198x **0.44.1**, Asm198x **0.0.71** and the firmware identities in the [execution record](https://github.com/code198x/code-samples/blob/ff95272ccf7ad6c58f51404373fe7106242d124f/atari-800xl/patterns/assembly/framework/turn-loop/verification/results.json).
+
+Eight fresh cases cover working/customised callers, nonzero initial state, byte wrap, held-as-press and missing-wait faults, and separate repairs of each fault. Real input drives guest state; checks cover idle, held, released and second-press behaviour, service counts and adjacent guards. The whole BASIC loader is typed, and installed machine-code bytes are compared with the assembler output. All 32 native captures and source/observer/tool identities are retained. The record checker rejects missing evidence and false behaviour; it checks saved observations rather than rerunning the emulator.
+
+## Sources
+
+Atari, [*Atari BASIC Reference Manual*, revision C](https://www.atarimania.com/documents/Atari-Basic-Reference-Manual-Rev-C.pdf), USR stack convention; Ian Chadwick, [*Mapping the Atari*](https://www.atariarchives.org/mapping/), RTCLOK 18–20, STRIG0 644, SAVMSC 88–89 and page six 1536–1791. The named API is checked against the stock 800XL configuration rather than assumed from its CPU’s other machines.

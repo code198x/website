@@ -1,0 +1,85 @@
+---
+title: "Wait for a command on Atari XL"
+summary: "Reusable Atari BASIC turn updates, with a complete caller, bounded byte wrap, custom steps and an independently verified reset mistake."
+platform: "atari-800"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "BASIC", "input"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Type **1** and press Return. **TURN 0** becomes **TURN 1**. Do it again for **TURN 2**. Try **0**: the turn stays where it is. Take your time deciding; the rules wait for you.
+
+An untimed command game does not need a frame wait just to look like a game loop. It needs a clear place to get a command, decide what it means and update the world. Here those jobs stay separate, so you can take the update routine into your own project.
+
+![The Atari XL BASIC caller after two accepted commands, showing TURN 2 and FLAG 1.](/images/atari-800xl/patterns/basic-command-loop/working.png)
+
+## Enter a working program
+
+Enter the caller, then the routines beneath it, as **one numbered program in stock Atari BASIC**. Type `RUN`. The checked machine is an **800XL NTSC** with its normal OS and BASIC ROMs. Enter each numbered line separately and let BASIC accept it before entering the next.
+
+<CodeFromFile src="atari-800xl/patterns/basic/framework/command-loop/caller.bas" lang="basic" title="Initialise once, draw, read a command and call the rule" />
+
+`GRAPHICS 0` clears the text display. `INPUT A` waits for a submitted number. Only the call to the rule routine can advance the counter. BASIC and the operating system keep their own services running, but our world does not take turns while input is blocked.
+
+## Reuse the update routine
+
+Reserve lines **1000–1040**, or renumber the routine and its GOSUB call together. Put the submitted command in `A` and call `GOSUB 1000`.
+
+<CodeFromFile src="atari-800xl/patterns/basic/framework/command-loop/routines.bas" lang="basic" title="A command rule with no keyboard, display or timer ownership" />
+
+| Global | Contract |
+| --- | --- |
+| `N` | Integer-valued counter, 0–255; updated for accepted input |
+| `S` | Integer-valued step, 0–255; preserved |
+| `A` | Numeric command; preserved; only 1 is accepted |
+| `C` | Result: 1 accepted, 0 rejected; replaced on every call |
+
+The counter and step use Atari BASIC’s normal numeric representation. They are not byte variables. The routine deliberately gives them a byte-sized policy: **254 → 255 → 0**. With both inputs in range, the sum is at most 510, so subtracting 256 once is enough. That is not a general modulo routine for arbitrary floats or larger steps.
+
+Initialise `N`, `S` and `C` once. The routine owns `N` and `C` and uses BASIC’s GOSUB return frame. It allocates no fixed RAM or private screen buffer, and installs no interrupt. Keep the globals exclusive while it runs; rename them consistently if another component uses the same names. In particular, save or consume the acceptance result before a map query reuses `C`.
+
+`C` is a useful handover point: an accepted command can spend a turn, move enemies or trigger a redraw. The counter makes that point visible. A complete adventure still needs its own vocabulary, world state and rules.
+
+## Make it your own
+
+Use this caller with the same routine. `S=2` makes two accepted commands produce **0 → 2 → 4**.
+
+<CodeFromFile src="atari-800xl/patterns/basic/framework/command-loop/customise.bas" lang="basic" title="Add two progress units for each accepted command" />
+
+![The customised Atari XL BASIC caller after two accepted commands, showing TURN 4.](/images/atari-800xl/patterns/basic-command-loop/step-two.png)
+
+This changes an initial value; it adds no global, routine or artwork. One submitted command still produces one accepted rule call. We changed the amount added, not the number of enemy responses a game should take.
+
+Set `N=254` at startup to check wrap, or `N=37` to confirm the starting value reaches the first update. A score that must exceed 255 needs a wider policy. A resource that must stop at a maximum needs saturation rather than wrap.
+
+## Common mistake: forgetting the last move
+
+The next caller is **deliberately wrong**. It resets `N` before every update. The first command seems fine; the second still leaves **TURN 1**.
+
+<CodeFromFile src="atari-800xl/patterns/basic/framework/command-loop/mistakes/reset-each-turn.bas" lang="basic" title="Broken caller: erase progress inside the recurring path" />
+
+![The faulty Atari XL BASIC caller after two commands, still showing TURN 1.](/images/atari-800xl/patterns/basic-command-loop/reset-mistake.png)
+
+A rejected command can erase progress too. Restore the original caller, keeping startup outside the loop, then try two commands again. The working caller gives **0 → 1 → 2**; the faulty one gives **0 → 1 → 1**. The repaired caller is executed from a fresh firmware boot in the retained checks.
+
+Text entered at numeric `INPUT` follows the interpreter’s error handling. This small component does not promise a full parser or invent behaviour for every malformed input.
+
+## When the game cannot wait
+
+A countdown, animated cursor or sound routine needing regular calls cannot rely on `INPUT` returning soon. Keep the command rule, then choose a non-blocking input path or a separately owned service and an explicit deadline policy. A timed turn is still a turn.
+
+The [Atari XL assembly caller](/patterns/atari-800/assembly/framework/turn-loop/) demonstrates **sampled joystick fire with OS pacing**. It has a different input contract: holding and pressing are separate states. It is useful alongside this BASIC caller, rather than a compulsory replacement for it. [Choose how your game advances](/patterns/cross-platform/framework/game-loop-choices/) explains those choices.
+
+## What we checked
+
+**Code status: firmware-entered and emulator-executed.** Released Emu198x **0.44.1** cold-boots the 800XL and types the complete numbered program. The [native record](https://github.com/code198x/code-samples/blob/ff95272ccf7ad6c58f51404373fe7106242d124f/atari-800xl/patterns/basic/framework/command-loop/verification/reusable/results.json) binds sources, observer, tools, firmware and captures.
+
+Six fresh cases cover the default caller, step two, a nonzero start, byte wrap, the reset mistake and an independent repaired run. Checks read the rendered TURN and FLAG through the OS’s current screen pointer, wait 120 native fields without taking turns, submit rejected commands and verify accepted flags. The retained checker rejects missing cases, altered sources and false results; the native verifier executes the machine again.
+
+The [source and reproduction notes](https://github.com/code198x/code-samples/tree/ff95272ccf7ad6c58f51404373fe7106242d124f/atari-800xl/patterns/basic/framework/command-loop) stay together. No manufacturer ROM is redistributed. This qualifies the named workload and firmware configuration, not original hardware or a complete emulator.
+
+## Primary reference
+
+Atari, [*Atari BASIC Reference Manual*, revision C](https://www.atarimania.com/documents/Atari-Basic-Reference-Manual-Rev-C.pdf), `GOSUB`, `RETURN`, `INPUT`, `GRAPHICS` and numeric representation.
