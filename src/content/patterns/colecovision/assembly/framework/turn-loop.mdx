@@ -1,0 +1,105 @@
+---
+title: "Wait for a new fire press on ColecoVision"
+summary: "Reusable assembly turn state, independent field servicing and verified faulty/fixed callers, with ColecoVision hardware ownership kept explicit."
+platform: "colecovision"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "assembly", "press-detection", "timing"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Press **left fire on controller one**: **TURN 00** becomes **TURN 01**. Hold it: the loop keeps running, but the turn counter waits. Release and press again for **TURN 02**. The digits are hexadecimal.
+
+The reusable routine decides whether a sampled button is newly pressed. A separate wait controls when the caller samples; another routine draws the result. That keeps “take a turn” separate from “service the display”.
+
+![The working ColecoVision caller after two new presses, showing TURN 02.](/images/coleco-colecovision/patterns/assembly-turn-loop/working.png)
+
+## Start the complete caller
+
+Build the original cartridge with `make`, then start `build/demo.cv` through a **stock ColecoVision BIOS on an NTSC machine**. The 32 KiB cartridge’s `$55,$AA` header skips the BIOS title using its normal entry vector. The qualification does not inject a CPU start address or desired RAM values.
+
+The caller owns RAM **$6000–$6006**, two diagnostic guards at **$6007–$6008**, and a stack below **$63F0**. The console’s RAM mirrors are not extra memory. It takes over the VDP setup and controller mode; it does not share those with a BIOS-driven game loop.
+
+Download the [caller and shared files](https://github.com/code198x/code-samples/tree/ff95272ccf7ad6c58f51404373fe7106242d124f/coleco-colecovision/patterns/assembly/framework/turn-loop) as part of the samples tree, preserving relative include paths. The checked assembler is **Asm198x 0.0.71**. No manufacturer firmware is included.
+
+<CodeFromFile src="coleco-colecovision/patterns/assembly/framework/turn-loop/demo.asm" lang="z80" title="Initialise once, service a field, sample fire and draw accepted turns" />
+
+## Put the routine in your project
+
+Define `T` as **seven private, consecutive RAM bytes**. Include the routine once. Pass the starting counter in A and call `init_turn` at startup; it clears the other state and sets the step to one. Store another step in `T+5` after that call if needed.
+
+<CodeFromFile src="coleco-colecovision/patterns/assembly/framework/turn-loop/turn.inc" lang="z80" title="Reusable turn and service counters, with no hardware access" />
+
+Pass an active-high button sample in A to `sample_turn`, using the same bit convention every time. Test `T+6` for a newly accepted press. Keep the previous sample between calls.
+
+| Offset | Meaning |
+| --- | --- |
+| `T+0` | Counter; accepted input adds the step modulo 256 |
+| `T+1` | Previous sample |
+| `T+2` / `T+3` | Serviced-field diagnostic, little-endian, modulo 65536 |
+| `T+4` | Current sample |
+| `T+5` | Step; preserved by updates |
+| `T+6` | Accepted flag: 1 new press, 0 otherwise |
+
+Call `service_tick` once per serviced field if you want that diagnostic. Its counter keeps advancing while the player waits; the turn counter does not. It is not an elapsed-time clock when work misses fields.
+
+`init_turn` clobbers AF. `sample_turn` clobbers AF/B and preserves DE/HL/IX/IY. `service_tick` clobbers HL and preserves flags. Other registers are preserved by these routines. The reusable code occupies **69 bytes** in this layout, plus the seven-byte context. A direct CALL needs two return-address stack bytes; the caller and any interrupt handler need additional stack space. The routines allocate no heap, install no handler and touch no video or input hardware. Give the context one owner at a time.
+
+## Why this wait belongs to this machine
+
+<CodeFromFile src="coleco-colecovision/patterns/assembly/framework/turn-loop/frame.inc" lang="z80" title="The hardware-specific synchronisation point" />
+
+`wait_frame` reads **VDP status at $BF**, discards any already-latched field, then polls bit 7 for a fresh one. It clobbers AF and preserves other registers. Reading status clears the field and other status flags and resets the two-byte command latch. A second reader can steal the event; interleaved control writes can corrupt a VDP command.
+
+The caller keeps **R1 IE0 clear** and owns this polling arrangement. On ColecoVision the VDP interrupt goes to **NMI**: `DI` alone does not stop it. A BIOS/NMI-driven renderer needs another contract; do not combine that service with this status-polling wait.
+
+A write to **$C0** selects joystick mode. The caller reads **$FC**, inverts the value and masks **bit 6** for active-high controller-one left fire. Keypad, right-fire, spinner and other peripheral paths remain different work.
+
+Both implementations accept one observation per serviced field. A very short tap between samples can be missed. An event queue, deliberate key repeat or independent animation clock needs a separate contract.
+
+## Make it your own
+
+<CodeFromFile src="coleco-colecovision/patterns/assembly/framework/turn-loop/settings.inc" lang="z80" title="Allocate the context and choose initial count and step" />
+
+Replace `settings.inc` with the maintained customisation below and rebuild. Two presses now give **00 → 02 → 04**, while holding either press adds nothing further.
+
+<CodeFromFile src="coleco-colecovision/patterns/assembly/framework/turn-loop/customise.inc" lang="z80" title="Customisation: add two per newly pressed fire" />
+
+![The customised ColecoVision caller after two new presses, showing TURN 04.](/images/coleco-colecovision/patterns/assembly-turn-loop/step-two.png)
+
+This changes an initial constant; it does not enlarge the routine or context. A wider counter, saturating arithmetic, another input device or different interrupt ownership needs new code and checks. The maintained wrap case starts at 254 for **254 → 255 → 0**; a nonzero start of 37 checks that initialisation actually arrives.
+
+## Common mistake: held input becomes repeated turns
+
+The next filter is **deliberately wrong**. It keeps the current held sample without excluding the previous one. The counter runs away while fire stays down.
+
+<CodeFromFile src="coleco-colecovision/patterns/assembly/framework/turn-loop/mistakes/held-as-press.inc" lang="z80" title="Broken filter: held fire is treated as newly pressed" />
+
+![The faulty ColecoVision caller after holding fire, showing unwanted repeated turns.](/images/coleco-colecovision/patterns/assembly-turn-loop/held-mistake.png)
+
+Restore the original filter and preserve previous state between calls. The verified working progression is **0 → 1 → 1 → 2**: first press, continued hold, release and second press. The native checks also build and execute an independent repair.
+
+## Common mistake: counting CPU iterations as fields
+
+<CodeFromFile src="coleco-colecovision/patterns/assembly/framework/turn-loop/mistakes/no-wait.inc" lang="z80" title="Deliberately broken wait: return immediately" />
+
+Removing the wait leaves the rule’s press filter intact, but the service counter now follows instruction speed. This faulty build produces **6613 service ticks in 30 native fields**, so the normal field-rate guard rejects it. A still screenshot cannot show that timing failure. Restore `frame.inc`, then measure again; the repaired build returns to 30 service ticks in the measured 30-field window.
+
+Neither a wait nor assembly makes unlimited work fit. Measure the real game’s rendering and simulation costs. These small NTSC callers establish one workload; they do not qualify PAL timing or a complete frame budget.
+
+## Keep presentation outside the rule
+
+The caller reuses the library’s original 512-byte diagnostic font, configures Graphics I and owns all 16 KiB VRAM. It writes through ports $BE/$BF, with padded uploads and no competing latch owner. The 32 KiB cartridge includes padding; the font, setup and display code are additional to the 69-byte rule/service component.
+
+The [game-loop comparison](/patterns/cross-platform/framework/game-loop-choices/) explains progression, input and time as separate choices. A BASIC compiler/runtime/load path for ColecoVision remains an unqualified gap; this assembly entry does not claim BASIC is impossible.
+
+## What we checked
+
+**Code status: native emulator-executed**, using Emu198x **0.44.1**, Asm198x **0.0.71** and the firmware identities in the [execution record](https://github.com/code198x/code-samples/blob/ff95272ccf7ad6c58f51404373fe7106242d124f/coleco-colecovision/patterns/assembly/framework/turn-loop/verification/results.json).
+
+Eight fresh cases cover working/customised callers, nonzero initial state, byte wrap, held-as-press and missing-wait faults, and separate repairs of each fault. Real input drives guest state; checks cover idle, held, released and second-press behaviour, service counts and adjacent guards. Startup goes through the stock BIOS and original cartridge header. All 32 native captures and source/observer/tool identities are retained. The record checker rejects missing evidence and false behaviour; it checks saved observations rather than rerunning the emulator.
+
+## Sources
+
+Coleco, [*ColecoVision Technical Manual*](https://consolemods.org/wiki/images/b/b4/ColecoVision_Technical_Manual.pdf), system/VDP/controller wiring; Texas Instruments, [*TMS9918A/TMS9928A/TMS9929A Data Manual*](https://www.bitsavers.org/components/ti/TMS9900/TMS9918A_TMS9928A_TMS9929A_Video_Display_Processors_Data_Manual_Nov82.pdf), status F, interrupt enable and access protocol. Cartridge-header and software controller details are cross-checked against the [retained programmer reference](https://github.com/alekmaul/pvcollib/wiki/Complete-Colecovision-Specs); the service manual does not fully document those interfaces.
