@@ -2,11 +2,11 @@ import {chromium, devices} from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import {readFileSync, writeFileSync, mkdirSync} from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
+import { load } from 'js-yaml';
 const output=process.env.LOCKSMITH_REVIEW_OUTPUT || '/private/tmp/locksmith-browser';
 const base=process.env.LOCKSMITH_REVIEW_URL || 'http://127.0.0.1:4332/systems/sinclair-zx-spectrum/basic/locksmith/';
 const samples=path.resolve(process.env.CODE_SAMPLES_PATH || '../code-samples');
-const metadata=yaml.load(readFileSync(new URL('../src/content/units/sinclair-zx-spectrum/basic/locksmith.yaml',import.meta.url),'utf8'));
+const metadata=load(readFileSync(new URL('../src/content/units/sinclair-zx-spectrum/basic/locksmith.yaml',import.meta.url),'utf8'));
 const units=[{number:0,slug:'index'},...metadata.units];
 // Check the editing directions against the executed source transition manifest.
 for (const unit of metadata.units) {

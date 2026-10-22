@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import yaml from 'js-yaml';
+import { load } from 'js-yaml';
 import { spotStyle, contrastRatio, PAPER } from './contrast';
 import { primaryColour, type MachineColour } from './machine-colours';
 
@@ -32,7 +32,7 @@ const APPROVED_PRIMARY: Record<string, string> = {
 const LAUNCH = ['sinclair-zx-spectrum', 'commodore-64', 'commodore-amiga', 'nintendo-entertainment-system'];
 
 describe.each(LAUNCH)('%s curated spot ink', (id) => {
-  const data = yaml.load(readFileSync(`src/content/systems/${id}.yaml`, 'utf8')) as { colours?: MachineColour[] };
+  const data = load(readFileSync(`src/content/systems/${id}.yaml`, 'utf8')) as { colours?: MachineColour[] };
   it('keeps the primary Steve approved on 2026-10-01', () => {
     expect(primaryColour(data.colours)?.hex.toLowerCase()).toBe(APPROVED_PRIMARY[id]);
   });
