@@ -1,0 +1,65 @@
+---
+title: "Query and Change a Tile Map in Memotech MTX BASIC"
+summary: "Keep room data separate from its picture, with checked reads, edits, properties and world-to-cell conversion."
+platform: "memotech-mtx"
+category: "rendering"
+difficulty: "beginner"
+tags: ["BASIC", "rendering", "maps"]
+related:
+  patterns: ["tile-map-queries"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A wall is a rule as well as a picture. Keep that rule in a map and you can ask what is under a player without trying to recognise the picture on screen.
+
+The caller prints an eight-by-six room, reads tile 2 at column 3, row 2, changes it to tile 3, then prints the changed room. MTX BASIC arrays start at one. The program keeps logical coordinates zero-based and adds one at the array access. Enter the listing using the MTX’s own symbol legends; a host keyboard’s shifted punctuation can enter different characters.
+
+<Figure kind="capture" fit="column" src="/images/memotech-mtx/patterns/basic-rendering/tile-map/demo.png" alt="The maintained caller running through the machine’s stock BASIC ROM." caption="The maintained caller running through the machine’s stock BASIC ROM. Emu198x 0.44.1 capture." />
+
+## Put it in a project
+
+Copy `routines.bas` into unused line numbers, then add the initialisation from `demo.bas` before your game loop. If you renumber a routine, update every call to it. The arrays and variables belong to your program; none are local.
+
+<CodeFromFile src="memotech-mtx/patterns/basic/rendering/tile-map/demo.bas" lang="basic" title="Complete room, query and edit example" />
+
+Set W/H to positive integer map dimensions, S to a positive integer tile size in world units and L to the highest permitted tile ID. Allocate and populate M()/P() before calling. Numeric array elements use interpreter storage, rather than one byte per tile. On this interpreter the array base is one: the routine accesses `M(D+1)` for logical offset D.
+
+## The calls
+
+| Call | Supply | Result |
+| --- | --- | --- |
+| 1000: read | C column, R row | E=1, T=tile; invalid coordinates return E=0, T=-1 |
+| 1100: change | C/R, V tile ID | Writes only if coordinates and ID are valid; E=1, T=V, otherwise E=0 |
+| 1200: classify | T tile ID | E=1, F=property; invalid ID returns E=0, F=-1 |
+| 1300: world position | X/Y, S | Floors X/S and Y/S to C/R, then performs the checked lookup |
+| 1400: show | Q/U start, A/B size | Prints a bounded text region at the current cursor |
+
+Use `GOSUB` (Spectrum: `GO SUB`) followed by the entry number. Read E immediately: every later call can replace it. Reads reject fractional cell coordinates; writes also reject fractional or out-of-range IDs. Non-negative fractional world positions are allowed. A negative position or non-positive S gives C=R=T=-1; a positive position beyond the map retains calculated C/R but returns E=0, T=-1.
+
+<CodeFromFile src="memotech-mtx/patterns/basic/rendering/tile-map/routines.bas" lang="basic" title="Reusable map access and display routines" />
+
+Reserve M()/P(), W/H/S/L, C/R/V/T/E/F/X/Y and scratch D/J/K/Q/U/A/B. Calls are synchronous and not re-entrant. Keep W/H consistent with the allocation; increasing them does not enlarge an array. Reading a stored tile does not certify its ID: property lookup checks that separately.
+
+## Why the arithmetic matters
+
+Each complete row occupies W cells. That puts a cell at `R*W+C`. At column 3, row 2 in an eight-column map, the offset is 19. The array-base adjustment happens only after that calculation. Using H as the stride can look correct on a square map and fail when a level changes shape.
+
+The reverse operation divides a world coordinate by the tile size and rounds down. World positions, tile positions and array subscripts are three different things. This is the sort of representation change explored in [Maths for Games](/craft/maths-for-games/).
+
+## Change it and spot mistakes
+
+Change the property table to make a new tile block movement, hurt the player or mark an exit. Enlarge P() and L together. Keep actors separate if their movement must leave the underlying floor intact. A map edit changes data; it does not redraw the screen.
+
+A wrong stride shifts the room’s internal features. The retained `wrong-stride` caller demonstrates that symptom. A rejected write should leave every map cell unchanged; the checks read the whole map afterwards. Fix the index or bounds test instead of hiding the symptom by making the level square.
+
+The text adapter uses IDs 0–3 as printable digits. For a separately includable renderer with a complete ID preflight, use [bounded text regions](/patterns/memotech-mtx/basic/rendering/text-region/). A text region is useful for debugging or a text-based room; graphical artwork needs a display adapter.
+
+<Figure kind="capture" fit="column" src="/images/memotech-mtx/patterns/basic-rendering/tile-map/wrong-stride.png" alt="Deliberately wrong stride: the same logical request selects different source cells." caption="Deliberately wrong stride: the same logical request selects different source cells. Emu198x 0.44.1 capture." />
+
+## Code and verification
+
+[Take the source and contract](https://github.com/code198x/code-samples/tree/379f1b43c376d55c41ee115b7df1fe90ba3632bc/memotech-mtx/patterns/basic/rendering/tile-map). Retained execution records identify the emulator, firmware, source and observers. Tests use a non-square map, bad coordinates, bad writes, world-to-cell boundaries and a deliberately wrong stride. Whole decoded captures are compared with independently specified outputs. This establishes those calls in the recorded configuration, not a complete game’s speed or original-hardware behaviour.
+
+Array conventions: [Memotech MTX Operator’s Manual](https://www.primrosebank.net/computers/mtx/documents/MTX_Operators_Manual.pdf), numeric arrays, printed pages 74–75.

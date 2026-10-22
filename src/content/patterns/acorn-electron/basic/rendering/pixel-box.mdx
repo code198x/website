@@ -1,0 +1,61 @@
+---
+title: "Draw Pixels and Boxes in Acorn Electron BASIC"
+summary: "Reusable set/clear pixels, filled boxes and outlines, with machine-specific coordinate conversion."
+platform: "acorn-electron"
+category: "rendering"
+difficulty: "beginner"
+tags: ["BASIC", "rendering", "pixels"]
+related:
+  patterns: ["tile-map-queries"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A single dot gives you a marker. A filled rectangle gives you a bar or a panel. An outline gives you a border. These routines put bounds checks around those three jobs, so a bad request returns to your game before it starts drawing.
+
+MODE 4 uses 320×256 pixels. BBC graphics uses a 1280×1024 coordinate grid, so the adapter multiplies both pixel coordinates by four. GCOL selects set (1) or clear (0); PLOT 69 draws one absolute point.
+
+<Figure kind="capture" fit="column" src="/images/acorn-electron/patterns/basic-rendering/pixel-box/demo.png" alt="The maintained caller running through the machine’s stock BASIC ROM." caption="The maintained caller running through the machine’s stock BASIC ROM. Emu198x 0.44.1 capture." />
+
+## Use the routines
+
+Copy `routines.bas` to free line numbers. Keep W=320 and H=256 for this display mode, and establish the caller’s normal graphics origin, full graphics window and pens before drawing. Do not change mode while these bounds are in use. Coordinates start at the bottom-left: X grows right and Y grows up.
+
+<CodeFromFile src="acorn-electron/patterns/basic/rendering/pixel-box/caller.bas" lang="basic" title="A point, a filled box, an outline and an erased pixel" />
+
+| Call | Inputs | Effect |
+| --- | --- | --- |
+| 2000 | X/Y pixel, V=0 or 1 | Clear or set one pixel |
+| 2100 | Q/U bottom-left, A/B width/height, V | Fill the rectangle |
+| 2200 | Same rectangle and V | Draw only its border |
+
+Use `GOSUB` (`GO SUB` on Spectrum). Check E immediately after the call: 1 means success, 0 means rejection without drawing. Coordinates, sizes and V must be integers. Empty boxes, invalid pens and rectangles crossing an edge are rejected in full; they are not clipped.
+
+<CodeFromFile src="acorn-electron/patterns/basic/rendering/pixel-box/routines.bas" lang="basic" title="Checked pixel, filled-box and outline-box implementations" />
+
+W/H are configuration, not a way to enlarge the hardware screen. The last pixel is (319,255). A box at Q with width A ends at Q+A−1, so Q+A may equal W. This is why the check uses greater-than rather than greater-than-or-equal at that boundary.
+
+## State and cost
+
+The caller owns the display mode, origin, window and colours. Reserve W/H/V/E/X/Y/Q/U/A/B and scratch I/J/N. Calls leave X/Y at the last plotted pixel and overwrite loop scratch; they are not re-entrant. The adapter changes the graphics pen or INVERSE state as described above. It does not save and restore a whole graphics environment.
+
+The fill visits A×B pixels. The outline also tests A×B positions, plotting the perimeter once, including one-pixel-wide and one-pixel-high cases. That makes it easy to follow but wasteful for large outlines. Horizontal spans, ROM line drawing or native byte fills are useful next versions: they skip work or update several pixels together. They need separate contracts for alignment, corners and clipping. No unmeasured speed claim is attached to this implementation.
+
+## Customise it and recognise faults
+
+Change Q/U/A/B in the caller to place or resize a box. Set V=0 to erase a patch. On a two-colour screen that clears a stored dot; it does not reconstruct scenery beneath a moving object. Keep the background separately if it must be restored.
+
+The `wrong-units` capture demonstrates a coordinate conversion error: the shapes shrink or move, even though the BASIC program still runs. Keep the input units in pixels and perform the machine’s conversion once in the point adapter. The omitted-draw control leaves the expected shapes absent. An off-by-one bounds test can either reject the last pixel or allow an extra one; the checks include the far corner and thin boxes.
+
+These examples connect directly to [Maths for Games](/craft/maths-for-games/): coordinate systems, rectangle extents and area all change the work a drawing routine must do. They also complement the machine’s assembly pixel/box entry; the BASIC route goes through the ROM rather than claiming the same runtime cost.
+
+<Figure kind="capture" fit="column" src="/images/acorn-electron/patterns/basic-rendering/pixel-box/wrong-units.png" alt="Deliberately wrong coordinate conversion: the shapes change size or position." caption="Deliberately wrong coordinate conversion: the shapes change size or position. Emu198x 0.44.1 capture." />
+
+<Figure kind="capture" fit="column" src="/images/acorn-electron/patterns/basic-rendering/pixel-box/omitted-draw.png" alt="Deliberately omitted plotting: the text remains, while the expected shapes are absent." caption="Deliberately omitted plotting: the text remains, while the expected shapes are absent. Emu198x 0.44.1 capture." />
+
+## Source and evidence
+
+[Take the routines, caller and recorded checks](https://github.com/code198x/code-samples/tree/379f1b43c376d55c41ee115b7df1fe90ba3632bc/acorn-electron/patterns/basic/rendering/pixel-box). The tests compare complete decoded native captures with direct ROM line-drawing references, exercise rejected calls, check the far pixel and thin boxes, and require omitted drawing and wrong units to fail. That establishes the recorded emulator/firmware configuration; it does not measure a complete game or original hardware.
+
+The graphics API and coordinate conventions are documented in [BBC Micro User Guide](https://www.bbcmicrobot.com/docs/BBC_User_Guide.pdf), graphics chapter and PLOT/GCOL/VDU entries.
