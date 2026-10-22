@@ -30,6 +30,10 @@ import { crashLiveRedirects } from './src/lib/crash-live-redirects.mjs';
 
 // https://astro.build/config
 export default defineConfig({
+  // Playwright's dev server runs without Astro's toolbar. From Astro 7.4 its
+  // headings and Menu button join the page's accessibility tree, so the
+  // keyboard and heading tests would meet Astro's controls instead of ours.
+  devToolbar: { enabled: process.env.ASTRO_DEV_TOOLBAR !== '0' },
   site: 'https://code198x.com',
   // Local browser API trials can use an unpublished wasm-bindgen web build.
   // No local binaries or firmware are copied into the repository.
