@@ -9,3 +9,5 @@ Reuse cross-platform/patterns/rendering/tile-map/6502.inc unchanged. Keep existi
 5. Update the matrix from explicit route/evidence inventory, push review PRs and update docs issue 117. Clean task worktrees, tools and processes after saving evidence.
 
 These diagnostics replace firmware. They establish CPU/RAM routine behaviour, not stock-ROM loading, graphics, interrupt coexistence or a frame budget. No new dependency or emulator change is planned.
+
+The current specification also requires a concrete customisation and maintained wrong/fixed fragments. Add properties.inc and customise-properties.inc to each port, plus shared tile-map/mistakes/{wrong-stride-6502,write-without-valid-6502}.inc. Execute the closed-exit data variant on each machine; require property 4 to become 5, all other 43 results to agree and complete fixture binaries to differ in exactly one data byte. Keep the property table at four bytes. Validate all four variants and include the exact fragments on the website.
