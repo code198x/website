@@ -46,7 +46,20 @@ Get/set use 4 bytes of return addresses at their deepest point, including the di
 
 Map storage is W×H bytes, plus highest-ID+1 property bytes, context, code and stack. This readable version adds the row width repeatedly; later rows cost more work. Row-pointer tables or fixed-width shifts are alternatives when query speed matters. There is no whole-game frame-rate claim.
 
-## Customise it without losing the checks
+## Make it your own
+
+Close an exit by changing its property byte. In this caller, bit 0 (value 1) means blocking, bit 1 (2) means hazard and bit 2 (4) means exit. These meanings belong to the example, not to the library. Tile 3 starts as an open exit:
+
+<CodeFromFile src="acorn-atom/patterns/assembly/rendering/tile-map/properties.inc" lang="asm" title="Before: tile 3 has the exit flag" />
+
+The maintained customisation keeps the exit flag and adds blocking, so 4 becomes 5:
+
+<CodeFromFile src="acorn-atom/patterns/assembly/rendering/tile-map/customise-properties.inc" lang="asm" title="After: tile 3 is a closed exit" />
+
+Use the second table in place of the first in your own caller. `make VARIANT=closed-exit ASM198X=/path/to/asm198x` builds that variant of this diagnostic. The checked read still returns tile 3, while `tile_property` now returns **5 instead of 4**. Your collision rules must interpret the blocking bit; this routine only supplies the classification.
+
+Both versions ran on this machine. All other 43 result bytes match, and their complete ROM fixtures differ in exactly one data byte. The property table stays four bytes; the code and scratch-memory requirements stay the same. This edit changes data at build time. To change the table during play, put it in writable RAM and initialise its pointer accordingly.
+
 
 Change dimensions, map data and property meanings together. A solid wall might have property bit 0 set, a hazard bit 1; a tile can carry both. Keep classification separate from artwork so recolouring or changing a character does not change the rules.
 
@@ -64,13 +77,33 @@ For a busy game, row-pointer tables avoid repeated additions at the cost of two 
 
 Both faulty stride and faulty write variants ran to completion in this machine's emulator. At column 0, row 1, the stride fault returns tile **2** instead of **3**. Removing the invalid-write guard changes the diagnostic's unchanged-map/guard result from **1** to **0**. The third row explains the interface contract; it is not an additional executed fault. The records contain actual RAM bytes rather than a screenshot of a display this test never draws.
 
+### A wrong stride, and its correction
+
+Deliberately broken: this executed variant advances six bytes for each seven-cell row.
+
+<CodeFromFile src="cross-platform/patterns/rendering/tile-map/mistakes/wrong-stride-6502.inc" from="tile_rows:" to="tile_no_carry:" lang="asm" title="Deliberately broken stride" />
+
+Use the configured map width, keeping carry into the high address byte:
+
+<CodeFromFile src="cross-platform/patterns/rendering/tile-map/6502.inc" from="tile_rows:" to="tile_no_carry:" lang="asm" title="Correct stride" />
+
+### A rejected write that still stores
+
+Deliberately broken: this executed variant reaches the store even when `tile_locate` leaves valid at zero.
+
+<CodeFromFile src="cross-platform/patterns/rendering/tile-map/mistakes/write-without-valid-6502.inc" from="tile_set_id_ok:" to="tile_set_done:" lang="asm" title="Deliberately broken write guard" />
+
+Restore the early return. Rerun the normal caller: its unchanged-map/guard result must return to 1, and its completion byte must still reach 239.
+
+<CodeFromFile src="cross-platform/patterns/rendering/tile-map/6502.inc" from="tile_set_id_ok:" to="tile_set_done:" lang="asm" title="Correct write guard" />
+
 ## Run and adapt it
 
-`make ASM198X=/path/to/asm198x` builds an original reset ROM fixture. The maintained verifier runs it in Emu198x, checks all 44 result bytes against explicit expected map rows, then builds and rejects the two faulty variants. The shared routine is unchanged from the other 6502 implementations.
+`make ASM198X=/path/to/asm198x` builds an original reset ROM fixture. The maintained verifier runs it in Emu198x, checks all 44 result bytes against explicit expected map rows, checks the closed-exit customisation, then builds and rejects the two faulty variants. The shared routine is unchanged from the other 6502 implementations.
 
 Executed with **Asm198x 0.0.71** and **Emu198x 0.44.1**. This qualifies the CPU code and declared RAM layout. It does not establish stock BASIC loading, display output, interrupt coexistence or a frame deadline. The diagnostic replaces firmware and takes over the machine; a game using firmware must reserve suitable memory and supply its own loading and interrupt policy.
 
-- [Complete caller, build command and execution records](https://github.com/code198x/code-samples/tree/56464970934ae0b91eacc7f42aedbdc65efffdc9/acorn-atom/patterns/assembly/rendering/tile-map)
-- [Reusable 6502 implementation and calling contract](https://github.com/code198x/code-samples/tree/56464970934ae0b91eacc7f42aedbdc65efffdc9/cross-platform/patterns/rendering/tile-map)
+- [Complete caller, build command and execution records](https://github.com/code198x/code-samples/tree/7b540471d70f3a5d6224559362d92510924d970a/acorn-atom/patterns/assembly/rendering/tile-map)
+- [Reusable 6502 implementation and calling contract](https://github.com/code198x/code-samples/tree/7b540471d70f3a5d6224559362d92510924d970a/cross-platform/patterns/rendering/tile-map)
 
 The [BASIC map entry](/patterns/acorn-atom/basic/rendering/tile-map/) solves the same problem with interpreter-managed arrays. Its loader, indexing and costs are qualified separately.
