@@ -1,0 +1,73 @@
+---
+title: "Wait for a player action on Aquarius in BASIC"
+summary: "Reuse an untimed update with a small native caller, clear state ownership, a custom step and a reset mistake you can recognise."
+platform: "mattel-aquarius"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "basic", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Enter **GO**, then Return. The count advances once. Wait as long as you like: the world waits with you. That is a useful starting point for an adventure, a board game or a menu-driven decision.
+
+The counter stands in for your game rules. Input collects a command, the update decides whether it counts, and presentation shows the result. You can replace any one of those without moving initialisation into the loop.
+
+<Figure src="/images/mattel-aquarius/patterns/basic-command-loop/working.png" alt="Aquarius BASIC showing turn two after two accepted commands." caption="Two commands, two updates. Waiting does not spend a turn." />
+
+## Put it in your project
+
+Use normal unexpanded Aquarius S2 BASIC. Enter the complete `reusable.bas` from the source folder, then RUN. These two maintained pieces concatenate to that complete program; keep their line numbers distinct from the rest of your project.
+
+<CodeFromFile src="mattel-aquarius/patterns/basic/framework/command-loop/caller.bas" lang="basic" title="Initialise once, then collect and handle commands" />
+<CodeFromFile src="mattel-aquarius/patterns/basic/framework/command-loop/routines.bas" lang="basic" title="A reusable conditional update" />
+
+**NO** leaves the count alone; **Q** ends the caller. Commands are uppercase exact matches. This is a command gate, rather than a text-adventure parser.
+
+| Value | Contract |
+| --- | --- |
+| `N` | Persistent count, initialised once; whole number 0–255. |
+| `S` | Step, a whole number 0–255; unchanged by the routine. |
+| `A$` | Submitted command; unchanged by the routine. |
+| `C` | Result: 1 when accepted, 0 when ignored. |
+
+`GOSUB 1000` uses these global variables. Reserve the names and line range, or rename them consistently. The routine touches no hardware addresses. BASIC owns variable storage, keyboard input, screen output and interrupts. These are ordinary BASIC numbers: the 0–255 limit is this routine’s agreement, rather than the interpreter’s storage format.
+
+With both inputs in range, `N+S` is at most 510, so one subtraction is enough to wrap it into a byte. Passing a fractional, negative or larger value breaks that agreement. Use a different range rule if your game needs an unbounded score.
+
+PRINT CHR$(11) clears the screen in this caller. Move the count into your own status panel if other text must survive. The update does not need a screen clear. INPUT blocks until Return; an on-screen countdown would need input and deadline checks that can keep running while the player thinks.
+
+## Change the amount, keep the policy
+
+This complete variation uses a step of three. Two accepted commands give **0 → 3 → 6**. It still accepts only two actions.
+
+<CodeFromFile src="mattel-aquarius/patterns/basic/framework/command-loop/customise.bas" lang="basic" title="Three units for each accepted command" />
+<Figure src="/images/mattel-aquarius/patterns/basic-command-loop/step-three.png" alt="Aquarius BASIC showing six." caption="Change the rule update without changing how commands are collected." />
+
+## Common mistake: starting over every time
+
+**This listing is deliberately broken.** Its jump returns through the initialiser. The action briefly changes N, then the next pass erases it. The visible count stays at zero.
+
+<CodeFromFile src="mattel-aquarius/patterns/basic/framework/command-loop/mistakes/reset-each-command.bas" lang="basic" title="Broken: return through the initialiser" />
+<Figure src="/images/mattel-aquarius/patterns/basic-command-loop/reset-mistake.png" alt="Aquarius BASIC still showing zero after two accepted commands." caption="Keep persistent state outside the repeated path." />
+
+Restore the jump to line 20 to repair it. Initialisation belongs at the start of a game or a deliberate restart. A new turn should inherit the previous turn’s state.
+
+## Where time belongs
+
+An untimed world advances on an accepted action. A timed turn also needs a deadline and a rule for an action arriving at that deadline. Display refresh, firmware interrupts and CPU activity do not decide that policy for you.
+
+Compare the [loop choices](/patterns/cross-platform/framework/game-loop-choices/) and the [assembly implementation](/patterns/mattel-aquarius/assembly/framework/command-loop/). The languages have different storage and ownership agreements; choose the one that suits your project.
+
+## Source and verification
+
+**Native-emulator executed:** Emu198x **0.44.1**, with Aquarius S2 firmware; assembly is built with Asm198x **0.0.71**. Actual keyboard input drives the program. Host writes do not supply game state. The images above are native framebuffer captures.
+
+The [maintained source](https://github.com/code198x/code-samples/tree/94be8256118244f57249f0fabe6cbe18e93df967/mattel-aquarius/patterns/basic/framework/command-loop) includes the complete caller, reusable pieces and deliberate fault. The [retained observations](https://github.com/code198x/code-samples/blob/94be8256118244f57249f0fabe6cbe18e93df967/mattel-aquarius/patterns/basic/framework/command-loop/verification/reusable-results.json) cover normal use, idle waits and ignored commands, a custom step, reset and repair, 254 → 255 → 0, and a nonzero start. An independent checker rejects altered counts, sources and captures, missing observations and falsely repaired faults.
+
+This qualifies these small workloads on the named configuration. It does not establish original-hardware, cassette-transfer, other-model or whole-emulator compatibility. The older input/drawing/sound probe remains a separate record; this loop entry makes no fresh audio claim.
+
+## Primary references
+
+Aquarius S2 ROM, [disassembly with Kenny Millar’s annotations](https://aquarius.mattpilz.com/s2-disassembly.php): USR vector, BASIC RAM boundary, keyboard row and screen layout. The executable firmware is not distributed with these samples.

@@ -1,0 +1,75 @@
+---
+title: "Wait for a player action on MTX500 in BASIC"
+summary: "Reuse an untimed update with a small native caller, clear state ownership, a custom step and a reset mistake you can recognise."
+platform: "memotech-mtx"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "basic", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Enter **1**, then Return. The count advances once. Wait as long as you like: the world waits with you. That is a useful starting point for an adventure, a board game or a menu-driven decision.
+
+The counter stands in for your game rules. Input collects a command, the update decides whether it counts, and presentation shows the result. You can replace any one of those without moving initialisation into the loop.
+
+<Figure src="/images/memotech-mtx/patterns/basic-command-loop/working.png" alt="MTX500 BASIC showing turn two after two accepted commands." caption="Two commands, two updates. Waiting does not spend a turn." />
+
+## Put it in your project
+
+Use normal MTX500 BASIC. Enter the complete `reusable.bas` from the source folder, then RUN. These two maintained pieces concatenate to that complete program; keep their line numbers distinct from the rest of your project.
+
+<CodeFromFile src="memotech-mtx/patterns/basic/framework/command-loop/caller.bas" lang="basic" title="Initialise once, then collect and handle commands" />
+<CodeFromFile src="memotech-mtx/patterns/basic/framework/command-loop/routines.bas" lang="basic" title="A reusable conditional update" />
+
+**0** leaves the count alone; **9** stops the caller. INPUT expects a number and follows the interpreter’s own handling of malformed input. This is a command gate, rather than a text-adventure parser.
+
+| Value | Contract |
+| --- | --- |
+| `N` | Persistent count, initialised once; whole number 0–255. |
+| `S` | Step, a whole number 0–255; unchanged by the routine. |
+| `A` | Submitted command; unchanged by the routine. |
+| `C` | Result: 1 when accepted, 0 when ignored. |
+
+`GOSUB 1000` uses these global variables. Reserve the names and line range, or rename them consistently. The routine touches no hardware addresses. BASIC owns variable storage, keyboard input, screen output and interrupts. These are ordinary BASIC numbers: the 0–255 limit is this routine’s agreement, rather than the interpreter’s storage format.
+
+With both inputs in range, `N+S` is at most 510, so one subtraction is enough to wrap it into a byte. Passing a fractional, negative or larger value breaks that agreement. Use a different range rule if your game needs an unbounded score.
+
+CLS clears the screen in this caller. Move the count into your own status panel if other text must survive. The update does not need a screen clear. INPUT blocks until Return; an on-screen countdown would need input and deadline checks that can keep running while the player thinks.
+
+## Change the amount, keep the policy
+
+This complete variation uses a step of three. Two accepted commands give **0 → 3 → 6**. It still accepts only two actions.
+
+<CodeFromFile src="memotech-mtx/patterns/basic/framework/command-loop/customise.bas" lang="basic" title="Three units for each accepted command" />
+<Figure src="/images/memotech-mtx/patterns/basic-command-loop/step-three.png" alt="MTX500 BASIC showing six." caption="Change the rule update without changing how commands are collected." />
+
+## Common mistake: starting over every time
+
+**This listing is deliberately broken.** Its jump returns through the initialiser. The action briefly changes N, then the next pass erases it. The visible count stays at zero.
+
+<CodeFromFile src="memotech-mtx/patterns/basic/framework/command-loop/mistakes/reset-each-command.bas" lang="basic" title="Broken: return through the initialiser" />
+<Figure src="/images/memotech-mtx/patterns/basic-command-loop/reset-mistake.png" alt="MTX500 BASIC still showing zero after two accepted commands." caption="Keep persistent state outside the repeated path." />
+
+Restore the jump to line 20 to repair it. Initialisation belongs at the start of a game or a deliberate restart. A new turn should inherit the previous turn’s state.
+
+The MTX display lives in VDP memory, rather than a CPU-mapped text buffer. The retained test uses a small, separately documented screen reader to copy the actual 40×24 name table for inspection. It does not supply the count. That diagnostic reader is not needed by the reusable program; its temporary RAM allocation is not a general BASIC memory allocator.
+
+## Where time belongs
+
+An untimed world advances on an accepted action. A timed turn also needs a deadline and a rule for an action arriving at that deadline. Display refresh, firmware interrupts and CPU activity do not decide that policy for you.
+
+Compare the [loop choices](/patterns/cross-platform/framework/game-loop-choices/) and the [assembly implementation](/patterns/memotech-mtx/assembly/framework/command-loop/). The languages have different storage and ownership agreements; choose the one that suits your project.
+
+## Source and verification
+
+**Native-emulator executed:** Emu198x **0.44.1**, with MTX500 firmware; assembly is built with Asm198x **0.0.71**. Actual keyboard input drives the program. Host writes do not supply game state. The images above are native framebuffer captures.
+
+The [maintained source](https://github.com/code198x/code-samples/tree/94be8256118244f57249f0fabe6cbe18e93df967/memotech-mtx/patterns/basic/framework/command-loop) includes the complete caller, reusable pieces and deliberate fault. The [retained observations](https://github.com/code198x/code-samples/blob/94be8256118244f57249f0fabe6cbe18e93df967/memotech-mtx/patterns/basic/framework/command-loop/verification/reusable-results.json) cover normal use, idle waits and ignored commands, a custom step, reset and repair, 254 → 255 → 0, and a nonzero start. An independent checker rejects altered counts, sources and captures, missing observations and falsely repaired faults.
+
+This qualifies these small workloads on the named configuration. It does not establish original-hardware, cassette-transfer, other-model or whole-emulator compatibility. The older input/drawing/sound probe remains a separate record; this loop entry makes no fresh audio claim.
+
+## Primary references
+
+Memotech’s *MTX Series BASIC Tutor, Reference and Operator’s Manual*, [original manual scan](http://www.primrosebank.net/computers/mtx/documents/MTX_Operators_Manual.pdf): BASIC control flow, USR and return value in BC. Memotech’s *MTX Video Memory Mapping*, [document scan](https://manualzilla.com/doc/7413182/memotech-limited-mtx-500-product-specifications): separate VDP RAM, ports and access spacing. Keyboard drive/sense follows the retained stock-firmware input-loop and MTX hardware reference.

@@ -1,0 +1,89 @@
+---
+title: "Wait for a player action on MTX500 in Z80 assembly"
+summary: "Reuse an untimed update with a small native caller, clear state ownership, a custom step and a reset mistake you can recognise."
+platform: "memotech-mtx"
+category: "framework"
+difficulty: "intermediate"
+tags: ["game-loop", "turns", "assembly", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press **Space**. The backdrop changes once. Hold it and the colour stays put; release and press again to restore the first colour. The world waits for a new action while the display-service loop continues.
+
+The backdrop shows **parity**, rather than an exact count: odd and even values use different colours. It is a deliberately small output adapter, leaving the rule update easy to reuse.
+
+<Figure src="/images/memotech-mtx/patterns/assembly-command-loop/working.png" alt="MTX500 native assembly caller after two actions." caption="The working caller preserves progress between separate presses." />
+
+## Build and enter the caller
+
+Keep `demo.asm`, `caller.inc`, `routines.inc` and `presentation.inc` together. From the code-samples root:
+
+```sh
+python3 scripts/build-aquarius-mtx-loops.py --assembler /path/to/asm198x --system memotech-mtx
+```
+
+Enter the generated `build/working/load.bas` line by line under normal firmware. The builder derives its DATA bytes from the actual assembled image. Follow the source README’s entry sequence after loading.
+
+On an MTX500, the **135-byte** image occupies **$E000–$E086**. The generated READ/POKE loader stops after loading; `LET X=USR(57344)` enters it. This caller **takes over until reset**: it disables maskable interrupts, sets SP to **$F7F0** and owns the keyboard and VDP control ports. It does not return to BASIC. Reserve its code, context and stack in your own memory plan; this small loader is not a general allocator for a mixed BASIC/assembly game.
+
+<CodeFromFile src="memotech-mtx/patterns/assembly/framework/command-loop/demo.asm" lang="z80" title="Origin, settings and includes" />
+<CodeFromFile src="memotech-mtx/patterns/assembly/framework/command-loop/caller.inc" lang="z80" title="Initialise once, then decide when to update" />
+
+## Reuse the rule without the caller
+
+Put the starting byte in A and call `turn_init` once. Call `turn_advance` only when your own command handler accepts an action. Neither routine reads a key, draws a cell or consults a clock. Include the implementation once in your build.
+
+<CodeFromFile src="memotech-mtx/patterns/assembly/framework/command-loop/routines.inc" lang="z80" title="Persistent state and the byte update" />
+
+| Routine | Contract |
+| --- | --- |
+| `turn_init` | Store A into count; A and flags remain unchanged. |
+| `turn_advance` | Add compile-time STEP modulo 256; changes A, flags and count. |
+
+Define CTX as four private RAM bytes. This caller uses **$DF00–$DF03** for count, previous Space sample and a little-endian 16-bit display-service counter. `turn_init` changes only count; the caller initialises the other bytes once.
+
+`sample_action` drives keyboard column 7 through **OUT $05=$7F**, reads Space on **port $06 bit 0**, and updates the previous sample on every call. It returns 1 only for a new press; AF/BC change. `wait_frame` clears stale VDP status, then waits for a fresh bit-7 indication; AF changes. It exclusively owns status/control port **$02**, so it cannot share that code unchanged with a firmware VDP interrupt handler or another status reader.
+
+The service counter advances every native field while the rule count waits. It wraps after 65535. A running display clock does not automatically make this a timed game.
+
+<CodeFromFile src="memotech-mtx/patterns/assembly/framework/command-loop/presentation.inc" lang="z80" title="The machine-specific output adapter" />
+`show_turn` selects backdrop index 2 or 3 through **VDP register 7**; AF changes. It blanks the character display and lets the VDP maintain refresh. This is neither a CPU-mapped text screen nor a renderer that must draw every scanline. Use a different presentation adapter when you want room descriptions, sprites or an exact numeric status.
+
+
+## Customise the step
+
+Build with `--variant step-three` to use this alternative. Two presses now produce **0 → 3 → 6**, with no extra state or image bytes.
+
+<CodeFromFile src="memotech-mtx/patterns/assembly/framework/command-loop/customise.asm" lang="z80" title="Same caller, three units per accepted action" />
+<Figure src="/images/memotech-mtx/patterns/assembly-command-loop/step-three.png" alt="MTX500 customised assembly caller after two presses." caption="The action policy stays the same when STEP changes." />
+
+Parity still alternates for a step of three. A two-colour display cannot tell you whether a change was one or three; inspect the state byte when checking the amount.
+
+## Common mistakes: resetting and repeating
+
+**This variant is deliberately broken.** RESET_EACH=1 puts initialisation inside the iteration. Each new pass erases the previous result, so the visible output returns to its initial state.
+
+<CodeFromFile src="memotech-mtx/patterns/assembly/framework/command-loop/mistakes/reset-each-command.asm" lang="z80" title="Broken: erase the previous action" />
+<Figure src="/images/memotech-mtx/patterns/assembly-command-loop/reset-mistake.png" alt="MTX500 broken assembly caller showing its initial state." caption="The caller discards the state that the update was meant to preserve." />
+
+Restore startup-only initialisation to repair it. The separate `no-edge` test variant demonstrates another fault: accepting a held key on every sample. It must fail the ordinary one-action-per-press check. Deliberate auto-repeat needs its own initial delay and repeat policy.
+
+## Where time belongs
+
+An untimed world advances on an accepted action. A timed turn also needs a deadline and a rule for an action arriving at that deadline. Display refresh, firmware interrupts and CPU activity do not decide that policy for you.
+
+Compare the [loop choices](/patterns/cross-platform/framework/game-loop-choices/) and the [BASIC implementation](/patterns/memotech-mtx/basic/framework/command-loop/). The languages have different storage and ownership agreements; choose the one that suits your project.
+
+## Source and verification
+
+**Native-emulator executed:** Emu198x **0.44.1**, with MTX500 firmware; assembly is built with Asm198x **0.0.71**. Actual keyboard input drives the program. Host writes do not supply game state. The images above are native framebuffer captures.
+
+The [maintained source](https://github.com/code198x/code-samples/tree/94be8256118244f57249f0fabe6cbe18e93df967/memotech-mtx/patterns/assembly/framework/command-loop) includes the complete caller, reusable pieces and deliberate fault. The [retained observations](https://github.com/code198x/code-samples/blob/94be8256118244f57249f0fabe6cbe18e93df967/memotech-mtx/patterns/assembly/framework/command-loop/verification/reusable-results.json) cover normal use, idle and held input, a custom step, reset and repair, 254 → 255 → 0, and a nonzero start. Assembly adds exact loaded-byte comparison and a disabled-edge failure control. The MTX assembly run checks the service counter during idle and compares both actual backdrop images. An independent checker rejects altered counts, sources and captures, missing observations and falsely repaired faults.
+
+This qualifies these small workloads on the named configuration. It does not establish original-hardware, cassette-transfer, other-model or whole-emulator compatibility. The older input/drawing/sound probe remains a separate record; this loop entry makes no fresh audio claim.
+
+## Primary references
+
+Memotech’s *MTX Series BASIC Tutor, Reference and Operator’s Manual*, [original manual scan](http://www.primrosebank.net/computers/mtx/documents/MTX_Operators_Manual.pdf): BASIC control flow, USR and return value in BC. Memotech’s *MTX Video Memory Mapping*, [document scan](https://manualzilla.com/doc/7413182/memotech-limited-mtx-500-product-specifications): separate VDP RAM, ports and access spacing. Keyboard drive/sense follows the retained stock-firmware input-loop and MTX hardware reference.

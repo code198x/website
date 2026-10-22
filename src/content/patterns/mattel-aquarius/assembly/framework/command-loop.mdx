@@ -1,0 +1,83 @@
+---
+title: "Wait for a player action on Aquarius in Z80 assembly"
+summary: "Reuse an untimed update with a small native caller, clear state ownership, a custom step and a reset mistake you can recognise."
+platform: "mattel-aquarius"
+category: "framework"
+difficulty: "intermediate"
+tags: ["game-loop", "turns", "assembly", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press **1**. The displayed byte advances once. Hold the key and it stays put; release and press again for the next update. **Q** returns to BASIC after you release it.
+
+<Figure src="/images/mattel-aquarius/patterns/assembly-command-loop/working.png" alt="Aquarius native assembly caller after two actions." caption="The working caller preserves progress between separate presses." />
+
+## Build and enter the caller
+
+Keep `demo.asm`, `caller.inc`, `routines.inc` and `presentation.inc` together. From the code-samples root:
+
+```sh
+python3 scripts/build-aquarius-mtx-loops.py --assembler /path/to/asm198x --system mattel-aquarius
+```
+
+Enter the generated `build/working/load.bas` line by line under normal firmware. The builder derives its DATA bytes from the actual assembled image. Follow the source README’s entry sequence after loading.
+
+On an unexpanded Aquarius, `CLEAR 50,15871` reserves the top of RAM for the **152-byte** image at **$3E00–$3E97**. The loader sets the normal USR vector at **14340/14341**. `PRINT CHR$(11):X=USR(0)` clears the display and calls it. Do not place another buffer or BASIC allocation over the reserved image.
+
+The caller saves AF, BC, DE, HL, IX and IY, leaves the original stack and interrupt policy in place, and returns through RET. Those saves take 12 stack bytes, plus four for nested helper return addresses and the interpreter’s own needs. Q is released before return so it does not become the next BASIC command.
+
+<CodeFromFile src="mattel-aquarius/patterns/assembly/framework/command-loop/demo.asm" lang="z80" title="Origin, settings and includes" />
+<CodeFromFile src="mattel-aquarius/patterns/assembly/framework/command-loop/caller.inc" lang="z80" title="Initialise once, then decide when to update" />
+
+## Reuse the rule without the caller
+
+Put the starting byte in A and call `turn_init` once. Call `turn_advance` only when your own command handler accepts an action. Neither routine reads a key, draws a cell or consults a clock. Include the implementation once in your build.
+
+<CodeFromFile src="mattel-aquarius/patterns/assembly/framework/command-loop/routines.inc" lang="z80" title="Persistent state and the byte update" />
+
+| Routine | Contract |
+| --- | --- |
+| `turn_init` | Store A into count; A and flags remain unchanged. |
+| `turn_advance` | Add compile-time STEP modulo 256; changes A, flags and count. |
+
+The Aquarius count is one labelled byte inside the reserved image. `new_action` reads **$7FFF**, keyboard row 7: bit 2 is 1 and bit 3 is Q, both active-low. It requires release before accepting another action; Q wins a simultaneous sample. This is a two-command reader, rather than a full keyboard scanner. It reads the keyboard port without writing the port’s memory-scrambling control.
+
+<CodeFromFile src="mattel-aquarius/patterns/assembly/framework/command-loop/presentation.inc" lang="z80" title="The machine-specific output adapter" />
+`show_turn` writes eight ASCII cells at **$3029–$3030**, the first usable text cells. AF/BC/DE/HL change. It leaves cursor and colour state alone. The byte is hexadecimal: $0A means ten, $FF means 255, and the next unit step wraps to $00.
+
+
+## Customise the step
+
+Build with `--variant step-three` to use this alternative. Two presses now produce **0 → 3 → 6**, with no extra state or image bytes.
+
+<CodeFromFile src="mattel-aquarius/patterns/assembly/framework/command-loop/customise.asm" lang="z80" title="Same caller, three units per accepted action" />
+<Figure src="/images/mattel-aquarius/patterns/assembly-command-loop/step-three.png" alt="Aquarius customised assembly caller after two presses." caption="The action policy stays the same when STEP changes." />
+
+## Common mistakes: resetting and repeating
+
+**This variant is deliberately broken.** RESET_EACH=1 puts initialisation inside the iteration. Each new pass erases the previous result, so the visible output returns to its initial state.
+
+<CodeFromFile src="mattel-aquarius/patterns/assembly/framework/command-loop/mistakes/reset-each-command.asm" lang="z80" title="Broken: erase the previous action" />
+<Figure src="/images/mattel-aquarius/patterns/assembly-command-loop/reset-mistake.png" alt="Aquarius broken assembly caller showing its initial state." caption="The caller discards the state that the update was meant to preserve." />
+
+Restore startup-only initialisation to repair it. The separate `no-edge` test variant demonstrates another fault: accepting a held key on every sample. It must fail the ordinary one-action-per-press check. Deliberate auto-repeat needs its own initial delay and repeat policy.
+
+## Where time belongs
+
+An untimed world advances on an accepted action. A timed turn also needs a deadline and a rule for an action arriving at that deadline. Display refresh, firmware interrupts and CPU activity do not decide that policy for you.
+
+Compare the [loop choices](/patterns/cross-platform/framework/game-loop-choices/) and the [BASIC implementation](/patterns/mattel-aquarius/basic/framework/command-loop/). The languages have different storage and ownership agreements; choose the one that suits your project.
+
+## Source and verification
+
+**Native-emulator executed:** Emu198x **0.44.1**, with Aquarius S2 firmware; assembly is built with Asm198x **0.0.71**. Actual keyboard input drives the program. Host writes do not supply game state. The images above are native framebuffer captures.
+
+The [maintained source](https://github.com/code198x/code-samples/tree/94be8256118244f57249f0fabe6cbe18e93df967/mattel-aquarius/patterns/assembly/framework/command-loop) includes the complete caller, reusable pieces and deliberate fault. The [retained observations](https://github.com/code198x/code-samples/blob/94be8256118244f57249f0fabe6cbe18e93df967/mattel-aquarius/patterns/assembly/framework/command-loop/verification/reusable-results.json) cover normal use, idle and held input, a custom step, reset and repair, 254 → 255 → 0, and a nonzero start. Assembly adds exact loaded-byte comparison and a disabled-edge failure control. The Aquarius assembly run also returns to BASIC and evaluates arithmetic there. An independent checker rejects altered counts, sources and captures, missing observations and falsely repaired faults.
+
+This qualifies these small workloads on the named configuration. It does not establish original-hardware, cassette-transfer, other-model or whole-emulator compatibility. The older input/drawing/sound probe remains a separate record; this loop entry makes no fresh audio claim.
+
+## Primary references
+
+Aquarius S2 ROM, [disassembly with Kenny Millar’s annotations](https://aquarius.mattpilz.com/s2-disassembly.php): USR vector, BASIC RAM boundary, keyboard row and screen layout. The executable firmware is not distributed with these samples.
