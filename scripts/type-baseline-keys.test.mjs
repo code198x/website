@@ -32,3 +32,11 @@ test('colliding normalised keys add their counts instead of hiding an error', ()
 test('relative paths and non-package quoted values are unchanged', () => {
   for (const value of ["a.ts ts(1) Value '/path/to/source.ts' is invalid", "a.ts ts(1) './node_modules/package/index.js' is missing", "a.ts ts(1) Type 'string' is invalid"]) assert.equal(normaliseTypeKey(value), value);
 });
+
+test('literal union ordering does not change an existing diagnostic', () => {
+  const before = `a.ts ts(2345) Argument of type 'string' is not assignable to parameter of type '\"audio\" | \"input\" | \"framework\"'.`;
+  const reordered = before.replace('"audio" | "input" | "framework"', '"input" | "framework" | "audio"');
+  assert.equal(normaliseTypeKey(before), normaliseTypeKey(reordered));
+  assert.notEqual(normaliseTypeKey(before), normaliseTypeKey(reordered.replace('"audio"', '"physics"')));
+  assert.deepEqual(normaliseTypeCounts({[before]: 2, [reordered]: 3}), {[normaliseTypeKey(before)]: 5});
+});
