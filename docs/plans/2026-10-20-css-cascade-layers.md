@@ -356,6 +356,14 @@ and columns where the old grids had two. `vault.css` went from 13,007 to 9,922
 bytes: layout alone takes about a quarter out of a family's CSS, so halving the
 total also needs the repeated block styles merged.
 
+Stepped gaps (decided 2026-10-22). Many two-column blocks use a wide gap side
+by side and a much smaller one once stacked (80px, then 32px). A primitive
+has one gap, so these take a fluid `clamp()` gap that matches the old values
+at desktop and phone widths and runs between them on tablets, without a
+media query. Grid's `rowSpace` (`--grid-row-space`) keeps a different gap
+between rows where the old grid had one. Ratio grids (1.4fr / 1fr) and grids
+that reorder their children stay grids.
+
 This replaces the earlier "settle a breakpoint scale" step: most breakpoints
 go rather than being standardised. Any that remain (navigation, say) are
 listed for Steve with a proposed scale.
