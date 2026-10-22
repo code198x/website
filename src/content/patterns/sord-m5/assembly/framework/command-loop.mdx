@@ -1,0 +1,47 @@
+---
+title: "Wait for a turn on Sord M5"
+summary: "Reuse an untimed command or press loop while retaining the machine’s actual display responsibilities."
+platform: "sord-m5"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "assembly", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Build the complete caller with `make -C sord-m5/patterns/assembly/input/read-action`. Press **Space** once, keep it held, then release and press again. The piece moves on each new press and returns to its starting position after two; holding does not repeat the action. Load the cartridge produced by the Makefile in the named configuration; retain its reset/header setup.
+
+<Figure src="/images/sord-m5/patterns/column-expansion/assembly/second-press.png" alt="Sord M5 native caller after accepted input." caption="Captured from the running caller in the configuration below." />
+
+## Keep the world waiting
+
+Display servicing continues while the turn count waits for a new Space press. The VDP keeps scanning its picture; wait_frame polls a fresh status announcement and the caller performs its bounded input, picture and sound work. It does not advance the rule merely because a field elapsed.
+
+<CodeFromFile src="sord-m5/patterns/assembly/input/read-action/demo.asm" lang="z80" title="The actual loop and its machine setup" />
+
+## Fit and adapt it
+
+`sample.inc` is an inline hardware sampler: include it where the caller samples input. It has no RET/RTS and must not be called as a subroutine. It supplies the held state described below; the caller supplies previous-state storage and decides what a new press does.
+
+Calculate a new-press mask as current AND NOT previous, then store current as previous on every update, including release. Test held state for continuous movement and the new-press mask for an action that should happen once. A key already held at the caller’s first sample counts as a press because previous starts at zero.
+
+Do not add the complement used by neighbouring Z80 machines: an idle M5 would look pressed. Other keyboard rows need their own selection/read contract.
+
+The broken caller feeds held state into the action decision. Keeping the button down advances repeatedly; the native fault run reaches 32 instead of remaining at one. Restore the previous-state comparison and update previous on release as well.
+
+<CodeFromFile src="sord-m5/patterns/assembly/input/read-action/mistakes/no-edge.asm" lang="z80" title="A repeated-path mistake to recognise" />
+
+<Figure src="/images/sord-m5/patterns/column-expansion/assembly/no-edge.png" alt="Sord M5 faulty repeated path." caption="The fault fails the same rule-state guard as the working caller." />
+
+A timed turn is another policy: keep a deadline separately, decide how expiry competes with an arriving action, and service that clock while waiting. A blocking reader cannot provide that service from the same main path. A faster renderer or sound routine does not settle the rule.
+
+See [loop choices](/patterns/cross-platform/framework/game-loop-choices/) and the machine’s input entry for the reader’s complete contract.
+
+## Verification and sources
+
+Target: **NTSC M5, monitor-started cartridge**. These callers were executed with released Emu198x **0.44.1**; assembly uses Asm198x **0.0.71**. The [sample folder](https://github.com/code198x/code-samples/tree/d385b67e471a8d9e8b6c452c9e090fa22576adaf/sord-m5/patterns/assembly/input/read-action) contains reproduction instructions and [retained observations](https://github.com/code198x/code-samples/blob/d385b67e471a8d9e8b6c452c9e090fa22576adaf/sord-m5/patterns/assembly/input/read-action/verification/results.json). The independent checker binds source, native captures and actual output; its rejection tests exercise wrong state, missing files and false audio claims.
+
+This qualifies the named emulator/firmware path. Pitch accuracy, original hardware and other peripherals require their own observations. 
+
+Sord BASIC-G Appendix H: I/O map; Sord M5C-01 schematic: decoding; TI SN76489A and TMS9918A data manuals. The specific Space polarity is configuration-specific executed evidence.
