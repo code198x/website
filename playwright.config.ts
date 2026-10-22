@@ -71,7 +71,7 @@ export default defineConfig({
     // its web server exit immediately, and the whole sweep fails to start.
     command: PREVIEW
       ? `ASTRO_PREVIEW_BACKGROUND=0 npm run preview -- --port ${PORT} --ignore-lock`
-      : `ASTRO_DEV_BACKGROUND=0 npm run dev -- --port ${PORT} --ignore-lock`,
+      : `ASTRO_DEV_BACKGROUND=0 ASTRO_DEV_TOOLBAR=0 npm run dev -- --port ${PORT} --ignore-lock`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !PREVIEW && !process.env.CI,
     timeout: 120_000,
