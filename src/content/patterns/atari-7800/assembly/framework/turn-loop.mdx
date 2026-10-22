@@ -1,0 +1,115 @@
+---
+title: "Wait for a new press on Atari 7800"
+summary: "Keep the display serviced while the game waits for one action, with separate reusable turn and field counters."
+platform: "atari-7800"
+category: "framework"
+difficulty: "intermediate"
+tags: ["game-loop", "turns", "timing", "input", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press fire and the background changes colour. Keep holding it: nothing more happens. Release and press again, and the first colour returns. The game has accepted two actions, while the display has kept running throughout.
+
+That small difference is worth getting right. A player waiting for their next move should not accidentally stop the picture, and a held button should not become hundreds of moves.
+
+<Figure src="/images/atari-7800/patterns/turn-loop/pressed.png" kind="capture" alt="The Atari 7800 caller’s changed background after one fire press." caption="One new press changes the turn counter and backdrop. Holding fire leaves that turn state alone; the native service counter continues." />
+
+## Build and try it
+
+```sh
+make -C atari-7800/patterns/assembly/framework/turn-loop
+```
+
+Start `build/demo.bin` in Emu198x for Atari 7800. The qualified configuration is **NTSC 48 KiB direct reset cartridge, bypassing BIOS authentication**. Reset to leave. The caller is a deliberately small backdrop demonstration, not a complete display engine.
+
+## Include and initialise the reusable state
+
+Copy `turn.inc` and its neighbouring `edge-filter.inc` together, and include the routine once after your main code. Define `T` as seven private, consecutive RAM bytes. The caller uses **$1900–$1906**; choose another valid allocation if your game owns that memory already.
+
+Call `init_turn` with the starting progress counter in A. It clears the previous/current samples, accepted flag and 16-bit service count, and sets the step to 1. Change `T+5` after initialisation when you want another step. These routines require **decimal mode clear**; the complete reset caller uses `CLD`.
+
+<CodeFromFile src="cross-platform/patterns/framework/atari-turn-loops/turn.inc" lang="6502" title="Rule progression and display service are separate routines" />
+
+<CodeFromFile src="cross-platform/patterns/framework/atari-turn-loops/edge-filter.inc" lang="6502" title="Keep only bits that became pressed since the last sample" />
+
+| Entry or state | Contract |
+| --- | --- |
+| `init_turn` | A is the initial 8-bit counter; initialises all seven bytes |
+| `sample_turn` | A is the active-high button mask; accepts newly pressed bits |
+| `T+0` | Progress counter, increased by `T+5` on acceptance; wraps modulo 256 |
+| `T+1`, `T+4` | Previous/current samples; keep the same bit convention each call |
+| `T+2`, `T+3` | Little-endian 16-bit service count, independent of turns |
+| `T+5`, `T+6` | Step size and the current call’s accepted flag (1 or 0) |
+| `service_tick` | Increment the service count once per accepted display field |
+
+The init/sample routines change A and flags; `service_tick` changes flags. All preserve X/Y. A direct `JSR` needs two stack bytes, plus your surrounding caller and interrupt depth. The routines have no nested calls, hardware access, frame wait, private stack or interrupt masking. Their shared context is not re-entrant.
+
+Use one primary-button bit as the caller does. With a multi-bit mask, any newly pressed bit commits one update, even if another bit remains held; this routine does not queue separate actions for each button. A zero step can still report an accepted action without changing progress. Neither helper decides your game rules or imposes a deadline.
+
+## Fit it into the machine’s caller
+
+<CodeFromFile src="atari-7800/patterns/assembly/framework/turn-loop/demo.asm" lang="6502" title="Reset, input conversion, rule update and machine-specific display service" />
+
+`sample_turn` reports acceptance only for that call. Read `T+6` before another sample replaces it, then let your own rules respond. `service_tick` does not change that flag. The two counters have different meanings: one counts accepted progress, the other counts serviced fields.
+
+The guards immediately outside the seven-byte allocation are diagnostic caller state, not part of the reusable routine. The reset caller takes over the stack and display interfaces. Keep its ownership separate from other routines that scan input, alter interrupt enables or own the same video registers.
+
+## Wait on MARIA, not on a TIA kernel
+
+The 7800’s picture comes from MARIA display lists. The caller points MARIA at empty lists, enables DMA during blanking and uses the background colour as feedback. It keeps servicing the loop while the turn state waits.
+
+<CodeFromFile src="atari-7800/patterns/assembly/framework/turn-loop/frame.inc" lang="6502" title="Accept a fresh MARIA blanking interval" />
+
+**MSTAT at `$28`, bit 7, is high during vertical blank.** The wait leaves any current blanking interval before accepting the next one. Calling only the second half would allow several iterations during the same blank. This is different from both the 5200’s VCOUNT test and the 2600’s scanline production.
+
+The caller locks 7800 mode through INPTCTRL, installs the display-list-list pointer and enables MARIA’s DMA in blanking. The empty lists deliberately keep graphics demand small. `sample_turn` itself does none of that and never accesses a device register. The primary fire read is the active-low bit 7 at `$0C`; this caller does not supply dual-button/controller-mode handling.
+
+`$20` selects MARIA’s background colour. CPU speed and available work change with hardware access and DMA; a similarly sized 2600 routine is not a useful timing budget. A game adding objects must account for MARIA’s DMA stealing and list lifetime. The [MARIA object routines](/patterns/atari-7800/assembly/rendering/maria-objects/) have their own allocation and publication contract.
+
+The service counter advances **30 times in 30 native frames** with these empty lists. A missed blanking interval is lost. This direct reset cartridge bypasses stock BIOS authentication; the run does not prove an authenticated retail-console startup path.
+
+## Make it your own
+
+The default caller reads these settings:
+
+<CodeFromFile src="atari-7800/patterns/assembly/framework/turn-loop/settings.inc" lang="6502" title="One progress unit per new press" />
+
+Replace `settings.inc` with this maintained alternative and rebuild:
+
+<CodeFromFile src="atari-7800/patterns/assembly/framework/turn-loop/customise.inc" lang="6502" title="Two progress units, with feedback using the next counter bit" />
+
+The counter now goes **0 → 2 → 4**, still with one accepted action per press. We also select bit 1 for colour feedback: bit 0 never becomes set when adding two, so leaving the original feedback mask would hide the progress. This is a useful distinction between changing the rules and choosing how to show them.
+
+The routine code and seven-byte context stay the same size; only caller constants change. The compiled routine occupies **77 bytes** for this allocation, excluding the reset/display caller, stack and cartridge padding. The absolute addressing of this allocation costs more code bytes than the 2600’s zero-page allocation. Moving it can change both size and execution cost; preserve the machine’s timing contract when relocating it. The customisation is separately executed, not just assembled.
+
+## Common mistake: held means new
+
+**The next fragment is deliberately broken.** It replaces `edge-filter.inc` and treats every held sample as another press.
+
+<CodeFromFile src="cross-platform/patterns/framework/atari-turn-loops/mistakes/held-as-press.inc" lang="6502" title="Broken filter: the current state is not an edge" />
+
+In the native run, holding fire for a further 30 frames changes the faulty counter again. The working counter remains at **1**. Its picture may alternate too quickly for a still to explain the error: the measured state transition is the evidence. Restore the previous-sample filter above. Keep the update of `T+1` on every call, including releases, so another press can be recognised.
+
+## Common mistake: a plausible picture, the wrong clock
+
+Replacing the field wait with `RTS` makes the service counter a count of CPU iterations, even though its name still says “fields”. The background may look unchanged.
+
+<CodeFromFile src="atari-7800/patterns/assembly/framework/turn-loop/mistakes/no-wait.inc" lang="6502" title="Deliberately wrong: return without accepting a field boundary" />
+
+The native observation is **8,442 service ticks in 30 frames**, against **30** for the working wait. The counter is 16-bit and wraps; this measured interval is not a universal maximum speed. Restore `frame.inc` above and the original rate check passes again.
+
+## What was checked
+
+**Code status: assembled and emulator-executed** with Asm198x **0.0.71** and Emu198x **0.44.0**. Seven independent builds/runs cover the working caller, step-two customisation, **254 → 255 → 0** wrap, both deliberate faults and both repairs. The checks use real button input, 120 idle frames, a 30-frame hold, a second press, protected state boundaries and native captures. The repairs restore the working executable and captured results.
+
+The records retain source, tool and executable identities. The CI checker rejects missing bindings, omitted variants and altered behavioural evidence; it checks retained evidence and does not claim a new emulator run. No PAL, arbitrary game workload, original-hardware or whole-emulator qualification follows from this example.
+
+- [Complete callers, routine and reproduction instructions](https://github.com/code198x/code-samples/tree/93eeb12fe83576bdcfacf5c8cc2838bcb039577a/atari-7800/patterns/assembly/framework/turn-loop)
+- [Native execution record](https://github.com/code198x/code-samples/blob/93eeb12fe83576bdcfacf5c8cc2838bcb039577a/atari-7800/patterns/assembly/framework/turn-loop/verification/results.json)
+- [Choose progression, clocks and presentation](/patterns/cross-platform/framework/game-loop-choices/)
+
+## Hardware references
+
+Atari, [*7800 Software Guide*](https://atarihq.com/danb/files/7800%20Software%20Guide.pdf), “Starting up the 7800”, `MSTAT`, display-list-list pointers and DMA control.
