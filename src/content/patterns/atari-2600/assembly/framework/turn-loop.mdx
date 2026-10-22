@@ -1,0 +1,113 @@
+---
+title: "Wait for a new press on Atari 2600"
+summary: "Keep the display serviced while the game waits for one action, with separate reusable turn and field counters."
+platform: "atari-2600"
+category: "framework"
+difficulty: "intermediate"
+tags: ["game-loop", "turns", "timing", "input", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press fire and the background changes colour. Keep holding it: nothing more happens. Release and press again, and the first colour returns. The game has accepted two actions, while the display has kept running throughout.
+
+That small difference is worth getting right. A player waiting for their next move should not accidentally stop the picture, and a held button should not become hundreds of moves.
+
+<Figure src="/images/atari-2600/patterns/turn-loop/pressed.png" kind="capture" alt="The Atari 2600 caller’s changed background after one fire press." caption="One new press changes the turn counter and backdrop. Holding fire leaves that turn state alone; the native service counter continues." />
+
+## Build and try it
+
+```sh
+make -C atari-2600/patterns/assembly/framework/turn-loop
+```
+
+Start `build/demo.a26` in Emu198x for Atari 2600. The qualified configuration is **NTSC 4 KiB reset cartridge, without firmware**. Reset to leave. The caller is a deliberately small backdrop demonstration, not a complete display engine.
+
+## Include and initialise the reusable state
+
+Copy `turn.inc` and its neighbouring `edge-filter.inc` together, and include the routine once after your main code. Define `T` as seven private, consecutive RAM bytes. The caller uses **$90–$96**; choose another valid allocation if your game owns that memory already.
+
+Call `init_turn` with the starting progress counter in A. It clears the previous/current samples, accepted flag and 16-bit service count, and sets the step to 1. Change `T+5` after initialisation when you want another step. These routines require **decimal mode clear**; the complete reset caller uses `CLD`.
+
+<CodeFromFile src="cross-platform/patterns/framework/atari-turn-loops/turn.inc" lang="6502" title="Rule progression and display service are separate routines" />
+
+<CodeFromFile src="cross-platform/patterns/framework/atari-turn-loops/edge-filter.inc" lang="6502" title="Keep only bits that became pressed since the last sample" />
+
+| Entry or state | Contract |
+| --- | --- |
+| `init_turn` | A is the initial 8-bit counter; initialises all seven bytes |
+| `sample_turn` | A is the active-high button mask; accepts newly pressed bits |
+| `T+0` | Progress counter, increased by `T+5` on acceptance; wraps modulo 256 |
+| `T+1`, `T+4` | Previous/current samples; keep the same bit convention each call |
+| `T+2`, `T+3` | Little-endian 16-bit service count, independent of turns |
+| `T+5`, `T+6` | Step size and the current call’s accepted flag (1 or 0) |
+| `service_tick` | Increment the service count once per accepted display field |
+
+The init/sample routines change A and flags; `service_tick` changes flags. All preserve X/Y. A direct `JSR` needs two stack bytes, plus your surrounding caller and interrupt depth. The routines have no nested calls, hardware access, frame wait, private stack or interrupt masking. Their shared context is not re-entrant.
+
+Use one primary-button bit as the caller does. With a multi-bit mask, any newly pressed bit commits one update, even if another bit remains held; this routine does not queue separate actions for each button. A zero step can still report an accepted action without changing progress. Neither helper decides your game rules or imposes a deadline.
+
+## Fit it into the machine’s caller
+
+<CodeFromFile src="atari-2600/patterns/assembly/framework/turn-loop/demo.asm" lang="6502" title="Reset, input conversion, rule update and machine-specific display service" />
+
+`sample_turn` reports acceptance only for that call. Read `T+6` before another sample replaces it, then let your own rules respond. `service_tick` does not change that flag. The two counters have different meanings: one counts accepted progress, the other counts serviced fields.
+
+The guards immediately outside the seven-byte allocation are diagnostic caller state, not part of the reusable routine. The reset caller takes over the stack and display interfaces. Keep its ownership separate from other routines that scan input, alter interrupt enables or own the same video registers.
+
+## The picture is part of the loop
+
+The TIA does not keep a framebuffer for us. This caller generates **3 sync, 37 blank, 192 visible and 30 overscan lines**, repeatedly. Waiting for a player means continuing that work while leaving the rules alone.
+
+The first overscan wait leaves one line for the input read and `sample_turn`. A second leaves a line for the service tick and colour selection. A third finishes that work, then the remaining 27 waits complete overscan. Keep those jobs within their allotted lines: adding an expensive world update there can change the field even if every loop count still looks right.
+
+`WSYNC` stalls the CPU to a scanline boundary. The input read uses **INPT4 bit 7** at `$0C`: the electrical pressed state is low, so the caller inverts it before calling `sample_turn`. The `$01` write is VBLANK, and `$09` is COLUBK. These addresses are TIA interfaces, not portable 6502 facilities.
+
+Native measurements at the same CPU field marker give **59,736 colour clocks** both idle and pressed: 262 × 228. That proves this caller’s schedule under this workload. It does not establish spare time for your game, a PAL schedule or original-television behaviour.
+
+## Make it your own
+
+The default caller reads these settings:
+
+<CodeFromFile src="atari-2600/patterns/assembly/framework/turn-loop/settings.inc" lang="6502" title="One progress unit per new press" />
+
+Replace `settings.inc` with this maintained alternative and rebuild:
+
+<CodeFromFile src="atari-2600/patterns/assembly/framework/turn-loop/customise.inc" lang="6502" title="Two progress units, with feedback using the next counter bit" />
+
+The counter now goes **0 → 2 → 4**, still with one accepted action per press. We also select bit 1 for colour feedback: bit 0 never becomes set when adding two, so leaving the original feedback mask would hide the progress. This is a useful distinction between changing the rules and choosing how to show them.
+
+The routine code and seven-byte context stay the same size; only caller constants change. The compiled routine occupies **58 bytes** for this allocation, excluding the reset/display caller, stack and cartridge padding. The zero-page addressing of this allocation makes it smaller than the other two callers. Moving it can change both size and execution cost; preserve the machine’s timing contract when relocating it. The customisation is separately executed, not just assembled.
+
+## Common mistake: held means new
+
+**The next fragment is deliberately broken.** It replaces `edge-filter.inc` and treats every held sample as another press.
+
+<CodeFromFile src="cross-platform/patterns/framework/atari-turn-loops/mistakes/held-as-press.inc" lang="6502" title="Broken filter: the current state is not an edge" />
+
+In the native run, holding fire for a further 30 frames changes the faulty counter again. The working counter remains at **1**. Its picture may alternate too quickly for a still to explain the error: the measured state transition is the evidence. Restore the previous-sample filter above. Keep the update of `T+1` on every call, including releases, so another press can be recognised.
+
+## Common mistake: a plausible picture, the wrong clock
+
+The broken caller uses **28 remaining overscan waits** after the three scheduled waits, giving 31 overscan lines. Its background still looks plausible.
+
+<CodeFromFile src="atari-2600/patterns/assembly/framework/turn-loop/mistakes/extra-line.inc" lang="6502" title="Deliberately wrong for this caller: one extra line" />
+
+The measured period changes from **59,736 to 59,964 colour clocks**, exactly one 228-clock scanline. A still cannot establish TV rolling or stability, and we claim neither. Restore the caller’s 27 remaining waits and remeasure the same marker.
+
+<CodeFromFile src="atari-2600/patterns/assembly/framework/turn-loop/overscan-count.inc" lang="6502" title="Restore this caller’s 30-line overscan schedule" />
+
+## What was checked
+
+**Code status: assembled and emulator-executed** with Asm198x **0.0.71** and Emu198x **0.44.0**. Seven independent builds/runs cover the working caller, step-two customisation, **254 → 255 → 0** wrap, both deliberate faults and both repairs. The checks use real button input, 120 idle frames, a 30-frame hold, a second press, protected state boundaries and native captures. The repairs restore the working executable and captured results.
+
+The records retain source, tool and executable identities. The CI checker rejects missing bindings, omitted variants and altered behavioural evidence; it checks retained evidence and does not claim a new emulator run. No PAL, arbitrary game workload, original-hardware or whole-emulator qualification follows from this example.
+
+- [Complete callers, routine and reproduction instructions](https://github.com/code198x/code-samples/tree/93eeb12fe83576bdcfacf5c8cc2838bcb039577a/atari-2600/patterns/assembly/framework/turn-loop)
+- [Native execution record](https://github.com/code198x/code-samples/blob/93eeb12fe83576bdcfacf5c8cc2838bcb039577a/atari-2600/patterns/assembly/framework/turn-loop/verification/results.json)
+- [Choose progression, clocks and presentation](/patterns/cross-platform/framework/game-loop-choices/)
+
+## Hardware references
+
+Steve Wright, Atari, [*Stella Programmer’s Guide*](http://www.atarihq.com/danb/files/stella.pdf), “The Television Picture”, `VSYNC`, `VBLANK`, `WSYNC` and input ports. The [playfield kernel](/patterns/atari-2600/assembly/rendering/playfield-kernel/) explains the more demanding visible picture schedule.
