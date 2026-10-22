@@ -1,0 +1,90 @@
+---
+title: "Wait for a player action on Jupiter Ace in Z80 assembly"
+summary: "Keep an untimed world waiting for the player, with machine-specific code, a working variation and a state-reset mistake you can recognise."
+platform: "jupiter-ace"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "assembly", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press **1**. The count advances once. Leave the machine alone and the world waits for you. That is enough to give an adventure its rhythm: look around, make a choice, then let the world respond.
+
+Here the world is just a counter. Replace that update with a room change, a board move or an opponent's response. Input, persistent state and presentation still have different jobs.
+
+<Figure src="/images/jupiter-ace/patterns/assembly-command-loop/working.png" alt="Jupiter Ace assembly caller after its second accepted action." caption="Two actions, two updates. Waiting does not spend a turn." />
+
+## Start under the normal firmware
+
+This is a **stock 3 KiB Jupiter Ace** caller, not a replacement ROM. Keep the three maintained source files together and build from the code-samples root:
+
+```sh
+python3 scripts/build-dragon-ace-loops.py --assembler /path/to/asm198x --system jupiter-ace
+```
+
+Enter the generated `build/working/load.fth` line by line after a fresh firmware boot. The loader is generated from the assembled payload; you do not have to transcribe a second hand-maintained list of bytes.
+
+The Ace loader defines `TURNS` as `15616 CALL`, checks that HERE has not passed 15616, pads the dictionary to **$3D00**, then compiles the 212-byte payload with `C,`. HERE advances past **$3DD3**, protecting the bytes from subsequent definitions. The padding also costs dictionary space. Start from a fresh boot; the loader aborts if the dictionary has already passed the chosen address. Do not move this absolute-address code with LOAD or REDEFINE.
+
+<CodeFromFile src="jupiter-ace/patterns/assembly/framework/command-loop/demo.asm" lang="z80" title="Origin, settings and the two includes" />
+<CodeFromFile src="jupiter-ace/patterns/assembly/framework/command-loop/caller.inc" lang="z80" title="Initialise once; wait, update and show the result" />
+
+**Q** returns to FORTH after Q has been released. Other keys leave the state alone. The display uses hexadecimal: **$0A means ten**, **$FF means 255**, and the next accepted action wraps to **$00**.
+
+## Take the reusable parts
+
+Include `routines.inc` once. Put the starting byte in A and call `turn_init` once; call `turn_advance` when your own command handler accepts an action. STEP is a compile-time byte. Neither routine reads input or touches the screen.
+
+<CodeFromFile src="jupiter-ace/patterns/assembly/framework/command-loop/routines.inc" lang="z80" title="State update, presentation and diagnostic sound as separate calls" />
+
+| Routine | Inputs and result | Resources changed |
+| --- | --- | --- |
+| `turn_init` | A becomes `turn_count` | One labelled byte; flags |
+| `turn_advance` | Add STEP modulo 256 | A, flags and that byte |
+| `show_turn` | Display the current byte | A/BC/DE/HL/flags and eight text cells |
+| `draw_box` | Draw three rows of original text | A/flags and nine text cells |
+| `trigger_sound` | Blocking diagnostic pulse train | A/BC/DE/flags and speaker state |
+
+The Ace input routine samples two keyboard half-rows: **$F7FE bit 0** for 1, **$FBFE bit 0** for Q. Zero means pressed. It waits for both command keys to be released before accepting another action; Q wins a simultaneous sample and is released before the routine returns. Other keys are ignored. BC/A/flags change. This is a small command reader, not a general character scanner.
+
+A top-level **`JP (IY)`** returns to FORTH. Internal helpers use `RET`. Confusing those boundaries can send the interpreter into unrelated memory. IX/IY and the data stack remain untouched; SP stays on FORTH's balanced return stack. Other main registers may change. Two nested internal return addresses need four bytes, with interpreter and interrupt stack use in addition.
+
+The text adapter uses the ROM's normal ASCII glyphs and writes **$2400–$2407**, plus three cells per row at **$2440/$2460/$2480**. It leaves the cursor and other UI alone. Replacing a shared character definition would also change this box.
+
+The speaker and keyboard share an I/O effect: OUT pushes the speaker out, while IN pulls it in. The sound routine alternates them. The input reader also performs IN, so its first read can change the speaker's level. The retained no-sound control checks that the deliberate pulse train rises above this baseline. Do not run another speaker driver concurrently; this blocking effect makes no pitch-accuracy claim.
+
+## Customise it
+
+Build with `--variant step-three` to use this complete alternative. Two actions now produce **$03 → $06**. Code and state size stay the same.
+
+<CodeFromFile src="jupiter-ace/patterns/assembly/framework/command-loop/customise.asm" lang="z80" title="Same caller, three units per accepted action" />
+<Figure src="/images/jupiter-ace/patterns/assembly-command-loop/step-three.png" alt="Jupiter Ace customised caller showing hexadecimal six." caption="The amount changed; the player still acted twice." />
+
+## Common mistake: resetting inside the loop
+
+**This variant is deliberately broken.** `RESET_EACH=1` runs initialisation inside each iteration. An action updates the byte, then the next redraw erases the result. The screen stays at **$00**.
+
+<CodeFromFile src="jupiter-ace/patterns/assembly/framework/command-loop/mistakes/reset-each-command.asm" lang="z80" title="Broken: erase persistent state before each redraw" />
+<Figure src="/images/jupiter-ace/patterns/assembly-command-loop/reset-mistake.png" alt="Jupiter Ace faulty caller showing zero after two actions." caption="The update cannot preserve progress that the caller immediately throws away." />
+
+Use the original startup-only initialisation to repair it. The repaired caller is run separately. A bad return convention or a conflicting screen allocation would be different faults; these images show the state-lifetime mistake.
+
+## Decide when time matters
+
+This loop spends CPU waiting, but does not spend a game turn. A timed decision needs a separate clock, an input policy that checks it and a rule for a command arriving with the deadline. Continuing display or firmware interrupts do not imply that the world should advance on every tick.
+
+Compare the [loop choices](/patterns/cross-platform/framework/game-loop-choices/) and the [FORTH version](/patterns/jupiter-ace/forth/framework/command-loop/). These are different resource and input agreements, not a compulsory ladder from one language to another.
+
+## Source and verification
+
+**Native-emulator executed:** Emu198x **0.44.1**, Asm198x **0.0.71**, the named machine and firmware configuration above. Actual keyboard input drives the program; host writes do not supply the count. The images are native framebuffer captures.
+
+The [maintained source](https://github.com/code198x/code-samples/tree/e8f5e36c6ca483ac5131e372a639e23a1409da90/jupiter-ace/patterns/assembly/framework/command-loop) includes the working variation and deliberate fault. The [retained record](https://github.com/code198x/code-samples/blob/e8f5e36c6ca483ac5131e372a639e23a1409da90/jupiter-ace/patterns/assembly/framework/command-loop/verification/results.json) identifies sources and observations. Eight cold starts also check 254 → 255 → 0, a nonzero start, loaded-byte equality, held input, omitted drawing/sound and a return to interpreter arithmetic. An independent checker decodes screen RAM and rejects altered counts, missing stages, changed sources and changed captures.
+
+This qualifies the small workload and named configuration. It is not an original-hardware, pitch, cassette-transfer or whole-emulator claim.
+
+## Primary references
+
+*Jupiter Ace User's Manual*, issue 2 (Jupiter Cantab, 1982), chapters 12 and 16 (input and conditional loops), chapter 24 (memory), chapter 25, pp. 144–146 (machine-code CALL and return), chapter 26, p. 152 (keyboard and speaker I/O); Ace schematic (keyboard half-row bit positions).

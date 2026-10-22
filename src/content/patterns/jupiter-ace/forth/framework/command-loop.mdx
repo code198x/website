@@ -1,0 +1,69 @@
+---
+title: "Wait for a player action on Jupiter Ace in FORTH"
+summary: "Keep an untimed world waiting for the player, with machine-specific code, a working variation and a state-reset mistake you can recognise."
+platform: "jupiter-ace"
+category: "framework"
+difficulty: "beginner"
+tags: ["game-loop", "turns", "forth", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press **1**. The count advances once. Leave the machine alone and the world waits for you. That is enough to give an adventure its rhythm: look around, make a choice, then let the world respond.
+
+Here the world is just a counter. Replace that update with a room change, a board move or an opponent's response. Input, persistent state and presentation still have different jobs.
+
+<Figure src="/images/jupiter-ace/patterns/forth-command-loop/working.png" alt="Jupiter Ace forth caller after its second accepted action." caption="Two actions, two updates. Waiting does not spend a turn." />
+
+## Put it in your project
+
+Enter this source on a **stock 3 KiB Jupiter Ace with its normal FORTH ROM**, one definition at a time, ending with TURNS. It uses the real interpreter's input and display routines.
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/command-loop/demo.fth" lang="forth" title="A complete untimed caller" />
+
+Take **NEWKEY** as a reusable word. Its stack effect is **( — key )**: it waits for release, then leaves one nonzero INKEY value. Keeping the release wait prevents a held key from spending turns repeatedly. TURNS leaves one unsigned 16-bit counter on the data stack; `DUP U.` displays without consuming it. `NEWKEY 49 =` recognises 1, `1+` advances, and the false `0 UNTIL` repeats without growing the stack. The counter wraps after 65535.
+
+Replace the accepted-key body with your state update while preserving its stack effect. Every new branch must leave the same number of cells; a forgotten DROP or DUP can eventually exhaust the stack. FORTH owns the dictionary, display and both stacks. There are no arbitrary fixed RAM reservations in this version. Other keys leave the counter unchanged; Return is not required for each action. The word runs until the machine's normal BREAK handling interrupts it.
+
+## Customise the update
+
+This alternative adds three units for each accepted action: **0 → 3 → 6**. It is still one action, rather than running the entire game three times.
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/command-loop/customise.fth" lang="forth" title="Three progress units per action" />
+<Figure src="/images/jupiter-ace/patterns/forth-command-loop/step-three.png" alt="Jupiter Ace forth caller showing six after two accepted actions." caption="The same waiting policy supports a different update." />
+
+## Common mistake: erasing the previous turn
+
+**This listing is deliberately broken.** DROP 0 discards the old count at the start of every iteration. Each redraw shows zero again, even after an accepted action.
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/command-loop/mistakes/reset-each-command.fth" lang="forth" title="Broken: initialisation inside the iteration" />
+<Figure src="/images/jupiter-ace/patterns/forth-command-loop/reset-mistake.png" alt="Jupiter Ace faulty caller showing zero after two actions." caption="Persistent state needs to survive the journey round the loop." />
+
+Restore the original loop target to repair it. The repaired source is executed separately, as is a nonzero initial count; an absent initialiser must not pass simply because zero happens to be there already.
+
+## Add presentation deliberately
+
+The companion probe keeps the input policy and adds an original text-cell box and a blocking BEEP word:
+
+<CodeFromFile src="jupiter-ace/patterns/forth/capabilities/input-drawing-sound/demo.fth" lang="forth" title="Input, text-cell drawing and sound" />
+
+These are separate jobs. The retained run omits sound to check that its audio guard rejects silence. The FORTH BOX word preserves the counter beneath its display work. Text cells are not a bitmap drawing primitive. A blocking tone delays the next input sample; a background sound service would need a different loop.
+
+## Decide when time matters
+
+This loop spends CPU waiting, but does not spend a game turn. A timed decision needs a separate clock, an input policy that checks it and a rule for a command arriving with the deadline. Continuing display or firmware interrupts do not imply that the world should advance on every tick.
+
+Compare the [loop choices](/patterns/cross-platform/framework/game-loop-choices/) and the [assembly version](/patterns/jupiter-ace/assembly/framework/command-loop/). These are different resource and input agreements, not a compulsory ladder from one language to another.
+
+## Source and verification
+
+**Native-emulator executed:** Emu198x **0.44.1**, the named machine and firmware configuration above. Actual keyboard input drives the program; host writes do not supply the count. The images are native framebuffer captures.
+
+The [maintained source](https://github.com/code198x/code-samples/tree/e8f5e36c6ca483ac5131e372a639e23a1409da90/jupiter-ace/patterns/forth/framework/command-loop) includes the working variation and deliberate fault. The [retained record](https://github.com/code198x/code-samples/blob/e8f5e36c6ca483ac5131e372a639e23a1409da90/jupiter-ace/patterns/forth/framework/command-loop/verification/variants.json) identifies sources and observations. Five cold starts check normal use, step three, the reset mistake and repair, and a nonzero start. The refreshed baseline also checks idle and ignored input. An independent checker decodes screen RAM and rejects altered counts, missing stages, changed sources and changed captures.
+
+This qualifies the small workload and named configuration. It is not an original-hardware, pitch, cassette-transfer or whole-emulator claim.
+
+## Primary references
+
+*Jupiter Ace User's Manual*, issue 2 (Jupiter Cantab, 1982), chapters 12 and 16 (input and conditional loops), chapter 24 (memory), chapter 25, pp. 144–146 (machine-code CALL and return), chapter 26, p. 152 (keyboard and speaker I/O); Ace schematic (keyboard half-row bit positions).
