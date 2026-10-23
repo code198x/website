@@ -85,11 +85,14 @@ Chromium with `npx playwright install chromium` and provide `lychee` on PATH.
 at the first failing check.
 
 `npm run build` generates the site and search index; it does not run tests.
-CI runs quick content checks only. Pages builds the required assets and site,
-then publishes; browser tests, link audits and announcement regressions run
-locally. The payload builder still validates messages as part of preparing
-announcements. The wider end-to-end and full-site accessibility suites remain
-available as separate local commands.
+CI runs the quick content checks on every pull request, and the Playwright
+suite against the dev server and the built site when a pull request changes
+something that can change a page. main's ruleset requires `content-smoke` and
+`Browser tests`, the job that passes when the suite passed or had nothing to
+cover. Pages builds the required assets and site, then publishes; link audits
+and announcement regressions run locally. The payload builder still validates
+messages as part of preparing announcements. The wider end-to-end and
+full-site accessibility suites remain available as separate local commands.
 
 ### House198x kit
 
