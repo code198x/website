@@ -1,0 +1,134 @@
+---
+title: "Give a Blitz BASIC turn an optional deadline"
+summary: "Keep a turn waiting for a decision, or let a separate clock put pressure on the player without blocking on Return."
+platform: commodore-amiga
+category: framework
+difficulty: intermediate
+tags: [loops, turns, deadlines, timers, basic, blitz]
+---
+
+import CodeFromFile from '../../../../../components/CodeFromFile.astro';
+import Figure from '../../../../../components/Figure.astro';
+
+A takes a turn. Wait a while and nothing else happens. Press T, though, and waiting becomes a decision: leave it too long and the game takes the next turn for you. Another T gives you all the thinking time you need again.
+
+This adds an optional deadline to the [existing Blitz command rule](/patterns/commodore-amiga/blitz/framework/command-loop/). The rule stays unchanged. The important difference is around it: a small clock keeps ticking, and an Intuition window accepts a character without waiting for Return.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/blitz-deadline-working.png" alt="Blitz BASIC shows Count 3 and Timer 1 after two player actions and one automatic turn." caption="Two actions, then one turn without a key press. The next deadline is already active." />
+
+## Put it in your project
+
+Run `make` in the [source folder](https://github.com/code198x/code-samples/tree/b7fea75e2ac07a43adb051e8b3d63955c12b6b0d/commodore-amiga/patterns/blitz/framework/turn-deadline). In a **blank Ted source**, choose **Edit → Insert from disk** and select `build/working.asc`. Compile/run with Right Amiga + X. A advances, T toggles timing and Q leaves. Timing starts disabled; 200 ticks is roughly four seconds in the checked PAL configuration.
+
+These downloads are maintained ASCII. Blitz's native `INCLUDE` requires tokenised source, so append these pieces in the editor or save tokenised modules first. Do not point `INCLUDE` at the raw ASCII files. Use a fresh blank listing for each complete variant, keeping its labels separate from earlier imports.
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/turn-deadline/caller.bb2" lang="blitz" />
+
+The builder places the caller first, then appends `routines.bb2`, `clock.bb2`, `input.bb2`, `monitor.bb2` and the existing command-loop `routines.bb2`. The last file supplies `PL_advance` unchanged. Put the routines **after End**, so execution cannot fall into a `Return` without a matching `Gosub`.
+
+**Blitz names are case-sensitive.** Preserve `PL_dl_init`, `PL_dl_now` and the rest exactly, including the `PL` capitals. The editor's command colouring does not make your own identifiers case-insensitive. The bank address, size and row of digits in the sample are optional verification aids, rather than a game interface you need to reproduce.
+
+## A deadline which knows nothing about the game
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/turn-deadline/routines.bb2" lang="blitz" />
+
+| Value | Contract |
+| --- | --- |
+| `PL_dl_duration.l` | Caller supplies whole ticks, 0..65535. Zero disables. |
+| `PL_dl_now.l` | Caller supplies the current sample, 0..65535. |
+| `PL_dl_previous.l` | Helper retains the previous sample. |
+| `PL_dl_left.l` | Remaining ticks, clamped at zero. |
+| `PL_dl_active.l` | Explicit 0 or 1 active state. |
+| `PL_dl_expired.l` | Explicit 0 or 1 event for the latest poll. |
+| `PL_dl_elapsed.l` | Elapsed ticks from that poll. |
+
+Set duration and current time, then call `PL_dl_init` once. It begins disabled. `PL_dl_start` copies the duration into remaining time and enables a nonzero duration. It retains the latest baseline: sample/poll immediately before starting when that instant matters.
+
+Supply a fresh sample and call `PL_dl_poll` every service iteration, **even while disabled**. Consume the expiry event before another poll or start clears it. Expiry clamps remaining time to zero and disables the helper. It does not move a monster, update a score or restart itself; those are the caller's decisions.
+
+The `.l` suffixes make these signed long integers. Keep those types, and reserve or consistently rename the whole state and label group. Blitz comparisons return -1 for true, while this helper deliberately exposes flags as 0 or 1. One group is one mutable context; multiple independent deadlines need separate state. This helper uses ordinary `Gosub`/`Return` calls, is not re-entrant, and owns no window, bank, interrupt handler or input queue.
+
+## A clock which continues while you think
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/turn-deadline/clock.bb2" lang="blitz" />
+
+`PL_clock_init` installs a short `SetInt 5` handler. It changes only a numeric counter: one increment, a comparison and a reset at 65536. The main program reads that counter; it does not increment time once per game iteration. In the checked PAL workload the counter advances once per video field, nominally fifty ticks per second.
+
+The caller's `VWait` paces servicing. Drawing or other lengthy work can delay when it notices expiry, but the clock keeps measuring elapsed fields. Restarting from observation time introduces drift; carrying lateness or using a fixed-step accumulator is a different policy when the game needs one.
+
+**This adapter requires exclusive ownership of Blitz's type-5 handler set.** `ClrInt 5` removes every Blitz handler of that type, rather than just this one. Coordinate setup and teardown in a larger game. The interrupt code uses no strings, Intuition, file I/O or blitter calls. Ordinary Amiga services remain running; the caller does not enter `BLITZ` mode.
+
+The counter belongs to the adapter and starts at zero before installation. Main code only reads it. Its ordinary long load completes before an interrupt can run; this is a single-writer Amiga arrangement, rather than a general synchronisation API for other CPUs or writers.
+
+## Wrap is a small piece of useful maths
+
+A sample of 65530 followed by 5 means eleven ticks passed. Subtraction initially gives -65525; adding 65536 recovers eleven. That is modular arithmetic, and a useful connection to [Maths for Games](/craft/maths-for-games/).
+
+The intermediate difference fits in a signed long throughout our bounds. Poll before a complete 65536-tick cycle passes: two low-word samples cannot reveal a missed whole cycle. At the checked PAL rate that limit is roughly 21 minutes 51 seconds. Zero duration disables; it does not stand for a whole cycle. Resetting the clock externally requires reinitialisation.
+
+A delayed poll produces one event, rather than every turn you missed. That suits this caller. Choose a longer clock or catch-up policy explicitly when your game needs it; neither is hidden inside the helper.
+
+## Characters arrive without stopping time
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/turn-deadline/input.bb2" lang="blitz" />
+
+Opening the owned window selects `WindowInput` and `WindowOutput`. `Inkey$` can then return a delivered character without waiting for Return. The earlier console caller uses a submitted line instead, so replacing its `Edit$` with `Inkey$` without changing the channel would not establish this behaviour.
+
+This reader accepts delivered characters, which may include operating-system repeats. It does not promise one action per physical press or the AMOS reader's release gate. Focus matters, and another input consumer cannot independently read the same queue. `UCase$` accepts lower-case commands too.
+
+**Expiry wins** when time and a command are serviced together. The caller discards that command, including T or Q. Otherwise A advances the existing bounded rule and restarts only an already enabled deadline. An untimed action stays untimed. T disables and clears remaining time, or starts a new full duration; it does not preserve a paused remainder. Count and expiry count wrap within 0..255.
+
+## Change the pressure, keep the helper
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/turn-deadline/customise.bb2" lang="blitz" />
+
+This changes only 200 ticks to 100: roughly two seconds rather than four in the checked PAL workload. `build/custom.asc` uses the same helper and input policy, and its native expiry arrives after the shorter interval. No extra asset or state field is needed.
+
+You could make a safe room untimed, choose a duration for each encounter, or let expiry happen just once. Those belong in the caller. Changes to numeric bounds, clock units or input arbitration need fresh checks of those contracts.
+
+## When a moving clock never spends any time
+
+**Deliberately broken service:** this assignment replaces the history just before the helper measures it.
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/turn-deadline/mistakes/reset-baseline.bb2" lang="blitz" />
+
+Previous time now always equals current time. Elapsed stays zero and remaining stays 200. A works, T enables timing, the actual clock advances, but no automatic turn arrives.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/blitz-deadline-wrong.png" alt="The broken Blitz caller remains at Count 1 with Timer 1 after more than its deadline has passed." caption="The screen looks plausible, but the retained observations show a moving clock and zero elapsed time on every poll." />
+
+Restore `clock.bb2` and import a fresh `build/repaired.asc`. Two actions followed by waiting give Count 3 with one expiry. The repaired caller was compiled and run separately.
+
+The arithmetic fixture also tries `<=0` changed to `<0`. At exact expiry, remaining time reaches zero but stays active until a later poll. The faulty variant completes all sixteen cases, yet fails three exact-expiry results against the independent oracle. Restoring `<=0` fixes those boundaries. A compile error is not evidence of that intended runtime fault.
+
+## Resource ownership and costs
+
+The caller owns window 0, its input/output redirection and the adapter's Blitz type-5 handler set. It obtains screen handle 0 for the shared Workbench screen; it does not own that screen's lifetime or palette. Choose free object numbers and coordinate them with other components.
+
+Normal Q exit clears the owned handler set, restores `DefaultInput`/`DefaultOutput`, frees window 0 and frees diagnostic bank 0. An abnormal interruption needs a separate cleanup policy. The helper itself needs none of those resources.
+
+<details>
+<summary>The optional 40-byte observer</summary>
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/turn-deadline/monitor.bb2" lang="blitz" />
+
+The caller requests bank 0 and discovers its address with `Bank(0)`. Seven four-byte fields at offsets 0..24 hold turn, expiry count, active, remaining, clock, duration and elapsed. A guard is at offset 32; completion 239 at offset 36 marks a completed observation. This is a qualification aid, not an interrupt-safe communication API.
+
+To omit it, remove the bank allocation/address/guard, Bank/Size/digit-display lines, `Gosub PL_monitor`, `FreeBank 0` and the monitor module. Renumber allocation, address lookup, size lookup and free together when another module owns bank 0.
+
+</details>
+
+The seven helper long values hold **28 bytes of numeric payload**; the adapter's counter adds four. Code, call frames, compiler/runtime structures, strings and window resources cost more. Those overheads have not been isolated here, and ASCII file size does not measure executable size or establish a minimum-RAM Amiga.
+
+The diagnostic caller separately requests a 40-byte bank; native `BankSize(0)` reports 40. The arithmetic fixture reports 272 for its own results bank. The normal observer writes seven four-byte fields and two four-byte completion values per poll: **36 explicit data bytes**, or 1800 bytes at fifty polls per second. This is a store count, rather than measured bus bandwidth or frame time. Omit the diagnostics to save those stores.
+
+## What was checked
+
+The working, shorter-duration, baseline-fault and repaired callers were imported and compiled separately in **original Blitz BASIC 2.10 / Ted 1.1**, using **Emu198x 0.44.1** on a PAL A1200 with 2 MiB chip RAM, no fast RAM, the recorded Kickstart 3.1 identity and three floppy drives. The third drive holds the source-only fixture from boot; licensed runtime media and snapshots are not distributed.
+
+Actual keys exercise untimed idle, accepted input, enable/progression, active restart, expiry without input, disable/idle and normal exit. Counter and active-state pixels agree with guarded bank observations. Two further imports exercise sixteen synthetic arithmetic cases and the strict-comparison control. These synthetic samples do not constitute a twenty-minute wall-clock rollover test.
+
+The [source and native record](https://github.com/code198x/code-samples/tree/b7fea75e2ac07a43adb051e8b3d63955c12b6b0d/commodore-amiga/patterns/blitz/framework/turn-deadline/verification) bind the tools, firmware, runtime and maintained programs. CI rechecks retained evidence and failing controls; it does not boot licensed software. This qualifies the named configuration, rather than original hardware, NTSC, AmiBlitz/PED or another compiler.
+
+Both figures show the sample's native output. Their exports remove only proven duplicate framebuffer columns, retaining every unique pixel. Captured with Emu198x 0.44.1 running Blitz BASIC 2.10.
+
+For an untimed game, the [console command loop](/patterns/commodore-amiga/blitz/framework/command-loop/) remains simpler. Compare [AMOS's deadline and release-gated input](/patterns/commodore-amiga/amos/framework/turn-deadline/) and the broader [loop choices](/patterns/cross-platform/framework/game-loop-choices/) when choosing the services your game needs. The original [Blitz BASIC 2.1 manual](https://daemonbite.com/files/linked/BB21Manual.pdf) covers identifier spelling, SetInt/ClrInt, input channels, window ownership and memory banks.
