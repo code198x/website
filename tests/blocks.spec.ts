@@ -30,3 +30,22 @@ for (const route of ROUTES) {
     }
   });
 }
+
+const CARD_ROUTES = ['/curriculum/', '/crash-live/', '/updates/', '/demoscene/'];
+
+for (const route of CARD_ROUTES) {
+  test(`link cards on ${route} answer hover without lifting`, async ({ page }) => {
+    await page.goto(route);
+    const cards = page.locator('a.ink-card');
+    expect(await cards.count(), `${route} shows no link cards`).toBeGreaterThan(0);
+    const card = cards.first();
+    await card.scrollIntoViewIfNeeded();
+    const edge = () => card.evaluate(element => getComputedStyle(element).borderTopColor);
+    expect(await card.evaluate(element => getComputedStyle(element).borderTopWidth)).toBe('3px');
+    const rest = await edge();
+    await card.hover();
+    await expect.poll(edge).not.toBe(rest);
+    expect(await card.evaluate(element => getComputedStyle(element).transform)).toBe('none');
+    expect(await card.evaluate(element => getComputedStyle(element).boxShadow)).toBe('none');
+  });
+}
