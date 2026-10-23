@@ -1,0 +1,117 @@
+---
+title: "Give a turn a KERNAL deadline"
+summary: "Keep untimed turns useful, then add a serviced jiffy-clock deadline with an explicit input policy."
+platform: commodore-vic-20
+category: framework
+difficulty: intermediate
+tags: [loops, turns, deadlines, timers, kernal, "6502"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press Space: the counter advances. Wait: nothing happens. Press T, though, and waiting becomes a decision. After 240 jiffies, roughly four seconds, the game takes a turn for you. Space takes your turn sooner and starts that deadline again. Another T gives you your thinking time back.
+
+The game rule still knows nothing about clocks. A small caller decides whether this turn needs a deadline, checks for expiry, and keeps the keyboard working while you think.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-vic-20/kernal-deadline-working.png" alt="VIC-20 shows 0002 01 01: two turns, one automatic expiry and an active next deadline." caption="One Space press, followed by one automatic turn. The three hexadecimal fields are turns, automatic expiries and the active flag." />
+
+## Run it, then take the pieces you need
+
+Build the [maintained source](https://github.com/code198x/code-samples/tree/d48746cb51b9a987e29e3353dc4d18683208fedd/commodore-vic-20/patterns/assembly/framework/turn-deadline):
+
+```sh
+make -C commodore-vic-20/patterns/assembly/framework/turn-deadline ASM198X=/path/to/asm198x
+```
+
+The checked assembler is **Asm198x 0.0.72**. Load **build/demo.prg** as a BASIC program and RUN; the included SYS line enters the machine-code caller. Reset leaves the demo. The checked setup is an **unexpanded 5 KiB PAL VIC-20**, 22-column text and normal KERNAL IRQ service. Its own PRG importer enters the stock BASIC RUN/SYS path. The C64 and VIC-20 load addresses differ; use this machine’s build.
+
+Keep the whole samples checkout: the caller uses relative includes. It shares the twelve-byte [6502 deadline helper](https://github.com/code198x/code-samples/blob/d48746cb51b9a987e29e3353dc4d18683208fedd/cross-platform/patterns/framework/elapsed-deadline/6502.inc) and the BBC/Electron policy dispatcher. The Commodore adapters use KERNAL calls; they do not use MOS calls or take over the interrupt vector.
+
+<CodeFromFile src="commodore-vic-20/patterns/assembly/framework/turn-deadline/settings.inc" lang="6502" />
+
+<CodeFromFile src="commodore-vic-20/patterns/assembly/framework/turn-deadline/demo.asm" lang="6502" />
+
+Use these include paths as the working order. Keep returning routines outside the main execution path: an RTS needs a matching call. You can keep just the helper and clock adapter when your own game already has input, turn rules and drawing.
+
+## A countdown you can call
+
+<CodeFromFile src="cross-platform/patterns/framework/elapsed-deadline/6502.inc" lang="6502" />
+
+The context at **$1C00** owns twelve bytes:
+
+| Offsets | Meaning |
+| --- | --- |
+| 0–1 | Duration, unsigned little-endian ticks; zero disables |
+| 2–3 | Remaining ticks, clamped at zero |
+| 4 | Active flag |
+| 5 | Expiry event for this poll |
+| 6–7 | Elapsed ticks in this poll |
+| 8–9 | Previous clock sample |
+| 10–11 | Scratch sample |
+
+Set duration, clear decimal mode, sample the clock into **A low, X high**, then call `deadline_init`. It starts disabled. `deadline_start` copies duration into remaining time and enables a nonzero duration. It uses the last sampled baseline, so sample/poll immediately before starting when that instant matters.
+
+Call `sample_clock`, then `deadline_poll`, on every service iteration, even while disabled. Read offset 5 before the next poll clears it. Polling may expire and disable the countdown; the caller decides whether that means a turn, a warning, or something else. The helper changes A/X/P and preserves Y. The adapters and surrounding firmware calls may change A/X/Y/P.
+
+An untimed action stays untimed. This caller restarts an active deadline after Space, and after an automatic expiry. T disables and **discards** remaining time; re-enabling starts fresh. Preserving a paused remainder would be a different caller policy.
+
+## A daily reset is not a binary wrap
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/turn-deadline/clock.inc" lang="6502" />
+
+KERNAL's `RDTIM` returns a coherent three-byte clock in **A low, X middle, Y high**. There is a trap in the original C64 guide: it reverses the outer registers. Commodore's [original KERNAL listing](https://www.pagetable.com/docs/C64_KERNAL_03_LST.pdf), RDTIM at $F6DD, shows the implemented order. The named native firmware runs agree with it.
+
+Ordinary low-word wrap is easy: previous=65530 and now=5 means eleven ticks. But the KERNAL clock also resets at **5,184,000** jiffies, a nominal day. That is not a multiple of 65536. Simply taking the low word would turn midnight into a large false elapsed interval.
+
+The adapter remembers the previous full sample in eight bytes at **$1C30**. If the raw clock moves backwards, it adds the low word of one day to its offset before returning a virtual 16-bit clock. `normalise_clock` is callable separately with a raw A/X/Y sample; the native boundary fixture is a second caller of that same routine.
+
+Clear all eight bytes once before the first sample. Keep samples **less than 65536 jiffies apart**, about 18.2 minutes at the nominal 60 Hz rate. Another part of your program must not SETTIM or reset TI$: the adapter would mistake that backward jump for midnight. Reinitialise it and the countdown after an intentional clock change.
+
+This connects directly to [Maths for Games](/craft/maths-for-games/): units, number representation and modular subtraction determine the result. A day wraps at a different modulus from a 16-bit integer. Neither is the same thing as one display field.
+
+Keep normal KERNAL interrupts running. The adapter does not install an IRQ or add UDTIM calls. RDTIM itself enables interrupts, so this is a **mainline** routine, not a service to call inside an interrupt-disabled critical section. Long IRQ blocking can lose clock service; the helper cannot recover time that was never counted.
+
+## Keyboard delivery and turn order
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/turn-deadline/input.inc" lang="6502" />
+
+The caller restores default channels with CLRCHN before using GETIN. Space becomes action bit 0; T becomes toggle bit 1. GETIN is channel-sensitive: a game using CHKIN must restore its keyboard channel or provide another sampler.
+
+These are **delivered characters**, not physical press edges. The firmware buffer and key repeat still exist. Choose a physical-key sampler if holding a key must never repeat an action; this example does not make that promise.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/framework/turn-deadline/dispatch.inc" lang="6502" />
+
+The order is deliberate: poll time, read one character, then dispatch. **Expiry wins** over that iteration's character, including T. It spends one turn and starts one new deadline; missed time does not create a catch-up burst. Otherwise T wins over Space when both action bits are supplied by another sampler. Drawing happens after changes, leaving the service loop free to poll.
+
+## Make it your own
+
+Change **DURATION = 240** to **120** in settings.inc and rebuild. The same caller now gives the player half as many jiffies. That exact change has its own independently executed `custom-duration` record. It changes neither the clock rate nor code size.
+
+The helper can represent durations from 1 to 65535 ticks. That upper limit does not remove the sampling limit. Multiple timers, preserved pauses and catch-up rules are useful extensions, but need separate state and their own qualification.
+
+## When nothing happens at expiry
+
+**Deliberately broken dispatcher:** this version checks for input before consuming the one-poll expiry event.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/framework/turn-deadline/mistakes/input-gated-expiry.inc" lang="6502" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-vic-20/kernal-deadline-wrong.png" alt="VIC-20 remains at 0001 00 01 after the deadline: one turn, no automatic expiry and a stale active flag." caption="The helper has expired, but the caller missed the event. Its unchanged screen even retains the old active flag." />
+
+The countdown reaches zero and becomes inactive. With no character, though, the dispatcher returns before spending a turn or asking for a redraw. The screen stays `0001 00 01`. That last 01 is stale presentation; native state says the timer is off. A still image alone cannot establish the fault, so the evidence also retains the advancing clock and countdown state.
+
+Use the normal dispatcher above as the fix. The independently run **repaired** program is byte-identical to **working** and shows `0002 01 01` after the same input/wait sequence. Consume expiry every service iteration, whether input arrives or not.
+
+## Costs and what was checked
+
+The normal PRG loads **483 bytes**, including its BASIC stub and padding; the disk file adds a two-byte load address. Inside that total are the **140-byte helper** and **63-byte clock adapter**. The caller owns another **32 bytes**: twelve deadline bytes, two guards, ten caller-state bytes and eight clock-adapter bytes, plus ordinary hardware stack use. The BASIC stub starts at $1001 and the caller at $1010; the normal image ends at $11E3. State lives at $1C00/$1C20/$1C30, below the $1E00 screen. The larger boundary fixture also fits stock RAM. BASIC is suspended inside SYS: do not allow another allocator or routine to use those reservations.
+
+Retained runs measured **35–36 jiffies in 30 PAL fields**. That shows why the service clock and raster clock must stay separate. It does not measure helper cycles or establish a whole-game budget. Rendering, sound and input work still have to leave enough room for clock service and timely polling.
+
+Each machine has seven independent **Emu198x 0.44.2** runs: working, half-duration, wrong dispatcher, repaired, boundaries, wrong equality and wrong midnight correction. The observer checks the whole loaded executable, guarded state and native captures. The retained checker separately decodes the on-screen digits.
+
+A larger native caller exercises twelve helper boundary cases, six raw-clock pairs including midnight, and simultaneous expiry/action/toggle priority. These guest-supplied samples establish arithmetic and dispatch, not an observed 24-hour wait. The altered equality and omitted midnight correction complete their fixtures but fail the independent oracle. Twenty-four falsified records must also be rejected by the retained checks.
+
+The [source record](https://github.com/code198x/code-samples/blob/d48746cb51b9a987e29e3353dc4d18683208fedd/commodore-vic-20/patterns/assembly/framework/turn-deadline/verification/results.json) and its adjacent configuration bind source, tool and firmware hashes. ROMs are not redistributed. This is named-configuration emulator evidence, not original-hardware verification or proof of every ROM, region or interrupt arrangement.
+
+The [untimed command caller](/patterns/commodore-vic-20/assembly/framework/command-loop/) remains useful when waiting should never spend a turn. The [C64 version](/patterns/commodore-64/assembly/framework/turn-deadline/) shares the arithmetic and adapters, with a different memory layout and independent execution evidence.
