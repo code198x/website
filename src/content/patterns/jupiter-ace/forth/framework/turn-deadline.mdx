@@ -1,0 +1,106 @@
+---
+title: "Give a FORTH turn a deadline on Jupiter Ace"
+summary: "Keep untimed turns waiting, then add a reusable unsigned deadline and nonblocking key sampling on the unexpanded Ace."
+platform: "jupiter-ace"
+category: "framework"
+difficulty: "intermediate"
+tags: ["FORTH", "turns", "clocks", "deadlines", "stacks"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Press **1** and the turn advances. Wait and it stays put. Now press **2**. Leave the keyboard alone: about four seconds later, the next turn arrives by itself. An adventure can wait for your decision, or give you a deadline. That timing choice need not change its rules.
+
+<figure>
+<img src="/images/patterns/jupiter-ace/forth-deadline-working.png" alt="Native Ace FORTH output showing turn 3 and timer 1 after two actions and an automatic deadline expiry." width="640" height="576" style="image-rendering:pixelated;width:100%;max-width:640px;height:auto" />
+<figcaption>Two actions, then an automatic third turn. Original program captured in Emu198x 0.44.1; the native pixels are enlarged here for readability.</figcaption>
+</figure>
+
+## Load it in order
+
+Run `make -C jupiter-ace/patterns/forth/framework/turn-deadline`. Enter `build/demo.fth` one line at a time on an **unexpanded Jupiter Ace**, with its stock FORTH ROM. The final TURNS starts the caller. 1 advances, 2 toggles timing, and 0 returns to FORTH. Hold 1 and it counts once; release it before another action.
+
+The generated file combines `routines.fth`, `clock.fth`, `service.fth`, `input.fth`, `caller.fth` and `settings.fth`, followed by TURNS. Keep that order. FORTH binds a word reference when it compiles the definition using it. Loading a replacement service **after** compiling TURNS does not change that existing caller. Reset before loading another complete variant to reclaim dictionary space.
+
+## The reusable deadline words
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/turn-deadline/routines.fth" lang="forth" />
+
+| Word | Stack effect and result |
+| --- | --- |
+| DINIT | `( now -- )`: stores the first sample and clears remaining/active state |
+| DSTART | `( -- )`: copies duration to remaining; zero duration disables |
+| DPOLL | `( now -- expired )`: consumes a sample and returns 0 or 1 |
+
+Set **DU** to a duration in whole ticks. **DP** (previous sample), **DE** (elapsed), **DR** (remaining) and **DA** (active) belong to the helper. All samples and durations are unsigned 16-bit cells, 0..65535. The source explicitly selects DECIMAL. Rename the words and variables consistently if another module uses those names.
+
+Initialise once with your current clock and DINIT. Call DPOLL every service iteration, including while disabled. Its returned 1 means this poll expired: remaining is clamped to zero and the helper disables itself. Consume that event now. The next poll returns its own event, rather than preserving an old one.
+
+DSTART preserves the most recently sampled baseline. Poll immediately before starting if that instant matters. Setting DA to zero disables timing; this caller also clears remaining. Re-enabling starts a fresh duration, rather than resuming a paused remainder.
+
+The helper preserves lower stack entries and owns five variable cells. It performs no keyboard, display or hardware access, allocates no fixed-address buffer, and changes no interrupt vector. It is one mutable context; separate deadlines need separate state or a designed context interface.
+
+## Read the ROM clock safely
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/turn-deadline/clock.fth" lang="forth" />
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/turn-deadline/service.fth" lang="forth" />
+
+The ROM maintains a four-byte FRAMES counter at decimal 15403. DCLOCK deliberately reads only its low 16 bits. It reads the high byte, low byte and high byte again; if the high byte changed, it retries. This avoids accepting a torn byte carry without disabling interrupts. An ordinary @ can be interrupted part-way through its byte reads.
+
+A tick is nominally a fiftieth of a second. The manual gives the physical interval as 624/625 of that amount, so this is a game clock rather than a precision civil-time source. BEEP and tape operations stop the ROM counter. Keep its normal interrupt service running; the helper cannot recover ticks the chosen clock did not count. It never resets FRAMES.
+
+A move from 65530 to 5 means eleven ticks, provided a whole extra cycle was not missed. Poll at intervals shorter than 65536 ticks: roughly 21 minutes 51 seconds at the nominal rate. A clock reset requires reinitialisation. These are representation limits, not a suggestion to leave a real-time caller unserviced for twenty minutes.
+
+## Keep input nonblocking
+
+The [existing untimed word](/patterns/jupiter-ace/forth/framework/command-loop/) waits for a fresh key. That is useful when the world may wait too. Here, a blocking NEWKEY would stop deadline service while the player thinks.
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/turn-deadline/input.fth" lang="forth" />
+
+FKEY returns a new nonzero INKEY value once. It uses **KP** to require an observed release before another key is accepted. A held key produces zero on later polls. Changing directly between two nonzero key values does not re-arm it, and a press entirely between samples may be missed. This is a sampled physical-key policy, rather than buffered character delivery.
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/turn-deadline/caller.fth" lang="forth" />
+
+TURNS keeps one counter cell on the data stack, reusing the update from the untimed example. It polls time, samples FKEY, then handles expiry before input. **Expiry wins** if both occur in one iteration: that key is discarded, including a quit or toggle. Otherwise 1 advances once and restarts only an already enabled deadline. An untimed action stays untimed.
+
+A late poll produces one automatic turn. It does not catch up every turn that might have happened. Restarting at observation time introduces drift. The loop runs continuously; sampling an elapsed clock is separate from waiting for a display frame. SHOW clears the screen only after a state change. Replace that feedback with your game's presentation; the old screen is not restored on return.
+
+## Make it your own
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/turn-deadline/settings.fth" lang="forth" />
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/turn-deadline/customise.fth" lang="forth" />
+
+Choose the second settings file instead of the first: **200 → 100 ticks** makes the wait roughly two seconds instead of four. It adds no words or state. Both values were independently executed with the same helper and input policy.
+
+[Units and wrap arithmetic in Maths for Games](/craft/maths-for-games/) are useful here: “200” alone does not tell you how long a wait lasts. The [clock and progression comparison](/patterns/cross-platform/framework/game-loop-choices/) separates deadlines, frame pacing and fixed-step simulation.
+
+## Common mistake: discarding elapsed time
+
+**Deliberately broken service below.** It replaces DP with the current sample immediately before asking DPOLL how much time passed. Every subtraction becomes zero.
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/turn-deadline/mistakes/reset-baseline.fth" lang="forth" />
+
+<figure>
+<img src="/images/patterns/jupiter-ace/forth-deadline-wrong.png" alt="Faulty native Ace caller still showing turn 1 and timer 1 after more than a full deadline interval." width="640" height="576" style="image-rendering:pixelated;width:100%;max-width:640px;height:auto" loading="lazy" />
+<figcaption>The clock advanced, but remaining stayed at 200 and no automatic turn arrived. The native trace records that invisible part of the fault.</figcaption>
+</figure>
+
+Load `service.fth` instead, **before compiling the caller**, to remove the extra store. A separate fresh repaired run advances normally. Reset and reload the complete working variant; repeatedly redefining words also consumes the Ace's scarce dictionary space.
+
+There is another trap in the helper: replacing U&lt; with signed &lt;. A duration of 65535 with one tick elapsed can then expire immediately, because signed comparison treats 65535 as -1. The independent boundary fixture executes this mistake and rejects its completed result. Small waits alone would not reveal it.
+
+## Costs and checked limits
+
+The helper occupies **230 dictionary bytes**, including its ten state payload bytes and word headers. The clock adds 69 bytes, service 21, input 80 and caller/presentation 230: **630 bytes** of maintained definitions. The qualification-only NUMBER word adds another 19 bytes and is outside that total. Settings allocate no dictionary storage.
+
+The observed dictionary ended at 16090, with RAM top 16384 and the ROM's twelve-byte gap before the data stack. The minimum observed separation between the data-stack top and CPU/return-stack pointer was **258 bytes**; it was 252 in the longer faulty variant. These are sampled observations, not a peak-stack proof or a memory budget promised to a larger game. The “3 KiB” includes display and character memory. More game code may require an expansion.
+
+**Code status: stock-ROM FORTH execution.** Four fresh callers cover normal use, shorter duration, the baseline fault and repair. Checks include idle, a 120-field held action, no-input expiry, restart, disable and return to an empty data stack. Every accepted capture is compared pixel by pixel with native screen and character RAM, then independently rechecked from retained evidence.
+
+A [second caller](https://github.com/code198x/code-samples/blob/52ca5c4112f136cd83be64c2f724adb7e2d7188d/jupiter-ace/patterns/forth/framework/turn-deadline/boundaries.fth) exercises sixteen synthetic-clock cases, preserving a lower-stack tag and returning without leaked cells. The signed-comparison control completes those cases and fails the unsigned oracle. This qualifies arithmetic, not a wall-clock run through an entire 16-bit rollover or original hardware.
+
+Longer clocks, several contexts, preserved pause time and carrying lateness into the next deadline are possible extensions. Each needs its own policy, resource agreement and verification. The [maintained modules and native records](https://github.com/code198x/code-samples/tree/52ca5c4112f136cd83be64c2f724adb7e2d7188d/jupiter-ace/patterns/forth/framework/turn-deadline) include the repeatable commands and exact ROM/tool identities.
+
+## Primary references
+
+*Jupiter Ace User Manual* (1982), chapter 24 “How the memory is laid out”, FRAMES and exercises 2–3 (printed pp.141–145); chapter 17 unsigned arithmetic; chapter 25 interrupts. The high/low/high word here is this implementation's bounded low-word adapter.
