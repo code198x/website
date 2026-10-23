@@ -1,0 +1,118 @@
+---
+title: "Give a BASIC turn a deadline on CPC"
+summary: "Keep untimed turns valid, or add time pressure using the firmware clock and nonblocking character input."
+platform: amstrad-cpc
+category: framework
+difficulty: intermediate
+tags: [BASIC, turns, deadlines, clocks, ownership]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press Space and take a turn. Leave the keyboard alone and nothing else happens. Press T, though, and your next decision has a deadline: take too long and the next turn arrives by itself. Another T lets the world wait for you again.
+
+That choice can change the feel of an adventure, board game or tactics game without changing its turn rule. The timer is a separate reusable piece, and your caller decides what expiry means.
+
+<Figure src="/images/patterns/amstrad-cpc/basic-deadline-working.png" alt="CPC BASIC shows turn 3, one automatic expiry and an enabled timer." caption="Two Space actions, then one automatic turn. This is the native CPC464 result in Emu198x 0.44.1." />
+
+## Run it, then use the pieces
+
+Run **make -C amstrad-cpc/patterns/basic/framework/turn-deadline** in the source checkout. Enter its **build/demo.bas** into a fresh BASIC program and RUN. Space advances, T enables/disables timing and Q ends. Start with brief taps: this consumes delivered characters, including firmware repeat, rather than physical press edges. The status shows counts and an active flag, not a live countdown.
+
+The checked configuration is **CPC464, 64 KiB, PAL, Locomotive BASIC 1.0, MODE 1**. The caller sets MEMORY 40959, reserving &A000–&A013 for a 20-byte observer below the screen at &C000. Keep other allocations out of that range. Q does not restore the previous mode or MEMORY value; reset or restore your layout before another program.
+
+<CodeFromFile src="amstrad-cpc/patterns/basic/framework/turn-deadline/caller.bas" lang="basic" title="The caller owns input and turn policy" />
+
+Combine caller.bas, turn.bas, routines.bas, clock.bas, reduce.bas and optional monitor.bas. The Makefile builds complete alternatives. BASIC executes by line number, not file order. Reserve those ranges and update every GOSUB/GOTO target when renumbering. NEW/reset before entering another complete program so old lines cannot survive accidentally.
+
+<CodeFromFile src="amstrad-cpc/patterns/basic/framework/turn-deadline/turn.bas" lang="basic" title="A bounded turn rule, separate from the timer" />
+
+The expression comes from the [existing CPC command loop](/patterns/amstrad-cpc/basic/framework/command-loop/), using explicit real globals here. Keep spaces in **(N!+S!) AND 255**. The compact BBC spelling AND255 raises a Locomotive BASIC syntax error. A small dialect difference matters even when two routines use the same algorithm.
+
+## Take the deadline helper
+
+<CodeFromFile src="amstrad-cpc/patterns/basic/framework/turn-deadline/routines.bas" lang="basic" title="Initialise, start and poll a deadline" />
+
+Set DU! to a whole duration in 0..65535 and DC! to the current reduced clock sample, then **GOSUB 3000 once**. It records the baseline and begins disabled. **GOSUB 3100** starts or restarts from the latest sample; poll immediately beforehand when that instant matters. Zero duration leaves timing disabled.
+
+On each service iteration, including while disabled, supply DC! and **GOSUB 3200**. Read DX! immediately: 1 means this poll expired. The next poll/start clears it. Expiry clamps remaining to zero and disables the helper; your caller chooses whether to advance/restart.
+
+| Global | Contract |
+| --- | --- |
+| DU!, DC! | Caller duration/current sample: whole ticks, 0..65535 |
+| DP! | Previous clock sample |
+| DR! | Remaining ticks, saturated at zero |
+| DA!, DX! | Active/latest expiry flags, explicit 0 or 1 |
+| DE! | Elapsed ticks from the latest poll |
+
+These are shared globals; rename them consistently when combining routines. The **! suffix explicitly selects real values**, so a surrounding DEFINT does not narrow them. CPC integer % variables are signed 16-bit, unlike BBC BASIC’s 32-bit integers, and cannot hold 65535. The chosen real representation holds these whole values and subtraction intermediates exactly. The helper needs neither arrays nor strings, fixed RAM, display/input ownership or a hardware timer. GOSUB uses the interpreter’s return stack; it is one mutable context rather than re-entrant code.
+
+## Read TIME without taking over the clock
+
+<CodeFromFile src="amstrad-cpc/patterns/basic/framework/turn-deadline/clock.bas" lang="basic" title="Read the serviced firmware clock" />
+
+TIME counts **1/300ths of a second**. Four seconds is 1200 ticks, rather than the 400 used by the Electron/BBC adapter. The clock reader calls a small normaliser before polling the helper:
+
+<CodeFromFile src="amstrad-cpc/patterns/basic/framework/turn-deadline/reduce.bas" lang="basic" title="Keep the low word of an unsigned clock" />
+
+This accepts a whole clock in **0..4294967295**, subtracts complete multiples of 65536 and leaves DC! in 0..65535. It is not an arbitrary real-number or negative-input API. Do not port TIME AND &FFFF blindly: CPC bitwise operations use signed integer conversion. Real division/subtraction avoids that narrower route, and the native boundary caller exercises values around 2³¹ and 2³².
+
+Keep firmware interrupts enabled and the usual service intact. This code never sets TIME or installs an IRQ. It cannot recover ticks which that service did not count.
+
+The low word wraps after **65536/300 ≈ 218.45 seconds**. Consecutive samples must be less than 65536 ticks apart; a whole missed cycle is ambiguous. The full 32-bit clock’s rollover also reduces correctly within that limit. A clock reset is different: reinitialise/restart your context if another owner changes it.
+
+For previous=65530 and now=5, elapsed is eleven ticks. That connects directly to [Maths for Games](/craft/maths-for-games/): choose a representation, subtract modulo its range, and keep units attached to numbers. Clock ticks and display fields are different quantities.
+
+## Decide how time affects play
+
+The caller uses **UPPER$(INKEY$)** to consume one character without waiting for Return, accepting normal upper/lowercase T/Q. Firmware repeat and typeahead remain possible. A held key is not promised to count once. Blocking INPUT would stop this loop servicing expiry; a clock does not make BASIC concurrent.
+
+Time is polled before input and **expiry wins** over a character in that iteration, discarding even Q or T. Space restarts only an already active timer. An untimed action stays untimed. T disables/discards remaining time, or enables a fresh duration. This is restart rather than preserved pause/resume.
+
+One overdue observation takes one turn, not a burst of catch-up turns. Restarting from observation time can drift. Carrying lateness, queued commands, several deadline contexts and fixed-step accumulation are useful alternatives when their policies fit your game.
+
+## Customise it and recognise a fault
+
+<CodeFromFile src="amstrad-cpc/patterns/basic/framework/turn-deadline/customise.bas" lang="basic" title="The same helper with half the duration" />
+
+This changes only DU!=1200 to **600**: roughly four seconds becomes two. S! remains a whole step in 0..255 for the byte-wrapping counter. Replace the turn effect with your own game rules while keeping the helper independent.
+
+**The following adapter is deliberately wrong.**
+
+<CodeFromFile src="amstrad-cpc/patterns/basic/framework/turn-deadline/mistakes/reset-baseline.bas" lang="basic" title="Broken: discard elapsed time before polling" />
+
+It replaces the previous sample with now just before subtracting. Elapsed is always zero. The native clock advances, but remaining stays full and no automatic turn arrives.
+
+<Figure src="/images/patterns/amstrad-cpc/basic-deadline-wrong.png" alt="The faulty CPC caller stays on turn 1 with zero expiries and timing enabled." caption="A moving clock cannot help when the adapter discards every interval. Restore clock.bas; a separate repaired run expires correctly." />
+
+Do not include correct and wrong adapters together: their line numbers deliberately replace each other. Only initialisation should discard the baseline without consuming elapsed time.
+
+A syntax error is another reason for apparently frozen diagnostics. It stops the interpreter and leaves the last completed mailbox unchanged. A completion marker establishes a coherent snapshot, not continued execution; check clock/state progress as well.
+
+## Resources and costs
+
+The native interpreter stored **277 tokenised helper bytes** and **1,311 bytes in the complete diagnostic program**, including line headers and terminator. Seven helper real values have **35 bytes of numeric payload**, derived from their format. Names, interpreter bookkeeping, expression temporaries and return-stack use are additional and not isolated here; this is not a peak-heap claim.
+
+The optional observer reserves another **20 bytes** and owns MB!, LC!, V!, O!, H!, M!, guards and completion marker. Remove GOSUB 9000, the guard/MB!/LC! setup and monitor.bas when omitting it. Caller globals N!, S!, EX!, K$ remain separate from helper state.
+
+One recorded idle service sample was **40 firmware ticks** after its predecessor, about 0.133 seconds with diagnostics present. That includes interpreted caller/observer work, not an isolated helper benchmark. The helper performs bounded subtraction rather than one iteration for every missed tick. The observer serialises four three-byte values and flags every service, which costs time. Redraw occurs only on actions, toggles and expiry. Measure actual game work before making frame-budget claims.
+
+<details>
+<summary>Optional monitor used by the complete caller</summary>
+
+<CodeFromFile src="amstrad-cpc/patterns/basic/framework/turn-deadline/monitor.bas" lang="basic" title="Optional guarded diagnostic snapshot" />
+
+</details>
+
+## What was checked
+
+**Code status: emulator-executed BASIC.** Working, half-duration, baseline-reset and repaired callers were cold-booted and typed into Emu198x 0.44.1. Native tokenised line inventories/lengths, guarded state and captures are retained; no debugger writes set up a passing result. Untimed idle/action, countdown without input, active restart, no-input expiry and disabling were checked.
+
+A second native caller runs twelve synthetic-clock cases, including unsigned high-clock reduction, zero/max duration, wrap and exact/overshot expiry. Changing >0 to >=0 completes but must fail the same independent oracle. Synthetic samples establish arithmetic, not a wall-clock run over a complete rollover.
+
+The working idle window advanced **607 ticks in 102 native fields**, including mailbox settling and sample age. That supports this 300 Hz serviced clock; it does not promise one-tick response latency. Retained checks reject changed inputs, missing variants and falsified observations. No original-hardware, other-ROM, minimum-RAM or whole-game performance claim is made.
+
+The [maintained source and evidence](https://github.com/code198x/code-samples/tree/8c47b6444ea4388f99c31bc22d48d71eb61e53fa/amstrad-cpc/patterns/basic/framework/turn-deadline) include repeatable build/qualification commands. The [second caller](https://github.com/code198x/code-samples/blob/8c47b6444ea4388f99c31bc22d48d71eb61e53fa/amstrad-cpc/patterns/basic/framework/turn-deadline/boundaries.bas) uses the same helper and clock normaliser without the game’s input policy.
+
+Primary sources: [Amstrad CPC464 User Instructions](https://www.mypccollection.altervista.org/downloads/manuali/Amstrad/CPC464_Manual%20%28eng%29.pdf), chapter 8, data types, TIME, INKEY$, UPPER$ and MEMORY; [CPC464 Firmware Manual](https://www.cpcwiki.eu/imgs/0/02/CPC_firmware.pdf), KL TIME PLEASE (&BD0D). Captures show Code198x’s own program output in Emu198x 0.44.1, with native geometry preserved.
