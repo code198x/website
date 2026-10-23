@@ -1,0 +1,85 @@
+---
+title: "Give a BASIC turn a deadline on Dragon 32"
+summary: "Keep untimed play valid, or use TIMER and a reusable countdown to advance without waiting for a command."
+platform: "dragon-32"
+category: "framework"
+difficulty: "intermediate"
+tags: ["BASIC", "turns", "deadlines", "clocks", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+<Figure src="/images/patterns/dragon-32/basic-deadline-working.png" alt="Native Dragon BASIC caller: TURN 3 E 1 T 1, after one automatic turn." caption="Two player actions, then one automatic turn with timing enabled. Emu198x 0.44.2, stock Dragon 32 PAL firmware." />
+
+Press Space for one turn. Wait and the world waits too. Press T, wait about 4.8 seconds, and a turn arrives without input. T disables timing or starts a fresh duration; Q returns to BASIC. This is a small rule you can use for a flooding room, a thinking opponent or a timed board-game move.
+
+## Build and use
+
+Run `make -C dragon-32/patterns/basic/framework/turn-deadline`. Reset the stock Dragon 32 PAL interpreter, enter every numbered line of `build/demo.bas`, and type RUN. The Makefile combines caller, deadline helper, clock adapter, presentation, the maintained Commodore BASIC command-loop rule and its portable diagnostic serializer. No firmware is supplied.
+
+`CLEAR 200,&H6FFF` reserves high RAM before variables are created. The optional observer owns $7000–$7013; the separate arithmetic fixture owns $7000–$7062. Do not run other machine code or graphics buffers there. The complete caller uses text mode, not a PMODE framebuffer. BASIC retains its normal RAM workspace, stack, keyboard and IRQ services.
+
+<CodeFromFile src="dragon-32/patterns/basic/framework/turn-deadline/caller.bas" lang="basic" title="The caller owns the game policy" />
+
+## Take the helper
+
+<CodeFromFile src="dragon-32/patterns/basic/framework/turn-deadline/routines.bas" lang="basic" title="Initialise, start and poll" />
+
+Include `routines.bas` once. Its line ranges are 3000–3250; reserve or consistently renumber every call target. Set DU to an integer duration 0..65535, DC to a clock sample, then GOSUB 3000 once. This clears the context and starts disabled. GOSUB 3100 starts/restarts from DU, with zero meaning disabled. It retains the most recent sampled baseline: poll immediately before restarting if that instant matters.
+
+Each service iteration sets DC and calls 3200. DX is the one-poll expiry event; read it before the next poll clears it. DR is remaining time, DA is enabled (0/1), DP the previous sample and DE elapsed ticks. DU/DC are caller inputs; DP/DR/DA/DX/DE belong to the helper. Seven numeric globals, only the first two name characters significant. The helper performs no I/O or game update, uses no array or fixed RAM, and is not re-entrant.
+
+Subtraction is modulo 65536: 65526 to 10 is twenty ticks. Consecutive samples must be less than one complete cycle apart (about 21 minutes 51 seconds at 50 Hz). You cannot distinguish a missing extra cycle from the same two values. Reinitialise after a global TIMER reset; a reset is not a normal wrap. Disabled polls still update the baseline. Expiry clamps remaining to zero and disables the context. A late poll gives one event, without catch-up.
+
+## Clock, input and policy
+
+<CodeFromFile src="dragon-32/patterns/basic/framework/turn-deadline/clock.bas" lang="basic" title="Read TIMER without resetting it" />
+
+`clock.bas` reads TIMER without resetting it. The stock ROM's video IRQ updates the counter. Retain that interrupt service; blocking sound, tape work or other code can delay observation or disturb normal clock service. These examples qualify the recorded Dragon 32 PAL firmware in Emu198x 0.44.2, not a Dragon 64 or every ROM/region.
+
+INKEY$ returns a delivered character or an empty string. It does not wait for Return. This is not a general simultaneous-key scanner or a physical press-edge guarantee. Blocking INPUT is appropriate for the existing untimed example, but would prevent this deadline being serviced while the player thinks.
+
+The caller polls, consumes one character, then handles expiry first. Expiry wins over a simultaneous character, including T or Q. Otherwise Space advances once and restarts only an active deadline. An untimed action stays untimed. Disable discards the remainder; enable gives a full duration. Restarting at observation time introduces drift; preserved pause, queued input and carried lateness are different policies.
+
+The reusable command-loop rule is unchanged: A$="A" commits S to the bounded byte-valued N; both stay in 0..255. EX is a demonstration expiry counter. Replace their effects with your game rules. Drawing changes only on action, toggle or expiry, not every poll.
+
+## Customise and diagnose
+
+<CodeFromFile src="dragon-32/patterns/basic/framework/turn-deadline/customise.bas" lang="basic" title="Half the duration, the same helper" />
+
+`customise.bas` changes DU from 240 to 120: about 4.8 seconds becomes 2.4, with the same helper and policy. Choose units before choosing the number. This is the same modular subtraction and representation problem explored in [Maths for Games](/craft/maths-for-games/), rather than a frame wait.
+
+`mistakes/reset-baseline.bas` is deliberately broken: DP=DC immediately before polling makes every elapsed interval zero. The firmware clock advances, but remaining time stays at the full duration and the automatic turn never arrives. Build `build/wrong.bas` to reproduce it, then restore `clock.bas`. A separate repaired cold boot verifies that repair; never concatenate both adapters into a working program.
+
+<CodeFromFile src="dragon-32/patterns/basic/framework/turn-deadline/mistakes/reset-baseline.bas" lang="basic" title="Deliberately broken: discarding elapsed time" />
+
+<Figure src="/images/patterns/dragon-32/basic-deadline-wrong.png" alt="Native faulty Dragon BASIC caller: TURN 1 E 0 T 1." caption="The timer is enabled, but every elapsed interval has been thrown away." />
+
+## Cost and qualification
+
+The interpreter stores 189 tokenised bytes for the helper, including linked line headers. The full instrumented caller uses 1,048 tokenised bytes. The observed scalar table is 133 bytes: nineteen seven-byte entries, including seven helper globals (49 bytes). These are snapshots, not peak stack/heap or minimum-RAM proofs. The 20-byte diagnostic buffer and serializer are optional; remove line 40, MB/LC, GOSUB 9000 and monitor.bas when omitting them. The normal helper does not require CLEAR or a fixed buffer by itself.
+
+The instrumented BASIC caller commonly samples 17–23 ticks apart. That includes input, observation and interpretation; it is not the standalone helper cost. A native clock accumulates while BASIC works, but your game can only react when control returns to the poll. No whole-game frame budget is inferred.
+
+`scripts/verify-dragon-basic-deadlines.py --tools /path/to/released/tools --firmware /path/to/roms` makes six independent stock-firmware keyboard-entered runs: working, half duration, wrong baseline, repair, arithmetic boundaries and a wrong-equality control. It checks idle, restart, automatic expiry and disable; complete native linked BASIC lines, variable allocation, producer executable/firmware hashes and screenshots are retained. No debugger memory writes are used.
+
+The second caller supplies twelve synthetic clock pairs, including disabled, zero elapsed, maximum duration, exact/overdue expiry and wrap. Replacing > with >= completes but fails the unsigned oracle. Supplied samples qualify arithmetic, not a 22-minute real-time rollover. Simultaneous-command policy is explicit source logic; the BASIC live-input checks do not force an exact concurrent expiry.
+
+Run `scripts/check-dragon-basic-deadlines.py` and `python3 -m unittest discover -s scripts -p test_dragon_basic_deadlines.py`. Ten changed-source/state/memory/capture controls must be rejected. The screenshot shows TURN 3 E 1 T 1 for the working caller, TURN 1 E 0 T 1 for the fault.
+
+## Sources
+
+*Dragon 32 Programmer’s Reference Guide* (John Vander Reyden, Sunshine, 1983), pp.29 (INKEY$), 34 (TIMER), 98–99 (BASIC representation). Public scan: https://archive.worldofdragon.org/browse/downloads/Books/Dragon-32-Programmers-Reference-Guide.pdf . *Inside the Dragon* (Addison-Wesley, 1983), pp.196–197 (video IRQ and clock), Appendix 1 (BASIC workspace), Appendix 2 ($0112–$0113 TIMER). The manual's period description is historical context; the retained live samples demonstrate this emulator configuration's advancing counter.
+
+## Maintained source and related patterns
+
+The portable turn update and optional monitor used by the caller remain in their maintained files:
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/command-loop/routines.bas" lang="basic" title="The bounded rule, independent of timing" />
+
+<CodeFromFile src="dragon-32/patterns/basic/framework/turn-deadline/presentation.bas" lang="basic" title="Text feedback" />
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/turn-deadline/monitor.bas" lang="basic" title="Optional observer" />
+
+[Maintained source](https://github.com/code198x/code-samples/tree/a4d9fcd0fc1ea0990792d5aeedc8418b41ba3b91/dragon-32/patterns/basic/framework/turn-deadline) · [Native execution record](https://github.com/code198x/code-samples/blob/a4d9fcd0fc1ea0990792d5aeedc8418b41ba3b91/dragon-32/patterns/basic/framework/turn-deadline/verification/results.json) · [Untimed Dragon command loop](/patterns/dragon-32/basic/framework/command-loop/) · [Choosing progression and clocks](/patterns/cross-platform/framework/game-loop-choices/)
