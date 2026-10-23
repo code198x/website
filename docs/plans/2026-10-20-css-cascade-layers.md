@@ -442,6 +442,33 @@ and move every family onto them. This harmonises how pages look, a little
 and on purpose, so each block's adoption is an **intended change**
 reviewed by screenshot at 320, 768 and 1440 px.
 
+How (agreed 2026-10-23): a shared block is a class in `src/styles/blocks.css`
+(the `blocks` layer, loaded by Layout and the catalogue). A component adds
+the class in its markup and keeps only what is its own, such as a colour or
+a margin; its scoped rule outranks the shared one. A `<Label>`-style
+component was the alternative and would do as well, at the cost of a
+wrapper in every template. Blocks follow the family type scale
+(`decisions/family-visual-identity.md` §6) rather than restating sizes, and
+`tests/blocks.spec.ts` checks that each renders at its step on a sample of
+pages, since a component's own rule can override it.
+
+Measured on 2026-10-23, the repeats are, largest first:
+
+1. **Label** (done first): UI font, semibold, untracked, 0.8125rem, in
+   about 66 rules across 30 files. 0.8125rem is off the scale; micro is
+   0.875rem. About 45 are labels; the rest are buttons and pills.
+2. Display headings (UI font, 700, ink): about 14 files.
+3. Cards with a 3px ink border that lift on hover: 6 files; controls with
+   a 1px line border: 15.
+4. Status pills: four identical rules on the family pages, plus chips on
+   CRASH! Live and the demoscene page.
+
+Adopting a block also finds rules that never applied: a scoped rule styles
+only its own file's markup, so `.eyebrow` rules in four pages that render
+no eyebrow are dead even though the class renders elsewhere, and several
+"labels" were overridden into headings or body text. Each adoption checks
+what an element renders as on main before tagging it.
+
 ### 7. Files by purpose
 
 Rename or merge the files named after rollouts (`design-rollout.css`,
