@@ -63,10 +63,10 @@ its own parent commit, because other work lands on main in between.
 | Demoscene (#953) | −1,530 | |
 | Timeline (#954) | −665 | |
 | CRASH! Live and start-here (#955) | −1,057 | 401,267 |
+| `legacy` retired: dead frame and override rules removed (#959) | −2,277 | 398,990 |
 
-Removals so far: 102,129 bytes, 21.5% of the starting point. Net of the
-additions above, the source is 74,720 bytes (15.7%) smaller (main at
-3453be875). The primitives were an investment step 6 has to repay; the
+Removals so far: 104,406 bytes, 21.9% of the starting point. Net of the
+additions above, the source is 76,997 bytes (16.2%) smaller (#959). The primitives were an investment step 6 has to repay; the
 recompositions so far have taken out 27,793 bytes of hand-written layout,
 about five times what the primitives added. Layout alone will not halve the
 total, which is why step 6b exists.
@@ -84,7 +84,8 @@ the Pattern Library prototype landed.
 
 Recounted on 2026-10-22, with comments stripped and each `@media` block read
 whole: 115 of 202 after step 5 (867856014), and 100 of 206 across 53 files on
-main at 6681adb0d, and 90 of 197 across 47 files at 3453be875. That count
+main at 6681adb0d, 90 of 197 across 47 files at 3453be875, and 90 of 195
+after #959. That count
 gives 121 of 210 at 7d2dba5, so its figures compare with each other, not with
 the ones above.
 
@@ -405,6 +406,15 @@ as well as `content-smoke`. `npm run check:release` runs only a subset of the
 browser specs, so a step that removes a class also greps `tests/` for it and
 runs the full suite locally (#953 failed CI on a test that looked up `.wrap`).
 
+Progress (2026-10-23): `legacy` is empty and gone from the layer order
+(#959). Its last rules each beat a rule that was dead where they met, so the
+dead rule was fixed instead of the legacy one kept. The page frame
+(`site-frame.css`) is composition, and page wrappers no longer set the width,
+side padding or top padding it owns; `page-frame.spec.ts` checks the first
+block's top spacing as well as width and gutter, because a block can now
+override the frame. The workbook's stylesheet styled the site chrome's links;
+it is scoped to the workbook now, the one visible change.
+
 Stepped gaps (decided 2026-10-22). Many two-column blocks use a wide gap side
 by side and a much smaller one once stacked (80px, then 32px). A primitive
 has one gap, so these take a fluid `clamp()` gap that matches the old values
@@ -436,7 +446,7 @@ reviewed by screenshot at 320, 768 and 1440 px.
 
 Rename or merge the files named after rollouts (`design-rollout.css`,
 `approved-pages.css`, `approved-learning.css`) into files named for what they
-style, one per layer where that helps. Delete `legacy`. Update
+style, one per layer where that helps. Update
 `docs/page-layouts.md` and the README's "Magazine presentation" section to
 describe the layers and primitives. Zero differences.
 
