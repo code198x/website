@@ -1,0 +1,87 @@
+---
+title: "Give an Ace turn a deadline in Z80"
+summary: "Use the stock FORTH clock with a reusable countdown, a release-gated keyboard reader and a loader that waits for compilation."
+platform: "jupiter-ace"
+category: "framework"
+difficulty: "intermediate"
+tags: ["assembly", "turns", "deadlines", "clocks", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+<Figure src="/images/patterns/jupiter-ace/assembly-deadline-working.png" alt="Native caller after an automatic third turn: one expiry, timing enabled." caption="Two player actions, then one automatic turn. Recorded jupiter-ace assembly caller in Emu198x 0.44.2." />
+
+Press 1 for a turn. Wait: nothing changes. Press 2 and the timer starts; after 200 firmware ticks (roughly four seconds), the next turn arrives without input. The three hexadecimal bytes show turn, expiry count and enabled flag. Q returns to FORTH after the command keys are released.
+
+## Build and enter
+
+Run `make -C jupiter-ace/patterns/assembly/framework/turn-deadline ASM=/path/to/asm198x`. It emits build/demo.bin and generates build/load.fth from those exact bytes. Enter each FORTH line and **wait for OK before entering the next**. Reset before changing complete variants. DECIMAL is explicit. TURNS calls 15616 ($3D00); RESERVE grows the dictionary to that origin before C, appends the emitted bytes. This is a keyboard route, not cassette loading.
+
+Why wait? The keyboard tool can finish sending characters while FORTH is still interpreting them. In the native regression, an eight-byte line had written six bytes when the tool reported all 53 characters sent. Waiting three more fields in that same boot completed the exact eight bytes. The verifier now checks HERE, the empty data stack and the written prefix after each data line; it retains the final full executable-byte check. Sending the next line too early is not an established emulator defect or a line-length limit.
+
+The unexpanded machine has 3 KiB overall, including display and character RAM. Its general-purpose RAM ends at $4000. The complete normal image is **369 bytes at $3D00–$3E70**, including fourteen state bytes. FORTH owns the dictionary up to code_end, then its twelve-byte gap and data stack; the CPU/return stack grows down from RAM top. Do not treat the remaining addresses as an unowned buffer. The native fixture is larger (518 bytes); it too fits the observed stock layout. These are checked configurations and snapshots, not a peak-stack guarantee for a larger game.
+
+## Reuse the countdown
+
+<CodeFromFile src="jupiter-ace/patterns/assembly/framework/turn-deadline/demo.asm" lang="asm" title="demo.asm" />
+
+<CodeFromFile src="cross-platform/patterns/framework/elapsed-deadline/z80.inc" lang="asm" title="z80.inc" />
+
+The unchanged shared Z80 helper lives in cross-platform/patterns/framework/elapsed-deadline/z80.inc. Include it once and supply DEADLINE: ten writable bytes, little-endian words. Duration is +0, remaining +2, active +4, one-poll event +5, elapsed +6 and previous sample +8.
+
+Set duration to an unsigned 0..65535, pass the clock in HL and call deadline_init once. It preserves duration, records the baseline and starts disabled. deadline_start copies duration into remaining and enables when nonzero; it clears the event and retains the latest baseline. Poll immediately before starting if that instant matters. deadline_poll takes the next clock in HL, updates the baseline even while disabled, and sets +5 on expiry. Read that event before the next poll clears it. Expiry clamps remaining to zero and disables active; the caller decides what follows.
+
+The helper clobbers AF/DE/HL and preserves BC/IX/IY. It neither changes interrupt state nor performs I/O. Its calls use the existing return stack. This is one labelled mutable context, not a re-entrant or implicitly multi-timer API.
+
+Unsigned subtraction wraps modulo 65536. 65526 → 10 is twenty ticks. Poll before a complete clock cycle elapses (about 21 minutes 51 seconds at nominal 50 Hz); an extra missed cycle is indistinguishable from the same samples. Zero duration means disabled. A clock reset needs reinitialisation. Late service produces one event without catch-up; restarting at observation time introduces drift. These units, ranges and wrap rules connect directly to [Maths for Games](/craft/maths-for-games/).
+
+## Clock, input and game policy
+
+<CodeFromFile src="jupiter-ace/patterns/assembly/framework/turn-deadline/clock.inc" lang="asm" title="clock.inc" />
+
+<CodeFromFile src="jupiter-ace/patterns/assembly/framework/turn-deadline/input.inc" lang="asm" title="input.inc" />
+
+<CodeFromFile src="jupiter-ace/patterns/assembly/framework/turn-deadline/dispatch.inc" lang="asm" title="dispatch.inc" />
+
+<CodeFromFile src="jupiter-ace/patterns/assembly/framework/turn-deadline/caller.inc" lang="asm" title="caller.inc" />
+
+clock.inc reads the low word of the stock ROM's four-byte FRAMES at $3C2B. A high/low/high read retries if the high byte changed during a low-byte carry. Interrupts stay enabled; HL is output, A/flags change, other registers are preserved. Keep the normal ROM interrupt service running. The manual gives a physical period slightly different from an exact fiftieth; BEEP/tape activity can stop the ROM clock. This is not a precision civil-time clock or a replacement ISR.
+
+input.inc samples 1, 2 and Q through the keyboard matrix, with Q taking priority over 2 then 1. A=0 means none/ignored, 1 action, 2 toggle, 3 quit. It clobbers A/BC/flags and owns HELD. A nonzero command is delivered once, then all command keys must be observed released to re-arm. A press wholly between polls can be missed; changing directly between held command keys does not re-arm. This is a sampled release gate, unlike buffered character delivery on some other machines. Ace keyboard-port reads also affect the speaker; this example makes no silence/audio-driver claim.
+
+dispatch.inc handles expiry before the key and discards a simultaneous command, including quit/toggle. Otherwise 1 advances once and restarts only an active deadline. Untimed actions stay untimed. 2 discards the remainder on disable and gives a fresh duration on enable. The byte turn/expiry counters wrap; replace their effects with your game rules. Preserved pause, queued commands, carried lateness or several contexts are useful adaptations with different costs and policies.
+
+The top-level caller preserves AF/BC/DE/HL plus IX/IY, uses the existing CPU stack, and returns via the FORTH CALL convention, JP (IY). It waits for command-key release and one normal IRQ before returning, so Q does not leak into the next editor line. An earlier candidate returned while Q was down and spoiled the next FORTH command; native return-to-interpreter arithmetic catches that independently of timer behaviour. IRQs must be enabled on entry. No private stack or new interrupt handler is installed.
+
+Presentation writes only the first eight cells at $2400–$2407, including spaces between the byte values in the normal text display. It uses A/DE/flags and temporary return-stack bytes. The default ROM character set must remain present. CLS happens once before entry; the screen is not restored on exit. This is continuous status feedback, not a frame wait.
+
+## Customise and diagnose
+
+<CodeFromFile src="jupiter-ace/patterns/assembly/framework/turn-deadline/customise.asm" lang="asm" title="customise.asm" />
+
+<CodeFromFile src="jupiter-ace/patterns/assembly/framework/turn-deadline/mistakes/reset-baseline.inc" lang="asm" title="reset-baseline.inc" />
+
+customise.asm changes DURATION=200 to 100, roughly four seconds to two, without changing image/state size. The helper stays unchanged.
+
+mistakes/reset-baseline.asm deliberately selects a clock adapter that overwrites the previous sample before polling. The real clock advances but elapsed always becomes zero. The screen stays at 01 00 01: timing enabled, no automatic turn. Remaining stays at 200. Restore clock.inc and rebuild; the fresh repaired run reaches 03 01 01. The faulty adapter adds three bytes; never include both versions in a working image.
+
+<Figure src="/images/patterns/jupiter-ace/assembly-deadline-wrong.png" alt="Native faulty caller with one turn, zero expiries and timing enabled." caption="The clock advances, but the deliberately reset baseline prevents the deadline from counting down." />
+
+## Costs and qualification
+
+The shared helper is 97 emitted bytes plus ten context bytes. The clock reader adds fifteen bytes, input fifty, dispatcher sixty-one, and caller/presentation 132. Four additional game/input state bytes bring the complete image to 369. IRQ, keyboard, presentation and your own work determine service latency; no cycle or whole-game frame budget follows from byte counts.
+
+Emu198x 0.44.2 with the recorded stock ROM and 3 KiB configuration; Asm198x 0.0.72. Six independent keyboard-entered callers cover normal, half duration, baseline fault, repair, boundaries and wrong equality. Every loader line must finish dictionary/stack work before the next; the complete payload must match assembly before CALL. The same-boot early-read regression must reject incomplete bytes, then observe them finish without changing the text.
+
+Twelve supplied clock pairs test zero/one/maximum duration, no elapsed time, exact/overshot expiry and wrap. Three separate policy cases test expiry+action, expiry+toggle and untimed action. Removing the exact-equality branch completes the fixture but fails the unsigned oracle. Supplied samples qualify arithmetic/policy, not an observed 22-minute rollover. Return to FORTH is followed by real 2 3 + arithmetic and an empty data-stack check. Snapshot dictionary/stack bounds, captures, tool/firmware/source hashes and loaded bytes are retained.
+
+Run scripts/verify-ace-loader.py and scripts/verify-ace-assembly-deadlines.py with released executables and your own ROM. Run `python3 scripts/check-ace-assembly-deadlines.py` and `python3 -m unittest discover -s scripts -p test_ace_assembly_deadlines.py` for retained evidence checks. Eighteen deliberate corruptions must be rejected. No original-hardware, tape or complete-emulator qualification is claimed.
+
+Primary references: Jupiter Ace User Manual (1982), chapter 24, printed pp.141–145 (memory, HERE/STKBOT, SPARE, FRAMES and stack separation), chapter 25 (interrupt/CALL conventions). The pointer handshake and low-word adapter are this implementation's choices. The separate existing FORTH deadline entry remains an independent language route.
+
+## Maintained source and related patterns
+
+[Maintained source](https://github.com/code198x/code-samples/tree/1bd77c1ffccdc448fe213cb8149f7db7cf9d39eb/jupiter-ace/patterns/assembly/framework/turn-deadline) · [Native execution record](https://github.com/code198x/code-samples/blob/1bd77c1ffccdc448fe213cb8149f7db7cf9d39eb/jupiter-ace/patterns/assembly/framework/turn-deadline/verification/results.json) · [Untimed command loop](/patterns/jupiter-ace/assembly/framework/command-loop/) · [Choosing progression and clocks](/patterns/cross-platform/framework/game-loop-choices/)
+
+The [FORTH deadline implementation](/patterns/jupiter-ace/forth/framework/turn-deadline/) is a separate language route with its own dictionary and data-stack contract.
