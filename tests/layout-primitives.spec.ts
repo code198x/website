@@ -127,6 +127,6 @@ test.describe('layout primitives', () => {
       const rule = document.styleSheets[0]?.cssRules[0];
       return rule instanceof CSSLayerStatementRule ? [...rule.nameList] : null;
     });
-    expect(order).toEqual(['kit', 'base', 'composition', 'utilities', 'blocks', 'exceptions', 'legacy']);
+    expect(order).toEqual(['kit', 'base', 'composition', 'utilities', 'blocks', 'exceptions']);
   });
 });
