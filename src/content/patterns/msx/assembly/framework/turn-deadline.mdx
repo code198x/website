@@ -1,0 +1,79 @@
+---
+title: "Give an MSX turn a BIOS-clock deadline"
+summary: "Keep optional turn timing, buffered input and BIOS text output separate, using the maintained Z80 countdown."
+platform: "msx"
+category: "framework"
+difficulty: "intermediate"
+tags: ["assembly", "turns", "deadlines", "clocks", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+<Figure src="/images/patterns/msx/assembly-deadline-working.png" alt="Native caller after an automatic third turn: one expiry, timing enabled." caption="Two player actions, then one automatic turn. Recorded msx assembly caller in Emu198x 0.44.2." />
+
+Space spends one turn. Wait and nothing changes. T enables a deadline; after 240 BIOS ticks (about four seconds on the named NTSC configuration), a turn arrives automatically. T disables or starts a fresh duration; Escape returns to BASIC after release. The three hexadecimal bytes show turn, expiry count and enabled flag.
+
+## Build, load and reserve
+
+Run `make -C msx/patterns/assembly/framework/turn-deadline ASM=/path/to/asm198x`. Enter the generated build/load.bas into the recorded stock MSX1 BIOS/BASIC. CLEAR 200,49151 reserves the upper area before READ/POKE writes the actual emitted bytes. RUN defines USR at $C000; allow the loader to finish, then SCREEN 0:WIDTH 40:CLS:A=USR(0) launches it. The verifier requires exact loaded-byte equality before entry. This is a keyboard loader, not cassette transfer.
+
+This qualification uses a 64 KiB MSX1 with its normal BIOS/BASIC slots and default NTSC VDP timing. The 361-byte image occupies $C000–$C168, including 22 data bytes: four game/input/reserved bytes, ten deadline bytes and eight display-buffer bytes. Keep that area out of BASIC and other owners. The native arithmetic fixture is 519 bytes. The post-return observer additionally borrows $D000–$D3C0 for actual VPEEK text cells and a completion marker. It is diagnostic only, inside the CLEAR reservation; no game routine needs it. No slot, mapper, interrupt vector or private stack is installed.
+
+## Take the shared helper
+
+<CodeFromFile src="msx/patterns/assembly/framework/turn-deadline/demo.asm" lang="asm" title="demo.asm" />
+
+<CodeFromFile src="cross-platform/patterns/framework/elapsed-deadline/z80.inc" lang="asm" title="z80.inc" />
+
+Include cross-platform/patterns/framework/elapsed-deadline/z80.inc once and supply DEADLINE: ten writable bytes. Little-endian words: duration +0, remaining +2, active +4, one-poll expiry +5, elapsed +6, previous +8.
+
+Set duration to unsigned 0..65535; pass a clock sample in HL and call deadline_init once. It records the baseline, preserves duration and starts disabled. deadline_start copies duration into remaining and enables when nonzero, clearing the event without taking a new sample. Poll immediately before starting if the exact baseline matters. deadline_poll takes the next clock in HL, including while disabled. It updates the baseline, clears the old event and subtracts elapsed time from an active countdown. Expiry clamps remaining to zero, disables active and sets +5. Consume the event before the next poll clears it.
+
+The helper clobbers AF/DE/HL, preserves BC/IX/IY, uses the caller's return stack and performs no I/O or interrupt manipulation. One labelled context has one owner; this is not a re-entrant or implicit multi-timer interface.
+
+Unsigned subtraction wraps modulo 65536: 65526 → 10 is twenty ticks. Poll before a full cycle passes (roughly 18 minutes 12 seconds at 60 Hz). An extra missed cycle looks identical. Zero duration means off. Reinitialise after a global clock reset; it is not a wrap. Late observation gives one event without catch-up; restarting at observation time introduces drift. Units, ranges and wrap connect directly to [Maths for Games](/craft/maths-for-games/).
+
+## Machine adapters and policy
+
+<CodeFromFile src="msx/patterns/assembly/framework/turn-deadline/clock.inc" lang="asm" title="clock.inc" />
+
+<CodeFromFile src="msx/patterns/assembly/framework/turn-deadline/input.inc" lang="asm" title="input.inc" />
+
+<CodeFromFile src="msx/patterns/assembly/framework/turn-deadline/dispatch.inc" lang="asm" title="dispatch.inc" />
+
+<CodeFromFile src="msx/patterns/assembly/framework/turn-deadline/caller.inc" lang="asm" title="caller.inc" />
+
+clock.inc reads BIOS JIFFY at $FC9E–$FC9F into HL. One Z80 LD instruction reads the word; maskable IRQs occur between instructions. Other registers/flags and interrupt state are unchanged. Keep the normal VBlank interrupt service running; it supplies the clock and keyboard scan. The default NTSC configuration counts about sixty ticks per second; PAL timing needs a different seconds conversion. Never reset TIME/JIFFY behind an active context.
+
+input.inc calls CHSNS ($009C) and calls CHGET ($009F) only after a character is available. It returns A=0 for none/ignored, 1 for Space, 2 for T/t and 3 for Escape. Treat BIOS/main registers as clobbered. This must be the sole mainline consumer of that buffer; availability followed by a blocking reader is safe only while another owner cannot drain it in between. Delivered characters can include typeahead and repeat. This is not physical press detection or simultaneous-key scanning. The native taps span ten fields so the firmware scanner can observe them; a very short press may be missed.
+
+dispatch.inc handles expiry first and discards that iteration's command, including Escape/T. Otherwise Space advances once and restarts only an already active deadline. Untimed play stays untimed. T discards remaining on disable and starts a full duration on enable. Byte turn/expiry counters wrap. Replace their effects with your own rules; pause preservation, queued commands, carried lateness and multiple contexts are deliberate extensions with different costs.
+
+Presentation formats the three status bytes into DISPLAY, then uses BIOS LDIRVM ($005C) to copy eight cells to VRAM address zero in SCREEN 0, width 40. Other modes/table bases need a different adapter. Treat main registers/flags as clobbered; the whole USR session saves/restores AF/BC/DE/HL/IX/IY on BASIC's existing balanced stack. Escape release is checked with SNSMAT ($0141), row 7 bit 2; KILBUF ($0156) clears remaining firmware repeats before RET. BIOS and normal IRQ workspace remain firmware-owned.
+
+## Customise and diagnose
+
+<CodeFromFile src="msx/patterns/assembly/framework/turn-deadline/customise.asm" lang="asm" title="customise.asm" />
+
+<CodeFromFile src="msx/patterns/assembly/framework/turn-deadline/mistakes/reset-baseline.inc" lang="asm" title="reset-baseline.inc" />
+
+customise.asm changes DURATION from 240 to 120: roughly four seconds becomes two in this configuration, with identical code/state size.
+
+mistakes/reset-baseline.asm deliberately chooses a clock adapter that overwrites previous before polling. The clock advances, but elapsed always becomes zero, remaining stays at 240 and the automatic turn never arrives. The faulty screen stays at 01 00 01 rather than reaching 03 01 01. Restore clock.inc and rebuild; the separate fresh repaired run verifies the fix. The faulty adapter adds three bytes. Keep it out of working builds.
+
+<Figure src="/images/patterns/msx/assembly-deadline-wrong.png" alt="Native faulty caller with one turn, zero expiries and timing enabled." caption="The clock advances, but the deliberately reset baseline prevents the deadline from counting down." />
+
+## Cost and qualification
+
+The shared helper emits 97 bytes plus its ten-byte context. The clock adapter emits four bytes. The complete caller is 361 bytes including its 22 data bytes. Calls use the existing BASIC stack plus saved registers, BIOS and IRQ needs; no exhaustive peak-stack or cycle count is claimed. Drawing, BIOS work and your own game determine polling latency. This is continuous feedback, not frame pacing.
+
+Emu198x 0.44.2, Asm198x 0.0.72 and the hashed stock BIOS/BASIC. Six independent loaded callers cover normal, half duration, wrong baseline, repair, twelve synthetic arithmetic pairs/three policy cases and a wrong-equality control. Loaded bytes must match assembly before USR. The wrong equality mutation completes but fails the unsigned oracle. Supplied samples do not claim an observed 18-minute rollover.
+
+After quit, BASIC computes 2+3. A guest VPEEK observer copies the actual name table and writes its completion marker before the host accepts that return check. Captures, source/tool/firmware hashes, loaded bytes and state samples are retained. Run scripts/verify-msx-assembly-deadlines.py with released tools and your own firmware; run `python3 scripts/check-msx-assembly-deadlines.py` and `python3 -m unittest discover -s scripts -p test_msx_assembly_deadlines.py` for retained checks. Ten deliberately corrupted records must fail. This is configuration-specific execution, not original hardware, every BIOS or whole-emulator qualification.
+
+Primary references: MSX BIOS source listing, fixed entries CHSNS/CHGET, LDIRVM, SNSMAT and KILBUF; TIMI/JIFFY service and BASIC TIME workspace. The adapters and policy are this implementation, not an assertion that a manufacturer supplied this exact game loop. See the existing MSX command-loop entry for the independent untimed BIOS route.
+
+## Maintained source and related patterns
+
+[Maintained source](https://github.com/code198x/code-samples/tree/f237b977cbc5a8bf7f44c5324dc641e4fd87c84c/msx/patterns/assembly/framework/turn-deadline) · [Native execution record](https://github.com/code198x/code-samples/blob/f237b977cbc5a8bf7f44c5324dc641e4fd87c84c/msx/patterns/assembly/framework/turn-deadline/verification/results.json) · [Untimed command loop](/patterns/msx/assembly/framework/command-loop/) · [Choosing progression and clocks](/patterns/cross-platform/framework/game-loop-choices/)
