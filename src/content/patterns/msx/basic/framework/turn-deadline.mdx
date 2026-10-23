@@ -1,0 +1,81 @@
+---
+title: "Give an MSX BASIC turn a deadline"
+summary: "Use TIME and nonblocking input with a reusable countdown, retaining a valid untimed game policy."
+platform: "msx"
+category: "framework"
+difficulty: "intermediate"
+tags: ["basic", "turns", "deadlines", "clocks", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+<Figure src="/images/patterns/msx/basic-deadline-working.png" alt="Native caller after an automatic third turn: one expiry, timing enabled." caption="Two player actions, then one automatic turn. Recorded msx basic caller in Emu198x 0.44.2." />
+
+Space advances a turn; waiting does nothing until T enables timing. Then a turn arrives after 240 TIME ticks, about four seconds in the named NTSC configuration. T disables or gives a fresh duration; Q ends the caller. The display shows turn, expiry count and enabled flag, rather than a live countdown.
+
+## Build and enter
+
+Run `make -C msx/patterns/basic/framework/turn-deadline`. Reset the normal 64 KiB MSX1 BIOS/BASIC, enter the entire generated build/demo.bas, and RUN. The Makefile combines this caller, clock/presentation, the unchanged Dragon 16-bit BASIC countdown, the maintained bounded Commodore BASIC turn rule and its optional diagnostic serializer. All are ordinary numbered BASIC lines. Reserve their line ranges or update every target when renumbering; NEW/reset before replacing complete variants.
+
+CLEAR 200,49151 reserves high RAM before variable creation. The optional observer owns $C000–$C013; the separate arithmetic fixture owns $C000–$C062. Keep that reservation free of other code/buffers. The helper itself uses no fixed RAM, array, I/O or private stack. Without the observer, remove MB/LC initialisation, line 40, GOSUB 9000 and monitor.bas; a game can choose its own RAM reservation instead of borrowing this complete caller's.
+
+## Take the helper
+
+<CodeFromFile src="msx/patterns/basic/framework/turn-deadline/caller.bas" lang="basic" title="caller.bas" />
+
+<CodeFromFile src="dragon-32/patterns/basic/framework/turn-deadline/routines.bas" lang="basic" title="routines.bas" />
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/command-loop/routines.bas" lang="basic" title="routines.bas" />
+
+The canonical implementation is dragon-32/patterns/basic/framework/turn-deadline/routines.bas, unchanged. Set DU to integer ticks 0..65535, DC to the current sample, then GOSUB 3000 once. It records the baseline and starts disabled. GOSUB 3100 copies duration into remaining, clearing the event and enabling only for nonzero DU. It retains the last sampled baseline: poll immediately before starting if that instant matters.
+
+Each iteration sets DC and calls 3200, even while disabled. Read DX before another poll clears it. DR is remaining, DA enabled, DP previous and DE elapsed. DU/DC are caller inputs; the other five numeric globals belong to the helper. Zero duration means off. It is one mutable context, not re-entrant. The qualified MSX defaults make these double-precision variables; an integer default imposed elsewhere would not preserve this arithmetic contract. Names and types must not collide with a larger program.
+
+Subtraction wraps modulo 65536: 65526 → 10 is twenty ticks. Consecutive polls must be less than one complete cycle apart, roughly 18 minutes 12 seconds at 60 Hz. A missed extra cycle gives the same samples. A global TIME reset is not a wrap: reinitialise the context afterwards. Expiry clamps remaining to zero and disables active. A late poll gives one event without catch-up. Restarting at observation time introduces drift. [Maths for Games](/craft/maths-for-games/) explores the same units, ranges and modular arithmetic.
+
+The reused turn rule accepts A$="A" and adds S to N within a bounded byte-valued range 0..255. Space and expiry supply that action; replace its effect with your own world update. Rules do not need to know whether their turn came from a player or a timer.
+
+## Clock, input and policy
+
+<CodeFromFile src="msx/patterns/basic/framework/turn-deadline/clock.bas" lang="basic" title="clock.bas" />
+
+<CodeFromFile src="msx/patterns/basic/framework/turn-deadline/presentation.bas" lang="basic" title="presentation.bas" />
+
+clock.bas reads TIME without resetting it. The normal BIOS VBlank ISR owns JIFFY, which supplies this BASIC clock. Leave that service available; code that masks IRQs can stop clock progress. At the recorded default NTSC rate, 240 ticks are about four seconds, not the roughly 4.8 seconds used by a 50 Hz machine. A PAL port must choose its own seconds conversion. This qualification does not cover every MSX BIOS, RAM configuration, mapper or region.
+
+INKEY$ is nonblocking delivered-character input, including firmware buffering and repeat. The caller accepts upper/lowercase T and Q; Space advances. It does not promise physical press edges or simultaneous-key scanning. Very short taps can be missed by a firmware scanner. Blocking INPUT remains useful in the untimed example, but would also prevent this caller servicing its deadline while a player thinks.
+
+Expiry wins over that iteration's character, including toggle/quit. Otherwise Space advances once and restarts only an active deadline. Untimed actions stay untimed. Disable discards the remainder; enable gives a full duration. This is game policy, not a requirement imposed by TIME. Preserved pause, queued commands, carried lateness and multiple contexts are useful extensions with additional state and different behaviour.
+
+SCREEN 0, width 40 and LOCATE provide the text feedback. The caller clears once and redraws on changes. BASIC owns screen/keyboard/variable/stack/IRQ workspace; no replacement handler is installed. This is not a frame wait or a general background task service.
+
+## Customise and diagnose
+
+<CodeFromFile src="msx/patterns/basic/framework/turn-deadline/customise.bas" lang="basic" title="customise.bas" />
+
+<CodeFromFile src="msx/patterns/basic/framework/turn-deadline/mistakes/reset-baseline.bas" lang="basic" title="reset-baseline.bas" />
+
+customise.bas changes DU=240 to DU=120: about four seconds becomes two with unchanged helper/policy. Choose units before choosing the number.
+
+mistakes/reset-baseline.bas deliberately stores now as previous immediately before polling. Every elapsed interval becomes zero; the real clock advances but remaining stays full and the automatic turn never arrives. The faulty screen stays at TURN 1 E 0 T 1. Restore clock.bas and rebuild; an independent repaired boot reaches TURN 3 E 1 T 1. Never combine both adapters in a working listing.
+
+<Figure src="/images/patterns/msx/basic-deadline-wrong.png" alt="Native faulty caller with one turn, zero expiries and timing enabled." caption="The clock advances, but the deliberately reset baseline prevents the deadline from counting down." />
+
+## Measured costs and qualification
+
+The native interpreter stores 189 tokenised helper bytes, including linked line headers; the whole instrumented caller occupies 1,055 bytes. Its observed scalar table occupies 199 bytes. The seven double-precision helper entries use eleven bytes each including names/type tags, 77 bytes total. This is the measured representation on this firmware, not a universal size for a BASIC variable. Different numeric defaults need their own arithmetic and cost qualification. These snapshots do not prove peak heap/stack use or a whole-game RAM budget.
+
+The observer adds a 20-byte buffer and serialisation work. Instrumented polling commonly spans around eighteen to twenty ticks; that includes interpretation, input and observer costs, not the helper alone. The firmware clock accumulates while BASIC works, but expiry is noticed only when the program polls again. No cycle count or whole-game frame budget is inferred.
+
+Emu198x 0.44.2 with the hashed stock BIOS/BASIC, 64 KiB MSX1, default NTSC timing. Six independent keyboard-entered callers cover normal, half duration, wrong baseline, repair, boundaries and wrong equality. Twelve supplied clock pairs include zero/one/maximum duration, no elapsed time, wrap and exact/overdue expiry. Changing > to >= completes but fails the unsigned oracle. These supplied samples are arithmetic evidence, not an observed eighteen-minute rollover. The live BASIC checks do not force an exactly simultaneous key and expiry.
+
+The complete native linked program/line inventory, pointer map and typed variable table are checked alongside runtime state, captures and source/tool/firmware hashes. Run scripts/verify-msx-basic-deadlines.py with released tools and your own BIOS. Run `python3 scripts/check-msx-basic-deadlines.py` and `python3 -m unittest discover -s scripts -p test_msx_basic_deadlines.py` for retained checks; ten deliberately corrupted records must fail. No original-hardware or whole-emulator claim follows.
+
+Primary references: MSX BASIC TIME and INKEY$ specifications; MSX BIOS source listing, JIFFY interrupt service and workspace TXTTAB/VARTAB/ARYTAB/STREND/MEMSIZ. The countdown, customisation and policy are this implementation. The existing MSX untimed command loop and the independent assembly deadline route show different contracts for the same game choice.
+
+## Maintained source and related patterns
+
+[Maintained source](https://github.com/code198x/code-samples/tree/01874878b4741fa0caf82df005e59384a2b6c24a/msx/patterns/basic/framework/turn-deadline) · [Native execution record](https://github.com/code198x/code-samples/blob/01874878b4741fa0caf82df005e59384a2b6c24a/msx/patterns/basic/framework/turn-deadline/verification/results.json) · [Untimed command loop](/patterns/msx/basic/framework/command-loop/) · [Choosing progression and clocks](/patterns/cross-platform/framework/game-loop-choices/)
+
+Compare the [MSX assembly deadline](/patterns/msx/assembly/framework/turn-deadline/) for explicit BIOS adapters and a different state/register contract. Each language is an independent entry point.
