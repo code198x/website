@@ -1,0 +1,117 @@
+---
+title: "Query a Byte Map in Jupiter Ace FORTH"
+summary: "Read and change a room, classify tiles and convert world positions with reusable FORTH words that fit the unexpanded Ace."
+platform: "jupiter-ace"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["maps", "tilemaps", "queries", "forth", "stack", "collision"]
+related:
+  patterns: ["tile-map-queries"]
+  vault: ["tile-maps", "tile-collision"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Give a room a byte per cell and it can answer a useful question before you draw anything: **what is at this position?** On the supplied seven-wide room, `0 1 MGET` reads column zero of row one. It leaves **3 1** on the stack: tile 3, followed by success flag 1.
+
+These are actual Jupiter Ace FORTH words. Compile the routines, supply your map, and call them from your own game. The [Z80 assembly entry](/patterns/jupiter-ace/assembly/rendering/tile-map/) solves the same problem through a different language and startup path; its evidence does not substitute for this one.
+
+## Compile and initialise
+
+Enter `routines.fth` first, completing each definition before entering the next. Its first `DECIMAL` selects the number base used while reading the source. Calling the compiled words does not change the current base. Reserve the names beginning with M, or rename them consistently.
+
+<CodeFromFile src="jupiter-ace/patterns/forth/rendering/tile-map/routines.fth" lang="forth" title="The reusable byte-map words" />
+
+Then enter the room data. `CREATE` names a block in dictionary RAM; each `C,` adds one byte. The five lines of seven tiles are five consecutive rows. The byte 165 after them is a diagnostic guard, outside the map. The separate FLAGS table classifies the four tile IDs.
+
+<CodeFromFile src="jupiter-ace/patterns/forth/rendering/tile-map/room.fth" lang="forth" title="A 7×5 room and its property bytes" />
+
+The last line calls MINIT with **map address, width, height, property address and maximum tile ID**, in that order. MINIT selects the storage; it does not allocate it or discover its capacity. For another room, change the data and dimensions together. A bounds check cannot protect an array whose declared size exceeds the bytes you allocated.
+
+## Read the stack contract
+
+In FORTH, words consume values from the top of the data stack and leave their results there. Read each effect below from left to right, with the rightmost value on top. The dash separates inputs from outputs.
+
+| Word | Stack effect | What it does |
+| --- | --- | --- |
+| MINIT | base width height properties max-ID -- | Select the map and property storage |
+| MCELL | column row -- address valid | Check a coordinate and compute its address |
+| MGET | column row -- tile valid | Read a cell; failure returns 0 0 |
+| MSET | tile column row -- valid | Change a cell only if both position and ID are valid |
+| MFLAGS | tile -- flags valid | Read a tile's property byte; failure returns 0 0 |
+| MXY | X Y -- tile valid | Divide non-negative world positions by eight and query |
+
+The valid flag is on top, ready for `IF` to consume. Tile zero is ordinary floor data, so it cannot double as a failure flag. Consume or discard the value beneath the flag on both paths. MSET returns only one item; the other queries return two. Values below the arguments are preserved.
+
+This small caller prints the flag first, then the value underneath it. Its two queries show the tile at column 0, row 1 and the classification of tile 3:
+
+<CodeFromFile src="jupiter-ace/patterns/forth/rendering/tile-map/demo.fth" lang="forth" title="Call the map and property words" />
+
+For a write, put the new tile ID before the column and row, then call MSET and check its result. The verifier changes column 0, row 0 to tile 3, reads it back, and checks every other map byte. The map and its following guard also remain unchanged after all rejected writes.
+
+The map must contain width×height addressable bytes, and its product and final address must not wrap the 16-bit address space. Width and height are positive native-cell values, rather than an artificial eight-bit machine limit. The allocated RAM is still a real limit. The map must be writable for MSET; read-only data needs another change policy. Max-ID is 0–255, and the property table needs max-ID+1 readable bytes.
+
+## Coordinates are not screen addresses
+
+The address calculation is **base + row × width + column**. Multiplying by the screen width would quietly query another cell. MCELL treats coordinates as unsigned FORTH cells; on this small map, -1 has the bit pattern 65535 and fails the comparison with width or height.
+
+MXY deliberately accepts **non-negative signed-cell positions, 0–32767**. It rejects a negative X or Y before using the ROM's signed division. An unsigned 16-bit world needs a corresponding conversion; `/` does not become unsigned because you intended a positive coordinate.
+
+For eight-unit cells, world positions 0–7 belong to cell zero, 8–15 to cell one. Positive integer division rounds down here. Position (31,23) therefore queries cell (3,2). These are the coordinate, grid and representation ideas from [Maths for Games](/craft/maths-for-games/) in a small working routine. The units need not be physical screen pixels. Use world coordinates for the world map; subtracting the camera first asks a different question.
+
+## Make it your own
+
+In the example, property bit 0 means blocking, bit 1 means hazard and bit 2 means exit. These meanings belong to the game, not to the library. Tile 3 starts with exit flag 4. Run this after loading the normal room to retain the exit flag and add blocking:
+
+<CodeFromFile src="jupiter-ace/patterns/forth/rendering/tile-map/customise.fth" lang="forth" title="Close the exit by changing one property byte" />
+
+MFLAGS now returns **5 1** for tile 3. The map bytes stay the same. Both versions ran from fresh ROM starts; only that property byte changes, and this immediate store compiles no new word. Your game must interpret the flags when deciding whether movement is allowed.
+
+Use `C@` and `C!` for these byte arrays. `@` and `!` access a two-byte FORTH cell. Replacing C! with ! would also write a neighbour; that is a different operation, not an alternative spelling.
+
+## State, lifetime and costs
+
+MB/MW/MH/MP/MM hold the active map descriptor; MC/MR are scratch coordinates. Those seven variables use **14 payload bytes**, plus their dictionary headers. A query changes MC/MR. There is one active descriptor: call MINIT again to select another map, and keep its storage alive while selected. Do not FORGET or overwrite words/data that the descriptor still references.
+
+The global state makes this version non-reentrant. Do not interrupt a query with another one using the same variables. The words use the ROM's data and return stacks; they do not mask interrupts or own a frame clock. MSET temporarily saves an address with >R and balances it on every branch. EXIT is never used while that address remains on the return stack.
+
+Measured on the stock ROM, the reusable definitions increase HERE by **448 bytes**. The room and FLAGS definitions add **63**, giving **511 dictionary bytes** in total. That includes their 40 data bytes and two CREATE headers. It excludes the demonstration/observer words, interpreter workspace and both stacks. The complete diagnostic still executes on the unexpanded 3 KiB machine, whose user dictionary and stacks share the upper 1 KiB. Space above HERE is not all free for map data.
+
+Each query uses the ROM's multiplication plus bounds checks. Row-address tables would trade two bytes per row for avoiding that multiplication. Packed IDs could reduce map RAM at the cost of extraction and update code; decoded rooms or a changes overlay offer other choices. These are possible later variants, not implemented optimisations or measured frame rates.
+
+## When it goes wrong
+
+The first row is an easy test to pass accidentally. It does not exercise the row stride. In the deliberately broken version below, the later row advances by six bytes despite the room being seven cells wide:
+
+<CodeFromFile src="jupiter-ace/patterns/forth/rendering/tile-map/mistakes/wrong-stride.fth" from=": MCELL" to=": MGET" lang="forth" title="Deliberately broken: use a stride of six" />
+
+At column 0, row 1, it returns **2 1** instead of **3 1**. The successful flag only means the coordinate passed its checks; it cannot prove that the address calculation was right.
+
+<Figure src="/images/jupiter-ace/patterns/forth-map/positive-read-0-1.png" alt="Ace diagnostic case seven prints flag one, value three and preserved stack marker seventy-seven." caption="Correct: case 7 queries column 0, row 1 and returns tile 3." fit="column" />
+
+<Figure src="/images/jupiter-ace/patterns/forth-map/wrong-stride-read-0-1.png" alt="The same completed Ace diagnostic case prints flag one and value two with the faulty stride." caption="Wrong stride: the same query returns tile 2. The case and stack markers show that the call completed." fit="column" />
+
+Restore the configured width:
+
+<CodeFromFile src="jupiter-ace/patterns/forth/rendering/tile-map/routines.fth" from=": MCELL" to=": MGET" lang="forth" title="Correct: calculate rows using MW" />
+
+The second executed fault bypasses MSET's failed coordinate check. It substitutes the map base and a true flag, so an attempted write of 1 at column 7, row 0 wrongly changes the **first map byte from 0 to 1** and reports success. The retained before/after byte snapshots expose the corruption.
+
+<CodeFromFile src="jupiter-ace/patterns/forth/rendering/tile-map/mistakes/write-without-valid.fth" from=": MSET" to=": MFLAGS" lang="forth" title="Deliberately broken: force a failed position to the map base" />
+
+Restore the normal branch structure. A failed MCELL result must discard the unused address and tile, then return false without a store:
+
+<CodeFromFile src="jupiter-ace/patterns/forth/rendering/tile-map/routines.fth" from=": MSET" to=": MFLAGS" lang="forth" title="Correct: store only after a valid position and ID" />
+
+Both faults are separate full diagnostic variants under mistakes/, not files to load over the working words. FORTH definitions already compiled against an older word can keep referencing it after a same-named word is added. Use a fresh load in the stated order when comparing these variants.
+
+## Run and adapt it
+
+The native verifier boots the pinned stock ROM, enters the actual FORTH definitions through the keyboard, and executes **59 indexed operations per variant**. It reads every cell of the non-square room, rejects outside coordinates and invalid IDs, checks properties and world conversions, and verifies writes and the following guard. Each operation prints a distinct case number and recovers a value placed below its arguments. Stale output, an unfinished call or a stack leak fails the check.
+
+The four runs cover the normal routine, the closed-exit customisation and both completed faults. Actual display bytes, full map/guard snapshots, dictionary measurements and source/tool/ROM identities are retained. CI decodes those observations and rejects altered records; fresh emulator execution remains a separate check. This establishes FORTH byte-map behaviour on **Emu198x 0.44.1**, not native drawing, a frame deadline or original-hardware behaviour.
+
+- [Reusable words, caller, verification command and execution records](https://github.com/code198x/code-samples/tree/533e0c12badb43f341eb5546a5954983071a7917/jupiter-ace/patterns/forth/rendering/tile-map)
+- [Compare map implementations and representations](/patterns/cross-platform/rendering/tile-map-queries/)
+- [Jupiter Cantab's 1982 User Manual: variables, byte storage, return stacks, CREATE and memory layout](https://pestilenz.org/~bauerm/jupiter.pdf)
