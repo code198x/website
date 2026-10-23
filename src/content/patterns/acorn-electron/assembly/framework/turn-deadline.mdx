@@ -1,0 +1,123 @@
+---
+title: "Give an Electron turn an optional MOS deadline"
+summary: "Let the player think, or add a deadline using a serviced clock and physical key edges."
+platform: acorn-electron
+category: framework
+difficulty: intermediate
+tags: [loops, turns, deadlines, timers, mos, "6502"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press Space and the counter advances. Wait, and it stays put. Now press T: you have roughly four seconds before the next turn happens without you. Another T gives you your thinking time back.
+
+The interesting part is the separation. The turn rule does not need a timer. The timer does not need to know what a turn means. A small caller decides how they work together.
+
+<Figure kind="capture" fit="column" src="/images/patterns/acorn-electron/mos-deadline-working-expiry.png" alt="Electron shows turn 0002, one automatic expiry and an active next deadline." caption="One Space press and one automatic turn. The three hexadecimal values are turn count, expiry count and timer-active flag." />
+
+## Run it, then take the pieces you need
+
+From the [maintained source checkout](https://github.com/code198x/code-samples/tree/c4d11735ac95a84d39e9093f86ba7b2aab2d4033/acorn-electron/patterns/assembly/framework/turn-deadline), run:
+
+```sh
+make -C acorn-electron/patterns/assembly/framework/turn-deadline
+```
+
+Use Asm198x 0.0.65, the website's pinned version, or set `ASM198X=/path/to/asm198x` on that command. Both machines build the shared sources in `bbc-micro/patterns/assembly/framework/turn-deadline`. Enter that folder's **build/loader.bas** into a fresh BASIC program and RUN. Space takes a turn, T toggles the deadline and reset leaves. The checked setup is a stock **32 KiB PAL Electron, MODE 6**, with its OS and BASIC ROMs and normal firmware interrupt service.
+
+The loader lowers HIMEM to &2F00 and installs the code at &3000, below the MODE 6 screen at &6000. It does not save the old display or memory layout. Reset or restore your own layout before running another program. Use NEW/reset before entering a different complete variant.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/framework/turn-deadline/settings.inc" lang="6502" />
+
+Include the caller, clock, input, dispatcher and shared helper once each. The caller's include paths show their order. Keep returning routines outside the main execution path; execution must not fall into an RTS without a matching call. You can omit the input, display and dispatcher when you only want the deadline service.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/framework/turn-deadline/demo.asm" lang="6502" />
+
+This extends the [MOS game-loop material](/patterns/acorn-electron/assembly/framework/mos-game-loop/). That example waits for a display sync; this one polls a clock while waiting for a decision. A frame wait and a deadline solve different problems.
+
+## A deadline with twelve bytes of state
+
+<CodeFromFile src="cross-platform/patterns/framework/elapsed-deadline/6502.inc" lang="6502" />
+
+| Offset from DEADLINE | What lives there |
+| --- | --- |
+| 0–1 | Caller-supplied duration, unsigned ticks, little endian; zero disables |
+| 2–3 | Remaining ticks, clamped at zero |
+| 4 | Active flag, 0 or 1 |
+| 5 | Expiry event for this poll, 0 or 1 |
+| 6–7 | Elapsed ticks from this poll |
+| 8–9 | Previous clock sample |
+| 10–11 | Scratch current sample |
+
+Set the duration and supply current time in **A low, X high**, then `JSR deadline_init`. It begins disabled. `JSR deadline_start` copies duration into remaining time and enables a nonzero duration. It uses the latest sampled baseline: sample/poll immediately before starting when that instant matters.
+
+Every service iteration, including while disabled, supply another sample and `JSR deadline_poll`. Read offset 5 immediately. The next poll or start clears this event. Expiry clamps remaining to zero and disables the helper; the caller chooses whether to advance the world or restart.
+
+The helper clobbers **A, X and flags**, preserving Y. Clear decimal mode before using it. Give it twelve private writable bytes and an ordinary valid 6502 stack. It makes no nested JSRs, though its caller's JSR/RTS uses two stack bytes. MOS and interrupts require additional stack space; their maximum use is not isolated here. This absolute-address helper is one mutable context, not re-entrant IRQ code. Multiple contexts need separate state and labels or a deliberately different pointer-based version.
+
+## Read a clock without taking it over
+
+<CodeFromFile src="bbc-micro/patterns/assembly/framework/turn-deadline/clock.inc" lang="6502" />
+
+OSWORD 1 writes a **five-byte** centisecond clock to the buffer addressed by X/Y. Reserve all five bytes even though this adapter only passes the low two to the helper. A two-byte buffer would let firmware overwrite its neighbours. MOS calls may clobber A/X/Y/flags; load the returned sample after the call.
+
+The Electron supplies the same MOS call over different hardware. Its real-time interrupt source is 50 Hz; MOS exposes centiseconds, so do not mistake a firmware clock unit for an independent 100 Hz hardware interrupt. Its display contention also differs from the BBC Micro. This is a separate Electron run, not a BBC capture standing in for it.
+
+Both named runs observed **60 centiseconds during 30 PAL display fields**. That establishes this serviced clock in these configurations, not a one-centisecond response guarantee. Keep IRQs enabled and the normal MOS path intact. The routine claims no hardware timer or IRQ vector and never resets the shared clock. Long interrupt blocking can lose clock service; the helper cannot recreate time which was never counted.
+
+The low word wraps after **655.36 seconds**. Keep consecutive samples less than 65536 ticks apart. For example, previous=65530 and now=5 means **11 elapsed ticks**: subtraction modulo 65536 handles the wrap. A whole missed cycle is indistinguishable from less elapsed time. A clock reset is different again: reinitialise/restart the context after an external clock change.
+
+This is a useful [Maths for Games](/craft/maths-for-games/) connection: representation, subtraction and units explain the behaviour. Four hundred centiseconds is four seconds; four hundred display fields would mean something else. The maximum duration is a number-format limit, not permission to stop polling for a whole wrap.
+
+## Sample a press rather than keyboard repeat
+
+<CodeFromFile src="bbc-micro/patterns/assembly/framework/turn-deadline/input.inc" lang="6502" />
+
+OSBYTE 129 tests physical keys: X=&9D for Space, X=&DC for T, Y=&FF. These correspond to INKEY(-99) and INKEY(-36). The routine forms a held mask, then `pressed = held AND NOT previous`: bit 0 is Space, bit 1 T.
+
+A held key gives one observed press. Release must be sampled before another edge appears, and a very short tap between samples may be missed. These physical tests do not consume firmware-delivered characters or drain typeahead. A character reader and a blocking line collector have different contracts; the latter would stop this caller servicing expiry.
+
+## Decide what happens at the boundary
+
+<CodeFromFile src="bbc-micro/patterns/assembly/framework/turn-deadline/dispatch.inc" lang="6502" />
+
+**Expiry wins** over Space and T sampled in the same iteration; those edges are discarded. An automatic turn restarts the deadline. Space restarts only an already active timer: an untimed action stays untimed. T disables and discards remaining time, or enables a fresh duration. This is restart, not pause/resume.
+
+A very late observation produces one turn, not a burst of missed turns. Restarting from observation time can drift. Carrying lateness, fixed-step catch-up, queued commands or preserving pause state can all be useful, but each is another policy to choose and explain.
+
+## Customise it and recognise a common mistake
+
+Change **DURATION = 400** to **200** in settings.inc, rebuild and enter the new complete loader. Four seconds becomes roughly two. The shorter caller is independently executed with the same helper and dispatcher. Change the dispatcher when you want another turn policy; keep the arithmetic separate.
+
+<CodeFromFile src="bbc-micro/patterns/assembly/framework/turn-deadline/mistakes/input-gated-expiry.inc" lang="6502" title="Deliberately broken: ignore expiry until a key arrives" />
+
+That early return looks harmless: no input, no work. But expiry is itself work. The helper emits its one-poll event, this dispatcher ignores it, and the next poll clears it. The world never takes its automatic turn.
+
+<Figure kind="capture" fit="column" src="/images/patterns/acorn-electron/mos-deadline-wrong-input-gate-expiry.png" alt="The broken Electron caller stays on turn 0001 with no expiry count; its displayed timer flag is stale at 01." caption="The lost turn is visible. Timer state has already expired, but the bad dispatcher also skips redraw, leaving the on-screen active flag stale." />
+
+The native clock advances and remaining time reaches zero; guarded state shows active=0, while the display still says 01. Replace the broken include with **dispatch.inc**. A fresh repaired run advances without input. Keep timer processing outside input-only branches.
+
+## Reserve resources and understand the cost
+
+The demonstration owns these writable ranges:
+
+- **&2F00–&2F0B:** twelve helper bytes; **&2F0C–&2F0D:** optional guards.
+- **&2F20–&2F29:** ten caller/input bytes, including held/pressed masks, counters and redraw flag.
+- **&2F30–&2F34:** five-byte clock buffer.
+
+Relocate the constants together and reserve those ranges against neighbours. There is no fixed zero-page claim. The loader's HIMEM reservation is larger than the bytes actually used. MODE 6, firmware keyboard/VDU services and that reservation belong to this caller.
+
+The assembled public executable is **445 bytes**, including the **140-byte helper** and **16-byte clock adapter**. Explicit helper/clock/caller/guard storage is **29 bytes**, beyond code. The wrong dispatcher adds five code bytes. These are binary lengths and symbol distances; firmware, interpreter and stack costs are additional.
+
+The helper subtracts once per poll, not once per missed tick. Each clock read asks MOS to copy five bytes; redraw happens only on changes. There is no isolated cycle benchmark or whole-game frame-budget claim. Measure the actual workload on your target: sharing a MOS API does not remove BBC/Electron differences in memory access and firmware work.
+
+## What was checked
+
+**Code status: assembled and emulator-executed.** [This machine's retained record](https://github.com/code198x/code-samples/blob/c4d11735ac95a84d39e9093f86ba7b2aab2d4033/acorn-electron/patterns/assembly/framework/turn-deadline/verification/results.json) binds sources, observers, firmware and released tools. Emu198x 0.44.1 and Asm198x 0.0.65 were used. Both machines cold-booted their own stock firmware, received the complete loader through the keyboard and had every installed executable byte compared. No debugger writes set up a successful outcome.
+
+The public caller checks untimed idle/action, enabled countdown, expiry without input, active restart, held-key suppression, disabling, a shorter duration and wrong/repaired dispatch. Visible counts are decoded separately from guarded state, including the broken screen's stale flag. A second caller runs twelve synthetic-clock cases through the same helper on each CPU: zero/max duration, no movement, wrap and exact/overshot expiry. One changed equality branch completes but fails the independent arithmetic oracle.
+
+Those synthetic cases establish arithmetic, not a wall-clock run across an entire rollover. Retained checks reject missing cases, changed inputs and falsified observations. No original-hardware, other-ROM, other-region or minimum-RAM claim is made. See the [BBC Micro entry](/patterns/bbc-micro/assembly/framework/turn-deadline/) for its separate execution and hardware context.
+
+Primary references: Acorn [*Electron User Guide*, chapter 29, OSWORD A=1 and OSBYTE 129](https://www.acornelectron.co.uk/ugs/electron/acorn_computers/ug-english/chapter029_2_eng.html); [*The Advanced User Guide for the Acorn Electron*](https://stardot.org.uk/mirrors/www.bbcdocs.com/filebase/essentials/EAUG-Issue2.pdf), printed p.88, OSWORD 1; BBC Micro *Advanced User Guide*, §9.3 printed p.248 and §8 OSBYTE 129. Captures are Code198x's own emulator output; native Electron capture geometry is preserved.
