@@ -1,0 +1,111 @@
+---
+title: "Query a Room in ZX80 BASIC"
+summary: "Read and change tiles, look up their properties and convert world positions with reusable routines for a 16 KiB ZX80."
+platform: "sinclair-zx80"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["maps", "tilemaps", "queries", "basic", "collision"]
+related:
+  patterns: ["tile-map-queries"]
+  vault: ["tile-maps", "tile-collision"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Before your game draws a wall, it needs to know where the wall is. A map can answer that question without touching the screen. Set column C to 0 and row R to 1, call line 1000, and this room returns **tile 3 with success flag E=1**.
+
+These are reusable **ZX80 BASIC** routines for a machine with **16 KiB RAM** and its original 4 KiB ROM. The complete readable example uses expanded RAM; it is not a stock 1 KiB listing. The [assembly version](/patterns/sinclair-zx80/assembly/rendering/tile-map/) has a separate calling contract and execution record.
+
+## Put the pieces in one program
+
+Enter the reusable routines, room data and short caller below into the same BASIC program, then RUN. They are listing fragments to merge, rather than three programs to RUN separately. Each line has one statement. The keyword positions differ between the ZX80 and ZX81; use this machine's own keyboard layout when entering the listing.
+
+<CodeFromFile src="sinclair-zx80/patterns/basic/rendering/tile-map/routines.bas" lang="basic" title="Checked map routines — lines 1000–1380" />
+
+The caller owns the map and its properties. This example allocates them in line 2000, fills a seven-column, five-row room, and returns. Call that initialiser **once**, before querying the map. Repeated DIM is not a portable way to select another room: in particular, the ZX80 can allocate another array while accesses still find the old one.
+
+<CodeFromFile src="sinclair-zx80/patterns/basic/rendering/tile-map/room.bas" lang="basic" title="Room data and property table" />
+
+The final map element is a diagnostic guard, 9, outside the 35 cells. It helps expose stray writes; a game can omit it once its capacity and checks are sound. Property values 0, 1, 2 and 4 mean floor, wall, hazard and goal in this example. Your game gives them meaning; they are not screen colours or character codes.
+
+<CodeFromFile src="sinclair-zx80/patterns/basic/rendering/tile-map/demo.bas" lang="basic" title="Read, classify, change and convert" />
+
+RUN prints **TILE 3, FLAGS 4, CHANGED 3, WORLD 6,4 and TILE 2**. The first lookup reads (0,1), the write changes (0,0) to 3, and world position (55,39) selects the bottom-right cell. STOP leaves the results visible. The report `9/190` acknowledges STOP at line 190.
+
+<Figure src="/images/sinclair-zx80/patterns/basic-map/demo.png" alt="ZX80 BASIC prints tile 3, flags 4, changed tile 3, world cell 6 comma 4 and tile 2." caption="The maintained caller runs through the original BASIC ROM with 16 KiB RAM." fit="column" />
+
+Reserve lines 1000–1380 for the routines and 2000–2460 for this initialiser. If your program already uses those numbers, renumber every branch and call together. Put your own caller where the demonstration sits, and keep an explicit STOP or branch before execution can fall into the subroutines.
+
+## Know what a call changes
+
+| Call | Supply | Read back |
+| --- | --- | --- |
+| GOSUB 1000 | C=column, R=row | E=1,T=tile,D=flat offset; invalid gives E=0,T=-1,D=0 |
+| GOSUB 1100 | C,R,V=new tile | A valid write gives E=1,T=V; failure gives E=0 and leaves storage alone |
+| GOSUB 1200 | T=tile ID | E=1,F=property; invalid gives E=0,F=-1 |
+| GOSUB 1300 | X,Y=world position, S=units per cell | C,R=cell and E,T from the checked lookup |
+
+Always test E before using a returned value. A rejected write with an invalid ID leaves T unchanged; a rejected position gives T=-1. A world input rejected before division gives C=R=T=-1. If division succeeds but selects an outside cell, C and R retain that calculated coordinate while E=0,T=-1.
+
+W,H,L and S hold the width, height, largest tile ID and positive whole-number cell size. M is the map array; P is the property array. Allocate W×H cells and L+1 properties, then initialise every map ID within 0..L. Bounds checks cannot rescue a descriptor that claims more storage than you allocated. They do not revalidate your entire room on every lookup.
+
+Reserve scalar C,R,V,X,Y for arguments and E,T,D,F for results and scratch. Reading changes E,T,D; writing also changes M; property lookup changes E,F; world conversion changes C,R and calls the reader. Other scratch may retain its old value after an early return. These global variables make the routines non-reentrant: save any result you need before another call overwrites it. The caller owns the arrays and their lifetime; the library does not reserve a fixed screen area or install an interrupt.
+
+## Keep coordinates separate from array subscripts
+
+Both the first column and the first row are numbered zero. The row-major offset is `R*W+C`: moving down a row skips W cells. On this machine the BASIC array starts at **0**, so the final access is **M(D+0)**. The property lookup similarly uses P(T+0).
+
+The original ZX80 ROM works with signed whole numbers. `X/S` truncates towards zero, so rejecting negatives first gives us the round-down result we want. There is no INT call here. Keep values and intermediate arithmetic within −32768 to 32767; width, height and their product must fit.
+
+With S=8, world positions 0–7 select cell 0 and 8–15 select cell 1. The same routine also works with S=3: position (6,3) selects cell (2,1). This is the grid, division and coordinate-space work from [Maths for Games](/craft/maths-for-games/) in a form you can use immediately. The units need not be screen pixels. Query a world map with world coordinates; subtracting the camera first asks about a different position.
+
+The world contract accepts non-negative positions up to 32767 and a positive whole S. Signed worlds, wrapping, rectangular cells and very large coordinates need an explicit extension. A cell query also differs from [box collision](/patterns/cross-platform/physics/aabb-collision/): an actor can touch several cells, so its centre alone may miss a wall.
+
+## Make it your own
+
+Turn the goal into a closed exit by replacing line 2450 with this line, then RUN from a fresh program:
+
+<CodeFromFile src="sinclair-zx80/patterns/basic/rendering/tile-map/customise.bas" lang="basic" title="Goal property 4 becomes 5" />
+
+Querying tile 3 now returns F=5 instead of 4, with the same room IDs. You might interpret that as goal plus blocking. The convention does not add bitwise operators to BASIC; your game must interpret those values. The change adds no elements and no additional lookup work. More tile IDs require a larger P allocation and a matching L; a larger room requires dimensions, allocation and data to change together.
+
+## Diagnose two convincing mistakes
+
+**Deliberately broken:** this alternative reader uses W−1 for the row stride:
+
+<CodeFromFile src="sinclair-zx80/patterns/basic/rendering/tile-map/mistakes/wrong-stride.bas" from="1070 LET D=" to="1080 LET E=" lang="basic" title="Wrong: skip six cells per row in a seven-wide room" />
+
+Reading (0,1) returns **T=2,E=1**, instead of 3. The bounds check passed, but the address calculation was wrong. A test confined to row zero would miss it. Restore the actual width:
+
+<CodeFromFile src="sinclair-zx80/patterns/basic/rendering/tile-map/routines.bas" from="1070 LET D=" to="1080 LET E=" lang="basic" title="Correct: use the configured map width" />
+
+<Figure src="/images/sinclair-zx80/patterns/basic-map/wrong-stride-read-0-1.png" alt="ZX80 diagnostic case 7 prints success 1 and tile 2 at column 0 row 1 with the deliberately wrong stride." caption="Case 7 completed, but the wrong stride selected tile 2. The correct routine selects 3." fit="column" />
+
+The next fault removes the check after the reader returns. In the bounded reproduction, writing 1 at (7,0) is rejected as outside the room. But D has been reset to 0, and the unguarded assignment changes the **first element from 0 to 1**, even though E remains 0. A returned failure does not prove that storage stayed untouched.
+
+<CodeFromFile src="sinclair-zx80/patterns/basic/rendering/tile-map/mistakes/write-without-valid.bas" from="1140 GOSUB" to="1170 LET T=" lang="basic" title="Deliberately broken: write after a failed lookup" />
+
+<Figure src="/images/sinclair-zx80/patterns/basic-map/write-without-valid-reject-write-7-0-1.png" alt="ZX80 prints failure flag zero after the deliberately faulty write, but the complete map now starts with one instead of zero." caption="Rejected coordinate, damaged map: case 40 exposes the missing write guard." fit="column" />
+
+Keep the return guard before the assignment:
+
+<CodeFromFile src="sinclair-zx80/patterns/basic/rendering/tile-map/routines.bas" from="1140 GOSUB" to="1170 LET T=" lang="basic" title="Correct: return before writing an invalid cell" />
+
+Check later rows, every room edge, valid and rejected writes, and unchanged data around the map. The retained diagnostic prints the complete map and trailing guard after every call, alongside an increasing case number to distinguish a completed call from stale output.
+
+## What the readable version costs
+
+The 35 map elements, four properties and one guard use **80 bytes of numeric element payload**, at 2 bytes each. Array headers, scalars, the program, display file and interpreter stacks/workspace need further RAM. This is element accounting, not a measured free-memory figure.
+
+The ZX80 stops generating its normal display while computing. The caller prints its results and stops so you can read them; this is a useful fit for command-driven work, not evidence of smooth action graphics.
+
+Each successful read calculates a row offset. Precomputed row offsets exchange storage and setup work for a different query path. Byte or packed maps can reduce data RAM, but extraction and updates become more involved. The assembly entry offers a separately verified byte-map route. None of these alternatives is automatically faster for every workload.
+
+## Sources and execution
+
+The original [ZX80 manual](https://www.retroisle.com/sinclair/zx80/OriginalDocs/zx80manual.php) and [ZX81 BASIC Programming manual](https://www.retroisle.com/sinclair/zx81/OriginalDocs/zx81manual.php) explain the two interpreters' arrays, arithmetic and memory arrangements. The maintained listings are also run through each named ROM in **Emu198x 0.44.1**, with 16 KiB RAM and real keyword-keyboard entry.
+
+The execution record covers every cell in the non-square room, outside coordinates, rejected IDs and writes, properties, world conversion, customisation and both completed faults. It retains actual display bytes and source/tool/ROM identities. CI checks those records and rejects altered evidence; firmware stays local. This qualifies BASIC map queries on the named configuration, rather than native drawing, a frame deadline or original-hardware timing.
+
+[Maintained source, caller and verification record](https://github.com/code198x/code-samples/tree/57f7ca6ce5380f17fad71f5634afa395264dca92/sinclair-zx80/patterns/basic/rendering/tile-map).
