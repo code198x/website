@@ -16,7 +16,7 @@ test('layered Demoscene artwork fills the viewport without losing its title or r
     const geometry = await banner.evaluate(banner => {
       const scene = banner.querySelector('.band')!.getBoundingClientRect();
       const title = banner.querySelector('.scene-title')!.getBoundingClientRect();
-      const reading = document.querySelector('.wrap')!.getBoundingClientRect();
+      const reading = document.querySelector('[data-page-frame]')!.getBoundingClientRect();
       return { scene: { left: scene.left, right: scene.right },
         title: { left: title.left, right: title.right },
         readingWidth: reading.width, viewport: document.documentElement.clientWidth,
