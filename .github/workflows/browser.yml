@@ -7,22 +7,17 @@ name: Browser tests
 # decisions/browser-bundles-ship-as-npm-packages.md), and code-samples is
 # checked out for the lesson artefacts, as the deploy does.
 #
-# It runs when something that can change a page does; content-only changes
-# (Vault entries, studies, lessons' prose) are covered by ci.yml's content
-# checks. Plan: umbrella docs/plans/2026-10-19-ci-efficiency.md, A7.
+# The suite runs when something that can change a page does; content-only
+# changes (Vault entries, studies, lessons' prose) are covered by ci.yml's
+# content checks. Plan: umbrella docs/plans/2026-10-19-ci-efficiency.md, A7.
+#
+# Pull requests always start this workflow, and the "Browser tests" job
+# always reports. main's ruleset requires that job, so a red suite blocks the
+# merge, and a pull request that skips the suite isn't left waiting for a
+# check that never starts.
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'src/**'
-      - 'public/**'
-      - 'tests/**'
-      - 'scripts/**'
-      - 'package.json'
-      - 'package-lock.json'
-      - 'astro.config.*'
-      - 'playwright.config.*'
-      - '.github/workflows/browser.yml'
   push:
     branches: [main]
     paths:
@@ -39,17 +34,52 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: browser-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # Whether the pull request touches anything that can change a page: the same
+  # paths the push trigger lists. Pushes and manual runs always run the suite.
+  changes:
+    name: Page changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      pages: ${{ steps.files.outputs.pages }}
+    steps:
+      - id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          CHANGED: ${{ github.event.pull_request.changed_files }}
+        run: |
+          if [ "${{ github.event_name }}" != pull_request ]; then
+            echo "pages=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # The files API lists at most 3,000 files; past that, run the suite.
+          if [ "$CHANGED" -ge 3000 ]; then
+            echo "pages=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(gh api --paginate "repos/${{ github.repository }}/pulls/$PR/files" --jq '.[].filename')
+          [ "$(printf '%s\n' "$files" | grep -c .)" -eq "$CHANGED" ] || { echo "::error::Listed $(printf '%s\n' "$files" | grep -c .) of $CHANGED changed files"; exit 1; }
+          if printf '%s\n' "$files" | grep -Eq '^(src/|public/|tests/|scripts/|package\.json$|package-lock\.json$|astro\.config\.|playwright\.config\.|\.github/workflows/browser\.yml$)'; then
+            echo "pages=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "pages=false" >> "$GITHUB_OUTPUT"
+          fi
+
   # Two parallel runs of the same setup: the suite against the dev server, and
   # the tests tagged @built against `astro preview`. Each has room to finish
   # when the runner is slow to install Chromium's system libraries.
   playwright:
     name: Playwright (${{ matrix.server }})
+    needs: changes
+    if: needs.changes.outputs.pages == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -128,3 +158,21 @@ jobs:
             playwright-report
             test-results
           retention-days: 14
+
+  # The one check main's ruleset requires. It passes when the suite passed, or
+  # when the pull request changes nothing the suite covers, and fails otherwise.
+  gate:
+    name: Browser tests
+    needs: [changes, playwright]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          CHANGES: ${{ needs.changes.result }}
+          PAGES: ${{ needs.changes.outputs.pages }}
+          SUITE: ${{ needs.playwright.result }}
+        run: |
+          echo "Page changes: $CHANGES (pages=$PAGES); Playwright: $SUITE"
+          [ "$CHANGES" = success ] || exit 1
+          if [ "$PAGES" = true ]; then [ "$SUITE" = success ]; else [ "$SUITE" = skipped ]; fi
