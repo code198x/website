@@ -1,0 +1,105 @@
+---
+title: "Give a turn a deadline on the Amstrad CPC"
+summary: "Keep untimed turns untimed, then add a reusable clock-driven deadline that can expire without input."
+platform: "amstrad-cpc"
+category: "framework"
+difficulty: "intermediate"
+tags: ["turns", "clocks", "deadlines", "timing", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+
+Press Space and the turn counter advances. Wait a while: nothing happens. Now tap T. Keep your hands off the keyboard and the next turn arrives by itself. A turn can wait for a decision, or it can have a deadline. Those are separate choices.
+
+## Build and try it
+
+```sh
+make -C amstrad-cpc/patterns/assembly/framework/turn-deadline
+```
+
+Use Asm198x 0.0.71, then enter the complete generated `build/loader.bas` in the machine's BASIC and RUN. Start with short Space and T taps. Reset leaves the example. The internal turn count is 16-bit; the two displayed hexadecimal digits show its low byte and wrap after FF.
+
+The loader selects **CPC464 PAL, MODE 1** and lowers HIMEM with `MEMORY &8FBF` before installing anything. The ten-byte caller state starts at `$8FC0`, the ten-byte deadline context at `$8FE0`, and the 326-byte executable at `$9000`. Two diagnostic guard bytes follow the context. Preserve firmware interrupts and keep other allocations out of these reservations.
+
+<figure>
+  <img src="/images/patterns/amstrad-cpc/deadline-working-expiry.png" alt="Native Amstrad CPC output showing turn 02 after an untimed action and a later automatic deadline expiry." width="768" height="288" loading="lazy" />
+  <figcaption>One action advanced the first turn. The enabled deadline advanced the next one without input. Original example captured in Emu198x 0.44.1.</figcaption>
+</figure>
+
+## The reusable part
+
+Reserve a consecutive DEADLINE context of **10 bytes**, then include this routine after your caller. The duration is an unsigned little-endian word at offsets 0 and 1. Set it once, sample your clock and call `deadline_init`. The timer starts disabled.
+
+Pass the current clock to `deadline_poll` each service iteration, including while untimed. HL holds the clock word; AF/DE/HL are clobbered across the interface, while BC/IX/IY are preserved. A call uses two return-address stack bytes. The helper does not change interrupt state or allocate memory. It is one mutable context, so do not call it concurrently.
+
+<CodeFromFile src="cross-platform/patterns/framework/elapsed-deadline/z80.inc" lang="z80" />
+
+| Offset | Meaning |
+| --- | --- |
+| 0–1 | Duration: 0 disables; otherwise 1..65535 ticks |
+| 2–3 | Remaining ticks |
+| 4 | Enabled flag |
+| 5 | Expired in this poll |
+| 6–7 | Elapsed ticks consumed |
+| 8–9 | Previous clock sample |
+
+Call `deadline_start` to copy the duration into remaining time and enable it. Writing zero to offset 4 disables it. Read offset 5 immediately after polling: an expiry is an event for this poll, rather than a flag that stays set forever. The helper disables the expired timer and holds remaining time at zero. It does not end a game turn or decide whether another deadline should start.
+
+## Connect it to a caller
+
+The caller polls time first. If expiry and an action arrive together, expiry wins: it commits one automatic turn, starts a new deadline, and discards that iteration's input. Otherwise Space commits a turn and restarts an **already enabled** timer. An untimed action stays untimed. T switches the timing policy.
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/framework/turn-deadline/dispatch.inc" lang="z80" />
+
+The clock and input adapters provide the machine-specific part:
+
+The CPC already has a clock. `KL TIME PLEASE` at `$BD0D` returns a count in 1/300-second units, so 600 ticks represents two seconds while firmware timekeeping continues. The caller passes its low 16 bits to the helper.
+
+The low word wraps roughly every 218.45 seconds. Poll sooner than that; modular subtraction can handle a rollover, but cannot count an entirely missed one. Disabling interrupts for a long time stops the firmware keeping accurate time, and this firmware call enables interrupts itself. Keep that agreement visible when combining it with other code.
+
+`KM READ CHAR` at `$BB09` checks for a character without waiting. It consumes delivered characters, including buffered input and firmware repeat. A held Space may therefore produce further actions, and a held T may toggle repeatedly. Use short taps here; a physical held/pressed/released reader is a different adapter.
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/framework/turn-deadline/demo.asm" lang="z80" />
+
+The screen redraws only after a turn changes. Replace that feedback with your own drawing or sound, while respecting the memory, port and timing owners. The example clears its text screen and does not restore the previous picture on exit.
+
+## Make it your own
+
+Change DURATION from **600 to 300** and rebuild/re-enter the loader. The independently executed customisation uses this shorter value. The turn expires after half as many ticks, with the same helper code and state allocation.
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/framework/turn-deadline/settings.inc" lang="z80" />
+
+Clock units matter: 100 ticks means different amounts of time with a 50 Hz field counter and a 300 Hz firmware clock. Think of duration as a quantity with a unit, not just a number. The [Maths for Games](/craft/maths-for-games/) material develops the same habit of choosing a representation and checking its range; no extra lesson is required to use this routine.
+
+## Common mistake: waiting for input before handling expiry
+
+**Deliberately broken include below.** This adds a command test before the expiry test. With no input, the timer reaches zero and disables itself, but the displayed turn never advances. The clock kept working; the caller discarded its event.
+
+<CodeFromFile src="amstrad-cpc/patterns/assembly/framework/turn-deadline/mistakes/input-gated-expiry.inc" lang="z80" />
+
+<figure>
+  <img src="/images/patterns/amstrad-cpc/deadline-wrong-expiry.png" alt="Native faulty Amstrad CPC caller still displaying turn 01 after the timer has expired without a new command." width="768" height="288" loading="lazy" />
+  <figcaption>The faulty caller stays on turn 01. The native record confirms remaining=0 and timer disabled. Restore dispatch.inc to handle expiry independently of input; a fresh repaired run advances to turn 02.</figcaption>
+</figure>
+
+Keep this wrong include separate from normal builds. The fix is the working dispatch above: check expiry before asking whether a command arrived.
+
+## Limits and useful next steps
+
+The helper subtracts consecutive 16-bit clock samples modulo 65536. For example, a move from 65530 to 5 means eleven ticks, provided a whole rollover was not missed. A 100-tick deadline then has 89 ticks left. Exact and overshot deadlines both become zero rather than wrapping into a long wait.
+
+It reports one expiry, even after a long overrun. Restarting from the observation time does not replay all the turns that might have happened. A fixed-step accumulator, queued actions, longer clocks and carrying lateness into the next deadline are useful extensions when the game needs them; they are not hidden guarantees here. See [choosing progression and clocks](/patterns/cross-platform/framework/game-loop-choices/) for the wider distinction.
+
+The measured helper is **97 executable bytes** with **10 context bytes**. The complete caller is 326 bytes, plus ten caller-state bytes, two guards, stack, firmware, display and loader requirements. Polling does bounded work rather than looping once per elapsed tick. Firmware calls and display work still need measurement before claiming a whole-game frame budget.
+
+## What was checked
+
+**Code status: assembled and emulator-executed.** Four fresh stock-firmware callers cover normal use, shorter duration, the input-gated mistake and a separate repaired run. The verifier types the complete loader, compares every installed code byte, checks guards and observes independent action, deadline expiry, restart and disable behaviour. The observed clock advances 180 ticks across 30 native frames.
+
+Separate original reset-ROM fixtures execute twelve arithmetic cases, including wrap, exact/overshot expiry and zero/maximum duration. A completed wrong-branch fixture is rejected by the independent arithmetic oracle. Those CPU/RAM fixtures do not establish stock-firmware loading or display timing. No original-hardware result or general emulator certification is claimed.
+
+The [maintained caller and retained evidence](https://github.com/code198x/code-samples/tree/650c8a0bf4af3d95620b5e79c2b4fae19aed289e/amstrad-cpc/patterns/assembly/framework/turn-deadline) include the repeatable commands. The [shared routine contract](https://github.com/code198x/code-samples/blob/650c8a0bf4af3d95620b5e79c2b4fae19aed289e/cross-platform/patterns/framework/elapsed-deadline/README.md) explains the state layout and alternatives.
+
+## Primary references
+
+Amstrad, *CPC464 Firmware* (1984), KM READ CHAR (#BB09), KL TIME PLEASE (#BD0D) and TXT OUTPUT (#BB5A). See the [firmware jumpblock manual](https://cpctech.cpcwiki.de/docs/manual/s968se14.pdf).
