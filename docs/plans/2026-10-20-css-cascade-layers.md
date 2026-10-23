@@ -59,12 +59,16 @@ its own parent commit, because other work lands on main in between.
 | Family and setup pages (#926) | −1,858 | |
 | Machine directory (#932) | −2,724 | |
 | Other work in between | +807 | 407,552 |
+| Support pages: colophon, contribute, press, teaching, standards, 404 (#947) | −3,033 | |
+| Demoscene (#953) | −1,530 | |
+| Timeline (#954) | −665 | |
+| CRASH! Live and start-here (#955) | −1,057 | 401,267 |
 
-Removals so far: 95,844 bytes, 20.1% of the starting point. Net of the
-additions above, the source is 68,435 bytes (14.4%) smaller (main at
-6681adb0d). The primitives were an investment step 6 has to repay; the
-recompositions so far have taken out 21,508 bytes of hand-written layout,
-about four times what the primitives added. Layout alone will not halve the
+Removals so far: 102,129 bytes, 21.5% of the starting point. Net of the
+additions above, the source is 74,720 bytes (15.7%) smaller (main at
+3453be875). The primitives were an investment step 6 has to repay; the
+recompositions so far have taken out 27,793 bytes of hand-written layout,
+about five times what the primitives added. Layout alone will not halve the
 total, which is why step 6b exists.
 
 **Correction.** Until 2026-10-20 evening this table used a line-based count
@@ -80,8 +84,9 @@ the Pattern Library prototype landed.
 
 Recounted on 2026-10-22, with comments stripped and each `@media` block read
 whole: 115 of 202 after step 5 (867856014), and 100 of 206 across 53 files on
-main at 6681adb0d. That count gives 121 of 210 at 7d2dba5, so its figures
-compare with each other, not with the ones above.
+main at 6681adb0d, and 90 of 197 across 47 files at 3453be875. That count
+gives 121 of 210 at 7d2dba5, so its figures compare with each other, not with
+the ones above.
 
 ## Where it stands (main at 7d2dba5)
 
@@ -375,15 +380,30 @@ bytes: layout alone takes about a quarter out of a family's CSS, so halving the
 total also needs the repeated block styles merged.
 
 Progress (2026-10-22): every stylesheet and `<style>` block has left `legacy`
-except 36 rules (30 distinct selectors, 5,413 bytes in ten files). Moving any
+except 36 rules (30 distinct selectors, 5,413 bytes in ten files; 5,133 bytes
+in nine after #947). Moving any
 of them changed a computed style on at least one page: the skip link, the
 nav, menu and footer link states, the breadcrumb links, and a few page
 wrappers. They leave as the pages they style are recomposed. On the
 primitives, each approved from screenshots: the Vault, lessons, Pattern
 Library, catalogue pages, machine pages and module indexes, editorial index
-pages, family and setup pages, and the machine directory. Still to recompose:
-the one-off pages (CRASH! Live, contribute, demoscene, colophon, timeline,
-about, start-here and the rest).
+pages, family and setup pages, and the machine directory.
+
+Progress (2026-10-23): the one-off pages are on the primitives too, each
+approved from screenshots: the support pages (#947), demoscene (#953), the
+timeline (#954), and CRASH! Live with start-here (#955). About and the AI page
+have no layout of their own to recompose. Shapes no primitive makes stay as
+hand-written grids: contribute's four steps (four columns, then two by two),
+the timeline's 0.9:1.1 story panel and 2:1:1 filter form, and start-here's
+unequal and spanning route columns. The recomposition also fixed an overflow:
+on a phone, CRASH! Live's doors and Vault picks ran 4px and 24px past their
+section, because their grids' minimum column was wider than the space; the
+Grid caps that minimum at the space available.
+
+Since #950 main's ruleset requires the browser suite's "Browser tests" gate
+as well as `content-smoke`. `npm run check:release` runs only a subset of the
+browser specs, so a step that removes a class also greps `tests/` for it and
+runs the full suite locally (#953 failed CI on a test that looked up `.wrap`).
 
 Stepped gaps (decided 2026-10-22). Many two-column blocks use a wide gap side
 by side and a much smaller one once stacked (80px, then 32px). A primitive
