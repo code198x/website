@@ -70,7 +70,8 @@ for (const routes of Object.values(families)) for (const width of [390, 1440, 19
       const main = document.querySelector('main#main-content')!;
       const box = (element: Element) => {
         const bounds = element.getBoundingClientRect();
-        return {name: element.className || element.tagName, x: bounds.x, width: bounds.width, inset: parseFloat(getComputedStyle(element).paddingLeft), main: element === main, opening: element.parentElement === main && element.classList.contains('masthead-frame'), integratedCrumb: element.matches("[data-presentation='over-art'] .breadcrumbs-inner")};
+        const style = getComputedStyle(element);
+        return {name: element.className || element.tagName, x: bounds.x, width: bounds.width, inset: parseFloat(style.paddingLeft), top: parseFloat(style.paddingTop) + parseFloat(style.marginTop), main: element === main, opening: element.parentElement === main && element.classList.contains('masthead-frame'), integratedCrumb: element.matches("[data-presentation='over-art'] .breadcrumbs-inner"), sitsOnBar: element.matches('.opening-band,.systems-opening,.article-opening[data-art]')};
       };
       return {
         frames: [...document.querySelectorAll('[data-site-frame]')].filter(element => element.getBoundingClientRect().width).map(box),
@@ -94,6 +95,11 @@ for (const routes of Object.values(families)) for (const width of [390, 1440, 19
     for (const root of geometry.roots.filter(root => !root.name.includes('masthead-frame'))) {
       expect(root.inset, `${route}: ${root.name} gutter`).toBeCloseTo(gutter, 1);
     }
+    // The breadcrumb bar owns the space above the first block (site-frame.css),
+    // so the block adds none of its own; an opening that sits on the bar is the
+    // exception.
+    const first = geometry.roots[0];
+    if (!first.sitsOnBar) expect(first.top, `${route}: ${first.name} top spacing`).toBe(0);
     for (const frame of geometry.frames.filter(frame => /breadcrumbs-inner|footer-container/.test(frame.name))) {
       expect(frame.inset, `${route}: ${frame.name} gutter`).toBeCloseTo(frame.integratedCrumb ? 0 : gutter, 1);
     }

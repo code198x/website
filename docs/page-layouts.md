@@ -92,15 +92,18 @@ before deleting one.
 Every site rule sits in a cascade layer. `src/components/LayerOrder.astro`
 declares the order, and must be the first style in `<head>` (Layout renders it,
 and so must any document that skips Layout, such as the catalogue): `kit,
-base, composition, utilities, blocks, exceptions, legacy`, lowest first. A
+base, composition, utilities, blocks, exceptions`, lowest first. A
 later layer wins regardless of specificity. `tests/css-layers.spec.ts` checks
 that the statement reaches the built page before any stylesheet.
 
 - `base` holds element defaults, `html`, `body` and the `:root` tokens.
-  `composition` holds the layout primitives and the page frame. Everything
-  else is still in `legacy`, which outranks both, until
-  `docs/plans/2026-10-20-css-cascade-layers.md` moves it into `blocks` and
-  `exceptions`.
+  `composition` holds the layout primitives and the page frame
+  (`site-frame.css`): the gutter, width and first-block spacing of every
+  child of `<main>`. `blocks` holds each component's own look, and
+  `exceptions` its variations, keyed on data attributes.
+- A block does not set the frame. Its rules outrank composition, so a page
+  wrapper that sets its own width, side padding or top padding overrides the
+  shared frame; set only what the frame leaves alone, such as bottom padding.
 - Wrap new CSS in a layer. CSS outside every layer beats every layer, so an
   unwrapped rule silently outranks the whole site.
 - The exception is a rule that overrides a 198x-ui component, either through
