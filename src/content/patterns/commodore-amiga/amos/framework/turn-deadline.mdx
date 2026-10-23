@@ -1,0 +1,130 @@
+---
+title: "Give an AMOS turn an optional deadline"
+summary: "Let the player think, enable a ticking deadline when the rules need it, and keep time moving while input waits."
+platform: commodore-amiga
+category: framework
+difficulty: intermediate
+tags: [loops, turns, deadlines, timers, basic, amos]
+---
+
+import CodeFromFile from '../../../../../components/CodeFromFile.astro';
+import Figure from '../../../../../components/Figure.astro';
+
+A takes a turn. Then nothing happens until you decide again. Press T and the rules change: wait too long and the game takes the next turn for you. Press T again to give yourself all the thinking time you need.
+
+That is a useful choice for a puzzle, an adventure with a timed hazard, or a game which only puts pressure on the player during certain encounters. **A turn-based game can have a timer. It does not have to.** This AMOS Professional version adds one to the [existing command rule](/patterns/commodore-amiga/amos/framework/command-loop/) without changing that rule.
+
+<Figure src="/images/patterns/commodore-amiga/amos-deadline-working.png" alt="AMOS displays Count 3 and Timer 1 after two player actions and one automatic turn." caption="Two actions, then one turn without a key press. Timer 1 means the next deadline is active." />
+
+## Put it in your project
+
+The [source folder](https://github.com/code198x/code-samples/tree/7680b82af872e32730ed2a595f4ecec4d64c2545/commodore-amiga/patterns/amos/framework/turn-deadline) contains the modules and a Makefile. Run `make`, then **Merge ASCII into a blank AMOS project** from `build/working.asc`. F2 checks syntax; F1 runs. These are plain ASCII files, not tokenised AMOS saves. Import another complete variant into a fresh blank project, so its labels do not collide with the old ones.
+
+A advances; T toggles timing; Q leaves. Holding A counts once until release. The initial duration is 200 ticks, roughly four seconds on the checked PAL setup. Timing starts disabled. An untimed action stays untimed.
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/turn-deadline/caller.amos" lang="amos" />
+
+The builder puts the caller first, then appends `routines.amos`, `clock.amos`, `input.amos`, `monitor.amos` and the existing command-loop `routines.amos`. Keep those routines **after End**; falling into a `Return` without a matching `Gosub` is an error. The old file supplies `PL_ADVANCE` unchanged. Its blocking `PL_READ_FRESH` is still defined, but this caller uses the new nonblocking reader.
+
+The bank address and row of digits in this demonstration support verification. They are optional diagnostics, explained below, rather than a game interface you need to reproduce.
+
+## The reusable deadline
+
+The helper needs a duration and successive clock samples. It does not need to know whether an expired turn moves a monster, drops a stone or simply increments our counter.
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/turn-deadline/routines.amos" lang="amos" />
+
+| Value | Who supplies it, and what it means |
+| --- | --- |
+| `PL_DL_DURATION` | Caller: whole ticks, 0..65535. Zero disables. |
+| `PL_DL_NOW` | Caller: current clock sample, 0..65535. |
+| `PL_DL_PREVIOUS` | Helper: last sample, retained between calls. |
+| `PL_DL_LEFT` | Helper: remaining ticks, clamped at zero. |
+| `PL_DL_ACTIVE` | Helper: 0 or 1. |
+| `PL_DL_EXPIRED` | Helper: expiry event for this poll, 0 or 1. |
+| `PL_DL_ELAPSED` | Helper: elapsed ticks from this poll. |
+
+Set duration and current time, then call `PL_DL_INIT` once. It starts disabled. `PL_DL_START` copies the duration into remaining time and enables a nonzero duration. It keeps the latest sampled baseline, so poll immediately before starting when the start instant matters.
+
+Supply a fresh sample and call `PL_DL_POLL` every service iteration, **even while disabled**. Consume `PL_DL_EXPIRED` immediately: another poll or start clears it. Expiry clamps remaining time to zero and disables the helper. The caller decides what happens next; ours advances one turn and starts another deadline.
+
+These are seven ordinary signed 32-bit AMOS integer globals. Keep their names and labels reserved, or rename the whole group consistently. One group is one mutable deadline; multiple independent timers need separate state. This helper uses normal `Gosub`/`Return` frames and is not re-entrant. It allocates no bank, array or string and owns no screen, input queue or interrupt vector.
+
+## Time can wrap without going backwards
+
+Suppose the previous sample was 65530 and the next is 5. Eleven ticks passed. Ordinary subtraction gives -65525; adding 65536 recovers eleven. That is the modular arithmetic behind the wrap correction, with a direct connection to [Maths for Games](/craft/maths-for-games/).
+
+The intermediate difference fits in a signed 32-bit AMOS integer. Once corrected, elapsed and remaining are nonnegative within our bounds, so the ordinary comparisons work. This detail matters when porting the routine: a language with a single 16-bit cell needs an unsigned comparison for the same range.
+
+Poll before a full 65536-tick cycle passes. A missed whole cycle cannot be recovered from two low-word samples. Zero duration disables; it does not stand for a full cycle. An external clock reset needs reinitialisation. An overdue poll produces **one expiry event**, rather than replaying every turn you missed.
+
+## The clock and input keep separate jobs
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/turn-deadline/clock.amos" lang="amos" />
+
+This adapter reads the low 16 bits of AMOS `Timer`. In the checked PAL runtime it advances once per video field, nominally fifty ticks per second. Our low-word adapter wraps after roughly 21 minutes 51 seconds. It never resets the shared `Timer`; coordinate any other code which assigns it. This is not a claim about the full Timer range or civil-time accuracy.
+
+The caller's `Wait Vbl` paces servicing. The clock still measures elapsed ticks between samples. Lengthy drawing delays when the game notices expiry; restarting at observation time also introduces drift. Carrying lateness, using a fixed-step accumulator or sampling a longer clock are possible later versions when the game needs them.
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/turn-deadline/input.amos" lang="amos" />
+
+Initialise `PL_LASTSCAN=-1` once. While the last delivered key remains held, this reader returns an empty `PL_KEY$` immediately, leaving time free to progress. On release it clears buffered repeats and typeahead, then accepts another `Inkey$` character and remembers its scan code. `Upper$` accepts lower-case commands too.
+
+That clearing policy belongs to this reader. Another module cannot independently consume the same queue. Brief presses between samples and overlapping keys are not guaranteed queued actions. Use another input policy if preserving every typed character matters.
+
+**Expiry wins** when a command arrives on the same service iteration. The caller discards that command, including T or Q. Otherwise A advances the existing bounded counter and restarts an already active deadline. T disables and clears remaining time, or starts a fresh duration. It does not preserve a paused remainder. The counter and expiry count wrap within 0..255.
+
+## Make the pressure your own
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/turn-deadline/customise.amos" lang="amos" />
+
+This caller changes only the duration from 200 to 100 ticks: roughly two seconds rather than four. `build/custom.asc` uses the same helper, reader and assets, and its native trace expires after the shorter interval. Choose units deliberately: a number of clock ticks is not automatically a number of game turns.
+
+You could instead disable timing in a safe room, vary the duration for each encounter, or choose to end a turn without automatically restarting. Those are caller policies. If you change the numeric bounds, clock source or input arbitration, check those contracts again.
+
+## When the clock moves but the deadline does not
+
+**Deliberately broken service:** this extra assignment destroys the interval just before the helper measures it.
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/turn-deadline/mistakes/reset-baseline.amos" lang="amos" />
+
+Now previous time always equals current time. Elapsed stays zero, remaining stays 200, and no automatic turn arrives even though `Timer` advances. A works, T enables timing, and the screen looks plausible. The fault is in the sample history.
+
+<Figure src="/images/patterns/commodore-amiga/amos-deadline-wrong.png" alt="The deliberately broken AMOS caller remains at Count 1 with Timer 1 after more than its deadline has elapsed." caption="The faulty service never spends any remaining time. The retained clock and bank observations expose why." />
+
+Restore `clock.amos`, generate `build/repaired.asc`, and import it into a blank project. Two player actions followed by waiting give Count 3 with one expiry. That repaired path was run separately.
+
+There is another easy mistake: changing the helper's `<=0` test to `<0`. At exact expiry, zero remaining time incorrectly stays active for another poll. The arithmetic fixture runs sixteen synthetic cases through the interpreter; the deliberate strict-comparison variant completes but fails three exact-expiry cases. Restoring `<=0` repairs those boundaries. A compile failure is not evidence of this intended fault.
+
+## Own only the resources you need
+
+The complete caller clears the current screen, changes palette entries 0/1 and paper/pen, and hides the pointer. Q erases its diagnostic bank and restores pointer visibility. It does not restore the previous pixels or palette; an abnormal interruption also bypasses that normal exit path. Adapt the setup when another part of your game owns the screen.
+
+<details>
+<summary>The optional 32-byte observer</summary>
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/turn-deadline/monitor.amos" lang="amos" />
+
+The caller reserves work bank 1 and obtains its address with `Start(1)`. Seven two-byte fields hold turn, expiry count, active, remaining, clock, duration and elapsed. A guard sits at offset 28; marker 239 at offset 31 identifies a completed observation. This is a qualification aid, not an interrupt-safe synchronisation API.
+
+Bank 1 normally holds Sprite/Bob images. Do not overlap that or another owner; choose a free bank of 5 or above in a larger game. Renumber `Reserve`, `Start` and `Erase` together. To omit the observer, remove the reserve/address/guard/Bank and digit-display lines, `Gosub PL_MONITOR`, `Erase 1` and the monitor module. The deadline helper needs none of them.
+
+</details>
+
+## Costs and alternatives
+
+The seven helper integers hold **28 bytes of numeric payload**. AMOS names, labels, interpreter tables and return frames add overhead; their native storage has not been isolated here. Source-file lengths do not measure tokenised or compiled code size. The resident runtime, strings and screen also cost memory, so this does not establish a minimum-RAM Amiga configuration.
+
+The diagnostic caller separately requests a 32-byte work bank. The arithmetic fixture reports `Length(1)=160` for its requested 160-byte results bank. Bank headers are additional. Its normal observer writes seven two-byte fields and two one-byte markers per poll: sixteen explicit data bytes, or 800 bytes at fifty polls per second. That is a store count, not a measured bus-bandwidth or frame-time claim. Omit the diagnostics to save those stores.
+
+If the world can simply wait, the original [AMOS command loop](/patterns/commodore-amiga/amos/framework/command-loop/) is smaller in responsibility. For continuous simulation, compare the [loop choices](/patterns/cross-platform/framework/game-loop-choices/) and the [Amiga assembly loop](/patterns/commodore-amiga/assembly/framework/vblank-game-loop/). Using ordinary AMOS services here is a different ownership choice from taking over custom-chip timing.
+
+## What was checked
+
+All four public callers were imported and run separately in **AMOS Professional 2.00**, using released **Emu198x 0.44.1**, a PAL A1200, 2 MiB chip RAM, no fast RAM and the recorded Kickstart 3.1 identity. Actual keys exercised untimed idle, a 100-field held action, enable/progression, restart, expiry without input, disable/idle and normal exit. Native counter pixels agree with guarded work-bank values. Two further imports exercised sixteen arithmetic cases and the exact-boundary fault.
+
+The [retained evidence and reproducible runner](https://github.com/code198x/code-samples/tree/7680b82af872e32730ed2a595f4ecec4d64c2545/commodore-amiga/patterns/amos/framework/turn-deadline/verification) bind the source, tools, firmware and runtime identities. CI rechecks that record and its corruption controls; it does not distribute or boot the licensed runtime. This qualifies the named interpreter and workload, rather than original hardware, another compiler, NTSC or minimum memory. The synthetic rollover checks are not a twenty-minute wall-clock rollover test.
+
+Both pictures show the sample's native output. Their exports remove only duplicated framebuffer columns, verified byte-for-byte; no unique pixels are removed or invented. Captured with Emu198x 0.44.1 running AMOS Professional 2.00.
+
+The original *AMOS Professional User Guide* explains [Timer](https://amospromanual.dev/05-03-maths.html), [structured control](https://amospromanual.dev/05-04-control-structures.html), [memory banks](https://amospromanual.dev/05-09-memory-banks.html), [keyboard input](https://amospromanual.dev/10-01-using-the-keyboard.html) and [memory access](https://amospromanual.dev/14-appendix-a-machine-code.html). Consult that reference before changing numeric types or resource ownership.
