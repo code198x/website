@@ -1,6 +1,6 @@
 ---
 title: "Query a Room in ZX81 BASIC"
-summary: "Read and change tiles, look up their properties and convert world positions with reusable routines for a 16 KiB ZX81."
+summary: "Read and change tiles, look up their properties and convert world positions with reusable routines for expanded and stock 1 KiB ZX81 configurations."
 platform: "sinclair-zx81"
 category: "rendering"
 difficulty: "intermediate"
@@ -15,7 +15,7 @@ import Figure from '@components/Figure.astro';
 
 Before your game draws a wall, it needs to know where the wall is. A map can answer that question without touching the screen. Set column C to 0 and row R to 1, call line 1000, and this room returns **tile 3 with success flag E=1**.
 
-These are reusable **ZX81 BASIC** routines for a machine with **16 KiB RAM** and its original 8 KiB ROM. The complete readable example uses expanded RAM; it is not a stock 1 KiB listing. The [assembly version](/patterns/sinclair-zx81/assembly/rendering/tile-map/) has a separate calling contract and execution record.
+These are reusable **ZX81 BASIC** routines. The unchanged readable public caller has now run on **4 KiB RAM** with the original ROM. Keep it for its flexible descriptors and explicit contracts; a separately qualified **stock 1 KiB** option appears below. The [assembly version](/patterns/sinclair-zx81/assembly/rendering/tile-map/) has its own calling contract and execution record.
 
 ## Put the pieces in one program
 
@@ -102,10 +102,71 @@ The diagnostic uses the normal display-serving mode. FAST can give computation m
 
 Each successful read calculates a row offset. Precomputed row offsets exchange storage and setup work for a different query path. Byte or packed maps can reduce data RAM, but extraction and updates become more involved. The assembly entry offers a separately verified byte-map route. None of these alternatives is automatically faster for every workload.
 
+## How little RAM does it actually need?
+
+The earlier 16 KiB setting was a diagnostic configuration, not a measured minimum. We entered the unchanged listings through the ROM and counted the stored, tokenised lines:
+
+| Component | Bytes |
+| --- | ---: |
+| Reusable routines | 659 |
+| Explicit room initialiser | 1,086 |
+| Public caller | 285 |
+| Total program | **2,030** |
+
+ZX81 BASIC keeps a marker and a five-byte numeric value alongside each number in the listing. These counts include that hidden storage, line headers and terminators; the size of the text file would give the wrong answer.
+
+The complete public caller succeeds on **4 KiB**. The ROM rejects entry of the unchanged listing on **2 KiB** with error 4: out of memory. These are exercised configurations, rather than an exact byte-by-byte minimum.
+
+On 4 KiB, the stopped caller has 291 bytes of variables, a 793-byte display file and a separate 125-byte system area. The smallest gap between calculator-stack end and CPU stack pointer observed at frame checkpoints is **796 bytes**; at STOP it is 843 bytes.
+
+Those gaps are sampled headroom, not an instruction-level peak or a promise that your game has that much spare space. Editing, INPUT, extra variables, nested calls and output all need workspace. The measurements retain the actual system pointers and CPU stack pointer alongside the program bytes.
+
+## Try the stock 1 KiB version
+
+ZX81 benefits from a different representation. Keep a tile ID in each character of M$, instead of a five-byte numeric array element:
+
+<CodeFromFile src="sinclair-zx81/patterns/basic/rendering/tile-map/compact/room.bas" lang="basic" title="A 35-character room" />
+<CodeFromFile src="sinclair-zx81/patterns/basic/rendering/tile-map/compact/routines.bas" lang="basic" title="Checked string-map read and write" />
+<CodeFromFile src="sinclair-zx81/patterns/basic/rendering/tile-map/compact/extras.bas" lang="basic" title="Fixed properties and world conversion" />
+<CodeFromFile src="sinclair-zx81/patterns/basic/rendering/tile-map/compact/demo.bas" lang="basic" title="Stock caller: read, write, read back" />
+
+Merge all four fragments, then RUN. On 1 KiB, use CLS at the command prompt between entered lines when the automatic listing crowds the workspace: that listing shares the same RAM. In the verified fresh fault/repair entry, CLS reclaimed up to 407 display bytes without changing the stored program. The caller prints **3, 2, 2** and stops at line 95. Do not combine these fragments with the readable version: the contracts and line numbers differ.
+
+<Figure src="/images/sinclair-zx81/patterns/basic-map/compact-caller.png" alt="ZX81 prints 3, 2 and 2 after the compact caller reads, writes and reads back a tile on stock 1 KiB." caption="Four reusable operations fit the stock machine, with a more specialised contract." fit="column" />
+
+| Call | Supply | Read back |
+| --- | --- | --- |
+| GOSUB 100 | C,R | T=ID, or -1 on failure; D=string subscript on success |
+| GOSUB 200 | C,R,V | T=V on success, -1 on failure; rejected writes leave M$ unchanged |
+| GOSUB 300 | T | F=property, or -1 on failure |
+| GOSUB 400 | X,Y | C=INT(X/8), R=INT(Y/8), then T from the reader; negative input returns T=-1 before conversion |
+
+There is **no E flag**. Test T>=0 for read/write/world calls, F>=0 for properties. Coordinates and IDs must be whole numbers; the guards reject fractions. World positions may contain fractions. An early return leaves other scratch unchanged. The caller owns M$ and must initialise exactly 35 characters representing IDs 0–3. C/R/V/X/Y are arguments; T/D/F are results and scratch. These shared variables make calls non-reentrant.
+
+The complete tokenised program is **683 bytes**: room 46, caller 117, read/write 304 and extras 216. The room string occupies 38 variable bytes including its header, compared with 175 bytes for the readable numeric map's elements alone. The public caller stops with an observed 101-byte stack-to-workspace gap.
+
+The trade-off is visible in the code: width 7, height 5, four properties and cell size 8 are fixed. This room repeats 0,1,2,3 throughout; it omits the readable room's irregular last row and guard. CODE/CHR$ perform conversion on access. Saving storage does not establish a speed improvement.
+
+Replace room digits without changing the length or introducing IDs above 3. Changing dimensions requires bounds, row stride, string length and world extent to agree. To change the goal property from 4 to 5, replace line 340:
+
+<CodeFromFile src="sinclair-zx81/patterns/basic/rendering/tile-map/compact/customise.bas" lang="basic" title="A compact closed exit" />
+
+Use the readable version when configurable descriptors, arbitrary properties or a larger room matter more than the stock limit.
+
+### Mistakes still cost real data
+
+The stock verification uses a small real BASIC INPUT/GOSUB caller, replacing the public demonstration. It checks every cell, room edges, writes and rejection, properties, world conversion, customisation and deliberately broken lines. ZX81 also rejects fractional cell coordinates and IDs. Immediate commands do not replace a program's GOSUB return context. Each fault and repair starts in a fresh ROM session; an INPUT prompt is not the listing editor.
+
+With a six-cell stride, reading (0,2) returns **0 instead of 2**. A row-zero check would miss it. Removing the return guard after a failed lookup lets an outside write damage the first cell. Restoring the stride and guard fixes those symptoms; always check both returned status and unchanged storage after rejection.
+
+<Figure src="/images/sinclair-zx81/patterns/basic-map/compact-bad-write.png" alt="Stock BASIC verification displays the result of a deliberately invalid write after its return guard was removed." caption="The observer also reads the actual variable storage: the failed write changed the first map cell from 0 to 1. Restoring the guard leaves it at 0." fit="column" />
+
+[Compact caller, contracts and retained memory records](https://github.com/code198x/code-samples/tree/829a0e098da2e5bf99b7385244d7b06dff650805/sinclair-zx81/patterns/basic/rendering/tile-map/compact/).
+
 ## Sources and execution
 
 The original [ZX80 manual](https://www.retroisle.com/sinclair/zx80/OriginalDocs/zx80manual.php) and [ZX81 BASIC Programming manual](https://www.retroisle.com/sinclair/zx81/OriginalDocs/zx81manual.php) explain the two interpreters' arrays, arithmetic and memory arrangements. The maintained listings are also run through each named ROM in **Emu198x 0.44.1**, with 16 KiB RAM and real keyword-keyboard entry.
 
 The execution record covers every cell in the non-square room, outside coordinates, rejected IDs and writes, properties, world conversion, customisation and both completed faults. It retains actual display bytes and source/tool/ROM identities. CI checks those records and rejects altered evidence; firmware stays local. This qualifies BASIC map queries on the named configuration, rather than native drawing, a frame deadline or original-hardware timing.
 
-[Maintained source, caller and verification record](https://github.com/code198x/code-samples/tree/57f7ca6ce5380f17fad71f5634afa395264dca92/sinclair-zx81/patterns/basic/rendering/tile-map).
+[Maintained source, caller and verification record](https://github.com/code198x/code-samples/tree/829a0e098da2e5bf99b7385244d7b06dff650805/sinclair-zx81/patterns/basic/rendering/tile-map).
