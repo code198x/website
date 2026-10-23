@@ -1,0 +1,116 @@
+---
+title: "Give a BASIC turn a deadline on VIC-20"
+summary: "Use a reusable elapsed-clock helper, keep untimed play valid, and let a deadline expire without blocking on input."
+platform: "commodore-vic-20"
+category: "framework"
+difficulty: "intermediate"
+tags: ["BASIC", "turns", "deadlines", "clocks", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press Space: one turn. Wait: the world waits with you. Now press T and leave the keyboard alone. After 240 firmware ticks, the next turn arrives by itself. Your adventure might give a player time to escape a flooding room; your board game might put a limit on a move. The turn rule can stay the same while its timing changes.
+
+<Figure src="/images/patterns/commodore-vic-20/basic-deadline-working.png" alt="Native VIC-20 BASIC caller showing TURN 3, E 1 and T 1: one automatic expiry and timing enabled." caption="Two Space actions, then an automatic third turn. Complete caller captured in Emu198x 0.44.2." />
+
+## Try the complete caller
+
+Run `make -C commodore-vic-20/patterns/basic/framework/turn-deadline` in code-samples. Enter the generated `build/demo.bas` as one numbered program, then type RUN. Space advances, T switches timing on or off, and Q ends the example. Use brief taps at first. The status shows the turn, expiry count and active flag; it is not a live countdown.
+
+Use an **unexpanded 5 KiB PAL VIC-20**, with the recorded stock BASIC V2 and KERNAL ROMs. The optional diagnostic observer borrows **$033C–$034F (828–847)**, part of the inactive cassette buffer. The native arithmetic fixture borrows ninety-nine bytes from the same buffer; both fit its 192-byte allocation. **Do not perform tape I/O or share that buffer while using the observer.** It is outside the BASIC program/variable/string heap. Q leaves the screen and observer bytes behind. The reusable helper itself needs no fixed RAM reservation.
+
+<CodeFromFile src="commodore-vic-20/patterns/basic/framework/turn-deadline/caller.bas" lang="basic" title="The caller owns the game policy" />
+
+Combine this caller, the existing C64 command-loop rule below, its maintained deadline `routines.bas`, `clock.bas`, `monitor.bas`, and the compact PET/VIC-20 `presentation.bas`. The Makefile does that for you. BASIC executes by line number, so reserve the shown ranges and update every GOSUB/GOTO target if you renumber. Reset/NEW before entering a complete alternative: old numbered lines must not survive accidentally.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/command-loop/routines.bas" lang="basic" title="A bounded turn update, independent of time" />
+
+This is the existing untimed command-loop routine, unchanged. The caller supplies A$="A" for Space and expiry. S stays in 0..255 and N wraps within 0..255. Both counters are small demonstration state: replace their effects with your own game rules.
+
+## Take the reusable helper
+
+The helper does no input, drawing or turn advancement. It accepts two samples of a clock, subtracts the elapsed ticks and reports whether time ran out.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/turn-deadline/routines.bas" lang="basic" title="Initialise, start and poll a deadline" />
+
+Set `DU` to your duration and `DC` to the current clock, then call **3000 once**. This initialises disabled state and its previous sample. Call **3100** to start or restart: it copies duration into remaining time. Zero duration leaves it disabled.
+
+Each service iteration, including while disabled, set `DC` and call **3200**. Read `DX` immediately afterwards: 1 means this poll expired. The helper disables that deadline and clamps remaining to zero; the next poll clears the event. Your caller decides whether to spend a turn or start another deadline.
+
+| Global | Contract |
+| --- | --- |
+| DU | Caller duration: whole ticks, 0..5183999; 0 disables |
+| DC | Caller current clock: whole ticks, 0..5183999 |
+| DP | Helper-owned previous sample |
+| DR | Helper-owned remaining ticks, saturated at zero |
+| DA | Helper-owned active flag, 0 or 1 |
+| DX | Helper-owned expiry event, 0 or 1 |
+| DE | Helper-owned elapsed ticks from this poll |
+
+These are BASIC globals. Rename them consistently to avoid collisions. Only the first two characters distinguish VIC-20 names. These ordinary numeric variables use five-byte floating-point values; all the whole numbers in the stated ranges are represented exactly. The helper reserves no fixed RAM, IRQ vector, hardware timer, array or string. It uses BASIC GOSUB/RETURN frames and is one mutable context, rather than a re-entrant service.
+
+Starting preserves the most recent sampled baseline. Poll immediately before starting if that instant matters. Disable by setting `DA=0`. There is no preserved pause state: the demo clears remaining on disable and gives a fresh duration on re-enable.
+
+## Read a clock without waiting for a command
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/turn-deadline/clock.bas" lang="basic" title="The machine-specific clock adapter" />
+
+TI reads the KERNAL jiffy clock: nominal **60 ticks per second**. A PAL video field is 50 Hz, so a field is not a TI tick. The native BASIC caller is independently observed on the unexpanded PAL VIC-20; sharing syntax with C64 is not its execution evidence. The firmware counter resets at **5,184,000 ticks**. Keep its normal interrupt service running. Tape I/O can interfere with timing and also conflicts with this observer’s buffer; assigning TI$ changes the shared clock. This adapter never resets it.
+
+Poll before one whole clock cycle passes. 5,183,994 → 5 is eleven ticks; missing an entire extra cycle would give the same samples. A clock reset is not a rollover. Reinitialise your context after another owner changes the clock. This adapter never resets it.
+
+`GET K$` reads without waiting for Return. It consumes characters delivered by firmware, including typeahead and repeat. A held key is not promised to count once. The [untimed command loop](/patterns/commodore-vic-20/basic/framework/command-loop/) can use blocking INPUT because its world is allowed to wait. Putting blocking INPUT into this caller would also stop deadline service. A clock does not make BASIC run two tasks at once.
+
+The caller polls, reads one character, then handles expiry. **Expiry wins** if both arrive in the same iteration, discarding that character, including T or Q. Otherwise Space advances once and restarts an already active deadline. An untimed action stays untimed. An overdue deadline produces one turn; it does not replay every turn that might have happened during a delay.
+
+## Make it your own
+
+<CodeFromFile src="commodore-vic-20/patterns/basic/framework/turn-deadline/customise.bas" lang="basic" title="The same helper with half the duration" />
+
+This changes only `DU=240` to `DU=120`: roughly four seconds becomes two. The units matter as much as the number. [Maths for Games](/craft/maths-for-games/) explores the same habits: choose a representation, give quantities units and check where arithmetic wraps. Subtraction here is elapsed time, not frame pacing.
+
+## Common mistake: resetting the baseline every time
+
+**Deliberately broken adapter below.** It stores “now” as the previous sample just before asking how much time elapsed. Every subtraction becomes zero.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/turn-deadline/mistakes/reset-baseline.bas" lang="basic" title="Broken: throwing away elapsed time before polling" />
+
+<Figure src="/images/patterns/commodore-vic-20/basic-deadline-wrong.png" alt="Faulty native VIC-20 BASIC caller still showing TURN 1, zero expiries and timing enabled after more than a full duration." caption="The clock advanced, but the faulty adapter kept replacing the baseline. Remaining time stayed at the full duration and the automatic turn never arrived." />
+
+Restore `clock.bas` to remove the assignment to `DP`. A separate fresh repaired run advances normally. Keep this replacement out of working builds: its line number intentionally replaces the correct adapter.
+
+## What does it cost?
+
+The routine performs bounded work per poll; it does not loop once per elapsed tick. Interpretation, GOSUB lookup and your other work still determine how often you can service it. A native clock accumulates time while BASIC draws or calculates, but expiry is noticed only when you poll again. Restarting at observation time also introduces drift.
+
+The native interpreter stored **191 bytes of tokenised helper lines**, including line headers. The complete instrumented program occupies **1,016 tokenised bytes**. Its observed scalar table occupies **133 bytes**, with **four string bytes** at the checked snapshot; the free BASIC gap is **2,430 bytes**. These are native pointers and allocations, not peak heap/stack measurements. The helper’s seven numeric globals occupy seven seven-byte variable entries, **49 bytes** including names and values.
+
+The optional observer accounts for **274 tokenised bytes** inside that program plus its borrowed **20-byte buffer**. The recorded instrumented idle caller commonly samples intervals around **17–18 ticks**. That includes input and serialisation work; it is not the cost of the helper alone. The shorter-duration program has the same size; the deliberately wrong baseline adapter adds six tokenised bytes.
+
+The optional 20-byte observer adds six scratch/monitor globals and several byte writes every iteration. Remove GOSUB 9000, its guards, MB/LC initialisation and `monitor.bas` when you do not need it. It is deliberately readable, rather than a fast game implementation. The caller redraws only on actions, toggles and expiry. No whole-game frame budget follows from these measurements.
+
+<details>
+<summary>Optional monitor used by the complete caller</summary>
+
+This is diagnostic feedback, separate from the deadline helper. Include it for the complete caller above, or remove the observer calls and reservations as described before omitting it.
+
+<CodeFromFile src="commodore-pet/patterns/basic/framework/turn-deadline/presentation.bas" lang="basic" title="Compact presentation shared by these two callers" />
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/turn-deadline/monitor.bas" lang="basic" title="Optional diagnostic snapshot" />
+
+</details>
+
+Longer clocks, several independent deadlines, preserved pause time, carrying lateness into the next turn, queued commands or fixed-step catch-up are useful extensions when a game needs them. Each changes either the policy or the resource cost. See [choosing progression and clocks](/patterns/cross-platform/framework/game-loop-choices/) for those distinctions.
+
+## What was checked
+
+**Code status: emulator-executed BASIC on the named configuration.** Six independent stock-firmware boots cover working, half-duration, wrong baseline, repair, boundaries and wrong equality. Source is typed through the real keyboard path. The observer checks coherent guarded state, idle/action, no-input expiry, active restart and disable; it also records the complete native tokenised program, line inventory, BASIC pointers and variable entries.
+
+A second caller supplies twelve DATA cases to the same helper, including zero/one/maximum duration, exact and overdue expiry, an ordinary low-word crossing and the firmware clock modulus. Changing > to >= completes the fixture but fails the independent oracle. Those supplied samples qualify arithmetic, not a real-time wait across a whole rollover.
+
+The retained checker independently decodes the visible native digits and rejects **28 falsified records** across PET and VIC-20. The [maintained source and evidence](https://github.com/code198x/code-samples/tree/e564882a114d0b61eea31931af77f9ed6a8027f0/commodore-vic-20/patterns/basic/framework/turn-deadline) bind source, tools and firmware hashes. [The shared helper](https://github.com/code198x/code-samples/blob/e564882a114d0b61eea31931af77f9ed6a8027f0/commodore-64/patterns/basic/framework/turn-deadline/routines.bas) remains maintained once. ROMs are not redistributed. No original-hardware, other-ROM/region, peak-memory or whole-game performance claim follows from these runs.
+
+For buffer ownership and BASIC pointers, see the [PET User Manual’s cassette guidance](https://www.manualslib.com/manual/1024284/Commodore-Pet.html?page=343) and [memory map](https://www.manualslib.com/manual/1024284/Commodore-Pet.html?page=348), and the VIC-20 Programmer’s Reference Guide memory map. A borrowed firmware buffer is useful only while its original owner is inactive.
+
+Compare the [separate VIC-20 assembly deadline](/patterns/commodore-vic-20/assembly/framework/turn-deadline/) for its different state representation, integration and cost. The [untimed VIC-20 command loop](/patterns/commodore-vic-20/basic/framework/command-loop/) remains useful without a clock.
