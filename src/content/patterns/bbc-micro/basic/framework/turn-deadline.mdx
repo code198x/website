@@ -1,0 +1,112 @@
+---
+title: "Give a BASIC turn a deadline on BBC Micro"
+summary: "Use a reusable elapsed-clock helper, keep untimed play valid, and let a deadline expire without blocking on input."
+platform: "bbc-micro"
+category: "framework"
+difficulty: "intermediate"
+tags: ["BASIC", "turns", "deadlines", "clocks", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press Space: one turn. Wait: the world waits with you. Now press T and leave the keyboard alone. Four seconds later, the next turn arrives by itself. Your adventure might give a player time to escape a flooding room; your board game might put a limit on a move. The turn rule can stay the same while its timing changes.
+
+<Figure src="/images/patterns/bbc-micro/basic-deadline-working.png" alt="Native BBC Micro BASIC caller showing TURN 3, one automatic expiry and timing enabled." caption="Two Space actions, then an automatic third turn. Original example captured in Emu198x 0.44.1." />
+
+## Try the complete caller
+
+Run `make -C bbc-micro/patterns/basic/framework/turn-deadline` in code-samples. Enter the generated `build/demo.bas` as one numbered program, then type RUN. Space advances, T switches timing on or off, and Q ends the example. Use brief taps at first. The status shows the turn, expiry count and active flag; it is not a live countdown.
+
+Use a 32 KiB BBC Model B with MOS and BASIC (the checked ROM has version byte 1). The caller selects MODE 6 and sets HIMEM=&3000, leaving &3000–&3013 for an optional diagnostic observer. Keep the program and heap below that reservation. Q does not restore the previous mode or HIMEM: reset or restore your own memory layout before loading another program.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/turn-deadline/caller.bas" lang="basic" title="The caller owns the game policy" />
+
+Combine this caller, turn.bas, `routines.bas`, `clock.bas` and `monitor.bas`. The Makefile does that for you. BASIC executes by line number, so reserve the shown ranges and update every GOSUB/GOTO target if you renumber. Reset/NEW before entering a complete alternative: old numbered lines must not survive accidentally.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/turn-deadline/turn.bas" lang="basic" title="A bounded turn update, independent of time" />
+
+The N% expression comes from the existing sampled turn loop. That entry still offers physical press-edge handling; this caller deliberately consumes delivered characters instead. Both counters are small demonstration state: replace their effects with your own game rules.
+
+## Take the reusable helper
+
+The helper does no input, drawing or turn advancement. It accepts two samples of a clock, subtracts the elapsed ticks and reports whether time ran out.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/turn-deadline/routines.bas" lang="basic" title="Initialise, start and poll a deadline" />
+
+Set `DU%` to your duration and `DC%` to the current clock, then call **3000 once**. This initialises disabled state and its previous sample. Call **3100** to start or restart: it copies duration into remaining time. Zero duration leaves it disabled.
+
+Each service iteration, including while disabled, set `DC%` and call **3200**. Read `DX%` immediately afterwards: 1 means this poll expired. The helper disables that deadline and clamps remaining to zero; the next poll clears the event. Your caller decides whether to spend a turn or start another deadline.
+
+| Global | Contract |
+| --- | --- |
+| DU% | Caller duration: whole ticks, 0..65535; 0 disables |
+| DC% | Caller current clock: whole ticks, 0..65535 |
+| DP% | Helper-owned previous sample |
+| DR% | Helper-owned remaining ticks, saturated at zero |
+| DA% | Helper-owned active flag, 0 or 1 |
+| DX% | Helper-owned expiry event, 0 or 1 |
+| DE% | Helper-owned elapsed ticks from this poll |
+
+These are BASIC globals. Rename them consistently to avoid collisions. The % suffix selects signed 32-bit integers. Differences of two 16-bit samples, including negative differences before correction, fit comfortably. The helper reserves no fixed RAM, IRQ vector, hardware timer, array or string. It uses BASIC GOSUB/RETURN frames and is one mutable context, rather than a re-entrant service.
+
+Starting preserves the most recent sampled baseline. Poll immediately before starting if that instant matters. Disable by setting `DA%=0`. There is no preserved pause state: the demo clears remaining on disable and gives a fresh duration on re-enable.
+
+## Read a clock without waiting for a command
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/turn-deadline/clock.bas" lang="basic" title="The machine-specific clock adapter" />
+
+TIME counts hundredths of a second. This adapter deliberately takes its low 16 bits, wrapping every **655.36 seconds**. It does not claim to expose the full five-byte MOS clock or all of BASIC TIME. Keep the normal MOS interrupt/timer service running.
+
+Poll before one whole clock cycle passes. 65530 → 5 is eleven ticks; missing an entire extra cycle would give the same samples. A clock reset is not a rollover. Reinitialise your context after another owner changes the clock. This adapter never resets it.
+
+`INKEY$(0)` reads without waiting for Return. It consumes characters delivered by firmware, including typeahead and repeat. A held key is not promised to count once. Compare the [sampled press-edge loop](/patterns/bbc-micro/basic/framework/turn-loop/) when the physical key state is the rule you need. Putting blocking INPUT into this caller would also stop deadline service. A clock does not make BASIC run two tasks at once.
+
+The caller polls, reads one character, then handles expiry. **Expiry wins** if both arrive in the same iteration, discarding that character, including T or Q. Otherwise Space advances once and restarts an already active deadline. An untimed action stays untimed. An overdue deadline produces one turn; it does not replay every turn that might have happened during a delay.
+
+## Make it your own
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/turn-deadline/customise.bas" lang="basic" title="The same helper with half the duration" />
+
+This changes only `DU%=400` to `DU%=200`: roughly four seconds becomes two. The units matter as much as the number. [Maths for Games](/craft/maths-for-games/) explores the same habits: choose a representation, give quantities units and check where arithmetic wraps. Subtraction here is elapsed time, not frame pacing.
+
+## Common mistake: resetting the baseline every time
+
+**Deliberately broken adapter below.** It stores “now” as the previous sample just before asking how much time elapsed. Every subtraction becomes zero.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/turn-deadline/mistakes/reset-baseline.bas" lang="basic" title="Broken: throwing away elapsed time before polling" />
+
+<Figure src="/images/patterns/bbc-micro/basic-deadline-wrong.png" alt="Faulty native BBC Micro BASIC caller still showing TURN 1, zero expiries and timing enabled after more than a full duration." caption="The clock advanced, but the faulty adapter kept replacing the baseline. Remaining time stayed at the full duration and the automatic turn never arrived." />
+
+Restore `clock.bas` to remove the assignment to `DP%`. A separate fresh repaired run advances normally. Keep this replacement out of working builds: its line number intentionally replaces the correct adapter.
+
+## What does it cost?
+
+The routine performs bounded work per poll; it does not loop once per elapsed tick. Interpretation, GOSUB lookup and your other work still determine how often you can service it. A native clock accumulates time while BASIC draws or calculates, but expiry is noticed only when you poll again. Restarting at observation time also introduces drift.
+
+The native interpreter stored **218 bytes of tokenised helper lines**, including line headers. The complete diagnostic caller occupies **1096 tokenised program bytes**. Its observed dynamic variable heap occupies **99 bytes** after the checked interactions; this is a snapshot, not a peak-memory promise. BBC BASIC’s resident single-letter integer table is outside that dynamic heap. The optional observer reserves another **20 bytes**. In the recorded disabled-idle snapshot, successive service samples were **8 centiseconds** apart with the observer present; that includes interpreted caller/diagnostic work and is not the cost of the helper alone.
+
+The optional 20-byte observer adds six scratch/monitor globals and several byte writes every iteration. Remove GOSUB 9000, its guards, MB%/LC% initialisation and `monitor.bas` when you do not need it. It is deliberately readable, rather than a fast game implementation. The caller redraws only on actions, toggles and expiry. No whole-game frame budget follows from these measurements.
+
+<details>
+<summary>Optional monitor used by the complete caller</summary>
+
+This is diagnostic feedback, separate from the deadline helper. Include it for the complete caller above, or remove the observer calls and reservations as described before omitting it.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/turn-deadline/monitor.bas" lang="basic" title="Optional diagnostic snapshot" />
+
+</details>
+
+Longer clocks, several independent deadlines, preserved pause time, carrying lateness into the next turn, queued commands or fixed-step catch-up are useful extensions when a game needs them. Each changes either the policy or the resource cost. See [choosing progression and clocks](/patterns/cross-platform/framework/game-loop-choices/) for those distinctions.
+
+## What was checked
+
+**Code status: emulator-executed BASIC.** Four cold stock-firmware runs cover the public caller, half-duration customisation, baseline-reset fault and repaired adapter. The verifier types the complete program, observes guarded native state, and checks untimed idle/action, no-input expiry, restart and disable. Native captures above show the real text display.
+
+A second BASIC caller executes twelve synthetic-clock boundary cases through the same interpreter: no elapsed time, wrap, exact/overshot expiry and zero/maximum duration. An independent arithmetic oracle checks the returned bytes. These establish arithmetic behaviour; they are not a wall-clock run across an entire rollover. Retained-record checks reject missing variants, changed source and falsified native observations. No original-hardware, other-ROM or other-region claim is made.
+
+The [maintained modules and native evidence](https://github.com/code198x/code-samples/tree/dc01d7b943db8e9aedb3fa82e836a8fc9d518f68/bbc-micro/patterns/basic/framework/turn-deadline) include loading order and repeatable commands. The [second caller](https://github.com/code198x/code-samples/blob/dc01d7b943db8e9aedb3fa82e836a8fc9d518f68/bbc-micro/patterns/basic/framework/turn-deadline/boundaries.bas) shows the same helper used without the demo’s input policy.
+
+## Primary references
+
+*BBC Micro Advanced User Guide*, §9.3 OSWORD 1 (printed p.248), five-byte centisecond clock, and OSBYTE 129, timed key input. *The BASIC ROM User Guide* (1984), BASIC memory map (printed pp.60–61), TIME and INKEY$.
