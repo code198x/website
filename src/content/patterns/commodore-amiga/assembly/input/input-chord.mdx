@@ -1,0 +1,83 @@
+---
+title: "Detect a Button Chord Once on Amiga"
+summary: "Holding two buttons together should trigger one action, not one action every frame.."
+platform: "commodore-amiga"
+category: "input"
+difficulty: "intermediate"
+tags: ["reusable", "input-chord"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Holding two buttons together should trigger one action, not one action every frame.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/input-chord-demo.png" alt="Amiga shows the working diagnostic row 01 03 03 04 01 00 01 00." caption="A completed native caller displays 01 03 03 04 01 00 01 00. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+REQUIRED is a nonempty mask; FORBIDDEN must not overlap it. All required bits must be held and every forbidden bit clear. ACTIVE reports that condition and PRESSED reports its rising edge against PREVIOUS. Invalid configuration clears result flags and PREVIOUS, preventing a stale active latch.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **PREVIOUS, HELD, REQUIRED, FORBIDDEN, ACTIVE, PRESSED, VALID**. They occupy 7 contiguous bytes. Also reserve the private workspace: **T0** (1 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `input_chord_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `input_chord_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | PREVIOUS |
+| Supply before service | HELD, REQUIRED and FORBIDDEN |
+| Read after service | ACTIVE, PRESSED and VALID |
+
+First compute whether the chord is active as a whole. Then compare that condition with the previous snapshot. This lets the player press the required buttons one after another and still create one chord edge.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/input/input-chord/component.inc" lang="m68k" title="Reusable initialisation and service" />
+
+## Machine contract
+
+D0–D3/A0–A1/CCR may change; D4–D7/A2–A6 are preserved. A direct BSR/JSR needs four return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. Scope or rename routine and field labels and allocate a separate block for each independent instance. Give each block one mutation owner.
+
+The A500 OCS diagnostic cold-boots an OFS disk, owns the Copper and bitplane and disables interrupt/DMA sources. The helper does not take over hardware or allocate Chip RAM.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x` and `BUILD198X=/path/to/build198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/input/input-chord/demo.asm" lang="m68k" title="Bindings and include order" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/input/input-chord/exercise.inc" from="preview_rules:" to="; End of gamekit client." lang="m68k" title="A client retaining state between calls" />
+
+## Customise it
+
+Require buttons 1 and 4 rather than buttons 1 and 2. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/input/input-chord/custom.asm" lang="m68k" title="Custom client selection" />
+
+The custom diagnostic row is **01 05 05 02 01 00 01 00**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong caller clears PREVIOUS before every snapshot. A held chord becomes a new press every time. Retain the previous chord condition, rather than the previous single-key press pulse.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/input/input-chord/wrong.asm" lang="m68k" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/input-chord-wrong.png" alt="Amiga shows the deliberate error row 01 03 03 04 01 01 01 00." caption="The wrong client completes with 01 03 03 04 01 01 01 00; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 298 code bytes; public state is 7 bytes and private scratch is 1 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+Constant work using byte masks. More than eight buttons needs more bytes and a definition of how snapshots are collected consistently.
+
+A chord uses a held snapshot; do not AND together separate per-button press pulses. Sequentially pressed buttons can form the chord. Strict simultaneity needs an explicit timing window.
+
+## Execution evidence
+
+Four variants run on A500 OCS PAL, Kickstart1.3 OFS cold boot, using Asm198x 0.0.72, Emu198x 0.44.2 and Build198x 0.2.9. Each executes 64 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/cc19d1039472373dbcf34cc891f64bf43f636c6e/commodore-amiga/patterns/assembly/input/input-chord).
