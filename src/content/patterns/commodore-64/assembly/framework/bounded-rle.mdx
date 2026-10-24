@@ -1,0 +1,79 @@
+---
+title: "Decode Bounded RLE Data on C64"
+summary: "Repeated tiles or pixels can be stored as a count followed by a value."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "bounded-rle"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Repeated tiles or pixels can be stored as a count followed by a value. Decoding is small, but trusting a damaged run count can overwrite the next object in RAM. This version checks both ends and tells the caller exactly how much output was produced.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/bounded-rle-demo.png" alt="C64 shows the working diagnostic row 06 00 00 06 08 41 41 41." caption="A native completed caller shows its state as hexadecimal bytes. The field order below explains the row; the full packet retains every call." />
+
+## Include, initialise and call
+
+Reserve **WRITTEN, ERROR, INPUT_START, INPUT_END, OUTPUT_LIMIT, BUF0, BUF1, BUF2, BUF3, BUF4, BUF5, BUF6, BUF7** as 13 contiguous private bytes in that order. Include the helper once. Call `bounded_rle_init` at the intended reset boundary: it clears every named byte, including input fields. Set the starting values afterwards, then call `bounded_rle_step` for each intended service.
+
+Initialise once, set the selected encoded span and available output length, then service. Check ERROR before accepting an asset as complete. On a decoding error the buffer contains a valid decoded prefix of length WRITTEN; it is not rolled back. Bytes after that prefix are preserved. A consumer that wants an all-or-nothing asset should decode into staging memory and commit only on success.
+
+INPUT_START and INPUT_END are byte offsets into caller-owned rle_stream, with INPUT_START ≤ INPUT_END ≤ STREAM_BYTES. OUTPUT_LIMIT is 0–8 for the reserved eight-byte output buffer. Step replaces WRITTEN and ERROR, preserves the input parameters and decodes count/value pairs. ERROR 0 means the selected input span finished; 1 means invalid input/output bounds; 2 means a truncated pair; 3 means a zero run; 4 means output capacity was reached before the selected stream finished. WRITTEN counts only bytes actually stored.
+
+<CodeFromFile src="cross-platform/patterns/framework/bounded-rle/6502.inc" lang="6502" title="Reusable initialisation and service" />
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/bounded-rle/data.inc" lang="6502" title="Caller-owned immutable lookup/encoded data" />
+
+## State, registers and ownership
+
+Five control/input/output bytes followed by BUF0–BUF7. The sample has thirteen immutable input bytes, including malformed examples. Count zero is rejected; there is no terminator convention or implicit end beyond INPUT_END. A zero-length selected span succeeds with zero output. The routine can stop partway through a run when capacity is exhausted.
+
+A/X/flags may change; Y and decimal mode survive. Clear decimal mode before binary arithmetic; the caller uses CLD. A direct call needs two return-address stack bytes. Saving Y and the input offset adds up to two temporary stack bytes: allow four bytes for the helper call, excluding its caller and interrupts.
+
+The implementation binds fixed symbols and has one mutation owner. Independent users need separate state blocks and scoped/renamed labels, including routine labels; sharing the same bindings means sharing the state. Do not let an interrupt and the main loop mutate the same block without an explicit ownership policy.
+
+The standalone PRG owns screen/font/colour RAM, disables interrupt sources and does not restore BASIC. Its private scratch uses $70–$76 and the state binding starts at $80; its diagnostic output starts at $C000.
+
+## A caller you can adapt
+
+The buildable program supplies bindings and include order. Its separate client retains state between calls. `checked_step` calls the public `bounded_rle_step` entry and checks register sentinels; `emit_state` records diagnostics. Your game can call the public entry directly, remove the diagnostics and consume the documented outputs.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/bounded-rle/demo.asm" lang="6502" title="Bindings, buildable caller and include order" />
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/bounded-rle/exercise.inc" from="preview_rules:" to="; End of playtools client." lang="6502" title="A separate client retaining state between calls" />
+
+The display fields are **WRITTEN, ERROR, INPUT_START, INPUT_END, OUTPUT_LIMIT, BUF0, BUF1, BUF2**; later state bytes are retained in the full packet. Each is one hexadecimal byte. The normal row is **06 00 00 06 08 41 41 41**. This is a completed state observation, not a recording of an actual character jumping, a camera scrolling or an asset being displayed.
+
+## Make it your own
+
+The normal caller decodes the first six input bytes into AAABBC, six output bytes. The custom caller offers only five output slots: AAABB is produced and ERROR 4 reports the unfinished selected stream. Treating capacity as the amount written would hide the normal caller’s two unused slots.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/bounded-rle/custom.asm" lang="6502" title="Maintained custom configuration or caller" />
+
+The custom row is **05 04 00 06 05 41 41 41**. These records qualify the named builds and inputs; another layout, format or input domain needs explicit bounds and fresh execution evidence.
+
+## Common mistake and repair
+
+The wrong client replaces WRITTEN with OUTPUT_LIMIT after decoding. The normal six-byte asset is now advertised as eight bytes, including two bytes the decoder never produced. Publish the returned length, and check the returned error; capacity is not output length.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/bounded-rle/wrong.asm" lang="6502" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/bounded-rle-wrong.png" alt="C64 shows the deliberate fault row 08 00 00 06 08 41 41 41." caption="The wrong client completes with 08 00 00 06 08 41 41 41. Its code and the explanation above identify the cause; the capture observes the result." />
+
+The BROKEN branch is visible in the client. `repaired.asm` restores the normal selection; its executable matches demo exactly. Spectrum tape filenames may differ while loaded CODE remains identical. The fault is a labelled experiment, not a suggested alternative.
+
+## Cost, limits and verification
+
+The measured layout has **128 code bytes, 13 immutable data bytes and 13 private state bytes**. Alignment, stack usage, diagnostic tables and display machinery are additional. The extents come from the loaded program’s symbols, not from counting source lines.
+
+Work is bounded by the selected input span and output capacity. Each pair consumes two input bytes; each produced byte advances the output count. The qualified output has at most eight stores, with no allocation or hidden display upload. Compression trades encoded storage against decode work and may make alternating data larger.
+
+This is a local classic count/value codec example, not a new project-wide asset format. Longer assets need an appropriately sized output span and possibly wider offsets, plus independently checked bounds. Packed literals, streaming continuation and precompressed build-tool assets are separate extensions. Do not turn zero runs into an unchecked infinite loop or infer success from a full buffer.
+
+Four native runs use PAL C64 with stock BASIC/KERNAL PRG startup and RUN; Asm198x 0.0.72 and Emu198x 0.44.2. Each checks 64 boundary/varied/error cases, dirty initialisation and every state of a separate sequential client against an independent integer model. This is not exhaustive coverage of every possible byte combination. Source/tool/firmware hashes, immutable loaded code/data, native startup/completion, preserved-register sentinels, helper/data sizes, screenshot bytes/pixels and exact repair are checked. Deliberately altered observations must fail. Firmware is hashed, never distributed.
+
+[Related technique](/patterns/commodore-64/assembly/rendering/tile-properties/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/2f2c90304c1a26b1cb1b36604e5f22bd722f5000/commodore-64/patterns/assembly/framework/bounded-rle).
