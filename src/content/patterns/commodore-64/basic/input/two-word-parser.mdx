@@ -1,0 +1,98 @@
+---
+title: "Parse Two-Word Commands on C64"
+summary: "Reusable BASIC V2 code turns words into game concepts, with exact matching, synonyms, clear errors and measured costs."
+platform: "commodore-64"
+category: "input"
+difficulty: "intermediate"
+tags: ["parser", "adventure", "strings", "input", "vocabulary"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+
+Type `TAKE LAMP`. The parser returns verb 3, noun 1 and status 0. `GET LIGHT` returns the same IDs: aliases belong in the vocabulary, while your game decides what taking that object means. A parser should not need to know which room the lamp is in.
+
+This is a C64 BASIC V2 port of the maintained Spectrum parser's small vocabulary/result model. It uses the same straightforward INPUT-and-GOSUB shape as the C64 command-loop sample, with a reusable parser replacing its single-letter dispatch. PETSCII, strings, DATA ownership and BASIC V2 loop behaviour are handled separately; this is not a claim that the same BASIC listing runs unchanged everywhere.
+
+## Build, load and call
+
+Run `make BUILD198X=/path/to/build198x`, load `build/demo.prg` through the stock C64 ROM loader and enter RUN. The Makefile combines `caller.bas`, `parser.bas` and `vocabulary.bas` in numerical line order, then tokenises them with Build198x. There are no new libraries or machine-code extensions.
+
+The caller uses RESTORE before **one** GOSUB 6000 at startup. Put this vocabulary before any other DATA, or arrange the shared DATA cursor yourself. BASIC V2 has no RESTORE-to-line form. The initializer reads from the caller's current DATA cursor and DIMs its arrays once. Do not call it again within the same RUN; DIM would raise REDIM'D ARRAY. A dictionary error requires correcting the data and starting a fresh RUN. Missing or mistyped DATA can still raise BASIC's own OUT OF DATA or TYPE MISMATCH errors: this is a trusted vocabulary, not a sandbox for arbitrary files.
+
+After successful initialization, set A$ and GOSUB 5000. Read S, V and N. V and N start at zero on every parse and are only assigned on success. Your action dispatcher runs **after S=0**; do not carry a previous successful command through an error. The sample prints the result and loops until QUIT. A real adventure can use those IDs to resolve nearby objects, reject impossible actions and update its world separately.
+
+<CodeFromFile src="commodore-64/patterns/basic/input/two-word-parser/caller.bas" lang="basic" title="The complete INPUT and GOSUB caller" />
+
+### Inputs, outputs and owned names
+
+A$ holds at most 63 accepted characters. The grammar allows spaces, digits and letters represented by PETSCII 65–90 or 193–218; the latter range normalises by subtracting 128. Repeated, leading and trailing spaces are ignored. ASCII lowercase 97–122 is deliberately **not** folded as though this were an ASCII machine. Character-set display choices can change how the same bytes look.
+
+The parser accepts one or two words, with vocabulary words up to 12 characters. Matching is exact. It has no articles, prepositions, quoted object names, conjunctions, pronouns, ambiguity resolution or multi-command input. Those are useful later components, not hidden behaviour in this one.
+
+| S | Result |
+| --- | --- |
+| 0 | Success; V and N are canonical IDs |
+| 1 | Blank command |
+| 2 | More than 63 characters |
+| 3 | Unsupported character anywhere in the line |
+| 4 | More than two words |
+| 5 | Unknown or overlong verb |
+| 6 | Unknown or overlong noun |
+| 7 | This verb requires a noun |
+| 8 | This verb does not take a noun |
+| 9 | Parser not initialized |
+| 10 | Vocabulary validation failed during initialization |
+
+Validation checks the complete character sequence before splitting/looking up words. Then word count, exact verb, noun policy and exact noun are checked in that order. This makes malformed input predictable and avoids silently executing its first two words.
+
+Reserve scalar names **S,V,N,PR,LL,P,TC,WC,IV,F,I,NI,NV,NN,KK,JJ,B,OK,Q**, string names **A$,W$,O$,T$**, and arrays **D$(),U(),R(),E$(),Z()**. BASIC V2 only distinguishes the first two characters of a name: longer names beginning with these pairs still collide. Arrays and scalars have separate roles here, but other routines must not reuse the same parser names or line ranges. The component occupies lines 5000–6560 and the supplied DATA uses 7000–7090. The small caller and verification variables are separate optional code.
+
+The parser changes its scratch variables and uses BASIC's normal string heap and FOR/GOSUB stack. It does not poke hardware or own a timer. It is not re-entrant. Return from it before running another command or touching its arrays.
+
+<CodeFromFile src="commodore-64/patterns/basic/input/two-word-parser/parser.bas" lang="basic" title="Reusable parser and one-time dictionary initializer" />
+
+### Vocabulary and noun policy
+
+The first DATA pair gives verb-alias and noun-alias counts: **1–32 verbs, 0–32 nouns**. Each verb row supplies its uppercase word, ID 1–255 and noun policy: 0 forbids a noun, 1 requires one, 2 permits one. Each noun row supplies its word and ID 1–255. Duplicate words are rejected. Verb aliases sharing an ID must share the same noun policy. IDs denote concepts; they are not indexes into your room's object array.
+
+`custom-vocabulary.bas` replaces the vocabulary with LOOK and TURN, plus COG. `TURN COG` then returns IDs 51 and 52 without changing the parser. To build this variant, combine the same caller/parser with that vocabulary instead of the default one. Keep line numbers unique and start a fresh RUN for the new arrays.
+
+The stock INPUT statement is a small acquisition example, not a complete line editor. Its quoting/comma rules and line-entry limit apply before the parser receives A$. A GET-based editor could provide backspace, a strict length limit, richer prompts and deliberate acceptance of punctuation. The parser's direct-call fixtures exercise punctuation and overlong strings independently of INPUT. The three native typed tests also check the real maintained caller.
+
+<CodeFromFile src="commodore-64/patterns/basic/input/two-word-parser/vocabulary.bas" lang="basic" title="Default vocabulary: aliases, IDs and noun policies" />
+
+## Common error: accept a prefix instead of a whole word
+
+`wrong-rule.bas` substitutes a prefix comparison for the noun equality at line 5330. That accepts `TAKE LAMPPOST` as `TAKE LAMP`. The wrong native caller prints status 0, verb 3, noun 1; the working caller prints status 6 and leaves both IDs zero. Use the exact equality in `parser.bas` to repair it. The repaired full fixture is byte-identical to the working one.
+
+Truncating every noun to four letters would have the same kind of problem. If you deliberately want abbreviations, represent accepted aliases in DATA or define an explicit ambiguity policy. Do not accidentally turn an unknown word into an action.
+
+<CodeFromFile src="commodore-64/patterns/basic/input/two-word-parser/custom-vocabulary.bas" lang="basic" title="Customise the vocabulary without changing the parser" />
+
+## Storage and speed
+
+The reusable parser/initializer occupies **1,794 tokenised BASIC bytes**, including its REM lines. The default vocabulary contributes **434 token bytes**. In the maintained typed caller, the full program is 2,403 bytes; the observed scalar table is 161 bytes and dictionary arrays are 318 bytes. Strings can point into the tokenised DATA rather than needing duplicate heap text.
+
+The five arrays require `35 + 13*(NV+1) + 8*(NN+2)` bytes in this implementation: five seven-byte headers, three-byte string descriptors and five-byte numeric values, including BASIC's element zero and the noun placeholder. With 14 verb aliases and nine noun aliases that is 318 bytes; the custom 2/1 vocabulary needs 98. This is specific to these one-dimensional BASIC V2 arrays, not a universal string-storage formula.
+
+After native parsing and explicit garbage collection, the large fixture's string heap is small; the interactive caller's observed allocated heap also contains temporary strings. Live text, garbage awaiting collection, INPUT's own state and other game variables add costs. Do not treat one post-collection snapshot as a bound for a whole adventure.
+
+The implementation validates and builds strings, then scans the vocabulary linearly. Longer commands and more aliases cost more interpreter work. The working 62-command fixture took **3,445 KERNAL jiffies**; the custom five-command fixture took 244. These deliberately varied workloads include malformed input and long strings, so dividing by the count does not estimate every normal command. The retained guest TI delta measures the named workload, before the final illustrative command and garbage collection; it is a KERNAL-jiffy observation, not a hardware cycle count or a universal per-command latency. Use a larger dictionary only after measuring the pause a player will feel. A sorted/bucketed lookup, packed word table or assembly parser is a useful later trade-off; it adds code/structure and must preserve the same exact-match/error contracts.
+
+<CodeFromFile src="commodore-64/patterns/basic/input/two-word-parser/wrong-rule.bas" lang="basic" title="Deliberate error: a prefix is accepted as a complete noun" />
+
+## Native evidence and limits
+
+The pinned PAL C64/stock-ROM configuration uses Build198x 0.2.9 and Emu198x 0.44.2. Qualification verifies the complete loaded PRG before RUN, 62 independent command cases, custom vocabulary, no-noun vocabulary, six malformed dictionaries, the revealing prefix fault and its exact repair. The maintained caller receives actual typed `TAKE LAMP`, `LOOK` and `TAKE LAMPPOST` commands. A direct caller also checks rejection before initialization.
+
+Checks compare guest-written results with independent command rules, follow native BASIC line links for token costs, compare actual scalar/array allocations, and check native screen pixels against the few ROM glyphs displayed. Corruption controls reject altered code, results, dictionary status, memory counts and captures. Full firmware/font dumps remain private. These are emulator execution checks, not physical-hardware timing measurements or proof of every possible combination of dictionaries and world logic.
+
+The [Spectrum BASIC parser](/patterns/sinclair-zx-spectrum/basic/input/two-word-parser/) provides a larger example of separate world/action logic. The [Spectrum assembly parser](/patterns/sinclair-zx-spectrum/assembly/input/two-word-parser/) shows another implementation trade-off; its code is not directly usable on a 6510. [Adventure in the Vault](/vault/games/colossal-cave-adventure/) explores why a small vocabulary can open a much larger world. The Craft can build on this boundary between interpreting intent and applying game rules without making the parser own the whole game.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/parser-working.png" alt="TAKE LAMPPOST is not TAKE LAMP: status 6, with both result IDs cleared." caption="TAKE LAMPPOST is not TAKE LAMP: status 6, with both result IDs cleared." />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/parser-wrong.png" alt="The prefix comparison accepts LAMPPOST as LAMP: status 0, verb 3, noun 1." caption="The prefix comparison accepts LAMPPOST as LAMP: status 0, verb 3, noun 1." />
+
+[Pinned reusable source and complete native evidence](https://github.com/code198x/code-samples/tree/51eeff7590d230fea902944d725fdff33f4019de/commodore-64/patterns/basic/input/two-word-parser). [The Craft](/craft/) can build on the separation between interpreting a command and applying the rules of a game.
