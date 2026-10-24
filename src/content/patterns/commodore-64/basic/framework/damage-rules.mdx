@@ -1,0 +1,74 @@
+---
+title: "Apply Damage with Recovery Time in C64 BASIC"
+summary: "Keep health above zero and give a hit a defined recovery interval, with explicit applied and killed results."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "damage-rules"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Touching a hazard should not remove every life in one burst. A recovery counter gives the player time to react. This helper owns the health arithmetic and the rule for accepting a hit; your game chooses what counts as a collision and how recovery looks or sounds.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-damage-rules-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Combine `routines.bas` with your numbered caller. Reserve lines **3000–3220**, and call **3000** at a new-session boundary. It sets H=3, T=0 and A/O/K/E=0, retaining your chosen recovery period P. Set a different initial H after this call. Put END, STOP or a jump before the helper, so normal execution cannot fall into it. Spectrum spells calls GO SUB; C64 and BBC use GOSUB. The supplied build.py combines numbered source files and rejects duplicate line numbers.
+
+## Supply a hit
+
+H is health, T the remaining recovery count, A the proposed damage and P the recovery period. All must be integral; H/T/A are 0–255 and P is 1–255. Set A to zero on an update with no proposed hit, then call **3100 once per simulation update**. Calling only when a collision happens would freeze recovery between collisions.
+
+The routine first decrements T towards zero. If H is non-zero, T has reached zero and A is positive, it accepts the hit. It subtracts A, clamps H at zero and returns O=1. A killing hit also returns K=1 and leaves T=0; a surviving hit reloads T=P. Otherwise O/K are zero. E=1 rejects damaged health/recovery/period state; E=2 rejects an invalid amount. Invalid calls clear O/K but leave H/T untouched.
+
+## The routine
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/damage-rules/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+## What one recovery period means
+
+If P=4, a surviving hit on update zero is followed by three blocked updates; another hit may land on update four. The decrement happens **before** acceptance. P=1 therefore allows another hit on the following update. The units are calls, not seconds, video frames or hardware timer ticks. Connect this to a timed or fixed-step loop only when that is what the game needs.
+
+The caller below supplies damage on twelve consecutive updates. It counts accepted hits and checks that health reaches zero. Its table before this excerpt covers health/amount boundaries, timer boundaries and invalid zero periods. The complete diagnostic source and observations remain in the source link.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/damage-rules/demo.bas" from={"70 LET P=4: GOSUB 3000: LET N=0\n"} to={"\n2000 POKE"} lang="basic" title="Maintained retained-state caller" />
+
+## Ownership and customisation
+
+The helper owns H/T/A/P/O/K/E and no scratch loop variables. Your game owns collision detection, invulnerability flashing, knockback, score, lives and respawn. It neither draws nor reads input. For several actors use separate state variables or a deliberate array-based wrapper; this scalar version holds one actor. Renaming must include every reference, and a second helper instance also needs separate numbered lines.
+
+The custom caller changes P from four to two. It accepts hits sooner, without changing the implementation. Change initial H after initialisation, or choose a different amount for each hazard. A zero amount still ages recovery. A dead actor never accepts another hit or reports another kill. To respawn, initialise deliberately and then restore the actor's chosen health; do not leave an old recovery count attached to a new actor.
+
+## Mistake and repair
+
+The wrong caller refreshes T=P **before every proposed hit**. The decrement can never reach zero, so no hit lands. Its saved checks are 0,0: health never reaches zero and the expected three accepted hits never occur. Increasing the damage amount would not repair that ordering error.
+
+The repair lets the helper reload recovery only after an accepted, non-fatal hit. Its source and loaded tokenised program match the working caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-damage-rules-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Costs and alternatives
+
+The update takes a fixed number of scalar checks and branches; it has no object scan. Validation adds interpreter work before the simple subtraction. This helper models one health pool with update-count recovery. A deadline against a clock can fit games whose updates vary in length; per-hazard cooldowns and separate shield/armour layers need different state. [The Craft](/craft/) connects the recovery window to player feedback, while [Maths for Games](/craft/maths-for-games/) explains saturation, discrete steps and bounds.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Single-letter names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **348 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller's W/Z/G, Y/D and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-rules.py damage-rules commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-rules.py damage-rules`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/damage-rules/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/8e2a66d6371338dcce6d30e17a43d87fea314ddc/commodore-64/patterns/basic/framework/damage-rules).
