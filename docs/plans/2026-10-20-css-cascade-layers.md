@@ -64,12 +64,26 @@ its own parent commit, because other work lands on main in between.
 | Timeline (#954) | −665 | |
 | CRASH! Live and start-here (#955) | −1,057 | 401,267 |
 | `legacy` retired: dead frame and override rules removed (#959) | −2,277 | 398,990 |
+| Classes nothing renders since the recompositions (#963) | −3,830 | |
+| One shared label (step 6b, #966) | −3,810 | |
+| Scoped rules for classes their own file never renders (#967) | −6,338 | |
+| No hover lift on cards and buttons (#973) | −2,370 | 382,642 |
+| Editorial rebuild: Field Notes and From the Metal (#977) | −420 | |
+| Editorial rebuild: one layout for the sibling project pages (#984) | −9,792 | |
+| Editorial rebuild: the lesson sandbox lays itself out (#985) | −785 | |
+| Editorial rules no page matched (#986) | −1,349 | |
+| Single-owner editorial rules moved to their owners (#987) | −23 | |
+| Editorial rebuild: system pages (#988) | −12 | |
+| Editorial rebuild: module overviews (#989) | −557 | |
+| Editorial rebuild: section indexes (#990) | −1,991 | |
+| Editorial rebuild: the remaining nine pages (#991) | −1,926 | |
+| `editorial.css` deleted (#993) | −169 | 365,618 |
 
-Removals so far: 104,406 bytes, 21.9% of the starting point. Net of the
-additions above, the source is 76,997 bytes (16.2%) smaller (#959). The primitives were an investment step 6 has to repay; the
-recompositions so far have taken out 27,793 bytes of hand-written layout,
-about five times what the primitives added. Layout alone will not halve the
-total, which is why step 6b exists.
+Net of every addition above, the source is 110,369 bytes (23.2%) smaller
+than the starting point (#993). The primitives were an investment step 6
+had to repay; the recompositions took out 27,793 bytes of hand-written
+layout, about five times what the primitives added. Layout alone will not
+halve the total, which is why step 6b exists.
 
 **Correction.** Until 2026-10-20 evening this table used a line-based count
 that missed one-line `<style>` blocks and counted script text after a
@@ -468,6 +482,43 @@ only its own file's markup, so `.eyebrow` rules in four pages that render
 no eyebrow are dead even though the class renders elsewhere, and several
 "labels" were overridden into headings or body text. Each adoption checks
 what an element renders as on main before tagging it.
+
+### 6c. Rebuild what overrides tangled (done for `editorial.css`, #977 to #993)
+
+Decided 2026-10-23: where a page family's look comes from overriding rules
+rather than its own, rebuild its styles from what renders instead of
+unpicking declarations one at a time. Small deviations are acceptable;
+each visible one is shown by screenshot before merging.
+
+`editorial.css` was the first target: a site-wide normaliser that reached
+into page wrappers (`wrap`, `page`, `primer`, `explainer`) and restyled
+heroes, cards, type and components it did not own. Method, per family:
+
+1. List what the file still reaches: load every built page with scripts
+   off and count, for each rule, the pages and elements its selector
+   matches. Rules
+   matching nothing were deleted outright (#986).
+2. Record the family's rendered spec: the computed styles of each part at
+   1440, 800 and 390 px.
+3. Rewrite the family's styles from that spec, rename its wrapper so the
+   global rules stop matching, and delete the family's global rules.
+4. Gate, and compare the spec again until both show no differences.
+
+Two traps cost a round each:
+
+- Removing an argument from an `:is()` list can lower the specificity of
+  the whole rule, because `:is()` takes its most specific argument. Pruning
+  `.primer > .hero` from a shared `:is()` changed the colophon. Renaming
+  the family's wrapper leaves the shared selector, and every other page's
+  specificity, untouched.
+- A class passed to a child component lands on the child's root, which
+  does not carry the parent's scope attribute, so the parent's scoped rule
+  for that class never matches. The sandbox's `.sandbox-editor` rules had
+  never applied, and page rules aimed at `PageFrame`'s class need
+  `:global()`.
+
+The rebuild made only hover and focus changes visible (#977); every other
+PR in it rendered identically.
 
 ### 7. Files by purpose
 
