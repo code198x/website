@@ -78,9 +78,19 @@ its own parent commit, because other work lands on main in between.
 | Editorial rebuild: section indexes (#990) | −1,991 | |
 | Editorial rebuild: the remaining nine pages (#991) | −1,926 | |
 | `editorial.css` deleted (#993) | −169 | 365,618 |
+| Rollout rules no page matched (#995) | −4,871 | |
+| One set of site header styles; `magazine-pages.css` deleted (#1000) | −1,991 | |
+| NES lesson editor height restored (#1008) | +232 | 358,988 |
+| `design-rollout.css` moved to its owners and deleted (#1024) | −9,416 | |
+| Machine overview pages own their styles; `approved-learning.css` deleted (#1025) | +1,650 | |
+| Start Here owns its styles; `approved-start-here.css` deleted (#1036) | +404 | |
+| `approved-pages.css` renamed `homepage.css` (#1047) | −762 | |
+| Site frame moved into Layout; `site-frame.css` deleted (#1048) | −420 | 350,444 |
 
-Net of every addition above, the source is 110,369 bytes (23.2%) smaller
-than the starting point (#993). The primitives were an investment step 6
+Net of every addition above, the source is 125,543 bytes (26.4%) smaller
+than the starting point (#1048). #1025 and #1036 grew it because each page
+took its own copy of the shared base rules that `approved-pages.css` had
+held; #1047 removed the last shared copy. The primitives were an investment step 6
 had to repay; the recompositions took out 27,793 bytes of hand-written
 layout, about five times what the primitives added. Layout alone will not
 halve the total, which is why step 6b exists.
@@ -520,13 +530,40 @@ Two traps cost a round each:
 The rebuild made only hover and focus changes visible (#977); every other
 PR in it rendered identically.
 
-### 7. Files by purpose
+Three more lessons from applying it to the rollout files (#1000 to #1048):
+
+- The gate covers about 250 sampled pages. Before calling a removal
+  neutral, list every page the old rules matched and compare all of them.
+  A full sweep after #993 found the NES lesson editor had grown (fixed in
+  #1008) and a family page change the gate had not sampled.
+- Removing hidden markup, or unwrapping a wrapper, shifts every later
+  sibling's DOM path, so a path-keyed comparison reports the whole page.
+  Compare such pages with elements keyed by their class chain.
+- Base rules that reached into child components (`p`, `a`, `button`) must
+  keep their old weight. Anchoring them as `.page :global(p)` adds the
+  scope attribute and lets them beat the child's own rules;
+  `:where(.page) :global(p)` keeps the original specificity (#1025).
+
+One false alarm: right after load, Chrome reports the auto margin of
+`main` as 0px on about half the loads, though the box is centred every
+time. Sweeps show this as `main` margins flipping between 0 and 88px.
+Compare bounding boxes, or let the page settle, before treating it as a
+change.
+
+### 7. Files by purpose (rollout files done, #1000 to #1048)
 
 Rename or merge the files named after rollouts (`design-rollout.css`,
 `approved-pages.css`, `approved-learning.css`) into files named for what they
 style, one per layer where that helps. Update
 `docs/page-layouts.md` and the README's "Magazine presentation" section to
 describe the layers and primitives. Zero differences.
+
+Done: `magazine-pages.css`, `design-rollout.css`, `approved-learning.css`,
+`approved-start-here.css` and `site-frame.css` are gone, their rules now in
+the components, pages and layout they style. `approved-pages.css` is
+`homepage.css`. Still to do: the Vault stylesheets (`magazine-vault.css`,
+`vault.css`, `vault-inner.css`), which share the category masthead between
+them.
 
 ### 8. Move the primitives to 198x-ui
 

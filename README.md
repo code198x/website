@@ -113,6 +113,13 @@ reading text keeps a bounded measure while browsing grids use the available widt
 Site additions to the family palette live in `src/styles/site-tokens.css`; component
 rules refer to those tokens rather than specifying their own colours.
 
+Components, pages and layouts own their styles in scoped `<style>` blocks; the Vault
+and a few shared surfaces still use files in `src/styles/`. Rules sit in cascade
+layers (`kit`, `base`, `composition`, `utilities`, `blocks`, `exceptions`, declared in
+`LayerOrder.astro`), so a rule wins by its layer rather than by a more specific
+selector; `docs/page-layouts.md` describes the layers and the layout primitives. The site frame, the gutter on
+`main`'s children and the breadcrumb bar's gap are global rules in `Layout.astro`.
+
 Curate Vault features in `src/data/vault-features.ts`. Select a reviewed article,
 write its placement headline and deck, choose images already used in that article,
 and list related article identifiers in reading order. The build validates those
