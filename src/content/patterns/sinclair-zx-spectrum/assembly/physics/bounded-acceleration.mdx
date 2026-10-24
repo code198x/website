@@ -1,0 +1,77 @@
+---
+title: "Bounded Signed Acceleration on Spectrum"
+summary: "Gravity should keep adding speed until the chosen terminal velocity, not turn a fast fall into an upward launch when an integer overflows."
+platform: "sinclair-zx-spectrum"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "bounded-acceleration"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Gravity should keep adding speed until the chosen terminal velocity, not turn a fast fall into an upward launch when an integer overflows. This helper adds signed acceleration and clamps the result to an explicit symmetric speed limit.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/bounded-acceleration-demo.png" alt="Spectrum shows the working diagnostic row 00 FE 80 FF 00 02 00 01." caption="A native completed caller shows its state as hexadecimal bytes. The field order below explains the row; the full packet retains every call." />
+
+## Include, initialise and call
+
+Reserve **VEL_LO, VEL_HI, ACC_LO, ACC_HI, LIMIT_LO, LIMIT_HI, CLIPPED, VALID** as 8 contiguous private bytes in that order. Include the helper once. Call `bounded_acceleration_init` at the intended reset boundary: it clears every named byte, including input fields. Set the starting values afterwards, then call `bounded_acceleration_step` for each intended service.
+
+Initialise once, set the starting velocity, acceleration and limit, then service before the position update if that is your chosen integrator order. Treat that order as part of the game’s behaviour. The normal four-call client accelerates by −0.5 per call to a limit of 2.0 and finishes at −2.0.
+
+VEL_LO/VEL_HI and ACC_LO/ACC_HI are signed two’s-complement 8.8 words, stored low byte first. LIMIT_LO/LIMIT_HI are a nonnegative raw magnitude from 0 to 32,767. Step clears CLIPPED and VALID, rejects a limit with its high bit set, and otherwise adds velocity and acceleration in a logically wider signed range before clamping to −LIMIT…+LIMIT. VALID becomes 1; CLIPPED becomes 1 only when the wide sum was outside that interval. An invalid limit preserves velocity and leaves both flags zero. Acceleration and limit bytes survive.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/bounded-acceleration/component.inc" lang="z80" title="Reusable initialisation and service" />
+
+## State, registers and ownership
+
+Eight bytes: two for velocity, two for acceleration, two for a magnitude limit, and two replaced status flags. The symmetric limit cannot be 32,768 because the positive signed endpoint cannot represent it. Initial velocity may be anywhere in the signed 16-bit range; a valid call clamps the resulting sum.
+
+AF/BC/DE/HL may change; IX/IY survive. A direct CALL needs two return-address stack bytes. Saving HL during comparison adds two temporary bytes: allow four bytes for the helper call, excluding its caller and interrupts.
+
+The implementation binds fixed symbols and has one mutation owner. Independent users need separate state blocks and scoped/renamed labels, including routine labels; sharing the same bindings means sharing the state. Do not let an interrupt and the main loop mutate the same block without an explicit ownership policy.
+
+The standalone tape program enters at $8000, disables interrupts and owns bitmap/attribute RAM. It does not restore BASIC. Those choices belong to the test program; the helper itself never takes over the display.
+
+## A caller you can adapt
+
+The buildable program supplies bindings and include order. Its separate client retains state between calls. `checked_step` calls the public `bounded_acceleration_step` entry and checks register sentinels; `emit_state` records diagnostics. Your game can call the public entry directly, remove the diagnostics and consume the documented outputs.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/bounded-acceleration/demo.asm" lang="z80" title="Bindings, buildable caller and include order" />
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/bounded-acceleration/exercise.inc" from="preview_rules:" to="; End of playtools client." lang="z80" title="A separate client retaining state between calls" />
+
+The display fields are **VEL_LO, VEL_HI, ACC_LO, ACC_HI, LIMIT_LO, LIMIT_HI, CLIPPED, VALID**. Each is one hexadecimal byte. The normal row is **00 FE 80 FF 00 02 00 01**. This is a completed state observation, not a recording of an actual character jumping, a camera scrolling or an asset being displayed.
+
+## Make it your own
+
+The custom client lowers the limit from 2.0 to 1.0. Continued acceleration now saturates at −1.0 and sets CLIPPED on the later calls. A zero limit is also a valid request to hold velocity at zero.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/bounded-acceleration/custom.asm" lang="z80" title="Maintained custom configuration or caller" />
+
+The custom row is **00 FF 80 FF 00 01 01 01**. These records qualify the named builds and inputs; another layout, format or input domain needs explicit bounds and fresh execution evidence.
+
+## Common mistake and repair
+
+The wrong client clears ACC_HI. The intended FF80 displacement (−0.5) becomes 0080 (+0.5), so the object accelerates the wrong way. Supply the signed high byte rather than zero-extending a negative value.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/bounded-acceleration/wrong.asm" lang="z80" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/bounded-acceleration-wrong.png" alt="Spectrum shows the deliberate fault row 00 02 80 00 00 02 00 01." caption="The wrong client completes with 00 02 80 00 00 02 00 01. Its code and the explanation above identify the cause; the capture observes the result." />
+
+The BROKEN branch is visible in the client. `repaired.asm` restores the normal selection; its executable matches demo exactly. Spectrum tape filenames may differ while loaded CODE remains identical. The fault is a labelled experiment, not a suggested alternative.
+
+## Cost, limits and verification
+
+The measured layout has **121 code bytes, 0 immutable data bytes and 8 private state bytes**. Alignment, stack usage, diagnostic tables and display machinery are additional. The extents come from the loaded program’s symbols, not from counting source lines.
+
+The 6502 examines signed overflow after the high-byte ADC; the Z80 uses ADC HL,DE because ADD HL,DE does not provide the same signed-overflow result; the 68000 sign-extends words into a long intermediate. Comparisons and clamping take bounded paths. No floating-point unit is used.
+
+This models acceleration over fixed simulation updates. A variable time step needs explicit scaling, wider intermediates and a rounding policy. Drag, collision response and different upward/downward limits are separate rules. If parameters are prevalidated, an unchecked internal variant may save work, but it is a different contract and is not the qualified implementation here.
+
+Four native runs use Spectrum 48K with stock ROM tape loading and USR entry; Asm198x 0.0.72 and Emu198x 0.44.2. Each checks 64 boundary/varied/error cases, dirty initialisation and every state of a separate sequential client against an independent integer model. This is not exhaustive coverage of every possible byte combination. Source/tool/firmware hashes, immutable loaded code/data, native startup/completion, preserved-register sentinels, helper/data sizes, screenshot bytes/pixels and exact repair are checked. Deliberately altered observations must fail. Firmware is hashed, never distributed.
+
+[Related technique](/patterns/sinclair-zx-spectrum/assembly/physics/fractional-position/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/849c9343cfc8e1e9a9b598ed31a9f94179129080/sinclair-zx-spectrum/patterns/assembly/physics/bounded-acceleration).
