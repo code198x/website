@@ -1,0 +1,77 @@
+---
+title: "A Streaming CRC-8 on Spectrum"
+summary: "A saved score or a small asset can pick up an accidental changed byte."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "streaming-crc8"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A saved score or a small asset can pick up an accidental changed byte. A streaming checksum gives the loader something to compare before using the data, without needing to hold a second copy of the whole message.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/streaming-crc8-demo.png" alt="Spectrum shows the working diagnostic row F4 39 00 00 00 00 00 00." caption="A native completed caller shows its state as hexadecimal bytes. The field order below explains the row; the full packet retains every call." />
+
+## Include, initialise and call
+
+Reserve **CRC, DATA** as 2 contiguous private bytes in that order. Include the helper once. Call `streaming_crc8_init` at the intended reset boundary: it clears every named byte, including input fields. Set the starting values afterwards, then call `streaming_crc8_step` for each intended service.
+
+Initialise, feed the counted payload bytes one at a time and store the final CRC separately. A reader recomputes over the same span and compares with the stored value. Do not accidentally include the stored checksum in one side’s payload but exclude it on the other.
+
+CRC is the retained eight-bit remainder and DATA is the next input byte. Initialise once per message, then call step for each byte in order. This is a non-reflected, left-shifting CRC with initial remainder zero and no final XOR; the qualified polynomials are 07 and 31, with the x⁸ term implicit. DATA survives and CRC is replaced. Producer and consumer must agree on every parameter and the exact covered bytes.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/streaming-crc8/component.inc" lang="z80" title="Reusable initialisation and service" />
+
+## State, registers and ownership
+
+Two bytes, one persistent remainder and one input. The demonstration feeds the ASCII bytes of 123456789. It finishes at hexadecimal F4 for polynomial 07 and A2 for polynomial 31. These are this implementation’s directly checked message results, not a claim that every CRC-8 convention has the same answer.
+
+AF/BC/DE/HL may change; IX/IY survive. A direct CALL needs two return-address stack bytes.
+
+The implementation binds fixed symbols and has one mutation owner. Independent users need separate state blocks and scoped/renamed labels, including routine labels; sharing the same bindings means sharing the state. Do not let an interrupt and the main loop mutate the same block without an explicit ownership policy.
+
+The standalone tape program enters at $8000, disables interrupts and owns bitmap/attribute RAM. It does not restore BASIC. Those choices belong to the test program; the helper itself never takes over the display.
+
+## A caller you can adapt
+
+The buildable program supplies bindings and include order. Its separate client retains state between calls. `checked_step` calls the public `streaming_crc8_step` entry and checks register sentinels; `emit_state` records diagnostics. Your game can call the public entry directly, remove the diagnostics and consume the documented outputs.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/streaming-crc8/demo.asm" lang="z80" title="Bindings, buildable caller and include order" />
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/streaming-crc8/exercise.inc" from="preview_rules:" to="; End of playtools client." lang="z80" title="A separate client retaining state between calls" />
+
+The display fields are **CRC, DATA**; remaining display fields are zero. Each is one hexadecimal byte. The normal row is **F4 39 00 00 00 00 00 00**. This is a completed state observation, not a recording of an actual character jumping, a camera scrolling or an asset being displayed.
+
+## Make it your own
+
+The custom build uses polynomial 31 instead of 07. Both are complete specified parameter sets here; changing the polynomial on only one side makes otherwise identical payloads disagree.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/streaming-crc8/custom.asm" lang="z80" title="Maintained custom configuration or caller" />
+
+The custom row is **A2 39 00 00 00 00 00 00**. These records qualify the named builds and inputs; another layout, format or input domain needs explicit bounds and fresh execution evidence.
+
+## Common mistake and repair
+
+The wrong client clears CRC before every byte. Only the last byte contributes to the final result, which becomes AF for the normal polynomial instead of F4. Reset once at the message boundary, then retain the remainder between calls.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/streaming-crc8/wrong.asm" lang="z80" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/streaming-crc8-wrong.png" alt="Spectrum shows the deliberate fault row AF 39 00 00 00 00 00 00." caption="The wrong client completes with AF 39 00 00 00 00 00 00. Its code and the explanation above identify the cause; the capture observes the result." />
+
+The BROKEN branch is visible in the client. `repaired.asm` restores the normal selection; its executable matches demo exactly. Spectrum tape filenames may differ while loaded CODE remains identical. The fault is a labelled experiment, not a suggested alternative.
+
+## Cost, limits and verification
+
+The measured layout has **29 code bytes, 0 immutable data bytes and 2 private state bytes**. Alignment, stack usage, diagnostic tables and display machinery are additional. The extents come from the loaded program’s symbols, not from counting source lines.
+
+Exactly eight bit stages per input byte, with a conditional polynomial XOR in each stage. No lookup table is required. A 256-byte table can trade ROM space for fewer per-byte operations, but that is a separate implementation and is not measured here.
+
+An eight-bit CRC has only 256 results and cannot detect every possible change. It checks accidental corruption; it is not authentication or protection against someone deliberately editing a save. Wider CRCs, table-based updates and other parameter conventions need separate contracts and vectors. Saving atomically and validating the file length remain separate concerns.
+
+Four native runs use Spectrum 48K with stock ROM tape loading and USR entry; Asm198x 0.0.72 and Emu198x 0.44.2. Each checks 64 boundary/varied/error cases, dirty initialisation and every state of a separate sequential client against an independent integer model. This is not exhaustive coverage of every possible byte combination. Source/tool/firmware hashes, immutable loaded code/data, native startup/completion, preserved-register sentinels, helper/data sizes, screenshot bytes/pixels and exact repair are checked. Deliberately altered observations must fail. Firmware is hashed, never distributed.
+
+[Related technique](/patterns/sinclair-zx-spectrum/assembly/framework/bounded-rle/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/1e7df5425a677b390f78af8f7465083639e78dd6/sinclair-zx-spectrum/patterns/assembly/framework/streaming-crc8).
