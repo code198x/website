@@ -1,6 +1,6 @@
 ---
 title: "Controller Reading"
-summary: "Read the NES controller by strobing and shifting 8 button bits into a variable. Simple, reliable, standard approach."
+summary: "Sample eight controller buttons once, distinguish holds, presses and releases, and keep the DMC and strobe contracts explicit."
 platform: "nintendo-nes"
 category: "input"
 difficulty: "beginner"
@@ -15,6 +15,7 @@ related:
 ---
 
 import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
 
 
 
@@ -46,3 +47,62 @@ Writing the strobe to `$4016` latches both controllers. A two-controller reader 
 DMC sample DMA can interfere with serial reads on relevant NES hardware. This reader's contract excludes it. Repeated reads need a separate bounded timing and failure policy; merely naming a retry loop “safe” does not establish correctness. Use and verify a DMC-compatible implementation before combining these facilities.
 
 **Code status: maintained reader reused by executed NTSC NROM callers.** Their real-input checks establish press, hold and release on that configuration with DMC disabled. This is not a DMC workaround or original-hardware qualification.
+
+
+## Spend one action, keep a hold, or react to release
+
+A is held for movement or charging; a new A press can spend one action; releasing A can finish that charge. These are three different events from one serial input sample. The maintained input.inc and presses.inc remain unchanged. edges.inc adds released bits as previous AND NOT current.
+
+## Include and call
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/controller-reading/edges.inc" lang="6502" title="Add released state to the maintained reader" />
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/controller-reading/../../framework/input-to-sound/presses.inc" lang="6502" title="The unchanged press detector" />
+
+Provide writable BSS and the normal reset/stack setup. Include the maintained framework/input-to-sound/input.inc, then presses.inc and edges.inc once. Initialise previous_controls and released_controls to zero. Each chosen update calls read_controls then detect_control_edges once. controls is held, new_presses is newly pressed, released_controls is newly released. The wrapper changes A/X/flags and preserves Y. Its two private bytes are released_controls and edge_scratch. It uses the existing JSR stack; one state set is not re-entrant.
+
+The pure release_bits entry takes A=previous and X=current byte and returns A=released; X/Y survive, flags/private scratch change. All eight bits are meaningful: A=$80, B=$40, Select=$20, Start=$10, Up=$08, Down=$04, Left=$02, Right=$01. A byte is a bit set, not a priority code.
+
+Zero initial history counts already-held buttons as first presses. For a scene that should ignore them, take/discard an initial sample before accepting actions. Share the result rather than polling independently in each subsystem. A second poll consumes an edge. Very short pulses, physical bounce, intentional repeat and contradictory-direction policy remain separate problems.
+
+The simple reader writes the shared $4016 strobe and reads controller 1 eight times. A two-controller owner must latch once and consume both streams; unrelated readers can disturb each other. Keep DMC sample DMA disabled. This wrapper does not make the existing reader DMC-safe; that needs a separately verified sampling policy.
+
+## Run the caller
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/controller-reading/edges-demo.asm" lang="6502" title="Reset, include order and cartridge layout" />
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/controller-reading/edges-caller.inc" lang="6502" title="One sample shared by input, actions and display" />
+
+Run make ASM198X=/path/to/asm198x and load build/edges-demo.nes. This is NTSC NROM-256: 32 KiB PRG ROM, 8 KiB CHR ROM and horizontal mirroring. No external firmware is required. The caller owns reset/stack, its RAM, PPU/NMI setup, APU/DMC disable state and the controller strobe. Reset to leave; it does not restore a surrounding engine.
+
+A press spends one action; a hold does not repeat it. Four hexadecimal bytes show held, pressed, released and the action count. The original small geometric hexadecimal font uses 17 tiles/272 CHR bytes. The caller clears the nametable while rendering is off, waits for vblank, writes a short status row, then restores the scroll state. It uses polling rather than an NMI worker. Rendering/input transfer must stay within the chosen vblank budget; this diagnostic is not a general VRAM scheduler.
+
+Guest diagnostic latches/counters preserve short press/release pulses after a field is drawn. They are caller instrumentation, not another helper requirement. The stable final picture shows 00 00 00 03 after the normal sequence, including an all-button chord. Its still does not show the timing of every edge.
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-nes/input-edges-working.png" alt="The native NTSC caller shows 00 00 00 03 after the normal input sequence." caption="The final 03 counts accepted actions. Guest latches retain the short press/release transitions." />
+
+## Make it your own
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/controller-reading/edges-custom.asm" lang="6502" title="Let Left rather than A spend an action" />
+
+edges-custom.asm changes ACTION_MASK from $80 (A) to $02 (Left), with identical code/state and cartridge sizes. The controller reader and edge helper stay unchanged. A wider selected mask counts one event if any chosen bit is new; counting individual buttons requires another action policy.
+
+## Common mistake
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/controller-reading/edges-wrong.asm" lang="6502" title="Deliberately broken: reset input history before polling" />
+
+The labelled edges-wrong.asm clears previous_controls before every edge check. A held A then counts repeatedly, and releases disappear because the previous set is always empty. Restore the normal jump to detect_control_edges. A fresh repaired run has the same cartridge as the working caller. The fault adds 5 instruction bytes but does not increase the fixed NROM file size. Keep the wrong cartridge separate from the normal one.
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-nes/input-edges-wrong.png" alt="The faulty native caller spends extra actions during an A-button hold." caption="Clearing previous_controls turns a held bit into repeated new presses and prevents release events." />
+
+## Costs and verification
+
+The wrapper/pure release leaf occupy 32 instruction bytes and 2 state bytes, alongside the existing reader/press detector's 3 state bytes. The complete caller/helper code prefix is 314 bytes, plus 6 vector bytes. Its six caller diagnostic/state bytes are separate from those five input-state bytes. The font consumes 272 bytes inside an 8 KiB CHR allocation; PRG/CHR padding makes each complete cartridge 40,976 bytes including its 16-byte header. Smaller source code does not shrink this fixed mapper layout. These byte counts are not CPU-cycle, vblank-budget or complete-game memory measurements.
+
+Six native cases on released Emu198x 0.44.2/Asm198x 0.0.72 cover working/custom/wrong/repaired callers and an independent guest-owned release caller. The latter streams all 65,536 previous/current byte pairs through 256 complete rows; debugger stops observe the results without changing the PC or guest state. Each row index and a final marker must complete. A wrong OR leaf completes those guards but fails independent bit-set arithmetic. Contradictory directions qualify byte arithmetic, not a physical D-pad promise.
+
+Real host controller events, native event counters, all 32 KiB of immutable PRG ROM, original-font screenshot pixels, source/tool/cartridge hashes and rejected corruptions are retained under verification/edges. Run scripts/verify-nes-input-edges.py, check-nes-input-edges.py and the unittest controls. Qualification names this NTSC NROM/DMC-off configuration, not every mapper/region, original hardware or the entire emulator.
+
+The hardware interface and limits remain those of the maintained serial reader and this named caller. Its DMC exclusion remains binding; these emulation observations do not establish a new hardware exception. Set difference, sampling and event mapping connect to Maths for Games; action timing remains a separate game-loop decision.
+
+[Maintained helper and complete callers](https://github.com/code198x/code-samples/tree/65de43c534ba21da6eb7020a0bfa0ce7a7905d0d/nintendo-entertainment-system/patterns/assembly/input/controller-reading) · [Native evidence/configuration](https://github.com/code198x/code-samples/tree/65de43c534ba21da6eb7020a0bfa0ce7a7905d0d/nintendo-entertainment-system/patterns/assembly/input/controller-reading/verification/edges). [Maths for Games](/craft/maths-for-games/) covers bit-set differences; [clock and loop choices](/patterns/cross-platform/framework/game-loop-choices/) keeps sampling separate from game progression.
