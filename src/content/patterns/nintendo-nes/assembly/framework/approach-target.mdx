@@ -1,0 +1,79 @@
+---
+title: "Approach a Target Without Overshoot on NES"
+summary: "An enemy can move towards a waypoint without orbiting it forever."
+platform: "nintendo-nes"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "game rules", "approach-target"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+An enemy can move towards a waypoint without orbiting it forever. Move by the smaller of the remaining distance and your allowed step, then report arrival. That last short step matters when the target is not an exact multiple of the speed.
+
+
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-entertainment-system/approach-target-demo.png" alt="NES shows the working result FF FF 0A 01 00 00 00 00." caption="The completed native caller shows hexadecimal state bytes. The field order below explains the result; the full verification packet retains every call." />
+
+## Include, initialise and call
+
+Bind **POSITION, TARGET, STEP, ARRIVED** as 4 contiguous private bytes in that order. Include the helper once. Call `approach_target_init` at the deliberate reset boundary: it clears **all** named bytes, including inputs. Set your starting values afterwards. Call `approach_target_step` when this service is needed.
+
+Initialise, then set the position, target and allowed step. Call once per simulation update. Change TARGET to follow a moving goal, or choose the next waypoint only after ARRIVED. Use another state block for the second axis if independent axis movement is the intended policy.
+
+POSITION, TARGET and STEP are unsigned bytes. Step moves POSITION towards TARGET by at most STEP, without wrapping or overshooting, and replaces ARRIVED with 1 exactly when the resulting position equals TARGET. STEP zero stops movement but still reports an already reached target. TARGET and STEP survive.
+
+<CodeFromFile src="cross-platform/patterns/framework/approach-target/6502.inc" lang="6502" title="Reusable initialisation and service" />
+
+## State and ownership
+
+POSITION persists. TARGET and STEP are inputs. ARRIVED describes the resulting position and stays true on repeated calls at the target; it is not a one-time arrival event. Detect its edge if an action should occur only once.
+
+A/X/flags may change; Y and decimal mode survive. **Clear decimal mode before binary arithmetic**; the standalone caller uses CLD. A direct call pushes a two-byte return address.
+
+This implementation has fixed symbol bindings and one mutation owner. Independent users need distinct state blocks **and** scoped/renamed bindings; including another copy with the same global labels is not sufficient. Sequential queries may reuse a scratch block only after the previous result has been consumed. Do not let an interrupt and the main loop mutate the same block without a separately designed ownership policy.
+
+The standalone cartridge owns its background, CHR font and RAM layout. Its diagnostic packet is bounded below the end of the NES’s 2 KiB internal RAM; the component owns no PPU or audio registers.
+
+## A small caller you can adapt
+
+The standalone program includes the helper and a separate client. Its read-only table exercises 96 valid inputs, then this client initialises once and retains state between calls. Replace the supplied input changes with your own game values; the display and packet machinery are diagnostics rather than dependencies of the component.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/approach-target/demo.asm" lang="6502" title="Buildable caller, bindings and include order" />
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/approach-target/exercise.inc" from="preview_rules:" to="; End of gameplay client." lang="6502" title="A separate client retaining state between calls" />
+
+The eight display fields follow **POSITION, TARGET, STEP, ARRIVED**; unused display fields are zero. Each field is a hexadecimal byte. The working row is **FF FF 0A 01 00 00 00 00**. The output is a completed diagnostic state, not a recording of movement, input or sound hardware.
+
+## Make it your own
+
+The custom caller reduces STEP from ten to two. Starting at 250 with target 255, the two calls end at 254 without arrival; a later call would take the last one-unit step.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/approach-target/custom.asm" lang="6502" title="Maintained custom configuration or caller" />
+
+The observed custom row is **FE FF 02 00 00 00 00 00**. The retained records qualify these named configurations; a new input domain or larger layout needs its own bounds and fresh execution checks.
+
+## Common mistake and repair
+
+The wrong client replaces the helper with an unconditional byte addition. Starting at 250, adding ten wraps to 4, then 14, moving away from target 255. Compare the remaining distance before adding or subtracting; increasing the target tolerance does not fix byte overflow.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/approach-target/wrong.asm" lang="6502" title="Deliberately wrong client selection" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-entertainment-system/approach-target-wrong.png" alt="NES shows the deliberate fault result 0E FF 0A 00 00 00 00 00." caption="The wrong client completes and records 0E FF 0A 00 00 00 00 00. Compare its state with the working row and the explained failure." />
+
+The wrong branch is in the displayed client above, selected by BROKEN. `repaired.asm` selects the original client again. Its executable matches demo exactly; Spectrum tape filenames can differ while loaded CODE is identical. The bad caller is a labelled experiment, not an alternative recommended implementation.
+
+## Cost and verification
+
+The measured helper occupies **66 code bytes plus 4 named state bytes** in this layout. Return addresses, alignment, tables and display diagnostics are additional. The sizes cover init and step together, not the whole standalone program.
+
+One comparison chooses direction, then a distance comparison chooses a full or short step. No multiplication, division or path search occurs. This is straight-axis pursuit, not obstacle-aware navigation.
+
+Signed coordinates, wider worlds and fixed-point subpixels need wider arithmetic and explicit bounds. Moving both axes by the same maximum gives faster diagonal travel in Euclidean distance; normalisation or an axis budget is a separate movement policy. Collision may still block a proposed position.
+
+Four native runs use NTSC NES with a mapper-0 cartridge, CHR-ROM diagnostic font, NMI and DMC disabled; Asm198x 0.0.72 and Emu198x 0.44.2. Every run checks 96 table results, dirty initialisation and every state in a separate sequential trace against an independent integer model. This is boundary/varied-input qualification, **not exhaustive coverage of every byte combination**. Source/tool/firmware hashes, native startup and completion, preserved-register sentinels, immutable loaded code, actual helper extent, capture bytes and pixels, and exact repair are checked. Deliberately changed observations must fail. Firmware is hashed, never distributed.
+
+[Related reusable technique](/patterns/nintendo-nes/assembly/framework/action-cooldown/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/ea42e5329440becd7cbba2489f64a3af4bb2ced8/nintendo-entertainment-system/patterns/assembly/framework/approach-target).
