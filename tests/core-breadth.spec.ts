@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import path from 'node:path';
 import {test,expect} from '@playwright/test';
 import entries from './core-breadth-entries.json' with {type:'json'};
-for(const entry of entries) test(`batch ${entry.batch}: ${entry.title}`,async({page},info)=>{
+for(const entry of entries) test(`batch ${entry.batch}: ${entry.title} (${entry.route})`,async({page},info)=>{
  const root=process.env.CODE_SAMPLES_PATH||'../code-samples';
  await page.goto(entry.route);
  const prose=page.locator('.pattern-prose');
