@@ -1,0 +1,77 @@
+---
+title: "Menu Key Repeat on Amiga"
+summary: "A menu should move once when you press Down, pause briefly, then scroll while you hold it."
+platform: "commodore-amiga"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "game rules", "input-repeat"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A menu should move once when you press Down, pause briefly, then scroll while you hold it. Reading the held button every update is too fast; reading only new presses never repeats. This helper adds the delay and repeat cadence between those two choices.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/input-repeat-demo.png" alt="Amiga shows the working result 01 01 01 00 00 00 00 00." caption="The completed native caller shows hexadecimal state bytes. The field order below explains the result; the full verification packet retains every call." />
+
+## Include, initialise and call
+
+Bind **HELD, WAS_HELD, TIMER, PULSE** as 4 contiguous private bytes in that order. Include the helper once. Call `input_repeat_init` at the deliberate reset boundary: it clears **all** named bytes, including inputs. Set your starting values afterwards. Call `input_repeat_step` when this service is needed.
+
+Initialise once when the menu gains control. Feed a held level every update, then consume PULSE immediately. Use a separate block for each independently repeating direction. Resolve opposite directions before service, according to your menu policy.
+
+Supply HELD as any nonzero value for a held control, zero for release. Step replaces PULSE, normalises WAS_HELD, and retains TIMER. The first held call pulses immediately and loads REPEAT_DELAY. Later held calls decrement a positive timer; reaching zero pulses and reloads REPEAT_RATE. Release clears the history and timer. Both configured delays must be 1–255 simulation updates.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/input-repeat/component.inc" lang="m68k" title="Reusable initialisation and service" />
+
+## State and ownership
+
+HELD is an input. WAS_HELD and TIMER are persistent private history. PULSE is a one-call output. The helper reads no keyboard or controller and assumes a regular service cadence.
+
+D0–D3/A0–A1/CCR may change; D4–D7/A2–A6 survive. A direct BSR/JSR uses four return-address stack bytes. The program is a 68000 implementation with no division instruction requirement.
+
+This implementation has fixed symbol bindings and one mutation owner. Independent users need distinct state blocks **and** scoped/renamed bindings; including another copy with the same global labels is not sufficient. Sequential queries may reuse a scratch block only after the previous result has been consumed. Do not let an interrupt and the main loop mutate the same block without a separately designed ownership policy.
+
+The standalone boot program takes over Copper/bitplane/interrupt/DMA resources, explicitly disarms all eight sprites, and does not restore Workbench. Those are diagnostic presentation choices; the helper itself owns no chipset registers.
+
+## A small caller you can adapt
+
+The standalone program includes the helper and a separate client. Its read-only table exercises 96 valid inputs, then this client initialises once and retains state between calls. Replace the supplied input changes with your own game values; the display and packet machinery are diagnostics rather than dependencies of the component.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/input-repeat/demo.asm" lang="m68k" title="Buildable caller, bindings and include order" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/input-repeat/exercise.inc" from="preview_rules:" to="; End of gameplay client." lang="m68k" title="A separate client retaining state between calls" />
+
+The eight display fields follow **HELD, WAS_HELD, TIMER, PULSE**; unused display fields are zero. Each field is a hexadecimal byte. The working row is **01 01 01 00 00 00 00 00**. The output is a completed diagnostic state, not a recording of movement, input or sound hardware.
+
+## Make it your own
+
+The custom build changes the first delay from four to six updates and the repeat interval from two to three. The immediate press still pulses at index zero. The eight held calls now pulse at indices 0 and 6 rather than 0, 4 and 6.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/input-repeat/custom.asm" lang="m68k" title="Maintained custom configuration or caller" />
+
+The observed custom row is **01 01 02 00 00 00 00 00**. The retained records qualify these named configurations; a new input domain or larger layout needs its own bounds and fresh execution checks.
+
+## Common mistake and repair
+
+The wrong client clears WAS_HELD and TIMER before every held sample. Every update looks like a fresh press, so all eight updates pulse. Retain repeat history between calls; reset it only on intentional focus/session changes.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/input-repeat/wrong.asm" lang="m68k" title="Deliberately wrong client selection" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/input-repeat-wrong.png" alt="Amiga shows the deliberate fault result 01 01 04 01 00 00 00 00." caption="The wrong client completes and records 01 01 04 01 00 00 00 00. Compare its state with the working row and the explained failure." />
+
+The wrong branch is in the displayed client above, selected by BROKEN. `repaired.asm` selects the original client again. Its executable matches demo exactly; Spectrum tape filenames can differ while loaded CODE is identical. The bad caller is a labelled experiment, not an alternative recommended implementation.
+
+## Cost and verification
+
+The measured helper occupies **114 code bytes plus 4 named state bytes** in this layout. Return addresses, alignment, tables and display diagnostics are additional. The sizes cover init and step together, not the whole standalone program.
+
+One constant-size state machine runs per control per update. No busy wait or input scan occurs here. Very short intervals feel fast only if the menu is actually serviced at the intended rate.
+
+A faster held-scroll stage can shorten the repeat interval after a threshold, but needs another counter and a clear acceleration policy. A real-time repeat service can use elapsed ticks instead; this version deliberately counts service calls and freezes when they stop.
+
+Four native runs use A500 OCS PAL with Kickstart 1.3 and an OFS boot disk; Asm198x 0.0.72 and Emu198x 0.44.2, with Build198x 0.2.9 for disk mastering. Every run checks 96 table results, dirty initialisation and every state in a separate sequential trace against an independent integer model. This is boundary/varied-input qualification, **not exhaustive coverage of every byte combination**. Source/tool/firmware hashes, native startup and completion, preserved-register sentinels, immutable loaded code, actual helper extent, capture bytes and pixels, and exact repair are checked. Deliberately changed observations must fail. Firmware is hashed, never distributed.
+
+[Related reusable technique](/patterns/commodore-amiga/assembly/framework/action-cooldown/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/3b3df522bf475c73579cb0283ff0f1bd89ec54b0/commodore-amiga/patterns/assembly/framework/input-repeat).
