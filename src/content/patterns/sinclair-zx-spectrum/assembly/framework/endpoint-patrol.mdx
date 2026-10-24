@@ -1,0 +1,79 @@
+---
+title: "Patrol Between Two Endpoints on Spectrum"
+summary: "A guard walks to the end of a corridor, turns and comes back."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "game rules", "endpoint-patrol"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A guard walks to the end of a corridor, turns and comes back. The turn should happen at the endpoint, not after a step through the wall. This routine keeps that small behaviour separate from sprite drawing and collision.
+
+
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/endpoint-patrol-demo.png" alt="Spectrum shows the working result 02 00 04 00 00 00 00 00." caption="The completed native caller shows hexadecimal state bytes. The field order below explains the result; the full verification packet retains every call." />
+
+## Include, initialise and call
+
+Bind **POSITION, LOWER, UPPER, DIRECTION** as 4 contiguous private bytes in that order. Include the helper once. Call `endpoint_patrol_init` at the deliberate reset boundary: it clears **all** named bytes, including inputs. Set your starting values afterwards. Call `endpoint_patrol_step` when this service is needed.
+
+Initialise, then supply valid bounds and a starting position before the first step. Service the helper at your chosen movement cadence. A countdown can make a guard step less often; this helper itself does not own a clock. Pause simply omits service.
+
+Use unsigned byte LOWER, UPPER and POSITION with **LOWER ≤ POSITION ≤ UPPER**. DIRECTION zero means increasing, nonzero means decreasing. Step turns inward at either endpoint, takes one unit step, and normalises DIRECTION to 0 or 1. A one-point interval stays there with direction zero. There is no dwell or duplicated endpoint call.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/endpoint-patrol/component.inc" lang="z80" title="Reusable initialisation and service" />
+
+## State and ownership
+
+POSITION and DIRECTION persist. LOWER and UPPER are caller-owned bounds. Altering the bounds requires moving the position into the new interval before the next call; this component does not repair arbitrary corrupt state.
+
+AF/BC/DE/HL may change; IX/IY survive. A direct CALL uses two return-address stack bytes.
+
+This implementation has fixed symbol bindings and one mutation owner. Independent users need distinct state blocks **and** scoped/renamed bindings; including another copy with the same global labels is not sufficient. Sequential queries may reuse a scratch block only after the previous result has been consumed. Do not let an interrupt and the main loop mutate the same block without a separately designed ownership policy.
+
+The standalone tape program starts at $8000, disables interrupts and owns bitmap/attribute RAM. It does not return to BASIC. The helper itself never disables interrupts or touches the display.
+
+## A small caller you can adapt
+
+The standalone program includes the helper and a separate client. Its read-only table exercises 96 valid inputs, then this client initialises once and retains state between calls. Replace the supplied input changes with your own game values; the display and packet machinery are diagnostics rather than dependencies of the component.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/endpoint-patrol/demo.asm" lang="z80" title="Buildable caller, bindings and include order" />
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/endpoint-patrol/exercise.inc" from="preview_rules:" to="; End of gameplay client." lang="z80" title="A separate client retaining state between calls" />
+
+The eight display fields follow **POSITION, LOWER, UPPER, DIRECTION**; unused display fields are zero. Each field is a hexadecimal byte. The working row is **02 00 04 00 00 00 00 00**. The output is a completed diagnostic state, not a recording of movement, input or sound hardware.
+
+## Make it your own
+
+The custom caller extends the upper endpoint from four to six. The same initial position now moves forward before turning. The lower bound remains zero and the movement amount remains one.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/endpoint-patrol/custom.asm" lang="z80" title="Maintained custom configuration or caller" />
+
+The observed custom row is **02 00 06 01 00 00 00 00**. The retained records qualify these named configurations; a new input domain or larger layout needs its own bounds and fresh execution checks.
+
+## Common mistake and repair
+
+The wrong client steps first and only reverses after leaving the interval. Starting at the upper endpoint four, it visibly records position five before turning back. Turn before taking the next step. The wrong trace is a separate naive implementation; the valid boundary table still exercises the maintained helper.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/endpoint-patrol/wrong.asm" lang="z80" title="Deliberately wrong client selection" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/endpoint-patrol-wrong.png" alt="Spectrum shows the deliberate fault result 00 00 04 01 00 00 00 00." caption="The wrong client completes and records 00 00 04 01 00 00 00 00. Compare its state with the working row and the explained failure." />
+
+The wrong branch is in the displayed client above, selected by BROKEN. `repaired.asm` selects the original client again. Its executable matches demo exactly; Spectrum tape filenames can differ while loaded CODE is identical. The bad caller is a labelled experiment, not an alternative recommended implementation.
+
+## Cost and verification
+
+The measured helper occupies **73 code bytes plus 4 named state bytes** in this layout. Return addresses, alignment, tables and display diagnostics are additional. The sizes cover init and step together, not the whole standalone program.
+
+There are a few byte comparisons and one increment/decrement per service, with no route scan or rendering. Keeping movement cadence outside allows several guards to share a clock without sharing their positions.
+
+A multi-point route needs a waypoint index and route data. Variable-speed reflection must decide how to use leftover distance after hitting an endpoint; this one-unit routine cannot be made faster by replacing its increment with an unchecked larger addition.
+
+Four native runs use Spectrum 48K with stock ROM tape loading and USR entry; Asm198x 0.0.72 and Emu198x 0.44.2. Every run checks 96 table results, dirty initialisation and every state in a separate sequential trace against an independent integer model. This is boundary/varied-input qualification, **not exhaustive coverage of every byte combination**. Source/tool/firmware hashes, native startup and completion, preserved-register sentinels, immutable loaded code, actual helper extent, capture bytes and pixels, and exact repair are checked. Deliberately changed observations must fail. Firmware is hashed, never distributed.
+
+[Related reusable technique](/patterns/sinclair-zx-spectrum/assembly/framework/approach-target/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/a2f8c16ec63b1f328c32903ba8b3aa01d69f8fbd/sinclair-zx-spectrum/patterns/assembly/framework/endpoint-patrol).
