@@ -29,3 +29,34 @@ test('mobile menu remains usable after client navigation and closes with Escape'
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 });
+
+// At every width either the nav links show or the menu button opens a menu
+// whose links can be reached; the two switch over at the same breakpoint.
+for (const width of [1280, 1101, 1100, 1000, 900, 861, 860, 600]) {
+  test(`the site can be navigated at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/about/');
+    const bar = page.getByRole('banner');
+    const toggle = bar.getByRole('button', { name: 'Menu', exact: true });
+    if (await toggle.isVisible()) {
+      await toggle.click();
+      await expect(page.locator('.site-menu').getByRole('link', { name: 'Systems', exact: true })).toBeVisible();
+    } else {
+      await expect(bar.locator('.nav-links').getByRole('link', { name: 'Systems', exact: true })).toBeVisible();
+    }
+  });
+}
+
+// The open menu sits under the bar, so the bar's button can close it again.
+for (const width of [390, 1000]) {
+  test(`the menu button closes the open menu at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/about/');
+    const toggle = page.getByRole('banner').getByRole('button', { name: 'Menu', exact: true });
+    await toggle.click();
+    await expect(page.locator('.site-menu').getByRole('link', { name: 'Systems', exact: true })).toBeVisible();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('.site-menu')).toBeHidden();
+  });
+}
