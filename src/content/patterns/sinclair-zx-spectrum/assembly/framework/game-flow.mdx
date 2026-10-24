@@ -1,0 +1,90 @@
+---
+title: "Game States and Restart on Spectrum"
+summary: "Separate title, play, pause and game over, preserve a paused session and reset a new one exactly once."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["state-machine", "restart", "pause", "game-flow"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Pause a game, then resume it. Your score should still be there. Start a new game and it should be cleared. Both actions enter Playing, but they mean different things. This routine makes that distinction explicit, so a reset cannot quietly sneak into the resume path.
+
+The working caller preserves **score 4** across pause/resume, finishes that session, restarts and performs two more playing updates. It records **two** fresh-session resets. The deliberately wrong caller resets on every entry to Playing: the resumed score becomes **0**, and it records an extra reset.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/game-flow-demo.png" alt="The Spectrum caller shows 04 02 01 02 03 06 01 00: score survives resume and two fresh sessions reset once each." caption="The first field is the score immediately after resume. The second counts fresh-session resets. Neither should change merely because a paused game resumes." />
+
+## One decision per update
+
+The state numbers preserve the existing shared policy: **Title 0, Playing 1, Game Over 2, Paused 3**. Supply a logical event byte to `FLOW_EVENTS` (or the lowercase named field in the Z80/68000 source), then call `flow_step` once. Events are **Start 1, Pause 2, Loss 4, Restart 8**. Start and Pause normally come from new presses; Loss comes from game rules. Restart is an explicit menu/action request.
+
+| Current state | Accepted request, in priority order | Result |
+| --- | --- | --- |
+| Title | Start | Playing; fresh session |
+| Playing | Loss, then Pause | Game Over or Paused |
+| Game Over | Restart, then Start | Fresh Playing session, or Title |
+| Paused | Pause | Playing; preserve session |
+
+Other requests have no effect in that state. Loss beats Pause if both arrive together. In Game Over, an explicit Restart beats Start. Start returning from Game Over to Title preserves the established shared example; direct Restart is an additional deliberate request. A state does not immediately run the next state's update on the same event.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/game-flow/flow.inc" lang="z80" title="Reusable initialisation and one-step transition routine" />
+
+`flow_init` clears the **five private bytes**: current state, supplied events, changed, fresh and error. Call it at boot; it is not your game's reset routine. On each `flow_step`, **CHANGED** pulses when a transition occurs, **FRESH** pulses when the caller should initialise a new session, and **ERROR** reports invalid state (1) or illegal upper event bits (2). Pulses/error clear on the next call. Read and act on them before calling again.
+
+Invalid input leaves the state unchanged. Diagnose ERROR in the caller; do not use it as a reason to reset silently or index a drawing table with an invalid state. A valid no-op has no error and emits no entry/reset pulse. The routine performs no drawing, audio, input reads or payload reset.
+
+Only **AF changes**; BC/DE/HL/IX/IY survive. The five named component fields follow the code in private writable RAM. A direct call uses a two-byte return address.
+
+## Reset the session, preserve the sampler
+
+The maintained client computes new presses from one logical held sample and its previous sample. It updates the **old** Playing state before deciding transitions, matching the shared policy that the current update's simulation/collisions finish before pause or loss. Thus an update entering Pause counts as one playing update; the resume transition itself does not.
+
+After `flow_step`, call `reset_session` **only when FRESH is set**. Here it clears score and restores health; a game can also clear its object flags, reset room state, reseed a deliberately repeatable RNG and restart appropriate timers. Choose what belongs to a session rather than clearing all RAM. Resuming skips those actions and preserves progress.
+
+Keep previous-held input history outside that reset. A held Start/Pause button must not become a new press simply because a state changed. For a real input reader at startup, seed previous-held from the actual initial sample. The scripted client begins with a deliberate neutral sample; it is not a hardware-reader demonstration.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/game-flow/exercise.inc" from="preview_flow:" to="; End of session client." lang="z80" title="Compute edges, update once and reset only a fresh session" />
+
+This small client deliberately supplies a fixed fifteen-update logical trace, including held input, release/repress, pause, resume, loss and direct restart. The native packet retains state, changed/fresh/error, score and input history **at every update**, rather than inferring behaviour from one still image.
+
+## Include and adapt it
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/game-flow/demo.asm" lang="z80" title="Buildable caller and exact include order" />
+
+The 48K PAL standalone caller enters through ROM tape loading and BASIC USR at $8000, then disables interrupts, owns the bitmap/attributes/border and uses ROM glyphs for diagnostics. Mutable fields and output follow its code. It remains in its hold loop rather than restoring BASIC. The reusable helper owns none of those hardware resources. Reserve its five bytes and include it once; your loop supplies events and consumes the results. Keep one owner for updates, and defer requests from interrupts instead of changing the state halfway through a decision.
+
+The eight hexadecimal fields are **resumed score, reset count, final state, final score, reset health, score at loss, observed invalid-state error, final changed pulse**. The working row is **04 02 01 02 03 06 01 00**. This diagnostic score is a wrapping byte counting Playing updates, not a complete scoring system.
+
+## Make it your own
+
+The custom caller changes reset health from **3 to 5**. The fifth output field becomes **05**. No extra component code or state is needed; it is a caller policy. Keep that value in `reset_session`, so changing a session's starting health cannot alter resume behaviour.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/game-flow/custom.asm" lang="z80" title="Change initial health without changing transitions" />
+
+For more states or event bits, change the policy deliberately and add competing-event and invalid-input cases. Those are extensions, not safe edits to the existing byte contract. Entry/exit hooks and table-driven rules can be useful later; this component deliberately returns pulses instead of imposing callbacks or an engine structure.
+
+## Common mistake: reset whenever Playing is entered
+
+The labelled wrong caller tests **CHANGED and Playing** instead of **FRESH** before resetting session data. That also matches resume. The first field falls from **04 to 00**, the reset count rises from **02 to 03**, and the score at loss falls from **06 to 02**. The program completes the full trace. Its transition routine is still correct; the bug is in the caller's reset condition.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/game-flow/wrong.asm" lang="z80" title="Deliberate fault: treat resume as a new session" />
+
+The smallest fix is the FRESH test in the normal client. The repaired executable matches the working executable exactly; a Spectrum tape's filename can differ while its loaded CODE remains identical.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/game-flow-wrong.png" alt="The Spectrum caller shows 00 03 01 02 03 02 01 00 after a reset on resume." caption="The wrong reset condition loses progress on resume and counts a third reset. The observed trace identifies the offending transition." />
+
+## Cost, neighbours and verification
+
+The helper uses **139 code bytes plus five state bytes** at this layout. It takes one bounded branch path per update, with no object scan or wait. Instruction/storage counts do not establish a whole-game frame budget. Your input sampling, simulation, rendering, sound and entry work still have their own costs.
+
+The [shared state-machine entry](/patterns/cross-platform/framework/state-machine/) explains the policy. [Input edges](/patterns/cross-platform/input/edge-detection/) explain one press versus a held button. [Object slots](/patterns/sinclair-zx-spectrum/assembly/framework/object-pool/) make one possible session-reset responsibility concrete. Resetting a pool is separate from restoring pixels or resetting audio; each resource needs its owner.
+
+Four native runs with **Asm198x 0.0.72 / Emu198x 0.44.2** cover normal, changed health, the reset-on-resume fault and exact repair. Amiga media uses **Build198x 0.2.9**. An independent policy model checks all **64 valid state/event pairs**, all **252 invalid state bytes**, twelve upper-event-bit rejection cases and the complete fifteen-update trace. Preserved-register sentinels and positive completion distinguish a real result from a stalled caller. The packet is **1,405 bytes**; the optional display shows a small summary of it.
+
+The observer checks native startup, actual code, source/tool/configuration identities, capture hashes and text pixels. Corrupting retained observations must fail the gate. Firmware is hashed rather than distributed. This is logic execution on the named configurations, not a new hardware-reader test, physical-hardware timing measurement or complete-game acceptance test.
+
+The existing [interactive Spectrum state loop](/patterns/sinclair-zx-spectrum/assembly/framework/state-machine-loop/) remains the keyboard-driven companion. This reusable logical routine does not replace its controls or published route.
+
+[Maintained source and native evidence](https://github.com/code198x/code-samples/tree/03b3d7285af06cec47c4b5393ba8a8912a8303a8/sinclair-zx-spectrum/patterns/assembly/framework/game-flow).
