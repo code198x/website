@@ -1,0 +1,74 @@
+---
+title: "Checked Map Queries"
+summary: "Read and change typed Blitz map cells, look up tile properties and convert world positions with explicit bounds."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "beginner"
+tags: ["maps", "tiles", "arrays", "maths"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["tile-map-queries"]
+  vault: []
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+**Code status: executed in the original Blitz runtime.** These are language-native integer arrays and Gosub routines, independently qualified from the assembly and AMOS routes.
+
+
+A map is game data first: read a cell, change it and ask what its tile means without involving the display. `caller.bb2` is a small complete project caller; append `routines.bb2` after its End, or import `build/demo.asc` from `make` through Ted’s ASCII Insert command. Compile/run with Right-Amiga+X. It displays Tile: 1, Flags: 1 and Changed tile: 2; Q closes its window. The qualification uses original Blitz BASIC 2.10/Ted 1.1 in Amiga mode, independently of the AMOS and assembly routes.
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/rendering/tile-map/caller.bb2" lang="blitz" title="A small project caller: read, property, write and convert" />
+
+## Allocate and call
+
+Use typed long arrays and scalars, as the maintained code does. Dim PL_TM_MAP.l(34) gives 35 elements, indexed 0–34; the final DIM index is inclusive. Dim PL_TM_PROPS.l(3) gives four property entries. Set W/H to 1–255 cells, CAP to the actual allocated map element count, MAX to the highest valid tile ID (0–255), and PC to the property element count (at least MAX+1). Initialise every used element. The capacity fields are caller promises; the helper cannot discover or repair a falsely declared allocation.
+
+The map is flat and row-major: row*W+column. These .l arrays store long values even though this interface limits tile IDs to byte range. They are not raw packed assembly maps. Keep the PL_TM prefix free or rename it consistently. One shared context is not recursive or re-entrant.
+
+- **PL_TM_GET:** supply X/Y, Gosub the label, then check VALID before TILE. It clears PROP. Invalid dimensions/capacity/coordinates or a stored out-of-range ID return VALID=0 and TILE=0. A zero tile alone is not success.
+- **PL_TM_SET:** supply X/Y/TILE, call, check VALID. Invalid dimensions, capacity, cell or tile cannot alter the map. TILE remains the input and PROP is cleared. This routine does not draw.
+- **PL_TM_PROPERTY:** supply TILE, call, check VALID before PROP. It checks MAX and property capacity independently of map dimensions. Failure returns PROP=0 and leaves TILE unchanged. The game assigns meanings to those flags.
+- **PL_TM_PIXEL8:** supply WX/WY as nonnegative long world coordinates up to 65535. It divides by eight into long X/Y and uses the checked read. Division discards the nonnegative fraction, giving the containing cell. Negative/too-large world coordinates return zero outputs; positive converted cells outside the map are rejected. WX/WY survive. A different cell size or signed world needs a corresponding conversion and origin policy.
+
+Routines change their PL_TM output/state/index scratch and use the normal Gosub stack. They do not allocate, reserve banks, wait, draw, install interrupts or change a clock. The small caller separately owns its window/output route and frees the window on Q. Keep another routine from changing this context’s inputs before the result is consumed.
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/rendering/tile-map/routines.bb2" lang="blitz" title="The maintained checked map routines" />
+
+## Make it your own
+
+In this caller’s property convention, bit 0 means solid and bit 1 means exit. The native customisation changes tile 2’s property from 2 to 1; the compiled caller then displays Exit: 1 instead of 2 and property queries return the new value. The helper, map dimensions and allocations stay unchanged. A game decides what a solid exit should do; the lookup only returns data.
+
+A map can be larger than the visible region. This component deliberately does no region drawing. More IDs need a larger property array and matching MAX/PC values. Wider dimensions, row offsets, packed byte arrays, compressed rooms or streamed chunks need their own contracts and checks. The 255-cell dimensions are a selected small-map interface, not an Amiga hardware limit.
+
+## Common error: use height as the stride
+
+The labelled wrong build substitutes row*H+column for row*W+column. It stays inside this bounded allocation and completes all 64 operations, yet column 0, row 1 of the 7×5 map returns tile 1 instead of 3. A valid write can alter the wrong cell too. Restore W in the stride expression. The repaired run compiles exactly the original working source and passes the whole map oracle.
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/rendering/tile-map/build.py" lang="python" from='    if name == "wrong":' to='    cases = C.cases()' title="Deliberate fault applied by the qualification builder" />
+
+The native trace records the result and all map elements after every operation. Invalid writes must leave all 35 cells and their following guard unchanged. A square map would hide this stride error; a successful compile or clean exit does not detect it.
+
+## Costs and independent verification
+
+The small example allocates 35 map longs and four property longs: 156 bytes of numeric element payload, plus array metadata, named long scalar state and compiled code/runtime support. No total compiled or runtime footprint is claimed. Row addressing performs multiplication and indexed access; a row-offset table would spend storage to avoid repeated multiplication. No cycle count, speedup or frame budget is measured here.
+
+The qualification caller adds a guard element and a 10,760-byte bank: 64 records of 168 bytes plus eight final guard bytes. That bank is observation storage, not a map-helper requirement. Each record contains outputs and the complete long-element map. Cases cover every cell, negative/outside reads, invalid writes/IDs, a valid change/readback, properties, world conversion and invalid dimensions/capacity. A separate host row-major oracle checks the observations without being treated as native execution.
+
+The small reader-facing caller runs separately. Working, custom, wrong, repaired and boundary runs each compile in original Ted and execute their supplied-value caller; the boundary run repeats that caller rather than claiming another algorithm. The original runtime cold boot, blank editor and ASCII requester phases precede imports. Explicit source-file selection and bounded import/compile windows are checked. Positive per-operation/final markers distinguish successful completion from an editor or failed compile. Native bank bytes, source-fixture/program/tool/firmware/runtime identities, numeric PNG recognition and rejected corruptions are retained under verification.
+
+Selected configuration: Emu198x 0.44.2, A1200 PAL with 2 MiB chip/no fast RAM and three drives, recorded Kickstart and original Blitz BASIC 2.10 system/libraries media, Build198x-ADF 0.2.13. Private runtime media and snapshots are not distributed. This is compiled original-runtime execution, not a claim about every Blitz revision, original-hardware timing or an exported standalone executable. Quit captures are observations, not complete proofs of all editor cleanup behaviour.
+
+Run `python3 scripts/check-blitz-map-queries.py` and `python3 -m unittest discover -s scripts -p test_blitz_map_queries.py -v` from the samples root. The native verifier takes explicit emulator/firmware/runtime/builder and fresh private-directory paths. Coordinate indexing, integer division and flag sets connect to Maths for Games; collision, movement and drawing callers decide how to use the data.
+
+
+## See the original runtime
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/blitz-map-small.png" alt="The small original Blitz caller shows Tile 1, Flags 1 and Changed tile 2." caption="The actual reusable caller runs in Blitz BASIC 2.10; Q returns to the editor." />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/blitz-map-custom.png" alt="The Blitz custom caller completes 64 map operations and displays Exit 1." caption="A data-only property change: Exit is now 1. The complete native trace also checks every map snapshot." />
+
+[Pinned routines and complete importable callers](https://github.com/code198x/code-samples/tree/95a3ae8c3eacbc540de5abccf9ec100fb14f1926/commodore-amiga/patterns/blitz/rendering/tile-map) · [Native configuration and records](https://github.com/code198x/code-samples/tree/95a3ae8c3eacbc540de5abccf9ec100fb14f1926/commodore-amiga/patterns/blitz/rendering/tile-map/verification). [Maths for Games](/craft/maths-for-games/) develops indexing, division and flag sets; [the map-query explanation](/patterns/cross-platform/rendering/tile-map-queries/) describes the shared row-major conventions.
