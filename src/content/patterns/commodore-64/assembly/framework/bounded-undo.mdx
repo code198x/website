@@ -1,0 +1,87 @@
+---
+title: "Keep a Bounded Cell-edit Undo Log on C64"
+summary: "Undo should restore the previous cell value, including when the same cell was edited twice."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "bounded-undo"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Undo should restore the previous cell value, including when the same cell was edited twice.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/bounded-undo-demo.png" alt="C64 shows the working diagnostic row 01 01 00 01 01 09 00 00." caption="A completed native caller displays 01 01 00 01 01 09 00 00. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+A sixteen-cell board has a four-entry undo stack: J stores cell indices and K their previous values. MODE=0 records then applies one CELL/VALUE edit; MODE=1 undoes the newest edit; MODE=2 clears history without changing the board. Full or empty history returns RESULT=0 with VALID=1 and leaves the board unchanged. Invalid mode, COUNT above four, edit index or popped log index returns VALID=0 without committing changes.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **RESULT, VALID, COUNT, MODE, CELL, VALUE, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14, C15, J0, J1, J2, J3, K0, K1, K2, K3**. They occupy 30 contiguous bytes. Also reserve the private workspace: **T0, T1, T2, EXPR_SAVE** (4 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `bounded_undo_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `bounded_undo_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | COUNT, C0–C15 and J0–J3/K0–K3 |
+| Supply before service | MODE, CELL and VALUE |
+| Read after service | RESULT and VALID |
+
+Record the old value before writing the new one. Undo restores that saved value and shortens the stack only after validating the stored cell index.
+
+<CodeFromFile src="cross-platform/patterns/framework/bounded-undo/6502.inc" lang="6502" title="Reusable initialisation and service" />
+
+## Machine contract
+
+A/X/status may change; Y and decimal mode are preserved. Use CLD for binary arithmetic. A direct JSR needs two return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. The samples use fixed symbol bindings. Scope or rename every label and binding, including the component_end measurement marker, and allocate a separate block for each independent instance. Different helpers can also use common field names, so combining them needs separate namespaces or explicitly renamed bindings. Give each block one mutation owner.
+
+The diagnostic PRG owns screen, font and colour RAM and disables interrupts; it does not return to BASIC. The reusable helper does none of those things.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/bounded-undo/demo.asm" lang="6502" title="Bindings and include order" />
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/bounded-undo/exercise.inc" from="preview_rules:" to="; End of worldkit client." lang="6502" title="A client retaining state between calls" />
+
+## Customise it
+
+Edit the same cell twice, then undo only the latest edit. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/bounded-undo/custom.asm" lang="6502" title="Custom client selection" />
+
+The custom diagnostic row is **01 01 01 01 00 09 07 00**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong caller clears COUNT before each operation. Edits lose their history and undo has nothing to restore. Keep the log and its count together until an explicit clear or restart.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/bounded-undo/wrong.asm" lang="6502" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/bounded-undo-wrong.png" alt="C64 shows the deliberate error row 00 01 00 01 01 09 07 09." caption="The wrong client completes with 00 01 00 01 01 09 07 09; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 318 code bytes; public state is 30 bytes and private scratch is 4 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+Constant work per edit or undo, with eight log bytes for four changes. Whole-state checkpoints are simpler for a tiny state; a larger transaction log needs capacity preflight and explicit grouping.
+
+This is a LIFO edit log, not redo or a full game-state rewind. A move changing several cells needs a grouped transaction or several log entries committed together. Editing an unchanged value still consumes an entry in this deliberately simple contract.
+
+## Execution evidence
+
+Four variants run on PAL stock-ROM PRG, using Asm198x 0.0.72, Emu198x 0.44.2. Each executes 33 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+## Where it fits
+
+[Checkpoints](/patterns/commodore-64/assembly/framework/checkpoint-state/): A checkpoint restores one coherent snapshot; an undo log remembers a bounded sequence of individual changes.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/ff8fac378f084e88fd9d0842faca1beae5bf7aec/commodore-64/patterns/assembly/framework/bounded-undo).
