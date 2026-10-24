@@ -1,6 +1,6 @@
 ---
 title: "Joystick Reading"
-summary: "Read both C64 joystick ports and distinguish held controls from new presses, with explicit CIA and keyboard ownership."
+summary: "Read both C64 joystick ports, distinguish holds, presses and releases, and map one event to one action."
 platform: "commodore-64"
 category: "input"
 difficulty: "beginner"
@@ -15,6 +15,7 @@ related:
 
 import CodeFromFile from '@components/CodeFromFile.astro';
 import Sources from '@components/Sources.astro';
+import Figure from '@components/Figure.astro';
 
 **Code status: assembled and emulator-executed.** Both joystick ports on PAL and NTSC C64 in Emu198x and VICE, with the caller owning CIA1 and keyboard keys released. The [recorded checks](https://github.com/code198x/code-samples/blob/f67d4aeb6921d5fefa87b529f996c20bf39de211/commodore-64/patterns/assembly/input/joystick-reading/verification/results.json) identify the sources and observations. A separate reverse-keyboard-scan discrepancy is recorded below; these checks do not establish complete keyboard coexistence or original-hardware behaviour.
 
@@ -107,3 +108,52 @@ Held-key probes use Emu198x key events and VICE keyboard-matrix snapshots, with 
 Commodore, *Commodore 64 Programmer's Reference Guide* (1983), p. 94 (keyboard matrix), pp. 320–322 (I/O assignments) and [pp. 343–344](https://www.devili.iki.fi/Computers/Commodore/C64/Programmers_Reference/Chapter_6/page_343.html) (game ports). MOS Technology, *6526 Complex Interface Adapter*, sheet 5/8 (port direction and pin reads). New-press state and reset behaviour are the example's software choices.
 
 </Sources>
+
+
+## Act when a button is released
+
+Charging a shot and firing it on release needs one more question: which bits were held before this sample but are clear now? The wrapper below keeps the original reader's held/new/counter interface and adds release masks.
+
+<CodeFromFile src="commodore-64/patterns/assembly/input/joystick-reading/edges.inc" lang="6502" title="Add releases without replacing the existing reader" />
+
+Include joystick.inc once, then edges.inc. With the same exclusive CIA1 ownership, call joy_edges_init once and joy_poll_edges once per update instead of joy_poll. Use joy1/joy2 for held controls, joy1_new/joy2_new for presses and joy1_released/joy2_released for releases. A/X/flags change; Y survives. The wrapper owns two release bytes and one scratch byte, uses the existing JSR stack and is not re-entrant on one state set.
+
+The pure joy_release_bits entry takes A=previous and X=current five-bit masks; A returns the released bits, X/Y survive and flags/private scratch change. Its operation is set difference: previous AND NOT current. This is another useful link between bit masks and [Maths for Games](/craft/maths-for-games/).
+
+## Put the events into a caller
+
+<CodeFromFile src="commodore-64/patterns/assembly/input/joystick-reading/edges-demo.asm" lang="6502" title="The include and call order" />
+
+<CodeFromFile src="commodore-64/patterns/assembly/input/joystick-reading/edges-caller.inc" lang="6502" title="Sample once; let several consumers read that result" />
+
+Run `make edges ASM198X=/path/to/asm198x`, load build/edges-demo.prg and RUN. Fire in port 2 spends one action. Hold it and the count stays still; release and press again for another. Reset to leave. Seven hexadecimal bytes show port 1 held/new/released, port 2 held/new/released, then the action count.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/input-edges-working.png" alt="The native caller ends with action count 02 after two Fire presses." caption="After release, all current masks are zero. The final 02 preserves the two accepted actions." />
+
+The caller owns CIA1 directions/latches/timer controls/interrupt masks, CPU banking, the display and an NMI return vector. It deliberately leaves the KERNAL keyboard service stopped. Keep keyboard keys released. The diagnostic event latches and counters make one-update pulses observable after the beam has drawn a frame; a stable still cannot show every transition.
+
+Initial history is zero, so a button held on entry counts as a first press. To ignore already-held buttons at a scene boundary, initialise, take one sample and discard it before accepting actions. Share that one result: a second poll in the same update consumes an edge. Very short pulses, bounce, deliberate repeat and opposite-direction policy remain separate jobs. [Clock and game-loop choices](/patterns/cross-platform/framework/game-loop-choices/) explains why input sampling and game progression need not be identical.
+
+## Make it your own
+
+<CodeFromFile src="commodore-64/patterns/assembly/input/joystick-reading/edges-custom.asm" lang="6502" title="Map a new Left press to the action" />
+
+Changing ACTION_MASK from `$10` to `$04` makes Left spend the action and Fire do nothing. The reader/wrapper and payload sizes stay unchanged. A mask with several selected bits would count one event if any of them were newly pressed; it would not count one action per button. Choose that policy deliberately.
+
+## Common mistake: forgetting the history
+
+<CodeFromFile src="commodore-64/patterns/assembly/input/joystick-reading/edges-wrong.inc" lang="6502" title="Deliberately broken: clear history before every sample" />
+
+The separate edges-wrong.asm driver selects this fault. Held Fire becomes a new press every update, the action count rises while the button is held, and releases disappear. Restore the normal caller's POLL_ROUTINE jump to joy_poll_edges. The independently executed repair has exactly the working payload. The wrong build adds eleven bytes and is kept outside the normal build target.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/input-edges-wrong.png" alt="The faulty native caller has spent more than two actions from the same presses and holds." caption="The counter records the repeated actions; the still alone does not establish their timing." />
+
+## Extra costs and verification
+
+The wrapper adds 62 instruction bytes and 3 state bytes to the maintained reader's 100 instruction bytes and 6 state bytes. The complete diagnostic PRG payload is 490 bytes, including its BASIC header, caller, tables and state. Diagnostic latches add 8 bytes, with a separate action counter and ready marker. The hardware reader still performs two port reads per poll. Wrapper/call work has a cost; byte counts do not establish a whole-frame budget or remove VIC-II contention.
+
+Six cases on Emu198x 0.44.2, Asm198x 0.0.72 and the recorded stock PAL ROMs cover working/custom/wrong/repaired callers and a second guest-owned release caller. All 1,024 previous/current masks are checked against independent bit-set arithmetic. A wrong OR operation completes its guards but fails that oracle. Real input events, native masks/counters, screen cells, ROM-glyph/PNG agreement and source/tool/firmware identities are retained. Thirteen corrupted observations/pixel controls must fail.
+
+The new wrapper has this named PAL qualification; the earlier reader's separate PAL/NTSC observations remain separate. Opposite-bit fixtures prove arithmetic, not physical joystick capability. There is no new original-hardware, keyboard-coexistence or universal timing claim.
+
+[Maintained wrapper and callers](https://github.com/code198x/code-samples/tree/2099f343a4ac2e3003759b773da083da6e1b4fa5/commodore-64/patterns/assembly/input/joystick-reading) · [Native records and configuration](https://github.com/code198x/code-samples/tree/2099f343a4ac2e3003759b773da083da6e1b4fa5/commodore-64/patterns/assembly/input/joystick-reading/verification/edges).
