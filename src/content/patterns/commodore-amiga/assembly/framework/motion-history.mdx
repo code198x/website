@@ -1,0 +1,87 @@
+---
+title: "Keep a Small Position History on Amiga"
+summary: "A trailing companion needs where the leader was, not another guess at where it might be going."
+platform: "commodore-amiga"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "motion-history"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A trailing companion needs where the leader was, not another guess at where it might be going.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/motion-history-demo.png" alt="Amiga shows the working diagnostic row 0A 14 01 03 03 32 3C 02." caption="A completed native caller displays 0A 14 01 03 03 32 3C 02. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+An eight-entry ring stores byte X/Y pairs. HEAD is the next write index 0–7; COUNT is 0–8. PUSH nonzero appends the supplied position, advances HEAD modulo eight and saturates COUNT at eight. Then query LAG entries back from newest: zero means newest. A lag outside COUNT returns VALID=0 and zero outputs but does not undo a valid append. Invalid HEAD/COUNT rejects before writing.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **OUT_X, OUT_Y, VALID, HEAD, COUNT, INPUT_X, INPUT_Y, LAG, PUSH, HX0, HX1, HX2, HX3, HX4, HX5, HX6, HX7, HY0, HY1, HY2, HY3, HY4, HY5, HY6, HY7**. They occupy 25 contiguous bytes. Also reserve the private workspace: **T0, EXPR_SAVE** (2 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `motion_history_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `motion_history_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | HEAD, COUNT and HX0–HX7/HY0–HY7 |
+| Supply before service | INPUT_X, INPUT_Y, LAG and PUSH |
+| Read after service | OUT_X, OUT_Y and VALID |
+
+The write cursor wraps cheaply because capacity is a power of two. A lag query subtracts from the next-write cursor rather than treating physical array order as chronological order.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/motion-history/component.inc" lang="m68k" title="Reusable initialisation and service" />
+
+## Machine contract
+
+D0–D3/A0–A1/CCR may change; D4–D7/A2–A6 are preserved. A direct BSR/JSR needs four return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. The samples use fixed symbol bindings. Scope or rename every label and binding, including the component_end measurement marker, and allocate a separate block for each independent instance. Different helpers can also use common field names, so combining them needs separate namespaces or explicitly renamed bindings. Give each block one mutation owner.
+
+The A500 OCS diagnostic cold-boots an OFS disk, owns the Copper and bitplane and disables interrupt/DMA sources. The helper does not take over hardware or allocate Chip RAM.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x` and `BUILD198X=/path/to/build198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/motion-history/demo.asm" lang="m68k" title="Bindings and include order" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/motion-history/exercise.inc" from="preview_rules:" to="; End of worldkit client." lang="m68k" title="A client retaining state between calls" />
+
+## Customise it
+
+Append nine positions, then query the oldest retained entry after wrap. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/motion-history/custom.asm" lang="m68k" title="Custom client selection" />
+
+The custom diagnostic row is **01 02 01 01 08 08 09 07**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong caller resets HEAD on every service. New positions overwrite one slot and older queries read unrelated entries. Keep the ring cursor alongside the stored history.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/motion-history/wrong.asm" lang="m68k" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/motion-history-wrong.png" alt="Amiga shows the deliberate error row 00 00 01 00 03 32 3C 02." caption="The wrong client completes with 00 00 01 00 03 32 3C 02; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 466 code bytes; public state is 25 bytes and private scratch is 2 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+Constant work without shifting old positions. Eight pairs cost sixteen data bytes. A timestamped history costs more storage but can answer elapsed-time rather than sample-age queries.
+
+These are serviced samples, not time-stamped seconds. Variable update spacing changes the time represented by a lag. Interpolation, full-state rewind and collision-safe followers require additional state and rules.
+
+## Execution evidence
+
+Four variants run on A500 OCS PAL, Kickstart1.3 OFS cold boot, using Asm198x 0.0.72, Emu198x 0.44.2 and Build198x 0.2.9. Each executes 40 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+## Where it fits
+
+[Event queues](/patterns/commodore-amiga/assembly/framework/event-queue/): Both use bounded storage, but a history retains recent samples for age queries rather than consuming queued events.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/7f7bb99a7ade1669a42e8a87b476b96fe2e414b8/commodore-amiga/patterns/assembly/framework/motion-history).
