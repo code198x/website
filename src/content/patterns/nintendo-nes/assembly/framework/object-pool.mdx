@@ -1,0 +1,91 @@
+---
+title: "Reusable Object Slots on NES"
+summary: "Give bullets, enemies and effects fixed slots, handle a full pool, and remove objects without skipping their neighbours."
+platform: "nintendo-nes"
+category: "framework"
+difficulty: "intermediate"
+tags: ["objects", "pool", "lifetime", "memory"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Fire a shot. Find somewhere to keep its position, speed and remaining life. When it leaves the screen, make that space available again. A small fixed pool gives those jobs a clear home—and forces you to decide what happens when every slot is busy.
+
+This example has **eight slots**. It fills them, refuses a ninth object, releases slot 1 and claims that same slot again. Two lifetime updates then remove all the objects without shifting anything in memory. You can lift the allocator into a game without taking the display or the verification fixture with it.
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-entertainment-system/object-pool-demo.png" alt="NES shows 00 01 02 FF 01 01 AA 00: slots fill, overflow is refused, slot one is reused and ageing empties the pool." caption="The fifth field is 01: the released slot is available again. AA and 00 show the occupied slots after the two lifetime passes." />
+
+## Reserve the flags, then claim a slot
+
+Define **POOL_CAPACITY** and **POOL_FLAGS**, reserve that many writable bytes and include the component once. Call `pool_init` before using the pool. Each flag is zero for free or one for occupied. Keep positions, velocities, types and other payload in your own arrays, indexed by the returned slot.
+
+`pool_acquire` returns **carry clear and X = slot** on success. Fill that slot's required payload fields before drawing or updating it. **Carry set means full, and X = capacity.** Branch on carry before using X: on failure it is just beyond the valid range. The helper has already marked a successful slot occupied, so keep allocation and initialization within the same owner's update; an interrupt must not read half-initialised payload.
+
+A full pool is an ordinary result. A shooter might refuse a shot; a cosmetic effect could be dropped. Replacing an old object requires an explicit policy. This routine never silently evicts one.
+
+`pool_release` takes X. It clears a valid occupied slot and returns carry clear. Out-of-range or already-free returns carry set without writing. It leaves X intact. The helper does not erase payload: initialise the fields you need when reusing the slot, rather than assuming an old position or timer has disappeared.
+
+<CodeFromFile src="cross-platform/patterns/framework/object-pool/6502.inc" lang="6502" title="Reusable initialise, acquire and release routines" />
+
+A and flags change. Init and acquire change X; **Y and decimal mode survive**. Reserve private writable flags; they need not be in zero page. The helper uses no scratch pointer, heap or hardware registers. It is not re-entrant: one owner mutates the pool. Let interrupts record requests for that owner to handle later.
+
+The component's caller contract permits capacities **1–255**. These maintained native examples verify **4 and 8**. Their compact occupancy display represents only eight slots, so raising the fixture's capacity beyond eight needs a different observer and new verification.
+
+## Include it in a project
+
+The maintained top-level source gives the exact symbols and include order. `caller.inc` is optional machine startup and presentation; `exercise.inc` contains the verification client and the small pool example. In your game, include the allocator and optionally the ageing helper, then supply your own update and draw code.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/object-pool/demo.asm" lang="6502" title="The buildable caller and include order" />
+
+The standalone NTSC NROM cartridge disables NMI, DMC and audio, uses CHR-ROM hex digits and draws background text. It performs no OAM DMA. Its diagnostic output occupies $0200–$0718, so do not combine this fixture with a usual $0200 OAM buffer. The component itself touches no PPU, APU or controller registers.
+
+The fixture reserves **$70–$78** for diagnostics, flags at **$81** with adjacent guards and lifetime bytes at **$90**. Its large output record and display are separate from the component's small memory requirement. Do not copy those addresses blindly into another program.
+
+## Remove an object without skipping the next one
+
+A slot stays in the same place until you release it. This optional pass visits each index once, skips free slots and decrements the lifetime of each live object. On zero it releases that slot and moves to the next index. Deleting slot 0 cannot move slot 1 beneath the loop's feet.
+
+<CodeFromFile src="cross-platform/patterns/framework/object-pool/age6502.inc" lang="6502" title="Optional fixed-slot lifetime update" />
+
+Give every occupied slot a lifetime of **1–255** before calling this pass. It runs once per **simulation update**; it contains no frame wait. A zero lifetime is outside its contract and would wrap on decrement. Choose whether a newly spawned object ages immediately or starts next step. The simplest policy here is to apply queued spawns **after** the pass. Spawning into a later slot during the loop would otherwise let that object update immediately while one reusing an earlier slot waits.
+
+A released index is no longer a reference to its old object. If a target or owner stores it, clear that reference on removal. If references must survive slot reuse, generation-tagged handles are a useful further design; this component does not implement them.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/object-pool/exercise.inc" from="preview_pool:" to="; End of standalone pool preview." lang="6502" title="Fill, refuse overflow, reuse and age the slots" />
+
+The screen's eight hexadecimal fields are: the first three allocated indices; **FF** for the refused allocation; the reacquired index; carry from an invalid release; and the occupied-slot masks after two updates. In a mask, bit *i* means slot *i* is live. **AA** means slots 1, 3, 5 and 7 remain; the next pass gives **00**.
+
+## Make it your own
+
+The custom caller changes capacity from **8 to 4**. The helper and ageing code remain the same size in this layout, while flags and lifetime arrays each need four fewer bytes. The first six fields stay the same. The first lifetime mask becomes **0A**, with slots 1 and 3 still live, then **00**. Both configurations run through the independent native checks.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/object-pool/custom.asm" lang="6502" title="Four slots, the same ownership rules" />
+
+For bullets, replace lifetime-only payload with position and velocity arrays, but still initialise every field on acquisition. For enemies, a type or behaviour-state array can select an update. Keep allocation separate from drawing: **a game-object slot is not a hardware sprite slot**. An object can be offscreen, use several sprites or need none. The [sprite lifecycle](/patterns/cross-platform/rendering/sprite-lifecycle/) explains the separate drawing work.
+
+## Common mistake: forget to release
+
+The labelled wrong caller omits `pool_release` before trying to reclaim slot 1. All flags remain occupied. Acquire correctly refuses the request, and the fifth field becomes **FF**. The program continues through its lifetime passes and completes, so this is a demonstrated full-pool result, not a crashed loader.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/object-pool/wrong.asm" lang="6502" title="Deliberate fault: omit release before reacquiring" />
+
+The smallest fix is the normal release call in `preview_pool`. The repaired build is byte-for-byte identical to the working program and shows **01** again. If objects stop spawning in your game, inspect which paths release them: leaving the playfield, finishing an explosion and changing rooms all need an explicit ownership decision.
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-entertainment-system/object-pool-wrong.png" alt="NES shows FF in the fifth field because every slot is still occupied." caption="The allocator is doing its job: the omitted release leaves no free slot. The fifth field changes from 01 to FF." />
+
+## What it costs, and when to go further
+
+At the supplied address layout, the allocator is **47 code bytes plus one flag byte per slot**. The optional ageing pass adds **19 code bytes plus one lifetime byte per slot**. Direct helper calls use two stack bytes for the return address; ageing adds another two while calling release, in addition to your enclosing calls and interrupts. The complete NES artifact is **40,976 bytes**, including diagnostics, display and native packaging; that is not the component cost.
+
+Init writes N flags. Acquisition reads through the first free slot, or all N when full; it writes only a successful claim. Release checks one in-range flag and writes at most one. Age scans N flags, decrements each live lifetime and calls release for each expiry. These are operation counts, not measured cycle timings. Moving arrays to another addressing mode or crossing pages changes the cost.
+
+A free list can avoid allocation scans, at the cost of more bookkeeping and new corruption cases. A packed list can reduce iteration over empty space, but moving objects changes the reference/deletion problem. For a small bounded collection, a straightforward scan is often easier to budget and inspect. [Maths for Games](/craft/maths-for-games/) develops indexing and bit masks; [The Craft](/craft/) helps decide what a full pool should mean to the player.
+
+## What ran
+
+**Asm198x 0.0.72 / Emu198x 0.44.2** ran working, four-slot custom, wrong and exact-repair programs on each machine's own native startup path. A second caller tests **all 256 occupancy masks** for each capacity (upper bits are ignored for four slots), allocation and full results, invalid and double release, Y preservation, flag guards, initialization and every untouched lifetime payload byte. A separate set model checks the emitted packet. The visible client checks slot reuse and deletion through two lifetime passes.
+
+Loaded code, native artifact identities, text pixels and capture hashes are checked. Deliberate changes to the retained evidence must fail the gate. Configuration records pin the tools and applicable firmware; no firmware is distributed. This establishes the named emulator workloads, not physical-hardware timings or a complete game.
+
+[Maintained source and native evidence](https://github.com/code198x/code-samples/tree/68203b07d0e622942f50e10123ee914d0c6b0723/nintendo-entertainment-system/patterns/assembly/framework/object-pool).
