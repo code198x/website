@@ -1,0 +1,25 @@
+# Ten movement, interaction and game-data batches
+
+Continue ordinary paired source/site stacks after samples #228 (498f5661) and website #1035 (b8c18652e). Four core assembly targets per topic, no merges or deployment. Preserve unrelated primary-checkout changes.
+
+Topics and exact locations:
+1. physics/fractional-position — unsigned 8.8 position plus signed 8.8 displacement, intentional modulo wrap, preserve fractions.
+2. physics/bounded-acceleration — signed 8.8 velocity/acceleration with a signed-wide intermediate and symmetric magnitude cap; reject invalid negative limits.
+3. physics/jump-windows — independent press-buffer/coyote timers, edge input and one-call jump permission, no vertical motion or collision ownership.
+4. physics/one-way-platform — descending bottom-edge crossing and widened horizontal intervals, drop-through input, snap output; no full swept-solid solver.
+5. physics/camera-deadzone — world-coordinate byte camera, left/right screen thresholds and scroll clamp, reject invalid bounds; no chipset scroll writes.
+6. input/menu-navigation — bounded option count, enabled-bit mask, forward/backward wrap and bounded skip search.
+7. input/text-entry-buffer — counted eight-byte printable ASCII input with append/backspace/clear, capacity/length/key checks; no keyboard scan or screen-code assumption.
+8. rendering/tile-properties — checked byte-ID lookup into caller-owned property data; any-bit query distinct from quest flag all-bit checks.
+9. framework/bounded-rle — bounded classic count/value-pair decoder into eight bytes, input/end/output checks and explicit partial-output errors. A local codec example, not a new project asset format or packaging pipeline.
+10. framework/streaming-crc8 — non-reflected bitwise CRC, explicit initial state/polynomial/no final XOR, separate accidental-error and authentication concerns.
+
+Audit: existing cross-platform fixed-point and sprite-animation entries are conceptual/partly CPU-qualified; existing grace-window is respawn invulnerability, not jump forgiveness. Existing Flock unit14–18 16.16 movement provides useful larger-precision comparison. Existing rectangle overlap is static contact, not downward platform crossing. Existing map queries return IDs, not property bits. Previous resource/score/flag/queue/repeat/approach/patrol/distance/priority/decimal entries remain intact. Check samples and published routes for duplicates before adding; current searches found no dedicated reusable entries for these contracts. Parent families #117, #146, #149, #150, #158 and #160 remain open.
+
+For each category/topic add cross-platform/patterns/<category>/<topic>/{6502.inc,oracle.py} and <system>/patterns/assembly/<category>/<topic>/{component.inc,caller.inc,exercise.inc,cases.inc,data.inc,demo.asm,custom.asm,wrong.asm,repaired.asm,Makefile,README.md,verification/*}. Source code is the centre, with clear include/binding/init/call order, exact inputs/outputs, register/stack/resource contracts, a small maintained client, custom usage, observed mistakes and exact repair. Keep private state and immutable caller data separate in cost measurements. No hidden input scans, waits, I/O or IRQ mutation ownership.
+
+Reuse maintained native startup/observation/picture gates in separate scripts verify-playtools.py/check-playtools.py/test_playtools.py, explicit playtools-topics.json/playtools-targets.json, and independent cross-platform/patterns/framework/playtools-models/cases.py plus contract tests. Do not modify prior qualified verifiers/models. The new native fixture has 64 boundary/varied/error cases plus a separate sequential caller, dirty init and preserved-register checks, bounded packets below NES RAM limits, immutable code/data readback, firmware/tool/source hashes, exact repair and pixels. Failure controls must reject altered source/state/load/picture/completion claims. CRC uses a longer sequential message; RLE retains the full counted buffer in its packet. Public CI validates retained native evidence, not unavailable firmware execution.
+
+Before the first source commit, freeze/format the common harness/models and build every topic. Qualify 16 native variants per topic; only then push the source layer and paired website page layer. Each website page uses CodeFromFile, actual verified figures, valid conceptual/related links, and complete machine-specific costs and limits. Verify exact rendered listings, images, links, discovery and 320px overflow on desktop and phone. Final publication build must produce artifacts matching all 160 native programs; run site checks, production build and all new browser cases. Record all CI results without treating queued/cancelled jobs as green. Full main-targeted website CI remains required after retargeting.
+
+Update existing parent issues with the PR chain and evidence. Verify all remote heads, preserve verified recovery bundles and durable browser/native logs, inspect tracked/untracked/ignored files, and remove only task-owned worktrees, tools and processes before completion. No dependency changes or bypassed checks.
