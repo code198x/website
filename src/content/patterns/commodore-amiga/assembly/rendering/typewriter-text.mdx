@@ -1,0 +1,87 @@
+---
+title: "Reveal Counted Text Over Time on Amiga"
+summary: "A line of dialogue can appear a character at a time, with a button to show the rest immediately."
+platform: "commodore-amiga"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["reusable", "typewriter-text"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A line of dialogue can appear a character at a time, with a button to show the rest immediately.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/typewriter-text-demo.png" alt="Amiga shows the working diagnostic row 02 00 00 01 01 04 02 00." caption="A completed native caller displays 02 00 00 01 01 04 02 00. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+LENGTH is 0–255 bytes. REVEALED must not exceed it. INTERVAL must be nonzero and TICKS below it. Each service consumes one tick; on expiry reveal one byte. Nonzero SKIP reveals the whole counted string immediately and clears TICKS. DONE reflects REVEALED==LENGTH and ADDED reports new bytes this service. Completion is stable while the same LENGTH is retained. Invalid state clears transient outputs and leaves REVEALED/TICKS unchanged.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **REVEALED, TICKS, DONE, ADDED, VALID, LENGTH, INTERVAL, SKIP**. They occupy 8 contiguous bytes. Also reserve the private workspace: **none** (0 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `typewriter_text_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `typewriter_text_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | REVEALED and TICKS |
+| Supply before service | LENGTH, INTERVAL and SKIP |
+| Read after service | REVEALED, TICKS, DONE, ADDED and VALID |
+
+The timer changes the exposed prefix length, while the renderer owns how that prefix looks. DONE is derived from the prefix length so a completed line stays complete without another animation state.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/typewriter-text/component.inc" lang="m68k" title="Reusable initialisation and service" />
+
+## Machine contract
+
+D0–D3/A0–A1/CCR may change; D4–D7/A2–A6 are preserved. A direct BSR/JSR needs four return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. The samples use fixed symbol bindings. Scope or rename every label and binding, including the component_end measurement marker, and allocate a separate block for each independent instance. Different helpers can also use common field names, so combining them needs separate namespaces or explicitly renamed bindings. Give each block one mutation owner.
+
+The A500 OCS diagnostic cold-boots an OFS disk, owns the Copper and bitplane and disables interrupt/DMA sources. The helper does not take over hardware or allocate Chip RAM.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x` and `BUILD198X=/path/to/build198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/typewriter-text/demo.asm" lang="m68k" title="Bindings and include order" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/typewriter-text/exercise.inc" from="preview_rules:" to="; End of nighttwo client." lang="m68k" title="A client retaining state between calls" />
+
+## Customise it
+
+Reveal one byte per service and observe that further calls after completion add nothing. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/typewriter-text/custom.asm" lang="m68k" title="Custom client selection" />
+
+The custom diagnostic row is **03 00 01 00 01 03 01 00**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong client clears the interval counter every service. With interval two the line never reveals its first character. Retain TICKS and reset only at the intended message boundary.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/rendering/typewriter-text/wrong.asm" lang="m68k" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/typewriter-text-wrong.png" alt="Amiga shows the deliberate error row 00 01 00 00 01 04 02 00." caption="The wrong client completes with 00 01 00 00 01 04 02 00; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 324 code bytes; public state is 8 bytes and private scratch is 0 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+Constant work per tick; skip changes a count rather than looping over every byte. Drawing an entire prefix on each call can still be expensive. Connect a byte span or dirty-text renderer according to the machine.
+
+Counts refer to bytes in a caller-owned stable string, not UTF-8 characters, markup tokens or proportional glyphs. Keep layout separate and draw the newly exposed span; control codes need a token-aware variant. Changing LENGTH is not a reset protocol: initialise a new message deliberately.
+
+## Execution evidence
+
+Four variants run on A500 OCS PAL, Kickstart1.3 OFS cold boot, using Asm198x 0.0.72, Emu198x 0.44.2 and Build198x 0.2.9. Each executes 64 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+## Where it fits
+
+[Bounded text spans](/patterns/commodore-amiga/assembly/framework/bounded-text-wrap/): Lay out complete counted text before revealing it so the line does not reflow as characters appear.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/087f421dea4c2d860468eaeebdeb47b331146742/commodore-amiga/patterns/assembly/rendering/typewriter-text).
