@@ -1,0 +1,80 @@
+---
+title: "Give a Spectrum Z80 turn a deadline"
+summary: "Keep untimed play valid, then add a reusable FRAMES countdown with an explicit input and expiry policy."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["assembly", "turns", "deadlines", "clocks", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press 1: a turn passes. Hold it: nothing more happens until you release. Waiting takes no turn until 2 enables timing. Then the ROM clock supplies a deadline: 200 ticks, about four seconds on this PAL Spectrum. Q returns to BASIC.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/assembly-deadline-working.png" alt="The native caller shows 03 01 01: three turns, one expiry, timing enabled." caption="Two player actions, then one automatic turn. The three hexadecimal bytes show turns, expiries and enabled state." />
+
+## Load the example
+
+Run `make ASM198X=/path/to/asm198x` in the maintained sample folder. Load build/demo.tap through the normal 48K ROM with LOAD "". Its generated BASIC loader reserves RAM with CLEAR 32767, loads CODE at `$8000` and enters through USR. No firmware is bundled.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/turn-deadline/demo.asm" lang="asm" title="The complete include order" />
+
+The whole image occupies `$8000–$8188`, 393 bytes including its writable tail. TURN/EXPIRIES/KEY/HELD own four bytes, DEADLINE ten and READY two. Keep the entire image free of BASIC, buffers and other code. Relocate the origin and loader reservation together. The existing BASIC stack, IY workspace and normal IM1 service remain part of this entry contract.
+
+## Take the countdown
+
+<CodeFromFile src="cross-platform/patterns/framework/elapsed-deadline/z80.inc" lang="asm" title="The maintained shared countdown" />
+
+Include it once and provide DEADLINE for ten writable bytes. Words are little-endian: duration +0, remaining +2, active +4, one-poll event +5, elapsed +6, previous +8.
+
+Set duration to whole ticks 0..65535. Pass the current clock in HL to deadline_init once: it records the baseline and starts disabled. deadline_start copies duration to remaining and enables only when nonzero. It clears the event but keeps the most recent baseline; poll immediately before starting if that instant matters.
+
+Each service iteration, including while disabled, passes the next sample in HL to deadline_poll. Read +5 before another poll/start clears it. Expiry clamps remaining to zero and disables the context; the caller decides what follows. AF/DE/HL change; BC/IX/IY survive. The helper uses the existing return stack, owns no I/O or IRQ resource and is not re-entrant on one context.
+
+Unsigned subtraction makes 65526 → 10 mean twenty ticks. Poll less than one complete cycle apart, roughly 21 minutes 51 seconds at 50 Hz: an extra whole cycle cannot be recovered from two samples. Reinitialise after an external FRAMES reset. Zero duration means off; late polling emits once without catch-up. Restarting at observation time can drift. [Maths for Games](/craft/maths-for-games/) develops the same units, ranges and modular arithmetic.
+
+## Read time and commands separately
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/turn-deadline/clock.inc" lang="asm" title="clock.inc" />
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/turn-deadline/input.inc" lang="asm" title="input.inc" />
+
+The clock adapter reads the low FRAMES word at `$5C78` in one LD HL instruction. The stock maskable interrupt is accepted between instructions, so the word is coherent. HL changes; flags and other registers survive. Keep normal ROM/IM1 service available. Interrupt suppression can lose time; this is a nominal game clock, not a precision stopwatch.
+
+The input adapter reuses the existing Ace reader's row/bit logic with a Spectrum contract. It samples 1/2/Q, prioritising Q over 2 over 1. A=0 means none, 1 action, 2 toggle, 3 quit. AF/BC change and HELD belongs to the reader. All command keys must be observed released to re-arm. Short taps between polls can be missed; moving directly between held commands does not re-arm. This is sampled physical input, not buffered character delivery.
+
+## Let the caller choose the rules
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/turn-deadline/dispatch.inc" lang="asm" title="dispatch.inc" />
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/turn-deadline/caller.inc" lang="asm" title="caller.inc" />
+
+The dispatcher performs no I/O. Expiry wins over that iteration's command, including quit/toggle. Otherwise 1 advances and restarts only active timing; untimed actions stay untimed. Disabling discards the remainder; enabling starts a full duration. Byte counters wrap. Replace the increment with your world update. Preserved pause, queued commands and carried lateness are useful alternatives with different state and policy.
+
+The wrapper saves AF/BC/DE/HL/IX/IY, calls the ROM CLS routine and draws eight text cells through CHARS. It uses nested return-stack bytes; the ROM IRQ needs its own stack space too. Q waits for release and a normal interrupt before restoring registers and RET. The screen is not restored. IRQs must be enabled on entry. Continuous drawing is simple feedback, not frame pacing: a game can redraw on changes or add an independent wait.
+
+## Change it, break it, repair it
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/turn-deadline/customise.asm" lang="asm" title="Half the duration, the same helper" />
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/turn-deadline/mistakes/reset-baseline.inc" lang="asm" title="Deliberately broken: erase the baseline before polling" />
+
+The custom build changes DURATION=200 to 100, about four seconds to two, with the same code/state sizes. The faulty adapter stores now as previous before polling: elapsed stays zero, remaining stays at 200 and the automatic turn never arrives. Restore clock.inc and rebuild; a fresh repaired run reaches 03 01 01. The fault adds three bytes. Never include both adapters in a working image.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/assembly-deadline-wrong.png" alt="The native faulty caller stays at 01 00 01: timing enabled but no automatic turn." caption="The clock moves; the replaced baseline prevents the countdown from consuming elapsed time." />
+
+There is a separate loader trap: END start supplies the address for RANDOMIZE USR. Without it, the exact code still loads, then BASIC reports 0 OK, 30:1. A load address does not prove execution.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/turn-deadline/no-entry.asm" lang="asm" title="Deliberately broken: no USR entry in the generated loader" />
+
+## Costs and qualification
+
+The countdown is 97 emitted bytes plus ten context bytes; the clock adds four bytes, input fifty, dispatcher sixty-one and caller/presentation 165. Sixteen writable image bytes bring the whole payload to 393. These are byte counts, not cycle measurements, peak-stack bounds or a whole-game budget.
+
+Seven independent ROM-tape-loaded cases on Emu198x 0.44.2 with the recorded stock 48K PAL ROM cover working/custom/wrong/repaired callers, arithmetic boundaries, wrong equality and missing entry. The debugger stops naturally at USR to compare every loaded byte before execution; it does not set the PC or write game state. A second caller supplies twelve clock pairs and three policy cases. Its wrong-equality control completes its guards but fails the unsigned oracle. Supplied samples do not establish an observed 22-minute rollover.
+
+Native bitmap/font bytes and the saved PNG pixels agree. Real keys include a long held action; return to BASIC is followed by arithmetic. Source/tool/ROM/capture identities and falsification controls are retained. This is configuration-specific execution evidence, not physical-hardware or complete-emulator qualification.
+
+## Sources and related patterns
+
+Sinclair Research, [ZX Spectrum BASIC Programming, chapter 18](https://worldofspectrum.org/ZXBasicManual/zxmanchap18.html), explains FRAMES and the interrupted-read hazard; Appendix A documents the workspace. The adapters, countdown and game policy here are our implementation choices.
+
+[Maintained source](https://github.com/code198x/code-samples/tree/92e4b6e6ea05c50308141ba9045eac9521fd7dc3/sinclair-zx-spectrum/patterns/assembly/framework/turn-deadline) · [Native execution record](https://github.com/code198x/code-samples/blob/92e4b6e6ea05c50308141ba9045eac9521fd7dc3/sinclair-zx-spectrum/patterns/assembly/framework/turn-deadline/verification/results.json) · [Independent basic route](/patterns/sinclair-zx-spectrum/basic/framework/turn-deadline/) · [Choosing progression and clocks](/patterns/cross-platform/framework/game-loop-choices/)
