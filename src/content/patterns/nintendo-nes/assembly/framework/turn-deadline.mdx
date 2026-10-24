@@ -1,0 +1,105 @@
+---
+title: "Optional Timed Turns"
+summary: "Let commands advance a game, add an optional NMI-clock deadline, and keep time moving during slow work."
+platform: "nintendo-nes"
+category: "framework"
+difficulty: "intermediate"
+tags: ["turns", "timers", "nmi", "input", "maths"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["nmi-game-loop", "controller-reading"]
+  vault: []
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+**Code status: assembled and emulator-executed.** This is the named NTSC NROM/DMC-off caller with a continuously running NMI frame counter, not a count of foreground updates.
+
+
+Press A to spend a turn. Hold it and you still spend only one. Select enables a deadline; let it run out and one turn expires. Select disables it again, leaving the game free to wait for your next action. The NMI clock keeps running in both modes.
+
+Build with `make`, load `build/demo.nes` as NTSC NROM-256, and reset to leave. Asm198x 0.0.72 and Emu198x 0.44.2 are the selected tools. A is an action, Select toggles timing, held B adds diagnostic CPU work, and held Start freezes only the displayed row. Start does not pause the clock or game. The caller uses the maintained controller reader/press detector, frame helper, shared elapsed countdown and existing expiry-first turn dispatcher.
+
+## Read the result
+
+Eight hexadecimal bytes show turn low/high, expiry count, active flag, remaining low/high and sampled-clock low/high. Word fields are little endian: 06 00 means six turns. The sampled clock is the clock value used by that update, not a claim that the display is current while Start is held. Expiry count is an eight-bit diagnostic and wraps at 256; turns wrap at 65536.
+
+The normal budget is 180 NTSC frame ticks, roughly three seconds. `custom.asm` changes only DURATION to 60 ticks. It produces a shorter deadline without changing code/state/cartridge size. Frame ticks are not milliseconds: choose a budget for the actual region and qualify that region. This caller is not a PAL qualification.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/turn-deadline/demo.asm" lang="6502" title="The complete cartridge: includes and one chosen duration" />
+
+## Reuse the countdown
+
+Include the shared `cross-platform/patterns/framework/elapsed-deadline/6502.inc` once, with DEADLINE naming 12 owned writable bytes. Keep decimal mode clear. For init/poll, A is clock low and X clock high; the interface permits A/X/flags to change and preserves Y. The normal CALL stack and interrupt frames need their own room. One compiled context is not re-entrant or a general multiple-timer manager.
+
+| Offset | Meaning |
+| --- | --- |
+| 0–1 | Configured duration, input word; zero disables on start |
+| 2–3 | Remaining ticks |
+| 4 | Active, 0/1 |
+| 5 | Expired this poll, 0/1 |
+| 6–7 | Elapsed ticks for the last poll |
+| 8–9 | Previous sample/baseline |
+| 10–11 | Current sample scratch |
+
+Set duration, supply a current sample to deadline_init, then call deadline_start when the countdown should begin. Init leaves it inactive and does not change duration. Start copies duration to remaining and clears expiry. It uses the latest baseline: after a long wait, refresh the sample first, or initialise from the fresh clock before starting. Do not reset the global frame clock to start a timer.
+
+Each service reads the clock then calls deadline_poll. Consume the expiry result immediately; another poll clears that pulse. Inactive polling still updates the baseline. An elapsed interval at or beyond the remaining time saturates to zero and emits one expiry. A late service does not manufacture a queue of catch-up turns. Poll before 65536 clock ticks elapse, since a word cannot distinguish an entire unseen wrap. After a longer pause, choose an explicit resume/reinitialisation policy.
+
+The arithmetic can consume another appropriate clock source without this display or controller. The NES adapter is one concrete source, not a requirement that every turn-based game run this particular loop.
+
+<CodeFromFile src="cross-platform/patterns/framework/elapsed-deadline/6502.inc" lang="6502" title="The maintained 12-byte elapsed countdown" />
+
+## Own the clock and interrupts
+
+`clock.inc` extends the existing game-loop frame_clock low byte with frame_high. Zero all clock storage before enabling NMI and call initialise_clock for the maintained frame waiter. The NMI handler calls clock_tick exactly once per vblank; it must preserve everything else the interrupted code needs. The supplied tick leaf changes flags only, and the interrupt return restores the interrupted status. A surrounding NMI worker can call the tick leaf as part of its own work; do not install competing NMI owners or reset the shared count.
+
+read_clock returns a coherent A/X word by reading high, low and high again and retrying across a high-byte change. It preserves Y and changes A/X/flags plus its private high-copy byte. That scratch makes one reader instance non-re-entrant. The foreground never writes the running count.
+
+The existing wait_frame has a separate fixed-step scheduling job and a less-than-256-frame sampling contract. The deadline uses the full 16-bit clock, not the waiter’s one-byte delta or a count of game updates. The deliberately slow workload remains within that scheduling limit. A longer stall needs its own scheduling policy even if a deadline’s arithmetic could measure it.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/turn-deadline/clock.inc" lang="6502" title="Extend the maintained frame counter coherently" />
+
+## Include and call from a project
+
+The complete demo shows storage, include order and the two call boundaries. An existing engine can keep its own input, display and NMI worker and reuse only the countdown/clock interface it needs. The dispatcher requires STATE’s ten bytes and a commit_turn callback; the standalone caller uses STATE+0/1 for an update count, +4/5 for turns, +6 for expiries, +7 as the per-service changed flag and +8 as command bits (1 action, 2 toggle).
+
+The maintained dispatcher consumes an expiry before input. If A arrives on the same sample as an expiry, the timeout wins and the action is not queued. With no expiry, a simultaneous toggle wins over the action. These are this caller’s chosen policies, not inevitable rules for an adventure or board game. The independent caller tests every combination of expiry, active state and both input bits. A committed timed action restarts the current budget; an untimed action advances without enabling a timer.
+
+The standalone cartridge owns reset/stack, RAM, PPU/NMI setup, APU/DMC disable state and controller-1 strobing. It clears RAM and does not restore another engine. The simple serial reader requires DMC sample DMA off and a single shared strobe owner. It is not made DMC-safe by adding a timer. The short status transfer waits for a fresh vblank even after slow work, then restores scroll and keeps NMI enabled. It is not a general VRAM scheduler.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/turn-deadline/caller.inc" lang="6502" title="Standalone caller with an independent display latch" />
+
+<CodeFromFile src="bbc-micro/patterns/assembly/framework/turn-deadline/dispatch.inc" lang="6502" title="The unchanged expiry-first turn policy" />
+
+## Common error: renew the baseline before every poll
+
+The labelled wrong caller stores the current clock into the previous-sample fields immediately before deadline_poll. Every elapsed interval becomes zero, so its active timer stays at B4 (180) even after more than a full budget of real NMI ticks. The clock itself keeps moving. The six extra instruction bytes are the problem, not a slower clock.
+
+Remove those two stores and leave the normal jump to deadline_poll. The repaired cartridge is byte-for-byte the working one. Both the real held-B workload and the independent supplied-clock caller reveal the fault; completion guards alone would not, since the wrong program runs normally. Keep wrong.nes separate from the working download.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/turn-deadline/wrong.asm" lang="6502" title="Deliberate fault: overwrite the baseline before polling" />
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/turn-deadline/custom.asm" lang="6502" title="Make it your own: 60 ticks instead of 180" />
+
+## Costs and verification
+
+The shared countdown is 140 code bytes and 12 state bytes in this linked caller. The clock extension is 27 code bytes plus the maintained frame helper’s code; the selected clock/waiter/reader bookkeeping uses five state bytes. Complete caller BSS is 47 bytes: 12 countdown, 10 policy/update, 16 current/display-latch, one ready, five clock/waiter and three controller bytes. These are overlapping component totals, not numbers to add twice.
+
+The complete normal code prefix is 668 bytes plus six vector bytes; the original hexadecimal font is 272 CHR bytes. Padding to 32 KiB PRG and 8 KiB CHR makes each cartridge 40,976 bytes including its header. No CPU-cycle/vblank-budget or complete-game RAM measurement is claimed. In the recorded normal run, the fast interval averages 34 ticks/34 updates and the chosen slow interval 216 ticks/72 updates. The timer still expires during that work. These are measured intervals for this workload, not a promised range for every update. Verification compares the measured fast/slow ratios rather than assuming an arbitrary slowdown threshold.
+
+Six native runs cover working/custom/wrong/repaired cartridges plus two independent guest-owned fixtures. Real buttons verify untimed idle, new/held actions, toggles, renewal, busy-work expiry, disable/re-enable and a frozen display with continuing timer service. The NMI clock crosses a low-byte carry. The fixture supplies 12 elapsed/wrap/zero/exact/late cases and 16 dispatcher combinations; the wrong baseline completes its markers but fails the arithmetic oracle. The observer does not write state or set the PC.
+
+Source/tool/configuration identities, all 32 KiB of native immutable PRG, cartridge/CHR identity, completion stops, state traces and frozen-row PNG glyphs are retained under verification. Run `python3 scripts/check-nes-deadlines.py` and `python3 -m unittest discover -s scripts -p test_nes_deadlines.py -v` from the samples root. Re-capture with verify-nes-deadlines.py and explicit assembler/emulator paths. Corrupted observations and picture expectations must fail. This qualifies the named NTSC NROM/NMI/DMC-off configuration, not every mapper, region or original hardware.
+
+
+## Native output
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-nes/turn-deadline-demo.png" alt="The working NES caller shows turns, expiries, active state, remaining ticks and the sampled NMI clock." caption="Start holds the last displayed sample still for the capture. The clock and deadline service continue; words are shown low byte first." />
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-nes/turn-deadline-wrong.png" alt="The faulty caller has zero timed expiries and its remaining field stays B4 although the NMI clock has advanced." caption="Resetting the previous-sample field makes elapsed time zero. The native trace and repaired run distinguish this from a stopped clock." />
+
+[Pinned code, contracts and complete callers](https://github.com/code198x/code-samples/tree/aa2f34afa6d7773ccd9cb61c9c7f3ac9ccea6262/nintendo-entertainment-system/patterns/assembly/framework/turn-deadline) · [Native configuration and evidence](https://github.com/code198x/code-samples/tree/aa2f34afa6d7773ccd9cb61c9c7f3ac9ccea6262/nintendo-entertainment-system/patterns/assembly/framework/turn-deadline/verification). [Maths for Games](/craft/maths-for-games/) connects modular elapsed time and saturating subtraction; [loop choices](/patterns/cross-platform/framework/game-loop-choices/) keeps an optional clock distinct from turn progression, and [the NES NMI loop](/patterns/nintendo-nes/assembly/framework/nmi-game-loop/) explains the maintained frame interface.
