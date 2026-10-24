@@ -1,0 +1,87 @@
+---
+title: "Decode Bounded Byte Deltas on Amiga"
+summary: "A path or table whose values change slowly can be stored as a starting value followed by small signed differences."
+platform: "commodore-amiga"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "bounded-delta-decoder"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A path or table whose values change slowly can be stored as a starting value followed by small signed differences.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/bounded-delta-decoder-demo.png" alt="Amiga shows the working diagnostic row 04 01 04 0A 01 FF 02 FE." caption="A completed native caller displays 04 01 04 0A 01 FF 02 FE. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+COUNT 0–8 deltas are two’s-complement bytes. Starting at BASE, add each delta modulo 256 and write successive values to R0..R7. Return WRITTEN=COUNT and VALID=1. Invalid count leaves all output bytes unchanged and returns WRITTEN=0, VALID=0. BASE is preserved.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **WRITTEN, VALID, COUNT, BASE, Q0, Q1, Q2, Q3, Q4, Q5, Q6, Q7, R0, R1, R2, R3, R4, R5, R6, R7**. They occupy 20 contiguous bytes. Also reserve the private workspace: **T0, T1, T2, EXPR_SAVE** (4 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `bounded_delta_decoder_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `bounded_delta_decoder_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | none |
+| Supply before service | COUNT, BASE and Q0..Q7 |
+| Read after service | WRITTEN, VALID and R0..R7 |
+
+Keep a running byte total. Two’s-complement negative deltas work through modulo addition, so no sign branch is needed.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/bounded-delta-decoder/component.inc" lang="m68k" title="Reusable initialisation and service" />
+
+## Machine contract
+
+D0–D3/A0–A1/CCR may change; D4–D7/A2–A6 are preserved. A direct BSR/JSR needs four return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. The samples use fixed symbol bindings. Scope or rename every label and binding, including the component_end measurement marker, and allocate a separate block for each independent instance. Different helpers can also use common field names, so combining them needs separate namespaces or explicitly renamed bindings. Give each block one mutation owner.
+
+The A500 OCS diagnostic cold-boots an OFS disk, owns the Copper and bitplane and disables interrupt/DMA sources. The helper does not take over hardware or allocate Chip RAM.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x` and `BUILD198X=/path/to/build198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/bounded-delta-decoder/demo.asm" lang="m68k" title="Bindings and include order" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/bounded-delta-decoder/exercise.inc" from="preview_rules:" to="; End of toolkit client." lang="m68k" title="A client retaining state between calls" />
+
+## Customise it
+
+Exercise wrapping and the −128 signed delta. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/bounded-delta-decoder/custom.asm" lang="m68k" title="Custom client selection" />
+
+The custom diagnostic row is **03 01 03 FF 01 80 7F 00**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong caller discards the starting value. Every decoded coordinate is shifted. Preserve BASE alongside the delta stream.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/bounded-delta-decoder/wrong.asm" lang="m68k" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/bounded-delta-decoder-wrong.png" alt="Amiga shows the deliberate error row 04 01 04 00 01 FF 02 FE." caption="The wrong client completes with 04 01 04 00 01 FF 02 FE; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 320 code bytes; public state is 20 bytes and private scratch is 4 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+Linear in at most eight deltas. Random access needs a checkpoint or decoding the preceding deltas; absolute values cost the same number of bytes unless deltas are further packed.
+
+This format is lossless modulo 256, with exactly one output per delta. It does not itself compress bytes; a narrower packed-delta format needs escape codes for large changes.
+
+## Execution evidence
+
+Four variants run on A500 OCS PAL, Kickstart1.3 OFS cold boot, using Asm198x 0.0.72, Emu198x 0.44.2 and Build198x 0.2.9. Each executes 50 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+## Where it fits
+
+[Bounded RLE decoding](/patterns/commodore-amiga/assembly/framework/bounded-rle/): Choose an encoding that matches repetition or small changes in the actual data.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/34edea8ee439b27689f5e90a66a7219ff0fafda7/commodore-amiga/patterns/assembly/framework/bounded-delta-decoder).
