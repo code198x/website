@@ -9,7 +9,15 @@ for(const entry of entries) test(`batch ${entry.batch}: ${entry.title} (${entry.
  const prose=page.locator('.pattern-prose');
  await expect(prose).toBeVisible();
  await expect(page.locator('.code-error')).toHaveCount(0);
- for(const file of entry.files) await expect(prose.locator('.lesson-listing[data-code]').nth(file.index),file.src).toHaveAttribute('data-code',readFileSync(path.join(root,file.src),'utf8'));
+ for(const file of entry.files) {
+  let code=readFileSync(path.join(root,file.src),'utf8');
+  if('from' in file && 'to' in file) {
+   const from=String(file.from),to=String(file.to),start=code.indexOf(from),end=code.indexOf(to,start+from.length);
+   expect(start,file.src).toBeGreaterThanOrEqual(0);expect(end,file.src).toBeGreaterThan(start);
+   code=code.slice(start,end).trimEnd();
+  }
+  await expect(prose.locator('.lesson-listing[data-code]').nth(file.index),file.src).toHaveAttribute('data-code',code);
+ }
  for(const img of entry.images){
   const picture=prose.locator(`img[src="${img.url}"]`);await picture.scrollIntoViewIfNeeded();
   await expect.poll(()=>picture.evaluate((n:HTMLImageElement)=>n.complete&&n.naturalWidth>0)).toBe(true);
