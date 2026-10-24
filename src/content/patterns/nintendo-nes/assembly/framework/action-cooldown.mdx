@@ -1,0 +1,79 @@
+---
+title: "Action Cooldowns on NES"
+summary: "Keep an action timer advancing between requests, and spend its cooldown only when a requested resource is available."
+platform: "nintendo-nes"
+category: "framework"
+difficulty: "intermediate"
+tags: ["cooldown", "weapons", "timers", "input"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Fire, release the button, then fire again. The cooldown should keep counting while your finger is off the button. This component separates the passing of simulation time from the request to act, so both tapped and held inputs can use the same small timer.
+
+The working caller requests an action every third update. A three-step period grants **four** requests in twelve updates. The deliberately wrong caller only ticks while a request is present: the counter freezes between taps, and just **two** requests are granted.
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-entertainment-system/action-cooldown-demo.png" alt="NES shows 04 01 01 01 00 01 03 00: four granted requests with an independently advancing timer." caption="The first field counts grants. The next two marked request points both succeed; the timer continued advancing between them." />
+
+## Initialise, tick, then try
+
+Reserve four private bytes: **REMAINING**, **REQUEST**, **AVAILABLE** and **GRANTED**. Include the helper once and call `cooldown_init` at session start. It clears all four; the first action can be ready immediately. To start with a delay, set REMAINING deliberately after initialisation.
+
+Call `cooldown_tick` **once per simulation update**, regardless of input. It clears the previous grant pulse and decrements a positive counter, leaving zero at zero. Then supply REQUEST and AVAILABLE and call `cooldown_try`. Nonzero input bytes mean true. A requested action is granted only when the timer is zero **and** the required resource is available. On a grant, the component sets GRANTED to 1 and reloads REMAINING from **PERIOD**. Rejection spends no cooldown.
+
+<CodeFromFile src="cross-platform/patterns/framework/action-cooldown/6502.inc" lang="6502" title="Reusable initialise, tick and try routines" />
+
+GRANTED is a **committed permission**, not proof that a projectile already exists. The caller owns ammo, object-slot reservation and effect creation. Under one update owner, establish that the resource really can be used, call try, then immediately create the effect and consume the resource if granted. Recompute availability for each subsequent action. If another writer can take it between the check and creation, use an explicit reservation/commit design rather than trusting this byte as a lock.
+
+A caller with unlimited resources can supply AVAILABLE = 1. A full object pool or empty magazine supplies zero, preserving readiness for later. This helper never allocates objects, decrements ammo, refunds a failed spawn or reads a button.
+
+**A/flags change; X/Y and decimal mode survive.** Unlike the damage subtraction routine, this helper has no decimal-clear precondition: it only tests and decrements the counter. A direct call uses two return-address stack bytes.
+
+## Choose what counts as a request
+
+Supply a newly pressed bit for one action per press, or a held bit for repeat while held. The timer does not choose between those controls. [Input edges](/patterns/cross-platform/input/edge-detection/) explain the difference; [object slots](/patterns/nintendo-nes/assembly/framework/object-pool/) make a useful resource constraint concrete.
+
+Consume GRANTED immediately: both tick and try clear it, so another call replaces the pulse. With a positive period, a second try before another tick sees the newly active cooldown. PERIOD **0** disables rate gating and can allow several tries in one update; it does not bypass request/availability checks or limit your caller to one attempt.
+
+The default **3** means grants at indices **0, 3, 6 and 9** with tick-before-try ordering. The custom period **5** grants at **0 and 6** for this particular every-third-update input trace. A ready timer does not queue missed input or manufacture a request when no action is being requested.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/action-cooldown/exercise.inc" from="preview_rules:" to="; End of rules client." lang="6502" title="Service time independently, then offer the current request" />
+
+Skip timer service during pause if cooldown should freeze with simulation. If it should continue in real time, choose an elapsed-clock policy explicitly. These counts are simulation updates, not seconds or an assumed display refresh rate. [Game states and restart](/patterns/nintendo-nes/assembly/framework/game-flow/) keep a fresh-session reset separate from resume.
+
+## Include it in your project
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/action-cooldown/demo.asm" lang="6502" title="Buildable standalone caller and include order" />
+
+The NTSC NROM cartridge disables NMI, DMC and audio and draws background text. Its diagnostics occupy $70–$83 and $0200–$07D0. This fixture conflicts with a usual $0200 OAM buffer and performs no OAM DMA. The reusable helper owns none of those resources. It has one fixed state block. For independent weapons, give each its own block and explicit bindings, or use a wrapper that selects/copies one block before service and writes it back afterwards. A pointer/indexed version can avoid that copy but is a separate implementation with its own register and timing costs. Sharing one block means sharing one cooldown.
+
+The eight hexadecimal fields are **grants, final remaining count, grant at index 3, grant at index 6, blocked requests, observed availability guard, period, final grant pulse**. The working row is **04 01 01 01 00 01 03 00**. The availability guard comes from an additional ready-but-unavailable request that must leave both grant and timer zero.
+
+## Make it your own
+
+`custom.asm` changes PERIOD from **3 to 5**. This trace then grants two actions and ends ready: **02 00 00 01 02 01 05 00**. Helper code and state sizes stay the same in these layouts. The component's byte period can represent **0–255**, but the maintained executions qualify **3 and 5**.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/action-cooldown/custom.asm" lang="6502" title="Use a five-update action period" />
+
+The verification fixture packs some results into one byte with a grant bit in bit 7; it asserts that the counter fits below 128 before packing. That is a test-packet limit, not a limit on the reusable counter. Qualifying larger periods needs an unpacked packet and refreshed cases/records; simply changing the helper constant does not qualify an untested configuration.
+
+## Common mistake: only tick while Fire is held
+
+The labelled wrong caller guards `cooldown_tick` with REQUEST. Time stops advancing on released updates. Its row becomes **02 03 00 00 02 01 03 00**: only two grants, and both earlier request points are blocked. The program completes the entire trace, so the reduced count is an observed scheduling fault.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/action-cooldown/wrong.asm" lang="6502" title="Deliberate fault: service the timer only when input requests an action" />
+
+Move tick outside that request condition, leaving try responsible for deciding whether to grant. The repaired executable matches the working executable exactly; Spectrum tape header filenames may differ while loaded CODE matches.
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-entertainment-system/action-cooldown-wrong.png" alt="NES shows 02 03 00 00 02 01 03 00 because the timer freezes between taps." caption="The component is ready less often because the caller only advances it on requested actions. Two requests are lost to the frozen counter." />
+
+## Cost and verification
+
+This layout uses **47 code bytes plus four state bytes**. Tick and try each take a bounded path, with no input scan, object search, wait or display transfer. Independent state blocks cost four bytes each, plus your selection/binding wrapper. These are storage/work counts, not whole-game or physical-hardware timings. [Maths for Games](/craft/maths-for-games/) connects countdown boundaries and saturation; [The Craft](/craft/) explores what repeated actions feel like to the player.
+
+Four native executions cover normal, changed period, wrong scheduling and exact repair, with **Asm198x 0.0.72 / Emu198x 0.44.2** and **Build198x 0.2.9** for Amiga media. Native input tables cover all **256 remaining bytes**, all **256 request bytes** with and without availability, and all **256 availability bytes**. An independent integer model checks the **1,335-byte** packet, dirty initialisation, the availability guard and every result of the twelve-update tap/release trace.
+
+Source/tool/configuration identities, native startup, positive completion, preserved registers, loaded code, capture hashes, pixels and exact repair are checked. The larger Spectrum test table needs a bounded 30-span ROM-entry allowance; observed loading completes in span 22, with the full loaded CODE checked before execution. Deliberately altered observations must fail the gate. Firmware is hashed rather than distributed. This is logical timer/request verification, not another input-reader or projectile-spawn test, nor qualification of every possible input combination.
+
+[Maintained source and native evidence](https://github.com/code198x/code-samples/tree/568e7afb1972ee1042d80eb02c9a7817e02a9658/nintendo-entertainment-system/patterns/assembly/framework/action-cooldown).
