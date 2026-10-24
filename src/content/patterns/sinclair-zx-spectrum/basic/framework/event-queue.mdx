@@ -1,0 +1,87 @@
+---
+title: "Queue Game Events in Spectrum BASIC"
+summary: "Store byte-valued game requests in a bounded FIFO, with explicit full/empty results and validated wrap-around."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "event-queue"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A coin pickup, a door opening and an enemy disappearing can all happen in one update. A bounded queue lets one part of the game record requests and another consume them in order. A full queue reports failure instead of quietly losing an older event.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-event-queue-demo.png" alt="Spectrum BASIC shows two successful retained-state checks." caption="The maintained caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve `DIM Q(8)`, choose integral capacity `C` from 1 to 8, combine the numbered helper and your caller, then call **3000** once at a new-session boundary. It clears all eight payload cells, head H, tail T, count N, value V and results O/E. It retains C. Reserve lines **3000–3410**, with END/STOP or a jump before the helpers. The supplied `build.py` combines the numbered files and rejects duplicate line numbers.
+
+Queue positions are zero-based, but payload Q uses indices 1–8: slot H lives in Q(H+1). Your game should normally use the public calls rather than touch these indices. Q is a numeric array, not packed byte storage.
+
+| Call | Supply | Result |
+|---|---|---|
+| 3100 — enqueue | V, an integral event value 0–255 | O=1 if stored; O=0 if full |
+| 3200 — dequeue | retained queue | O=1 and V=oldest event; O=0 if empty |
+
+A failed full insertion preserves all events. An empty dequeue leaves V unchanged; **test O before dispatching V**, or you may process the previous event twice. Popped cells retain their old payload until reused. N determines which cells are live. The helper never interprets event values: zero can be a real event.
+
+## The reusable routine
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/event-queue/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+## Ownership and damaged state
+
+The helper owns C/H/T/N/V/O/E, array Q and private scratch I/U. Do not wrap calls in a caller's FOR I loop. M belongs to the maintained diagnostic dispatcher: 1 enqueue, 2 dequeue. A game can call the public line numbers directly. B/Z/G, A/D and the verification mailbox are diagnostic storage; J/K remain caller loop variables.
+
+Both services validate capacity, head, tail and count before mutation. They require **T = (H+N) modulo C**, including when empty or full. Every live payload is checked before either operation changes the queue. E=1 means damaged queue state; E=2 means an invalid value supplied to enqueue. Ordinary full/empty outcomes leave E=0 and O=0. Neither the pending events nor indices change on rejection. Initialisation assumes your DIM already exists and C will be valid before the next service.
+
+There is one owner and no interrupt synchronisation. A second queue needs distinct globals, array, line numbers and references. A queue is not automatically safe to share between an interrupt and main code. If an event needs several fields, store an object handle or extend each queued record deliberately; one byte-valued event alone cannot carry an arbitrary payload.
+
+## A complete caller
+
+The caller first exercises twenty varied, boundary and invalid states. It then fills the queue, rejects an extra event, consumes two, inserts three more to wrap the tail, and drains through empty. Every state includes all eight payload cells, so stale storage and live contents cannot be confused. This is a diagnostic client you can replace with actual game requests.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/event-queue/demo.bas" lang="basic" title="Complete caller with retained state observations" />
+
+## Customise it
+
+The custom caller lowers logical capacity to four. It keeps DIM Q(8), so this reduces the event budget and validation work without claiming smaller array allocation. Raising the bound requires coordinated changes to DIM, initialisation, validators, model and tests. Use a different policy if dropping the newest request is unacceptable: reserve a slot for critical events, coalesce repeated movement requests, or return the failure to the producer for a deliberate retry. Do not reset the queue to make room.
+
+A per-frame queue can be drained after collision detection, avoiding object removal while traversing the objects. A turn-based game may drain it after each command. Neither case requires a timer inside the queue. How those routines fit into a whole game belongs in the curriculum; this component owns only storage and FIFO ordering.
+
+## A mistake you can recognise
+
+The wrong caller initialises the queue again at the consumer boundary. All recorded events disappear. The first dequeue fails and the expected oldest value is absent, giving two saved result digits **0, 0**. The normal caller prints **1, 1**. Later new events still work, which is why a single successful enqueue would not expose the lost earlier work.
+
+The repair moves initialisation back to the start of the session. Its source and actual loaded tokenised program match the working caller exactly. The capture shows the executed mistake.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-event-queue-wrong.png" alt="Spectrum BASIC shows two failed checks after the deliberate caller mistake." caption="Both saved checks are zero. The error is in when the caller resets retained state." />
+
+## The wrap-around arithmetic
+
+H points at the next event to read; T points at the next free cell to write. Incrementing an index past C-1 wraps it to zero. Count N distinguishes empty from full when H and T are equal. Keeping all three costs one extra scalar but makes those two situations unambiguous.
+
+Validation computes remainders with division and INT. The update itself uses an increment and comparison. A power-of-two assembly queue may use a bit mask, but Spectrum BASIC's logical AND is not that operation. This version accepts every capacity from one to eight.
+
+[The Craft](/craft/) connects delayed events to update ordering. [Maths for Games](/craft/maths-for-games/) supplies the modular arithmetic behind the circular storage. An immediate function call is cheaper when nothing needs deferring; a queue is useful when order and deferred ownership matter.
+
+## Machine and cost
+
+Spectrum arrays start at one, and full numeric variable names are significant. Logical AND joins comparisons; it does not combine mask bits. CLEAR 59999 reserves the diagnostic mailbox at 60000.
+
+The helper occupies **790 tokenised program bytes** on this interpreter, including numbered-line headers. This excludes the caller, tables, numeric variables/arrays, interpreter stacks and ROM. It is not a machine-code size or cycle count. Each service checks up to N live payloads before changing one cell. This safety scan costs O(N); the circular insertion/removal after validation is constant work. DIM Q(8) allocates eight numeric cells on Spectrum and nine on C64/BBC, including their unused zero cell. Numeric cells and descriptors cost more than byte storage. No measured hardware-cycle or frame-budget claim is made.
+
+## Verified examples
+
+All four working/custom/wrong/repaired callers ran through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP files; C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters the complete numbered listing through stock MOS/BASIC. Actual loaded programs, complete state traces, positive completion, guards and visible result pixels are checked. Firmware is not distributed.
+
+The independent deque model checks twenty varied/boundary/error rows and a retained fill, reject, wrap and drain session. Custom callers change logical capacity. These are configuration-specific observations, not a claim about every physical machine or possible game.
+
+Public CI checks retained records and rejects altered source, configuration, loaded program, state, completion and image evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-components.py event-queue sinclair-zx-spectrum --tools /path/to/extracted/releases`; inspect with `python3 scripts/check-basic-components.py event-queue`.
+
+
+## Explore further
+
+[The BASIC object pool](/patterns/sinclair-zx-spectrum/basic/framework/object-pool/) offers another caller-owned component. [Compare the assembly version](/patterns/commodore-64/assembly/framework/event-queue/) for its representation and cost choices. [Exact source and native observations](https://github.com/code198x/code-samples/tree/fe3314aa8196b5f00ab956f76d687733258638c4/sinclair-zx-spectrum/patterns/basic/framework/event-queue).
