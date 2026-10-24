@@ -1,0 +1,87 @@
+---
+title: "Keep a Stable Priority Event Queue on Spectrum"
+summary: "An urgent event may need service before an older routine event, while equal priorities should remain fair."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "priority-event-queue"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+An urgent event may need service before an older routine event, while equal priorities should remain fair.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/priority-event-queue-demo.png" alt="Spectrum shows the working diagnostic row 16 08 01 01 02 01 21 08." caption="A completed native caller displays 16 08 01 01 02 01 21 08. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+A queue holds at most four event/priority pairs. MODE=0 inserts; MODE=1 removes the highest priority, with earlier insertion winning ties. COUNT must be 0–4. Return RESULT=1 on a change, VALID=0 for invalid count/mode. Full insertion and empty removal are valid no-ops. Failed operations return EVENT=255, PRIORITY=0.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **EVENT, PRIORITY, RESULT, VALID, COUNT, MODE, NEW_EVENT, NEW_PRIORITY, E0, E1, E2, E3, P0, P1, P2, P3**. They occupy 16 contiguous bytes. Also reserve the private workspace: **T0, T1, T2, EXPR_SAVE** (4 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `priority_event_queue_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `priority_event_queue_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | COUNT, E0..E3 and P0..P3 |
+| Supply before service | MODE, NEW_EVENT and NEW_PRIORITY |
+| Read after service | EVENT, PRIORITY, RESULT and VALID |
+
+Insertion shifts only lower-priority entries. Stopping at an equal priority keeps arrival order stable; removal takes the first pair and closes the gap.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/priority-event-queue/component.inc" lang="z80" title="Reusable initialisation and service" />
+
+## Machine contract
+
+AF/BC/DE/HL may change; IX/IY are preserved. A direct CALL needs two return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. The samples use fixed symbol bindings. Scope or rename every label and binding, including the component_end measurement marker, and allocate a separate block for each independent instance. Different helpers can also use common field names, so combining them needs separate namespaces or explicitly renamed bindings. Give each block one mutation owner.
+
+The 48K diagnostic boots through ROM tape loading and USR, disables interrupts and owns the screen. The helper performs no port or screen writes.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/priority-event-queue/demo.asm" lang="z80" title="Bindings and include order" />
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/priority-event-queue/exercise.inc" from="preview_rules:" to="; End of toolkit client." lang="z80" title="A client retaining state between calls" />
+
+## Customise it
+
+Mix the minimum and maximum priorities. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/priority-event-queue/custom.asm" lang="z80" title="Custom client selection" />
+
+The custom diagnostic row is **09 FF 01 01 01 01 09 FF**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong caller discards insertion priority. The queue then behaves like an ordinary FIFO and returns event 11 before urgent event 22. Preserve the requested priority.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/priority-event-queue/wrong.asm" lang="z80" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/priority-event-queue-wrong.png" alt="Spectrum shows the deliberate error row 0B 00 01 01 02 01 21 00." caption="The wrong client completes with 0B 00 01 01 02 01 21 00; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 489 code bytes; public state is 16 bytes and private scratch is 4 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+At most four pair moves. A binary heap costs more machinery but suits larger queues; a plain FIFO gives simpler fairness when urgency is unnecessary.
+
+The retained queue must already be sorted by descending priority. This is not an interrupt-safe producer/consumer queue and can starve low-priority events.
+
+## Execution evidence
+
+Four variants run on 48K PAL ROM tape load and USR, using Asm198x 0.0.72, Emu198x 0.44.2. Each executes 62 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+## Where it fits
+
+[Event queues](/patterns/sinclair-zx-spectrum/assembly/framework/event-queue/): Choose FIFO or priority order according to the rules of the game.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/bd0c7812a14807d067c33925d10fcc37fd790856/sinclair-zx-spectrum/patterns/assembly/framework/priority-event-queue).
