@@ -1,0 +1,87 @@
+---
+title: "Keep a Stable Interaction Focus on Amiga"
+summary: "A prompt should not flicker between two nearby objects whenever their distances differ by one pixel."
+platform: "commodore-amiga"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "interaction-focus"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A prompt should not flicker between two nearby objects whenever their distances differ by one pixel.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/interaction-focus-demo.png" alt="Amiga shows the working diagnostic row 01 01 01 03 14 02 08 0A." caption="A completed native caller displays 01 01 01 03 14 02 08 0A. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+ACTIVE uses its low four bits. D0..D3 are caller-computed distances on one consistent byte scale. Choose the nearest active candidate at distance ≤ RANGE; lowest slot wins a fresh tie. CURRENT is 0–3 or 255 for none. Retain a current eligible candidate when its distance is no more than MARGIN worse than the nearest. SELECTED is 255 when none qualifies. Invalid CURRENT or high ACTIVE bits clears VALID and returns SELECTED=255. Feed SELECTED back as CURRENT next time.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **SELECTED, VALID, CURRENT, ACTIVE, RANGE, MARGIN, DIST0, DIST1, DIST2, DIST3**. They occupy 10 contiguous bytes. Also reserve the private workspace: **T0, T1, T2, T3, T4, T5** (6 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `interaction_focus_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `interaction_focus_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | CURRENT supplied from the previous SELECTED |
+| Supply before service | ACTIVE, distances, RANGE and MARGIN |
+| Read after service | SELECTED and VALID |
+
+First find the strict nearest candidate. Compare the old candidate’s excess distance against the margin afterwards; subtracting the nearest avoids overflow from adding margin to a byte distance.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/interaction-focus/component.inc" lang="m68k" title="Reusable initialisation and service" />
+
+## Machine contract
+
+D0–D3/A0–A1/CCR may change; D4–D7/A2–A6 are preserved. A direct BSR/JSR needs four return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. The samples use fixed symbol bindings. Scope or rename every label and binding, including the component_end measurement marker, and allocate a separate block for each independent instance. Different helpers can also use common field names, so combining them needs separate namespaces or explicitly renamed bindings. Give each block one mutation owner.
+
+The A500 OCS diagnostic cold-boots an OFS disk, owns the Copper and bitplane and disables interrupt/DMA sources. The helper does not take over hardware or allocate Chip RAM. The four distance bytes are named DIST0..DIST3 here because D0..D3 identify CPU registers on 68000. Their order matches the abstract D0..D3 interface.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x` and `BUILD198X=/path/to/build198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/interaction-focus/demo.asm" lang="m68k" title="Bindings and include order" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/interaction-focus/exercise.inc" from="preview_rules:" to="; End of nighttwo client." lang="m68k" title="A client retaining state between calls" />
+
+## Customise it
+
+Use zero margin so only equal-distance ties retain the current target. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/interaction-focus/custom.asm" lang="m68k" title="Custom client selection" />
+
+The custom diagnostic row is **03 01 03 0F 0A 00 0A 0A**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong client forgets the retained focus. A small distance advantage immediately switches the prompt despite the requested hysteresis. Carry SELECTED into CURRENT between updates.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/interaction-focus/wrong.asm" lang="m68k" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/interaction-focus-wrong.png" alt="Amiga shows the deliberate error row 00 01 FF 03 14 02 08 0A." caption="The wrong client completes with 00 01 FF 03 14 02 08 0A; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 534 code bytes; public state is 10 bytes and private scratch is 6 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+Exactly four candidates are examined. Retention needs no extra per-candidate table; a larger set needs wider indexing and a measured search budget.
+
+The helper consumes distances, not positions or line-of-sight tests. ACTIVE must already exclude unavailable objects. Hysteresis trades responsiveness for stable prompts; a large margin can keep a substantially farther target. Separate object identities need generation validation when pool slots are reused.
+
+## Execution evidence
+
+Four variants run on A500 OCS PAL, Kickstart1.3 OFS cold boot, using Asm198x 0.0.72, Emu198x 0.44.2 and Build198x 0.2.9. Each executes 64 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+## Where it fits
+
+[Nearest target](/patterns/commodore-amiga/assembly/ai/nearest-target/): Reuse the existing Manhattan-distance selector when you need immediate nearest-target behaviour without focus retention.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/c795e84779af38db0dc3c175bc13e29bdc330ded/commodore-amiga/patterns/assembly/framework/interaction-focus).
