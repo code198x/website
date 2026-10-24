@@ -1,0 +1,87 @@
+---
+title: "Report Trigger Enter, Stay and Exit Events on Amiga"
+summary: "Standing in a doorway should not count as entering it on every update."
+platform: "commodore-amiga"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "trigger-transitions"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Standing in a doorway should not count as entering it on every update.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/trigger-transitions-demo.png" alt="Amiga shows the working diagnostic row 00 06 00 06 06 00 00 00." caption="A completed native caller displays 00 06 00 06 06 00 00 00. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+CURRENT is an eight-bit overlap snapshot, one bit per trigger. Compare it with retained PREVIOUS: ENTERED is current-only, EXITED is previous-only and STAYED is their intersection. Then retain CURRENT as PREVIOUS. Every bit is handled independently; the helper does not decide overlap geometry.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **ENTERED, STAYED, EXITED, PREVIOUS, CURRENT**. They occupy 5 contiguous bytes. Also reserve the private workspace: **T0** (1 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `trigger_transitions_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `trigger_transitions_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | PREVIOUS |
+| Supply before service | CURRENT |
+| Read after service | ENTERED, STAYED and EXITED |
+
+An intersection reports shared occupancy, while complement-and-intersection picks the two differences. The stored mask turns static collision answers into temporal events.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/trigger-transitions/component.inc" lang="m68k" title="Reusable initialisation and service" />
+
+## Machine contract
+
+D0–D3/A0–A1/CCR may change; D4–D7/A2–A6 are preserved. A direct BSR/JSR needs four return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. The samples use fixed symbol bindings. Scope or rename every label and binding, including the component_end measurement marker, and allocate a separate block for each independent instance. Different helpers can also use common field names, so combining them needs separate namespaces or explicitly renamed bindings. Give each block one mutation owner.
+
+The A500 OCS diagnostic cold-boots an OFS disk, owns the Copper and bitplane and disables interrupt/DMA sources. The helper does not take over hardware or allocate Chip RAM.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x` and `BUILD198X=/path/to/build198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/trigger-transitions/demo.asm" lang="m68k" title="Bindings and include order" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/trigger-transitions/exercise.inc" from="preview_rules:" to="; End of worldkit client." lang="m68k" title="A client retaining state between calls" />
+
+## Customise it
+
+Use the high trigger bit and an exit/re-entry sequence. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/trigger-transitions/custom.asm" lang="m68k" title="Custom client selection" />
+
+The custom diagnostic row is **80 00 00 80 80 00 00 00**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong caller clears PREVIOUS each time. Occupied triggers keep re-entering and exit events disappear. Retain the last complete snapshot for this same actor.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/trigger-transitions/wrong.asm" lang="m68k" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/trigger-transitions-wrong.png" alt="Amiga shows the deliberate error row 06 00 00 06 06 00 00 00." caption="The wrong client completes with 06 00 00 06 06 00 00 00; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 130 code bytes; public state is 5 bytes and private scratch is 1 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+Constant work for eight zones in one byte. More triggers can use more mask bytes or a sparse event list; neither removes the need to own the previous state per actor.
+
+Snapshots can miss a fast pass through a narrow zone between updates. Swept geometry or substeps may be needed. Separate actors need separate previous masks; combining their snapshots changes the meaning of an event.
+
+## Execution evidence
+
+Four variants run on A500 OCS PAL, Kickstart1.3 OFS cold boot, using Asm198x 0.0.72, Emu198x 0.44.2 and Build198x 0.2.9. Each executes 64 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+## Where it fits
+
+[Chord edges](/patterns/commodore-amiga/assembly/input/input-chord/): Both techniques derive events from state, but a trigger snapshot describes world overlap rather than held controls.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/5eec1a1e64a90563306bdcbcf8607acb2c440ac7/commodore-amiga/patterns/assembly/framework/trigger-transitions).
