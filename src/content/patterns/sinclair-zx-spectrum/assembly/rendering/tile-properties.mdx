@@ -1,0 +1,79 @@
+---
+title: "Look Up Tile Properties on Spectrum"
+summary: "The picture number in a map does not automatically tell you whether a tile is solid, harmful or climbable."
+platform: "sinclair-zx-spectrum"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["reusable", "tile-properties"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+The picture number in a map does not automatically tell you whether a tile is solid, harmful or climbable. A small property table lets artwork and game behaviour change independently, with a bounds check before looking anything up.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/tile-properties-demo.png" alt="Spectrum shows the working diagnostic row 08 00 01 06 01 00 00 00." caption="A native completed caller shows its state as hexadecimal bytes. The field order below explains the row; the full packet retains every call." />
+
+## Include, initialise and call
+
+Reserve **ATTRS, MATCH, VALID, TILE_ID, MASK** as 5 contiguous private bytes in that order. Include the helper once. Call `tile_properties_init` at the intended reset boundary: it clears every named byte, including input fields. Set the starting values afterwards, then call `tile_properties_step` for each intended service.
+
+Query the map for a tile ID, then offer that ID and the property mask. Check VALID if a missing ID should be treated as a content error rather than empty space. The sample assigns independent bit values 1, 2, 4 and 8; your game gives those bits their meanings.
+
+TILE_ID selects one entry of the caller-owned property_table, whose qualified size is 16. MASK selects properties of interest. Step replaces ATTRS/MATCH/VALID: an in-range ID returns its attribute byte and VALID 1; MATCH is 1 when any selected bit is present. MASK zero matches nothing. An invalid ID returns all three outputs zero without reading outside the table. Inputs survive.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/tile-properties/component.inc" lang="z80" title="Reusable initialisation and service" />
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/tile-properties/data.inc" lang="z80" title="Caller-owned immutable lookup/encoded data" />
+
+## State, registers and ownership
+
+Five bytes of state plus a separate immutable sixteen-byte property table. A valid tile with attribute zero differs from an invalid tile because VALID is separate. This is an any-bit test; the quest-flags helper’s all-bits question has a different meaning.
+
+AF/BC/DE/HL may change; IX/IY survive. A direct CALL needs two return-address stack bytes.
+
+The implementation binds fixed symbols and has one mutation owner. Independent users need separate state blocks and scoped/renamed labels, including routine labels; sharing the same bindings means sharing the state. Do not let an interrupt and the main loop mutate the same block without an explicit ownership policy.
+
+The standalone tape program enters at $8000, disables interrupts and owns bitmap/attribute RAM. It does not restore BASIC. Those choices belong to the test program; the helper itself never takes over the display.
+
+## A caller you can adapt
+
+The buildable program supplies bindings and include order. Its separate client retains state between calls. `checked_step` calls the public `tile_properties_step` entry and checks register sentinels; `emit_state` records diagnostics. Your game can call the public entry directly, remove the diagnostics and consume the documented outputs.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/tile-properties/demo.asm" lang="z80" title="Bindings, buildable caller and include order" />
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/tile-properties/exercise.inc" from="preview_rules:" to="; End of playtools client." lang="z80" title="A separate client retaining state between calls" />
+
+The display fields are **ATTRS, MATCH, VALID, TILE_ID, MASK**; remaining display fields are zero. Each is one hexadecimal byte. The normal row is **08 00 01 06 01 00 00 00**. This is a completed state observation, not a recording of an actual character jumping, a camera scrolling or an asset being displayed.
+
+## Make it your own
+
+The normal client asks about mask 1; the custom caller asks about mask 8. Tile ID six maps to attribute eight, so the latter matches and the former does not. No tile image or map layout has to change.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/tile-properties/custom.asm" lang="z80" title="Maintained custom configuration or caller" />
+
+The custom row is **08 01 01 06 08 00 00 00**. These records qualify the named builds and inputs; another layout, format or input domain needs explicit bounds and fresh execution evidence.
+
+## Common mistake and repair
+
+The wrong client treats the numeric tile ID as the attribute byte. Tile six then appears to carry bits two and four instead of its authored property bit eight. Look up the property data rather than encoding behaviour accidentally into artwork numbering.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/rendering/tile-properties/wrong.asm" lang="z80" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/tile-properties-wrong.png" alt="Spectrum shows the deliberate fault row 06 00 01 06 01 00 00 00." caption="The wrong client completes with 06 00 01 06 01 00 00 00. Its code and the explanation above identify the cause; the capture observes the result." />
+
+The BROKEN branch is visible in the client. `repaired.asm` restores the normal selection; its executable matches demo exactly. Spectrum tape filenames may differ while loaded CODE remains identical. The fault is a labelled experiment, not a suggested alternative.
+
+## Cost, limits and verification
+
+The measured layout has **62 code bytes, 16 immutable data bytes and 5 private state bytes**. Alignment, stack usage, diagnostic tables and display machinery are additional. The extents come from the loaded program’s symbols, not from counting source lines.
+
+One bounds check, one byte lookup and a mask test. The immutable table costs sixteen bytes; no per-tile properties need to be copied into every map cell. The table transfer to an actual display is unrelated work.
+
+A larger catalogue needs an updated count, storage and index width as appropriate. Sparse IDs may need a different lookup structure. Animated frames can share the same properties, or the animation owner can choose when behaviour changes; neither should happen accidentally because the image index changed.
+
+Four native runs use Spectrum 48K with stock ROM tape loading and USR entry; Asm198x 0.0.72 and Emu198x 0.44.2. Each checks 64 boundary/varied/error cases, dirty initialisation and every state of a separate sequential client against an independent integer model. This is not exhaustive coverage of every possible byte combination. Source/tool/firmware hashes, immutable loaded code/data, native startup/completion, preserved-register sentinels, helper/data sizes, screenshot bytes/pixels and exact repair are checked. Deliberately altered observations must fail. Firmware is hashed, never distributed.
+
+[Related technique](/patterns/sinclair-zx-spectrum/assembly/rendering/tile-map/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/65c90786314e9e687d91ecdf080719acc2793c82/sinclair-zx-spectrum/patterns/assembly/rendering/tile-properties).
