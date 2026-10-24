@@ -1,0 +1,67 @@
+---
+title: "Rectangle Overlap"
+summary: "Check two boxes without wrapped coordinates, distinguish touching from overlap, and reuse the existing C64 helper."
+platform: "commodore-64"
+category: "physics"
+difficulty: "beginner"
+tags: ["collision", "rectangles", "aabb", "maths"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["aabb-collision"]
+  vault: ["collision-detection"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Two boxes share some space: that is enough to ask whether a player touched an enemy, entered a doorway or reached a collectible. You do not need to compare every visible pixel to answer that first question.
+
+**Code status: assembled and emulator-executed.** This standalone caller reuses the maintained Collect and Respond helper unchanged. PAL C64, stock recorded ROMs, Asm198x 0.0.72 and Emu198x 0.44.2 are the qualified configuration.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/rectangle-overlap-demo.png" alt="A and B mark two boxes, X marks their shared cells, and the result is 1." caption="The first digit says overlap. X cells make the shared area visible; these characters are a diagnostic grid, not a sprite engine." />
+
+## Put the helper in a project
+
+Each rectangle is four **edges**: left, top, right, bottom. Write those bytes into rect_a and rect_b, then call boxes_overlap. Carry set means overlap; carry clear means apart or empty. A and flags change, X and Y survive. Include the helper once outside a fall-through execution path. It needs no initialisation, allocation or I/O; it owns eight edge bytes and uses the caller's normal JSR stack. Do not let an interrupt change those edges during a call.
+
+<CodeFromFile src="commodore-64/patterns/assembly/physics/rectangle-overlap/../../framework/collect-and-respond/collision.inc" lang="6502" title="The maintained eight-edge helper" />
+
+Right and bottom are excluded: [2,2,8,6] is six units wide and four high. Adjacent boxes can share a boundary without sharing area. Zero and reversed extents return false. All edges must fit 0–255. This is a local/grid coordinate helper; a 320-pixel C64 screen needs a wider representation.
+
+There is no addition inside the test. If your objects store position and size, calculate right/bottom in wider arithmetic and validate or clip before storing bytes. Letting 250+16 wrap to 10 changes the geometry before the helper sees it. Negative coordinates need translation or a separately implemented signed/wider routine.
+
+## Run and read the caller
+
+From code-samples/commodore-64/patterns/assembly/physics/rectangle-overlap, run make with Asm198x on PATH. Load build/demo.prg and type RUN. Reset to leave. The caller owns ROM banking, interrupts, the display and renderer pointer bytes $FB/$FC; the collision helper owns none of that hardware.
+
+<CodeFromFile src="commodore-64/patterns/assembly/physics/rectangle-overlap/demo.asm" lang="6502" title="Include order and example geometry" />
+
+<CodeFromFile src="commodore-64/patterns/assembly/physics/rectangle-overlap/caller.inc" lang="6502" title="A standalone caller and a separate diagnostic renderer" />
+
+The normal result is 1. The renderer labels A-only cells A, B-only cells B and shared cells X. Its 40×10 viewport is a display choice; it does not define the helper's numerical range. In your own game, handle the carry result immediately and keep the response—damage, collection or a room change—separate from the geometry.
+
+## Customise the shape, keep the contract
+
+The custom caller moves B until its left edge equals A's right edge. No X cells remain and the result becomes 0. Use smaller player hitboxes for a forgiving game or larger interaction boxes for easy collection. The visible artwork and interaction bounds need not be identical.
+
+<CodeFromFile src="commodore-64/patterns/assembly/physics/rectangle-overlap/custom.asm" lang="6502" title="Touching boxes: a data-only customisation" />
+
+## A common error: counting an edge as area
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/rectangle-overlap-wrong.png" alt="Adjacent A and B cells have no X cells, but the faulty caller displays 1." caption="A useful contradiction: the geometry has no shared cell, yet the damaged comparison reports a collision." />
+
+<CodeFromFile src="commodore-64/patterns/assembly/physics/rectangle-overlap/wrong-touch.inc" lang="6502" title="Deliberate fault: accepting equality" />
+
+The labelled wrong helper accepts equality in the four separation checks. Empty/reversed boxes still fail, so the error is specifically about touching. Restore the original comparisons; repaired has the same geometry and executable payload as custom and returns 0. Keep the faulty build separate.
+
+## Costs, limits and checks
+
+The helper is 68 instruction bytes plus eight state bytes. Early rejection means execution cost depends on the boxes. The full working caller is 2,085 payload bytes, including diagnostic drawing and a supplied 184-case test set. Those are different costs. The fault adds eight instruction bytes. These figures do not establish a cycle budget.
+
+The guest traverses 184 independent supplied cases, including argument reversal, zero/reversed extents, containment, separated and touching edges, numerical maxima and deterministic generated inputs. Positive completion guards and X/Y preservation checks must finish. The observer compares outputs with a separate max/min interval oracle, the full imported program before RUN and the native screenshot glyphs. Corrupted results, code, provenance and pixel expectations are rejected by the evidence gate.
+
+Box tests are a useful broad phase before expensive mask/pixel tests on a small set of candidates. That second phase still has its own CPU, memory and data costs. [Maths for Games](/craft/maths-for-games/) develops intervals and coordinate ranges; [the cross-platform collision explanation](/patterns/cross-platform/physics/aabb-collision/) covers the same geometry independently of an integer width.
+
+[Maintained callers and README](https://github.com/code198x/code-samples/tree/4924bc8810b6cd1c3430f82bf6207f3b52a91741/commodore-64/patterns/assembly/physics/rectangle-overlap) · [Native evidence and configuration](https://github.com/code198x/code-samples/tree/4924bc8810b6cd1c3430f82bf6207f3b52a91741/commodore-64/patterns/assembly/physics/rectangle-overlap/verification). Re-run scripts/check-c64-rectangle-overlap.py and its falsification tests from the samples root. This is named emulator qualification, not a physical C64 or every display configuration.
