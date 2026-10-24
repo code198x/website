@@ -1,0 +1,77 @@
+---
+title: "A Counted Text-entry Buffer on NES"
+summary: "Entering a player name needs more than appending characters."
+platform: "nintendo-nes"
+category: "input"
+difficulty: "intermediate"
+tags: ["reusable", "text-entry-buffer"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Entering a player name needs more than appending characters. Full buffers must refuse another byte, Backspace at the start must stay at zero, and the caller must know how many characters are real.
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-entertainment-system/text-entry-buffer-demo.png" alt="NES shows the working diagnostic row 00 00 42 01 00 00 00 00." caption="A native completed caller shows its state as hexadecimal bytes. The field order below explains the row; the full packet retains every call." />
+
+## Include, initialise and call
+
+Reserve **LENGTH, STATUS, KEY, MODE, BUF0, BUF1, BUF2, BUF3, BUF4, BUF5, BUF6, BUF7** as 12 contiguous private bytes in that order. Include the helper once. Call `text_entry_buffer_init` at the intended reset boundary: it clears every named byte, including input fields. Set the starting values afterwards, then call `text_entry_buffer_step` for each intended service.
+
+Initialise once, translate the machine’s input into a logical key/action, then call step. Draw exactly LENGTH bytes. This is a counted buffer, not a promise of a zero terminator when full. The helper does not scan a keyboard, wait for input or implement key repeat.
+
+The buffer reserves BUF0–BUF7. LENGTH is the number of live bytes. MODE 0 appends KEY only when it is ASCII 32–126 and room remains; MODE 1 removes the last byte and clears that slot; MODE 2 clears all eight slots and length, even if the old length is corrupt. STATUS is 1 for a change/clear, 0 for full append or empty Backspace, 2 for a rejected character, and 3 for an invalid mode/length. Apart from clear, LENGTH above TEXT_CAP rejects without touching the buffer. The maintained capacities are eight and four.
+
+<CodeFromFile src="cross-platform/patterns/input/text-entry-buffer/6502.inc" lang="6502" title="Reusable initialisation and service" />
+
+## State, registers and ownership
+
+Four control/input/output bytes followed by eight reserved character bytes. KEY and MODE survive. Appending preserves inactive slots; Backspace clears the removed slot, and clear empties all eight. The custom smaller capacity retains eight-byte storage and changes accepted length, not the allocation.
+
+A/X/flags may change; Y and decimal mode survive. Clear decimal mode before binary arithmetic; the caller uses CLD. A direct call needs two return-address stack bytes.
+
+The implementation binds fixed symbols and has one mutation owner. Independent users need separate state blocks and scoped/renamed labels, including routine labels; sharing the same bindings means sharing the state. Do not let an interrupt and the main loop mutate the same block without an explicit ownership policy.
+
+The standalone cartridge owns its background/font and test RAM layout. Its bounded packet, preview and completion marker fit below the end of the NES’s 2 KiB internal RAM. The helper itself owns no PPU, DMA or audio registers.
+
+## A caller you can adapt
+
+The buildable program supplies bindings and include order. Its separate client retains state between calls. `checked_step` calls the public `text_entry_buffer_step` entry and checks register sentinels; `emit_state` records diagnostics. Your game can call the public entry directly, remove the diagnostics and consume the documented outputs.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/text-entry-buffer/demo.asm" lang="6502" title="Bindings, buildable caller and include order" />
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/text-entry-buffer/exercise.inc" from="preview_rules:" to="; End of playtools client." lang="6502" title="A separate client retaining state between calls" />
+
+The display fields are **LENGTH, STATUS, KEY, MODE, BUF0, BUF1, BUF2, BUF3**; later state bytes are retained in the full packet. Each is one hexadecimal byte. The normal row is **00 00 42 01 00 00 00 00**. This is a completed state observation, not a recording of an actual character jumping, a camera scrolling or an asset being displayed.
+
+## Make it your own
+
+The custom build lowers TEXT_CAP from eight to four and its client appends C after clearing the two-character example with Backspace. It finishes with the one-character name C. Boundary cases also exercise full/invalid lengths under the smaller capacity.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/text-entry-buffer/custom.asm" lang="6502" title="Maintained custom configuration or caller" />
+
+The custom row is **01 01 43 00 43 00 00 00**. These records qualify the named builds and inputs; another layout, format or input domain needs explicit bounds and fresh execution evidence.
+
+## Common mistake and repair
+
+The wrong client decrements an empty length on Backspace. Zero wraps to 255, making the supposed name length exceed the entire buffer. Keep zero at zero; subsequent operations on a corrupt length must reject or explicitly clear it.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/text-entry-buffer/wrong.asm" lang="6502" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-entertainment-system/text-entry-buffer-wrong.png" alt="NES shows the deliberate fault row FF 01 42 01 00 00 00 00." caption="The wrong client completes with FF 01 42 01 00 00 00 00. Its code and the explanation above identify the cause; the capture observes the result." />
+
+The BROKEN branch is visible in the client. `repaired.asm` restores the normal selection; its executable matches demo exactly. Spectrum tape filenames may differ while loaded CODE remains identical. The fault is a labelled experiment, not a suggested alternative.
+
+## Cost, limits and verification
+
+The measured layout has **119 code bytes, 0 immutable data bytes and 12 private state bytes**. Alignment, stack usage, diagnostic tables and display machinery are additional. The extents come from the loaded program’s symbols, not from counting source lines.
+
+Append and Backspace touch at most one slot. Clear touches the eight reserved slots. Bounds and key checks are part of the implementation; removing them creates a different trust contract and can corrupt neighbouring state.
+
+Cursor movement, insertion in the middle, key mapping, accented characters and Unicode require additional rules and often more storage. ASCII here is an interchange choice; C64 screen codes and NES tile numbers need a presentation mapping. Do not scan past the counted span looking for a terminator.
+
+Four native runs use NTSC mapper-0 NES cartridge, CHR-ROM diagnostic font, NMI/DMC disabled; Asm198x 0.0.72 and Emu198x 0.44.2. Each checks 64 boundary/varied/error cases, dirty initialisation and every state of a separate sequential client against an independent integer model. This is not exhaustive coverage of every possible byte combination. Source/tool/firmware hashes, immutable loaded code/data, native startup/completion, preserved-register sentinels, helper/data sizes, screenshot bytes/pixels and exact repair are checked. Deliberately altered observations must fail. Firmware is hashed, never distributed.
+
+[Related technique](/patterns/cross-platform/rendering/text-layout/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/0e3aa022dbcf4b70793ab045558aa2b24124cdcc/nintendo-entertainment-system/patterns/assembly/input/text-entry-buffer).
