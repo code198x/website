@@ -8,7 +8,7 @@
  *
  * - Groups by the catalogue `phase` field when any game has one (BASIC tracks),
  *   otherwise renders a flat list (assembly tracks).
- * - Shows a progress bar only when canonical unit counts exist (units > 0);
+ * - Shows a unit count only when canonical unit counts exist (units > 0);
  *   otherwise shows an honest status label — never "0 / 0 units".
  * - Thumbnail: the catalogue `thumbnail` if set, else the latest available unit's
  *   screenshot, else a "soon" placeholder.
@@ -34,18 +34,12 @@ interface Props {
   /** Optional one-line description per phase name, shown under the phase header. */
   phaseSubtitles?: Record<string, string>;
   appearance?: 'classic' | 'house';
-  /**
-   * What the big number on each card shows. `catalogue` (default) is the
-   * game's catalogue `number`. `order` counts the cards as listed, from 1, for
-   * tracks whose catalogue numbers no longer follow the teaching order.
-   */
-  numbering?: 'catalogue' | 'order';
 }
 
 import fs from 'node:fs';
 import {pngSize} from '../lib/pixel-frame';
 import { inkStyle, chipInkStyle } from '../lib/contrast';
-const { games, platform, track, platformColor, phaseSubtitles, appearance = 'classic', numbering = 'catalogue' } = Astro.props;
+const { games, platform, track, platformColor, phaseSubtitles, appearance = 'classic' } = Astro.props;
 
 const groupByPhase = games.some(g => g.phase);
 const phaseNames: string[] = [];
@@ -55,9 +49,6 @@ for (const g of games) {
 const groups = groupByPhase
   ? phaseNames.map((name, i) => ({ name, number: i + 1, games: games.filter(g => g.phase === name) }))
   : [{ name: null, number: 0, games }];
-
-// Groups render in phase order, so number the cards in that same order.
-const displayNumber = new Map(groups.flatMap(g => g.games).map((g, i) => [g.slug, numbering === 'order' ? i + 1 : g.number]));
 
 const statusLabel: Record<string, string> = { complete: 'Complete', 'in-progress': 'In progress', 'coming-soon': 'Coming soon' };
 const thumbFor = (g: Game): string | null =>
@@ -94,7 +85,6 @@ const thumbFor = (g: Game): string | null =>
               href={live ? `/systems/${platform}/${track}/${game.slug}` : undefined}
               class={`gcard ${live ? '' : 'soon'}`}
             >
-              <div class="gnum">{displayNumber.get(game.slug)}</div>
               <figure class="gthumb" style={size ? `--shot-width:${size.width}px` : undefined}>
                 {thumb ? <img src={thumb} alt={`${game.name} screenshot`} width={size?.width} height={size?.height} loading="lazy" /> : <span class="ph">Soon</span>}
                 {thumb&&<figcaption>{game.name} · {platform.replaceAll('-',' ')} · {track}</figcaption>}
@@ -110,10 +100,7 @@ const thumbFor = (g: Game): string | null =>
               </div>
               <div class="gmeta">
                 {game.units > 0 ? (
-                  <>
-                    <div class="bar"><div class="fill" style={`width: ${(game.unitsAvailable / game.units) * 100}%`}></div></div>
-                    <span class="units">{effStatus === 'in-progress' ? `${game.unitsAvailable} ${game.unitsAvailable === 1 ? 'unit' : 'units'} available` : `${game.unitsAvailable} of ${game.units} ${game.units === 1 ? 'unit' : 'units'} published`}</span>
-                  </>
+                  <span class="units">{effStatus === 'in-progress' ? `${game.unitsAvailable} ${game.unitsAvailable === 1 ? 'unit' : 'units'} available` : `${game.unitsAvailable} of ${game.units} ${game.units === 1 ? 'unit' : 'units'} published`}</span>
                 ) : (
                   <span class={`status ${effStatus}`}>{statusLabel[effStatus] ?? ''}</span>
                 )}
@@ -127,81 +114,59 @@ const thumbFor = (g: Game): string | null =>
 </div>
 
 <style>@layer blocks {
+  /* Each game is a row between hairlines: its name, tagline, skills and
+     progress on the left, its screen at native width on the right. Below
+     1100px the screen moves under the name. */
   .track-games { display: flex; flex-direction: column; gap: var(--h-space-8); }
   .group { display: flex; flex-direction: column; gap: var(--h-space-4); }
 
-  .phead { display: flex; align-items: center; gap: var(--h-space-4); padding: var(--h-space-3) var(--h-space-4); background: var(--h-ground); border: 3px solid var(--h-ink); border-left-width: 1px; border-left-color: var(--pc); }
-  .pnum { font-family: var(--h-font-ui); font-size: 1.6rem; font-weight: 600; line-height: 1; color: var(--ink); }
+  .phead { display: flex; align-items: center; gap: var(--h-space-4); padding: 24px 0; border-bottom: 1px solid var(--h-line); }
+  .pnum { color: var(--ink); font: 600 1.6rem/1 var(--h-font-ui); }
   .ptext { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-  .pname { font-family: var(--h-font-ui); font-weight: 700; font-size: 1.5rem; line-height: 1; }
-  .psub { font-size: 0.85rem; color: var(--h-ink-muted); line-height: 1.4; }
+  .pname { font: 700 1.5rem/1 var(--h-font-ui); }
+  .psub { color: var(--h-ink-muted); font-size: 0.85rem; line-height: 1.4; }
   .pcount { margin-left: auto; align-self: flex-start; color: var(--h-ink-muted); white-space: nowrap; }
 
-  .grid { display: flex; flex-direction: column; gap: var(--h-space-4); }
-  /* Dim the artwork, never the text. `opacity` on the whole card blended its
-     labels toward the background — `--h-ink-muted` came out as
-     #8c939c on the beige, 2.74:1. The card still reads as pending from its
-     number colour, its flat skill chips and its "Coming soon" label. */
-  .gcard.soon .gthumb img { opacity: 0.55; }
-
-  .gnum { font-family: var(--h-font-ui); font-size: 2rem; font-weight: 600; color: var(--ink); width: 2.5rem; text-align: center; }
-  .gcard.soon .gnum { color: var(--h-ink-muted); }
-
-  .gthumb { width: 80px; height: 60px; overflow: hidden; background: var(--h-page); border: 2px solid var(--h-line); display: flex; align-items: center; justify-content: center; }
-  .gthumb img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; }
-  .gthumb .ph { font-family: var(--h-font-ui); font-size: 0.8125rem; color: var(--h-ink-muted); text-transform: none; letter-spacing: normal; font-weight: 600;}
-
-  .ginfo { display: flex; flex-direction: column; gap: var(--h-space-1); min-width: 0; }
-  .gname { font-size: 1.35rem; font-weight: 700; }
-  .gtag { color: var(--h-ink-muted); font-size: 0.95rem; }
-  .gskills { display: flex; flex-wrap: wrap; gap: var(--h-space-2); margin-top: var(--h-space-2); }
-  .skill { font-family: var(--h-font-ui); font-size: 0.8125rem; padding: 2px 7px; background: color-mix(in srgb, var(--pc) 12%, transparent); color: var(--chip-ink); font-weight: 600; }
-  .gcard.soon .skill { background: var(--h-page); color: var(--h-ink-muted); }
-
-  .gmeta { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: var(--h-space-2); min-width: 110px; }
-  .bar { width: 110px; height: 8px; border: 1.5px solid var(--h-ink); }
-  .fill { height: 100%; background: var(--pc); }
-  .units { color: var(--h-ink-muted); }
-  .status { font-family: var(--h-font-ui); font-size: 0.8125rem; font-weight: 600; letter-spacing: normal; text-transform: none; padding: 2px 7px; border: 2px solid var(--h-line); color: var(--h-ink-muted); }
-  .status.complete { color: #16a34a; border-color: #16a34a; }
-  .status.in-progress { color: var(--ink); border-color: var(--pc); }
-  .house .pnum, .house .gnum { display: none; }
-  .house .pname { color: var(--h-ink); font-family: var(--h-font-ui); font-size: 1.15rem; }
-  .house .psub, .house .pcount { font-family: var(--h-font-ui); color: var(--h-ink-muted); text-transform: none; letter-spacing: normal; }
-  .house .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .house .gthumb { width: 100px; height: 75px; border: 1px solid var(--h-line); }
-  .house .gtag { font-family: var(--h-font-ui); color: var(--h-ink-body); line-height: 1.6; }
-  .house .gskills { display: none; }
-  .house .gmeta { grid-column: 2; align-items: start; min-width: 0; }
-  .house .bar { display: none; }
-  .house .units { font-family: var(--h-font-ui); font-size: var(--h-text-small); color: var(--h-ink-muted); }
-  @media (max-width: 900px) { .house .grid { display: grid; grid-template-columns: 1fr; } }
-
-  @media (max-width: 768px) {
-    .gnum { grid-row: 1 / 3; width: auto; }
-    .gthumb { display: none; }
-    .ginfo { grid-column: 2; }
-    .gmeta { grid-column: 2; align-items: flex-start; }
-    .gskills { display: none; }
-    .house .gthumb { display: flex; width: 80px; height: 60px; }
-  }
-}
-@layer blocks {
-
-  .gcard { display: grid; grid-template-columns: auto 80px 1fr auto; gap: var(--h-space-4); align-items: center; padding: var(--space-5); background: var(--h-ground); border: 3px solid var(--h-line); text-decoration: none; color: var(--h-ink); transition: border-color var(--transition-base); }
+  .gcard { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px 48px; align-items: center; padding: 32px 0; border-top: 1px solid var(--h-line); color: var(--h-ink); text-decoration: none; transition: border-color var(--transition-base); }
   a.gcard:hover, a.gcard:focus-visible { border-color: var(--pc); }
 
-  .house .phead { background: none; box-shadow: none; border: 0; padding: 0 0 var(--h-space-4); border-bottom: 1px solid var(--h-line); gap: var(--h-space-4); }
-  .house .gcard { grid-template-columns: 100px minmax(0, 1fr); align-items: start; border: 1px solid var(--h-line); box-shadow: none; padding: var(--space-5); background: var(--h-ground); transform: none; color: var(--h-ink); transition: border-color 150ms; }
-  .house .gname { font-family: var(--h-font-ui); font-size: 1.15rem; line-height: 1.3; }
-  .house .gcard:focus-visible { box-shadow: none; outline: 2px solid var(--h-ink); outline-offset: 3px; transform: none; }
-  .house a.gcard:hover { border-color: var(--h-line); box-shadow: none; transform: none; }
-  @media (hover: hover) { .house a.gcard:hover { border-color: var(--h-ink); box-shadow: none; transform: none; } }
+  .gthumb { grid-column: 2; grid-row: 1 / 3; align-self: center; justify-self: center; width: var(--shot-width, 100%); max-width: 100%; margin: 0; }
+  .gthumb img { display: block; width: 100%; height: auto; object-fit: contain; image-rendering: pixelated; }
+  .gcard.soon .gthumb img { opacity: 0.55; }
+  .gthumb .ph { color: var(--h-ink-muted); font-family: var(--h-font-ui); font-size: 0.8125rem; font-weight: 600; }
+  .gthumb figcaption { width: 100%; margin-top: 12px; color: var(--h-ink-muted); font: italic 0.875rem/1.5 var(--h-font-ui); }
+
+  .ginfo { grid-column: 1; grid-row: 1; align-self: end; display: flex; flex-direction: column; gap: var(--h-space-1); min-width: 0; }
+  .gname { margin: 0 0 12px; font: 700 1.75rem/1.3 var(--h-font-ui); }
+  .gtag { color: var(--h-ink-muted); font: 1.25rem/1.6 var(--h-font-ui); }
+  .gskills { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: var(--h-space-2); }
+  .skill, .units { color: var(--h-ink-muted); font: 1rem/1.5 var(--h-font-ui); }
+
+  .gmeta { grid-column: 1; display: flex; flex-direction: column; align-items: start; justify-content: center; gap: var(--h-space-2); min-width: 0; }
+  .status { padding: 2px 7px; border: 2px solid var(--h-line); color: var(--h-ink-muted); font: 600 0.8125rem var(--h-font-ui); }
+  .status.complete { color: #16a34a; border-color: #16a34a; }
+  .status.in-progress { color: var(--ink); border-color: var(--pc); }
+
+  /* The house appearance: plain phase headings, smaller names, a quieter
+     hover and a focus outline. */
+  .house .phead { padding: 0 0 var(--h-space-4); }
+  .house .pnum { display: none; }
+  .house .pname { color: var(--h-ink); font-size: 1.15rem; }
+  .house .psub, .house .pcount { font-family: var(--h-font-ui); text-transform: none; letter-spacing: normal; }
+  .house .gcard { align-items: start; transition: border-color 150ms; }
+  .house a.gcard:hover { border-color: var(--h-line); }
+  @media (hover: hover) { .house a.gcard:hover { border-color: var(--h-ink); } }
+  .house .gcard:focus-visible { outline: 2px solid var(--h-ink); outline-offset: 3px; }
+  .house .gname { font-size: 1.15rem; }
+  .house .gtag { color: var(--h-ink-body); }
+  .house .units { font-size: var(--h-text-small); }
   @media (prefers-reduced-motion: reduce) { .house .gcard { transition: none; } }
 
-  @media (max-width: 768px) {
-    .gcard { grid-template-columns: auto 1fr; grid-template-rows: auto auto; }
-    .house .gcard { grid-template-columns: 80px minmax(0, 1fr); }
+  @media (max-width: 1100px) {
+    .gcard { grid-template-columns: minmax(0, 1fr); }
+    .gthumb { grid-column: 1; grid-row: 2; }
+    .gmeta { grid-row: 3; }
   }
+  @media (max-width: 850px) { .gthumb figcaption { padding-inline: 12px; } }
 }
 </style>
