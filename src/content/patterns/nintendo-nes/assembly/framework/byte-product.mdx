@@ -1,0 +1,87 @@
+---
+title: "Multiply Two Bytes into a Word on NES"
+summary: "A small machine still needs products larger than one byte: an area, a score multiplier or a scaled distance."
+platform: "nintendo-nes"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "byte-product"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A small machine still needs products larger than one byte: an area, a score multiplier or a scaled distance.
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-nes/byte-product-demo.png" alt="NES shows the working diagnostic row 58 02 C8 03 00 00 00 00." caption="A completed native caller displays 58 02 C8 03 00 00 00 00. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+LEFT and RIGHT are unsigned 0–255. Return their exact product in PRODUCT_LO/PRODUCT_HI, low byte first. Both inputs are preserved. There is no overflow for this input domain: 255×255 is 65,025.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **PRODUCT_LO, PRODUCT_HI, LEFT, RIGHT**. They occupy 4 contiguous bytes. Also reserve the private workspace: **T0, T1, T4, T5, T6, T7, T8, T9** (8 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `byte_product_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `byte_product_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | none |
+| Supply before service | LEFT and RIGHT |
+| Read after service | PRODUCT_LO and PRODUCT_HI |
+
+The multiplier is inspected one bit at a time. Each set bit adds a shifted multiplicand into a two-byte result. Carry is handled explicitly, so the same byte interface works on the three CPU families.
+
+<CodeFromFile src="cross-platform/patterns/framework/byte-product/6502.inc" lang="6502" title="Reusable initialisation and service" />
+
+## Machine contract
+
+A/X/status may change; Y is preserved. The 2A03 has no decimal arithmetic mode. A direct JSR needs two return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. The samples use fixed symbol bindings. Scope or rename every label and binding, including the component_end measurement marker, and allocate a separate block for each independent instance. Different helpers can also use common field names, so combining them needs separate namespaces or explicitly renamed bindings. Give each block one mutation owner.
+
+The NROM caller owns PPU setup and background display, with NMI and DMC disabled. Table and packet sizes are bounded to fit the cartridge caller and internal RAM; the helper owns no PPU registers.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/byte-product/demo.asm" lang="6502" title="Bindings and include order" />
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/byte-product/exercise.inc" from="preview_rules:" to="; End of worldkit client." lang="6502" title="A client retaining state between calls" />
+
+## Customise it
+
+Use the maximum two-byte result instead of a small factor. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/byte-product/custom.asm" lang="6502" title="Custom client selection" />
+
+The custom diagnostic row is **01 FE FF FF 00 00 00 00**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong caller substitutes a factor of one, often mistaken for a default scale. The result is the original value rather than the requested product. Pass both actual factors; keep the high result byte.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/byte-product/wrong.asm" lang="6502" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-nes/byte-product-wrong.png" alt="NES shows the deliberate error row C8 00 C8 01 00 00 00 00." caption="The wrong client completes with C8 00 C8 01 00 00 00 00; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 183 code bytes; public state is 4 bytes and private scratch is 8 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+Eight bit stages, with additions only for set multiplier bits. The 68000 has hardware multiplication; a word-oriented MULU implementation is a useful faster alternative. This common byte routine makes the representation visible rather than claiming to be the fastest native implementation.
+
+This is unsigned integer multiplication. Signed values, fixed-point scaling and saturation require explicit conversions; discarding PRODUCT_HI changes the result to multiplication modulo 256.
+
+## Execution evidence
+
+Four variants run on NTSC NROM, background only, DMC/NMI disabled, using Asm198x 0.0.72, Emu198x 0.44.2. Each executes 64 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+## Where it fits
+
+[Fractional positions](/patterns/nintendo-nes/assembly/physics/fractional-position/): A fixed-point product needs an explicit decision about which result bits represent the chosen unit.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/2a060216873e4df41b4a48c075f61978399de963/nintendo-entertainment-system/patterns/assembly/framework/byte-product).
