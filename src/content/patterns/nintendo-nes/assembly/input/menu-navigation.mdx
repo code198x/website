@@ -1,0 +1,79 @@
+---
+title: "Wrap and Skip Menu Options on NES"
+summary: "A menu should wrap cleanly at either end and skip options the player cannot choose."
+platform: "nintendo-nes"
+category: "input"
+difficulty: "intermediate"
+tags: ["reusable", "menu-navigation"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A menu should wrap cleanly at either end and skip options the player cannot choose. Keep the selection rule separate from drawing and key-repeat timing, and the same menu can work with a keyboard, joystick or controller.
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-entertainment-system/menu-navigation-demo.png" alt="NES shows the working diagnostic row 00 03 05 01 01 01 00 00." caption="A native completed caller shows its state as hexadecimal bytes. The field order below explains the row; the full packet retains every call." />
+
+## Include, initialise and call
+
+Reserve **SELECTED, OPTION_COUNT, ENABLED, DELTA, MOVED, VALID** as 6 contiguous private bytes in that order. Include the helper once. Call `menu_navigation_init` at the intended reset boundary: it clears every named byte, including input fields. Set the starting values afterwards, then call `menu_navigation_step` for each intended service.
+
+Initialise once, set the option count, mask and starting selection, then offer one navigation action at a time. Use the existing input-repeat routine to decide when held input should produce another action. Resolve opposed directions before supplying DELTA. A disabled starting selection can move to an enabled candidate; the routine does not draw or activate the option.
+
+OPTION_COUNT is 1–8 and SELECTED must be a valid index below it. ENABLED is a bit mask: bit zero enables option zero, and bits above the count are ignored. DELTA is 1 forward, 255 backward or zero for no movement. Invalid count/index/delta preserves selection and clears VALID/MOVED. A valid call sets VALID and searches at most OPTION_COUNT candidates, wrapping and choosing the first enabled option. With none enabled it leaves the selection unchanged; MOVED reports an actual selection change.
+
+<CodeFromFile src="cross-platform/patterns/input/menu-navigation/6502.inc" lang="6502" title="Reusable initialisation and service" />
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/menu-navigation/data.inc" lang="6502" title="Caller-owned immutable lookup/encoded data" />
+
+## State, registers and ownership
+
+Six bytes, including the caller’s direction input and the replaced MOVED/VALID flags. A no-movement DELTA does not repair a disabled selected option. A valid count/layout is separate from the question of whether an option is currently enabled.
+
+A/X/flags may change; Y and decimal mode survive. Clear decimal mode before binary arithmetic; the caller uses CLD. A direct call needs two return-address stack bytes. This helper can also use one temporary stack byte, so allow three bytes for its call, excluding its caller and interrupts.
+
+The implementation binds fixed symbols and has one mutation owner. Independent users need separate state blocks and scoped/renamed labels, including routine labels; sharing the same bindings means sharing the state. Do not let an interrupt and the main loop mutate the same block without an explicit ownership policy.
+
+The standalone cartridge owns its background/font and test RAM layout. Its bounded packet, preview and completion marker fit below the end of the NES’s 2 KiB internal RAM. The helper itself owns no PPU, DMA or audio registers.
+
+## A caller you can adapt
+
+The buildable program supplies bindings and include order. Its separate client retains state between calls. `checked_step` calls the public `menu_navigation_step` entry and checks register sentinels; `emit_state` records diagnostics. Your game can call the public entry directly, remove the diagnostics and consume the documented outputs.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/menu-navigation/demo.asm" lang="6502" title="Bindings, buildable caller and include order" />
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/menu-navigation/exercise.inc" from="preview_rules:" to="; End of playtools client." lang="6502" title="A separate client retaining state between calls" />
+
+The display fields are **SELECTED, OPTION_COUNT, ENABLED, DELTA, MOVED, VALID**; remaining display fields are zero. Each is one hexadecimal byte. The normal row is **00 03 05 01 01 01 00 00**. This is a completed state observation, not a recording of an actual character jumping, a camera scrolling or an asset being displayed.
+
+## Make it your own
+
+The normal example starts at option two in a three-option menu with only options zero and two enabled, then wraps forward to zero. The custom caller enables all three and requests a backward move, selecting option one.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/menu-navigation/custom.asm" lang="6502" title="Maintained custom configuration or caller" />
+
+The custom row is **01 03 07 FF 01 01 00 00**. These records qualify the named builds and inputs; another layout, format or input domain needs explicit bounds and fresh execution evidence.
+
+## Common mistake and repair
+
+The wrong client simply adds DELTA to SELECTED. Moving forward from the last index two produces invalid index three, because byte wrap is not menu wrap. Bound the index by the option count and search the enabled candidates.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/menu-navigation/wrong.asm" lang="6502" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-entertainment-system/menu-navigation-wrong.png" alt="NES shows the deliberate fault row 03 03 05 01 01 01 00 00." caption="The wrong client completes with 03 03 05 01 01 01 00 00. Its code and the explanation above identify the cause; the capture observes the result." />
+
+The BROKEN branch is visible in the client. `repaired.asm` restores the normal selection; its executable matches demo exactly. Spectrum tape filenames may differ while loaded CODE remains identical. The fault is a labelled experiment, not a suggested alternative.
+
+## Cost, limits and verification
+
+The measured layout has **109 code bytes, 8 immutable data bytes and 6 private state bytes**. Alignment, stack usage, diagnostic tables and display machinery are additional. The extents come from the loaded program’s symbols, not from counting source lines.
+
+At most eight candidate tests. The 6502/Z80 examples use an eight-byte mask table; 68000 tests a register bit directly and needs no table. Keeping a count bounds the search even when every option is disabled.
+
+More than eight options need a larger availability structure and wider or bounded indices. Two-dimensional layouts need an explicit neighbour/navigation policy. Selection and activation should remain distinct, especially when a key that opened a menu is still held.
+
+Four native runs use NTSC mapper-0 NES cartridge, CHR-ROM diagnostic font, NMI/DMC disabled; Asm198x 0.0.72 and Emu198x 0.44.2. Each checks 64 boundary/varied/error cases, dirty initialisation and every state of a separate sequential client against an independent integer model. This is not exhaustive coverage of every possible byte combination. Source/tool/firmware hashes, immutable loaded code/data, native startup/completion, preserved-register sentinels, helper/data sizes, screenshot bytes/pixels and exact repair are checked. Deliberately altered observations must fail. Firmware is hashed, never distributed.
+
+[Related technique](/patterns/nintendo-nes/assembly/framework/input-repeat/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/f0880c3b6778c1e259e1d58d9bfe75752fd237f7/nintendo-entertainment-system/patterns/assembly/input/menu-navigation).
