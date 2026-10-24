@@ -1,0 +1,76 @@
+---
+title: "Seeded Random Numbers on C64"
+summary: "Reusable seed and next routines, repeatable draws, state replay and a visible zero-state trap."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["random", "lfsr", "replay", "maths"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+
+Want the same enemy choices while chasing a bug? Start from the same seed and make the same calls. These routines give you a small, repeatable source of bytes; changing the seed moves to another point in its cycle.
+
+Seed zero deliberately becomes one. The first eight draws are **B4 5A 2D A2 51 9C 4E 27**. The custom caller starts at A7 and shows a different sequence. The wrong caller clears the state directly and displays eight zeroes. You can see the contract before putting it into a game.
+
+## Include, initialise and call
+
+Keep the reusable component separate from the optional display and test caller. `demo.asm` shows the exact include order and selected seed. Include the component once, reserve its state, call `rng_seed` at startup and call `rng_next` when a game decision needs another value. Copy the returned byte if more than one consumer should see that draw; another call advances the sequence.
+
+**A** supplies the seed and returns the next byte; X/Y survive. Reserve one private **zero-page byte** as RNG_STATE. Flags change, but decimal mode is unchanged. Do not use the 6510 ports at $00/$01 or somebody else's workspace. The standalone caller reserves $70–$76 for its own generator and verification transport, owns the screen/font/colour RAM, disables IRQ sources and does not return to BASIC. The component itself changes no banking, video or interrupt registers.
+
+The helper needs **19 assembled code bytes and one state byte** on this configuration. A direct call needs the processor's return-address stack space, plus your enclosing calls and interrupts. The standalone artifact is 498 bytes, including loader/container/display/test overhead and any cartridge padding; that is not the cost of including the generator in your game. Every next call performs one shift, conditional feedback and one state write. Those operations are constant-sized here; storage counts do not promise a frame budget.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/seeded-random/demo.asm" lang="6502" title="Include the component and select the external seed" />
+
+## The sequence and its limits
+
+This is the shared article's **eight-bit, right-shifting Galois LFSR with feedback $B4**. Every nonzero byte appears once in a complete **255-call cycle**, then the state repeats. The sample's independent native caller checks that full cycle and every possible input seed, not just a few appealing-looking numbers. It is predictable and correlated. Its short period makes it a useful small baseline, not a good source for every procedural world or a security-sensitive choice.
+
+Seed once. Seeding again before each decision starts the sequence over. A frame counter or input delay can vary the initial seed, but mixing it into every draw changes the replay contract. Never describe observed player timing as guaranteed entropy or a guarantee of a different game.
+
+<CodeFromFile src="cross-platform/patterns/framework/seeded-random/6502.inc" lang="6502" title="Reusable seed and next routines" />
+
+## Save and restore a sequence
+
+Read the one state byte **after** a draw and save it without calling the generator again. Restore a valid nonzero byte through the same seed entry before continuing; the following draws repeat. The second caller saves a point inside the sequence, makes eight draws, restores it and checks that all eight repeat. Reject zero or a damaged save record explicitly: the external-seed zero policy is not validation of a save format.
+
+This replays the generator, not an entire game. Reproducing a game also needs matching game state, inputs, update timing and random-call order. A new cosmetic random draw can otherwise change the later enemy decision. Separate state bytes can keep those consumers from consuming each other's draws, but two phases of this tiny cycle are not statistically independent streams.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/seeded-random/caller.inc" lang="6502" title="The complete optional caller" />
+
+## Make it your own
+
+`custom.asm` changes the external seed from zero to **$A7**. Keep the component unchanged and compare its first eight output bytes with the independent sequence check. The change costs no extra component state or code on this configuration. Choose a recorded nonzero seed during debugging; add session variation only when its source and replay implications are understood.
+
+For sixteen approximate choices, masking a raw byte with 15 is cheap, but not perfectly even: across all 255 source states, zero appears **15 times** and each other nibble **16 times**. Masking is not a general replacement for remainder division, and a remainder is not automatically unbiased either. Correct rejection sampling must account for the actual source domain, retry cost and legal empty/invalid cases. Bounded selection, weighted choices and larger-state generators remain separate extensions to this baseline.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/seeded-random/custom.asm" lang="6502" title="Change the seed, preserve the component" />
+
+## Common mistake: clear the state instead of seeding it
+
+The deliberately wrong caller bypasses `rng_seed` and stores zero directly. Shifting zero produces no outgoing bit, so feedback never applies and every result remains zero. The program completes and renders its picture; this is a generator-state fault, not a failed loader. The repaired caller uses the normal seed entry again and produces the same artifact as the working caller.
+
+After successful initialization, an unexpected zero means something has corrupted the state. `rng_next` deliberately leaves that symptom visible. Silently replacing it on every call could hide an overlapping variable, an interrupt conflict or a damaged save. Find that writer rather than hiding it.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/seeded-random/wrong.asm" lang="6502" title="Deliberate fault: bypass initialization with zero" />
+
+## Existing lessons and advanced choices
+
+C64 Starfield already uses a left-shifting $1D byte generator. This is the right-shifting $B4 form from the maintained shared article, **not a drop-in promise to preserve Starfield's sequence**. The lesson is unchanged.
+
+The [shared LFSR entry](/patterns/cross-platform/framework/lfsr-random/) compares the algorithm and its range/replay cautions. [Maths for Games](/craft/maths-for-games/) connects the finite state space, bit operations and outcome counts. A larger state can postpone repetition; better statistical behaviour, replay stability and distribution still need their own evidence. [The Craft](/craft/) asks what those choices do for the player, rather than treating a random byte as a design decision.
+
+## What was verified
+
+Four native runs on **Emu198x 0.44.2 / Asm198x 0.0.72** cover normal initialization, a changed seed, the bounded zero-state fault and its exact repair. The fixture emits a guarded 795-byte packet: all 256 external seed/next pairs, a complete 255-state cycle, eight replayed draws twice, eight deliberately corrupted-zero draws and register sentinels. An independent bit-equation oracle checks the output, cycle membership and replay. The program is loaded through the named native startup path; code readback and image pixels are checked against the actual displayed bytes.
+
+Each machine's retained configuration pins tools and applicable firmware. No firmware or full ROM dumps are distributed. The checks must reject altered source, configuration, code, seed/cycle/replay/register observations, preview, costs and pictures. These are observations of the named emulator configuration, not physical-hardware timing measurements or proof of fairness in a finished game.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/seeded-random-demo.png" alt="The initialized generator starts B4 5A 2D A2; the row shows the first eight draws." caption="The initialized generator starts B4 5A 2D A2; the row shows the first eight draws." />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/seeded-random-wrong.png" alt="The caller bypasses initialization. Eight completed draws remain zero." caption="The caller bypasses initialization. Eight completed draws remain zero." />
+
+[Maintained source and native evidence](https://github.com/code198x/code-samples/tree/2d19e27fb67ec42d355ff0079bfaed6835d26663/commodore-64/patterns/assembly/framework/seeded-random).
