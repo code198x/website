@@ -1,0 +1,87 @@
+---
+title: "Encode a Small Run-length Block on Spectrum"
+summary: "Repeated map values can take less room as a count and a value\u2014but only if the output buffer is big enough."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "bounded-rle-encoder"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Repeated map values can take less room as a count and a value—but only if the output buffer is big enough.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/bounded-rle-encoder-demo.png" alt="Spectrum shows the working diagnostic row 06 00 01 06 10 41 41 41." caption="A completed native caller displays 06 00 01 06 10 41 41 41. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+INPUT_COUNT selects 0–8 bytes B0–B7. Encode consecutive equal values as positive count/value byte pairs in R0–R15, up to CAPACITY 0–16. Preflight all runs before writing. Invalid bounds return VALID=0, ERROR=1; insufficient output returns VALID=1, ERROR=2. Both failures leave output bytes unchanged and WRITTEN=0. Success returns ERROR=0 and the even byte count; unused output bytes are preserved.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **WRITTEN, ERROR, VALID, INPUT_COUNT, CAPACITY, B0, B1, B2, B3, B4, B5, B6, B7, R0, R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15**. They occupy 29 contiguous bytes. Also reserve the private workspace: **T0, T1, T2, T3, T4, EXPR_SAVE** (6 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `bounded_rle_encoder_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `bounded_rle_encoder_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | R0–R15 as the owned destination |
+| Supply before service | INPUT_COUNT, CAPACITY and B0–B7 |
+| Read after service | WRITTEN, ERROR and VALID |
+
+A first pass counts runs and proves that every pair will fit. A second pass writes the pairs. That extra scan gives the caller an all-or-nothing output contract.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/bounded-rle-encoder/component.inc" lang="z80" title="Reusable initialisation and service" />
+
+## Machine contract
+
+AF/BC/DE/HL may change; IX/IY are preserved. A direct CALL needs two return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. The samples use fixed symbol bindings. Scope or rename every label and binding, including the component_end measurement marker, and allocate a separate block for each independent instance. Different helpers can also use common field names, so combining them needs separate namespaces or explicitly renamed bindings. Give each block one mutation owner.
+
+The 48K diagnostic boots through ROM tape loading and USR, disables interrupts and owns the screen. The helper performs no port or screen writes.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/bounded-rle-encoder/demo.asm" lang="z80" title="Bindings and include order" />
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/bounded-rle-encoder/exercise.inc" from="preview_rules:" to="; End of worldkit client." lang="z80" title="A client retaining state between calls" />
+
+## Customise it
+
+Encode eight distinct values, the worst expansion for this small block. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/bounded-rle-encoder/custom.asm" lang="z80" title="Custom client selection" />
+
+The custom diagnostic row is **10 00 01 08 10 00 01 02**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong caller passes no output capacity for a nonempty block. The encoder rejects the whole request and preserves its output buffer. Pass the actual reserved capacity, rather than a count that has not yet been filled.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/bounded-rle-encoder/wrong.asm" lang="z80" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/bounded-rle-encoder-wrong.png" alt="Spectrum shows the deliberate error row 00 02 01 06 00 41 41 41." caption="The wrong client completes with 00 02 01 06 00 41 41 41; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 497 code bytes; public state is 29 bytes and private scratch is 6 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+Two bounded scans over at most eight bytes, plus sixteen destination writes in the worst case. A streaming encoder can avoid preflight but must report partial output and support continuation explicitly.
+
+RLE can expand data: eight distinct bytes need sixteen encoded bytes. This uses the existing count/value idea, not a new project-wide asset container. A decoder must still validate its own lengths and output bounds.
+
+## Execution evidence
+
+Four variants run on 48K PAL ROM tape load and USR, using Asm198x 0.0.72, Emu198x 0.44.2. Each executes 34 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+## Where it fits
+
+[Bounded RLE decoding](/patterns/sinclair-zx-spectrum/assembly/framework/bounded-rle/): Encoding and decoding share count/value semantics but need different buffer and failure contracts.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/ff077f2c319dcc94eeb42c4a0dc7fc920ae913a8/sinclair-zx-spectrum/patterns/assembly/framework/bounded-rle-encoder).
