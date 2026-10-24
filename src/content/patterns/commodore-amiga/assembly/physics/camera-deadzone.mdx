@@ -1,0 +1,77 @@
+---
+title: "Camera Dead Zones on Amiga"
+summary: "A camera need not move every time the player takes a step."
+platform: "commodore-amiga"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "camera-deadzone"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A camera need not move every time the player takes a step. Keep a quiet area on screen, and scroll only when the player pushes beyond it. The camera should also stop at the edge of the world rather than revealing an empty border.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/camera-deadzone-demo.png" alt="Amiga shows the working diagnostic row 14 64 28 50 9B 01 01 00." caption="A native completed caller shows its state as hexadecimal bytes. The field order below explains the row; the full packet retains every call." />
+
+## Include, initialise and call
+
+Reserve **CAMERA, PLAYER, LEFT_EDGE, RIGHT_EDGE, SCROLL_LIMIT, SHIFTED, VALID** as 7 contiguous private bytes in that order. Include the helper once. Call `camera_deadzone_init` at the intended reset boundary: it clears every named byte, including input fields. Set the starting values afterwards, then call `camera_deadzone_step` for each intended service.
+
+Initialise, establish valid world/view limits and update PLAYER in world coordinates. Service after movement, then pass CAMERA to the renderer’s coordinate conversion or scrolling backend. The normal 40–80 dead zone moves the camera from zero to ten for player 90, then to twenty for player 100.
+
+CAMERA and PLAYER are unsigned world coordinates. LEFT_EDGE/RIGHT_EDGE are permitted screen-relative player thresholds, with LEFT_EDGE ≤ RIGHT_EDGE. SCROLL_LIMIT is the largest camera coordinate; the current CAMERA must already be within 0–SCROLL_LIMIT. Invalid bounds leave CAMERA unchanged and clear SHIFTED/VALID. Otherwise step sets VALID, moves just enough to put the player on the crossed threshold, clamps to 0–SCROLL_LIMIT and sets SHIFTED exactly when CAMERA changes. Player and bounds survive.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/camera-deadzone/component.inc" lang="m68k" title="Reusable initialisation and service" />
+
+## State, registers and ownership
+
+Seven bytes. CAMERA persists; PLAYER and the three bounds are inputs; SHIFTED and VALID are replaced flags. PLAYER − CAMERA is computed without byte-wrap mistakes, including when the player lies to the left of the camera.
+
+D0–D3/A0–A1/CCR may change; D4–D7/A2–A6 survive. A direct BSR/JSR needs four return-address stack bytes.
+
+The implementation binds fixed symbols and has one mutation owner. Independent users need separate state blocks and scoped/renamed labels, including routine labels; sharing the same bindings means sharing the state. Do not let an interrupt and the main loop mutate the same block without an explicit ownership policy.
+
+The bootable caller takes over Copper/bitplane/interrupt/DMA resources and explicitly disarms all eight sprites. It does not restore Workbench. These are caller presentation choices, not dependencies of the reusable helper.
+
+## A caller you can adapt
+
+The buildable program supplies bindings and include order. Its separate client retains state between calls. `checked_step` calls the public `camera_deadzone_step` entry and checks register sentinels; `emit_state` records diagnostics. Your game can call the public entry directly, remove the diagnostics and consume the documented outputs.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/camera-deadzone/demo.asm" lang="m68k" title="Bindings, buildable caller and include order" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/camera-deadzone/exercise.inc" from="preview_rules:" to="; End of playtools client." lang="m68k" title="A separate client retaining state between calls" />
+
+The display fields are **CAMERA, PLAYER, LEFT_EDGE, RIGHT_EDGE, SCROLL_LIMIT, SHIFTED, VALID**; remaining display fields are zero. Each is one hexadecimal byte. The normal row is **14 64 28 50 9B 01 01 00**. This is a completed state observation, not a recording of an actual character jumping, a camera scrolling or an asset being displayed.
+
+## Make it your own
+
+The custom caller sets both thresholds to 60. The dead zone has zero width, so the camera tracks the player at that screen position until a world edge prevents it. The two calls finish at camera 40 instead of 20.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/camera-deadzone/custom.asm" lang="m68k" title="Maintained custom configuration or caller" />
+
+The custom row is **28 64 3C 3C 9B 01 01 00**. These records qualify the named builds and inputs; another layout, format or input domain needs explicit bounds and fresh execution evidence.
+
+## Common mistake and repair
+
+The wrong client subtracts CAMERA from PLAYER before calling the world-coordinate API. The second request supplies screen position 90 in place of world position 100, leaving the camera at ten. Keep world and screen coordinates separate and subtract the camera only in the rendering path.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/camera-deadzone/wrong.asm" lang="m68k" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/camera-deadzone-wrong.png" alt="Amiga shows the deliberate fault row 0A 5A 28 50 9B 00 01 00." caption="The wrong client completes with 0A 5A 28 50 9B 00 01 00. Its code and the explanation above identify the cause; the capture observes the result." />
+
+The BROKEN branch is visible in the client. `repaired.asm` restores the normal selection; its executable matches demo exactly. Spectrum tape filenames may differ while loaded CODE remains identical. The fault is a labelled experiment, not a suggested alternative.
+
+## Cost, limits and verification
+
+The measured layout has **180 code bytes, 0 immutable data bytes and 7 private state bytes**. Alignment, stack usage, diagnostic tables and display machinery are additional. The extents come from the loaded program’s symbols, not from counting source lines.
+
+A relative-position comparison and one clamped correction, with no map copy or display transfer. C64/Amiga hardware capabilities are not reduced to this logical byte coordinate; their renderers may need wider and differently split scroll values.
+
+The byte world is a bounded example, not a universal camera range. Wider maps need wider coordinates; smoothing adds fractional state and a time-step policy. Hardware coarse/fine scrolling, exposed map columns and parallax remain separate display-specific work. If bounds shrink, first move CAMERA into the new valid interval.
+
+Four native runs use A500 OCS PAL with Kickstart 1.3 and an OFS cold-boot disk; Asm198x 0.0.72 and Emu198x 0.44.2, with Build198x 0.2.9 for disk mastering. Each checks 64 boundary/varied/error cases, dirty initialisation and every state of a separate sequential client against an independent integer model. This is not exhaustive coverage of every possible byte combination. Source/tool/firmware hashes, immutable loaded code/data, native startup/completion, preserved-register sentinels, helper/data sizes, screenshot bytes/pixels and exact repair are checked. Deliberately altered observations must fail. Firmware is hashed, never distributed.
+
+[Related technique](/patterns/cross-platform/rendering/scrolling/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/a535bd32ea04ebad10e6ff47321a18bfdc63f01b/commodore-amiga/patterns/assembly/physics/camera-deadzone).
