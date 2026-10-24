@@ -1,0 +1,81 @@
+---
+title: "Format a 16-bit Decimal Number on Amiga"
+summary: "A binary score is good for adding points."
+platform: "commodore-amiga"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "game rules", "decimal-format"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A binary score is good for adding points. People would rather read 12345 than its two storage bytes. This formatter turns any unsigned 16-bit value into five decimal characters, ready for a text routine to place or translate into tile numbers.
+
+
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/decimal-format-demo.png" alt="Amiga shows the working result FF FF 36 35 35 33 35 00." caption="The completed native caller shows hexadecimal state bytes. The field order below explains the result; the full verification packet retains every call." />
+
+## Include, initialise and call
+
+Bind **VALUE_LO, VALUE_HI, DIGIT0, DIGIT1, DIGIT2, DIGIT3, DIGIT4, WORK_LO, WORK_HI** as 9 contiguous private bytes in that order. Include the helper once. Call `decimal_format_init` at the deliberate reset boundary: it clears **all** named bytes, including inputs. Set your starting values afterwards. Call `decimal_format_step` when this service is needed.
+
+Bind all nine contiguous bytes, set the two value bytes and call step. Render the five output bytes afterwards. ASCII is a logical output contract: the C64 demo uses a prepared hex font and NES normally needs tile-number mapping, so these five bytes do not automatically become screen characters on either machine.
+
+VALUE_LO/VALUE_HI contain an unsigned little-endian integer 0–65,535 and survive the call. Step writes exactly five ASCII bytes DIGIT0–DIGIT4 with leading zeroes, no terminator, and finishes with WORK_LO/WORK_HI zero. The work bytes belong to the helper, not to a second caller running concurrently.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/decimal-format/component.inc" lang="m68k" title="Reusable initialisation and service" />
+
+## State and ownership
+
+Two input bytes, five output characters and two scratch bytes. For example 65,535 produces ASCII bytes 36 35 35 33 35 in hexadecimal. Read DIGIT0–DIGIT4 as a counted five-byte span; there is no trailing zero to scan for.
+
+On this 68000 the live remainder stays in D0; WORK_LO/WORK_HI only receive the final zero. They are retained in this example’s nine-byte binding, not required by the CPU arithmetic. A smaller target-specific variant can remove those two fields and their init/final stores, but that changes the binding and needs fresh records; it is not a measured seven-byte version here.
+
+D0–D3/A0–A1/CCR may change; D4–D7/A2–A6 survive. A direct BSR/JSR uses four return-address stack bytes. The program is a 68000 implementation with no division instruction requirement.
+
+This implementation has fixed symbol bindings and one mutation owner. Independent users need distinct state blocks **and** scoped/renamed bindings; including another copy with the same global labels is not sufficient. Sequential queries may reuse a scratch block only after the previous result has been consumed. Do not let an interrupt and the main loop mutate the same block without a separately designed ownership policy.
+
+The standalone boot program takes over Copper/bitplane/interrupt/DMA resources, explicitly disarms all eight sprites, and does not restore Workbench. Those are diagnostic presentation choices; the helper itself owns no chipset registers.
+
+## A small caller you can adapt
+
+The standalone program includes the helper and a separate client. Its read-only table exercises 96 valid inputs, then this client initialises once and retains state between calls. Replace the supplied input changes with your own game values; the display and packet machinery are diagnostics rather than dependencies of the component.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/decimal-format/demo.asm" lang="m68k" title="Buildable caller, bindings and include order" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/decimal-format/exercise.inc" from="preview_rules:" to="; End of gameplay client." lang="m68k" title="A separate client retaining state between calls" />
+
+The eight display fields follow **VALUE_LO, VALUE_HI, DIGIT0, DIGIT1, DIGIT2, DIGIT3, DIGIT4, WORK_LO**; the full packet also retains WORK_HI. Each field is a hexadecimal byte. The working row is **FF FF 36 35 35 33 35 00**. The output is a completed diagnostic state, not a recording of movement, input or sound hardware.
+
+## Make it your own
+
+The custom caller formats 4,096 instead of 65,535, producing 04096. To hide leading zeroes, choose a presentation policy after formatting while keeping at least the final zero for a value of zero.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/decimal-format/custom.asm" lang="m68k" title="Maintained custom configuration or caller" />
+
+The observed custom row is **00 10 30 34 30 39 36 00**. The retained records qualify these named configurations; a new input domain or larger layout needs its own bounds and fresh execution checks.
+
+## Common mistake and repair
+
+The wrong client clears VALUE_HI before formatting. The number 65,535 becomes 255, displayed as 00255. Copy both bytes from the score or counter; a correct formatter cannot recover a lost high byte.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/decimal-format/wrong.asm" lang="m68k" title="Deliberately wrong client selection" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/decimal-format-wrong.png" alt="Amiga shows the deliberate fault result FF 00 30 30 32 35 35 00." caption="The wrong client completes and records FF 00 30 30 32 35 35 00. Compare its state with the working row and the explained failure." />
+
+The wrong branch is in the displayed client above, selected by BROKEN. `repaired.asm` selects the original client again. Its executable matches demo exactly; Spectrum tape filenames can differ while loaded CODE is identical. The bad caller is a labelled experiment, not an alternative recommended implementation.
+
+## Cost and verification
+
+The measured helper occupies **190 code bytes plus 9 named state bytes** in this layout. Return addresses, alignment, tables and display diagnostics are additional. The sizes cover init and step together, not the whole standalone program.
+
+Five digit stages subtract 10,000, 1,000, 100, 10 and 1. Each stage needs at most nine successful subtractions, so 45 is a safe upper bound for successful subtractions, plus five terminating comparisons. There is no hardware division or screen write. Convert when the displayed value changes rather than every frame if that saves useful work.
+
+Packed BCD can trade conversion work for more expensive score updates, and lookup tables trade ROM space for conversion speed. A divide-based implementation suits some CPUs better. Signs, decimal points and values beyond 65,535 need a different contract and output width.
+
+Four native runs use A500 OCS PAL with Kickstart 1.3 and an OFS boot disk; Asm198x 0.0.72 and Emu198x 0.44.2, with Build198x 0.2.9 for disk mastering. Every run checks 96 table results, dirty initialisation and every state in a separate sequential trace against an independent integer model. This is boundary/varied-input qualification, **not exhaustive coverage of every byte combination**. Source/tool/firmware hashes, native startup and completion, preserved-register sentinels, immutable loaded code, actual helper extent, capture bytes and pixels, and exact repair are checked. Deliberately changed observations must fail. Firmware is hashed, never distributed.
+
+[Related reusable technique](/patterns/commodore-amiga/assembly/framework/score-counter/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/9da805e86b1e5356336b45df5235da7872ffe4a7/commodore-amiga/patterns/assembly/framework/decimal-format).
