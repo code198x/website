@@ -1,0 +1,93 @@
+---
+title: "Give an Atari XL turn a VBI-clock deadline"
+summary: "Reuse a 6502 countdown while preserving Atari BASIC, normal VBI services and explicit high-RAM ownership."
+platform: "atari-800"
+category: "framework"
+difficulty: "intermediate"
+tags: ["assembly", "turns", "deadlines", "clocks", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Joystick-one fire takes a turn. Hold it and the counter stays put; release before the next action. Waiting takes no turn until SELECT enables timing. After 240 OS clock ticks, about four seconds in the named NTSC configuration, an automatic turn arrives. SELECT disables timing or starts a fresh duration. OPTION returns to BASIC with USR result zero. The first eight screen cells show turn, expiry count and enabled flag in hexadecimal.
+
+<Figure kind="capture" fit="column" src="/images/patterns/atari-800xl/assembly-deadline-working.png" alt="The native caller shows 03 01 01 after one automatic turn." caption="Untimed actions remain valid. SELECT enables an additional way to spend a turn." />
+
+## Build, reserve and load
+
+Run `make ASM198X=/path/to/asm198x` here. Enter the complete generated build/load.bas in stock Atari BASIC, one line at a time. Its numbered program loads DATA bytes; RUN performs the POKEs, wait for the new READY prompt, then X=USR(32768) starts the caller. The final POKE can finish before NEXT/END returns to the editor; complete bytes alone do not prove readiness. The loader is generated from the actual assembled image, not a manually maintained byte list. No ROM is supplied.
+
+The 424-byte image occupies $8000–$81A7. Caller-owned state occupies $8300–$8313: TURN, EXPIRIES, KEY, HELD; twelve countdown bytes; two ready-marker bytes; two guards. The assembler refuses code that reaches $8300, and the generated loader checks its payload budget too. Relocate code, data labels and reservation together. No DOS, cartridge or other routine may own this RAM concurrently.
+
+The complete caller is larger than the 256-byte page-six area used by the earlier loop. Its loader instead sets RAMTOP (106) to 124, then selects GRAPHICS 0. BASIC and the display remain below $7C00; code starts at $8000. The 1 KiB gap matters: the reference documents clear/scroll operations reaching above RAMTOP. Do not place a routine directly at an assumed display ceiling. Native qualification checks actual MEMTOP and SAVMSC as well as RAMTOP. This is an explicit layout for the named 64 KiB machine, not a general allocator. It leaves the reservation in place after return; reset or deliberately restore your own layout when finished.
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/turn-deadline/demo.asm" lang="asm" title="The complete caller" />
+
+## Include and call the helper
+
+<CodeFromFile src="cross-platform/patterns/framework/elapsed-deadline/6502.inc" lang="asm" title="The maintained shared countdown" />
+
+Provide DEADLINE for twelve private writable bytes and include cross-platform/patterns/framework/elapsed-deadline/6502.inc once. Its little-endian words are duration +0, remaining +2, active +4, one-poll event +5, elapsed +6, previous +8 and scratch +10.
+
+- Set duration to integer ticks 0..65535. Pass A=clock low, X=clock high to deadline_init once. It records the baseline and starts disabled; duration survives.
+- Call deadline_start to copy duration to remaining and enable only when nonzero. It clears the event but retains the last sampled baseline. Poll immediately before starting if that instant matters.
+- Pass the next sample in A/X to deadline_poll on every service iteration, including while disabled. Read +5 before another poll/start clears it. Expiry clamps remaining to zero, disables active and emits once. The caller decides what that means.
+
+A/X/status are clobbered; Y survives. Decimal mode must be clear. The helper owns no zero page, input, display or interrupt handler. Ordinary JSR/RTS uses the existing stack. A context belongs to one caller; it is not re-entrant. The label is an assembly-time allocation, not a runtime pointer parameter.
+
+Elapsed subtraction wraps modulo 65536: 65526 → 10 is twenty ticks. Poll less than a complete cycle apart, roughly 18 minutes 12 seconds at nominal 60 Hz. A missed extra cycle is ambiguous. Reinitialise after an external clock reset. Zero duration means off. A late poll emits one event without catch-up; restarting from observation introduces drift. A full 24-bit clock/helper would allow longer intervals with additional arithmetic/state; it is not a drop-in claim for this implementation.
+
+## Sample the OS clock without stopping NMI
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/turn-deadline/clock.inc" lang="asm" title="Read the VBI clock coherently" />
+
+clock.inc reads RTCLOK's middle byte at $13, low byte at $14, then compares the middle byte again. If a carry changed it, the reader retries. A is the resulting low byte, X the high byte, Y is preserved and flags change. The ROM owns the full three-byte RTCLOK at $12–$14. This adapter uses only its low word and never resets it.
+
+The normal VBlank service updates this clock under NMI. SEI does not mask NMI; it would not make a naive pair of loads atomic. The retry read avoids taking over the OS service. Leave normal VBI, display and input services running. Interrupt replacement, region changes or suspended polling need another qualification. The recorded NTSC configuration advances roughly one tick per field; PAL needs a different ticks-to-seconds conversion. A clock sample is not a display wait.
+
+## Separate controls, policy and drawing
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/turn-deadline/input.inc" lang="asm" title="Release-gated fire and console controls" />
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/turn-deadline/dispatch.inc" lang="asm" title="Choose what a turn means" />
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/turn-deadline/caller.inc" lang="asm" title="USR entry, service and return" />
+
+input.inc reads the OS-maintained active-low STRIG0 shadow at $0284 and the GTIA CONSOL register at $D01F. OPTION has priority over SELECT over fire. A=0 means none, 1 action, 2 toggle, 3 quit. A/X/flags change; Y survives. HELD suppresses further commands until all three controls are observed released. A short tap between polls can be missed; moving directly between held commands does not re-arm. No keyboard buffer is consumed and no input shadow/register is written.
+
+dispatch.inc has no I/O. An expiry wins over that iteration's command, including quit/toggle. Otherwise fire advances once and restarts only active timing; untimed actions stay untimed. SELECT discards the remainder on disable and starts a full duration on enable. TURN/EXPIRIES wrap as bytes. Replace the increment with your own world update. Preserved pause, queued commands or carried lateness are separate useful policies, with additional state and different behaviour.
+
+The BASIC USR wrapper consumes the zero-argument count byte before saving X/Y/status. Do not put that PLA inside an ordinary JSR helper. It sets decimal mode clear, retains the existing stack and restores the saved registers/status on return. OPTION waits for command release; FR0's low two bytes at $D4/$D5 are set to zero for BASIC's USR result. No private stack or interrupt handler is installed. BASIC, the OS and nested calls still need stack/workspace; the emitted-byte counts are not peak-stack bounds.
+
+Drawing follows SAVMSC at $58/$59 in GRAPHICS 0, rather than assuming a fixed screen address. It writes only the first eight character cells using ANTIC screen codes, changes A/X/Y/flags and leaves the remaining BASIC screen visible. The caller redraws continuously for simple feedback. A game can redraw only on changes, or add independent display pacing while still servicing deadlines often enough.
+
+## Customise, break and repair
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/turn-deadline/customise.asm" lang="asm" title="Halve the duration" />
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/turn-deadline/mistakes/reset-baseline.inc" lang="asm" title="Deliberately broken baseline" />
+
+customise.asm changes DURATION=240 to 120: roughly four seconds becomes two, with unchanged payload/state sizes. Choose units before choosing a number. [Maths for Games](/craft/maths-for-games/) explains the same units, ranges and modular arithmetic.
+
+mistakes/reset-baseline.asm deliberately selects a clock adapter that stores now as previous immediately before polling. The clock moves, but elapsed is always zero, remaining stays at 240 and the screen remains 01 00 01. Restore clock.inc and rebuild; an independently run repair reaches 03 01 01. The broken adapter adds six bytes. Never include both adapters in a working image.
+
+<Figure kind="capture" fit="column" src="/images/patterns/atari-800xl/assembly-deadline-wrong.png" alt="The faulty caller stays at 01 00 01 with no automatic turn." caption="The OS clock still moves. The broken adapter throws away every elapsed interval." />
+
+A loader that writes past its reservation can damage BASIC or the screen rather than producing a useful deadline example. Keep the emitted-size checks and actual display pointers; a convenient address from another machine or caller is not a memory-ownership contract.
+
+## Costs, verification and sources
+
+The maintained shared helper is 140 emitted bytes plus twelve context bytes. The coherent clock reader adds nine bytes, input forty-eight, dispatcher sixty-two, and caller/presentation 165. The whole image is 424 bytes plus twenty separately reserved state/marker/guard bytes. These are emitted sizes and ownership, not cycle measurements or a whole-game frame budget.
+
+Six independent keyboard-loaded native cases cover working/custom/wrong/repaired callers and a second arithmetic/policy caller with a wrong-equality control. The loaded code must match assembly before USR. The second caller supplies twelve clock pairs for zero/one/maximum duration, wrap and exact/overshot expiry, plus three controlled policies: expiry+action, expiry+toggle and untimed action. A reversed zero branch completes the guards but fails the independent unsigned oracle. Supplied samples do not establish an observed eighteen-minute rollover.
+
+Real controls include a long held fire button. The native ready/guard check and debugger's natural main-loop stop keep observations outside unfinished updates; the debugger does not set the PC or write game state. Return is followed by real BASIC arithmetic and a zero USR-result check. PNG pixels are compared with the native screen codes and ROM glyphs. Native sources, tools, firmware identities, output and captures are retained.
+
+Run scripts/verify-atari-xl-assembly-deadlines.py with released tools and your own OS/BASIC. Recheck with scripts/check-atari-xl-assembly-deadlines.py and its unittest corruption controls. Qualification names Emu198x 0.44.2, Asm198x 0.0.72, 800XL NTSC, OS Rev 2 and the recorded BASIC ROM. No original-hardware, every region/ROM or whole-emulator claim follows.
+
+Primary references: Atari, Atari BASIC Reference Manual, USR calling/return conventions and GRAPHICS; Ian Chadwick, Mapping the Atari, RTCLOK 18–20, SAVMSC 88–89, RAMTOP 106, MEMTOP 741–742, STRIG0 644, CONSOL 53279 and FR0 212–217. Public scan: https://www.atarimania.com/documents/Mapping-the-Atari.pdf . The countdown, retry adapter and policy are this implementation's choices.
+
+Compare the [clock and game-loop choices](/patterns/cross-platform/framework/game-loop-choices/) before choosing timing for a game. The [Spectrum Z80 version](/patterns/sinclair-zx-spectrum/assembly/framework/turn-deadline/) uses the same countdown policy with a different interrupt and calling contract.
+
+[Source and loading instructions](https://github.com/code198x/code-samples/tree/e3e15e049912baacd0bb3503a295b13bfca42f08/atari-800xl/patterns/assembly/framework/turn-deadline). [Native evidence and configuration](https://github.com/code198x/code-samples/tree/e3e15e049912baacd0bb3503a295b13bfca42f08/atari-800xl/patterns/assembly/framework/turn-deadline/verification).
