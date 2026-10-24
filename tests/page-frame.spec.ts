@@ -95,7 +95,7 @@ for (const routes of Object.values(families)) for (const width of [390, 1440, 19
     for (const root of geometry.roots.filter(root => !root.name.includes('masthead-frame'))) {
       expect(root.inset, `${route}: ${root.name} gutter`).toBeCloseTo(gutter, 1);
     }
-    // The breadcrumb bar owns the space above the first block (site-frame.css),
+    // The breadcrumb bar owns the space above the first block (Layout.astro),
     // so the block adds none of its own; an opening that sits on the bar is the
     // exception.
     const first = geometry.roots[0];
