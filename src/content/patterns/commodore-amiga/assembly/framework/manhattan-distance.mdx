@@ -1,0 +1,79 @@
+---
+title: "Manhattan Distance on Amiga"
+summary: "On a four-way grid, distance is the horizontal gap plus the vertical gap."
+platform: "commodore-amiga"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "game rules", "manhattan-distance"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+On a four-way grid, distance is the horizontal gap plus the vertical gap. That makes a useful cheap measure for a guard choosing a nearby target, or a turn-based game showing a movement budget. Two byte coordinates can produce a result larger than a byte.
+
+
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/manhattan-distance-demo.png" alt="Amiga shows the working result 00 00 FF FF FE 01 00 00." caption="The completed native caller shows hexadecimal state bytes. The field order below explains the result; the full verification packet retains every call." />
+
+## Include, initialise and call
+
+Bind **AX, AY, BX, BY, DIST_LO, DIST_HI** as 6 contiguous private bytes in that order. Include the helper once. Call `manhattan_distance_init` at the deliberate reset boundary: it clears **all** named bytes, including inputs. Set your starting values afterwards. Call `manhattan_distance_step` when this service is needed.
+
+Fill both coordinate pairs and call step when the decision needs the distance. Compare both result bytes when selecting a threshold or nearest target. Ties need a separate stable rule. Reusing one scratch block for successive independent queries is safe under a single owner.
+
+AX/AY and BX/BY are unsigned coordinates from 0–255. Step preserves all four inputs and writes DIST_LO/DIST_HI as a little-endian result **|AX − BX| + |AY − BY|**, from 0–510. A wider result is needed even though each coordinate fits in one byte.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/manhattan-distance/component.inc" lang="m68k" title="Reusable initialisation and service" />
+
+## State and ownership
+
+Four input bytes and a two-byte output. There is no map, actor state or movement inside this helper. Byte order is explicit on every target, including 68000.
+
+D0–D3/A0–A1/CCR may change; D4–D7/A2–A6 survive. A direct BSR/JSR uses four return-address stack bytes. The program is a 68000 implementation with no division instruction requirement.
+
+This implementation has fixed symbol bindings and one mutation owner. Independent users need distinct state blocks **and** scoped/renamed bindings; including another copy with the same global labels is not sufficient. Sequential queries may reuse a scratch block only after the previous result has been consumed. Do not let an interrupt and the main loop mutate the same block without a separately designed ownership policy.
+
+The standalone boot program takes over Copper/bitplane/interrupt/DMA resources, explicitly disarms all eight sprites, and does not restore Workbench. Those are diagnostic presentation choices; the helper itself owns no chipset registers.
+
+## A small caller you can adapt
+
+The standalone program includes the helper and a separate client. Its read-only table exercises 96 valid inputs, then this client initialises once and retains state between calls. Replace the supplied input changes with your own game values; the display and packet machinery are diagnostics rather than dependencies of the component.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/manhattan-distance/demo.asm" lang="m68k" title="Buildable caller, bindings and include order" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/manhattan-distance/exercise.inc" from="preview_rules:" to="; End of gameplay client." lang="m68k" title="A separate client retaining state between calls" />
+
+The eight display fields follow **AX, AY, BX, BY, DIST_LO, DIST_HI**; unused display fields are zero. Each field is a hexadecimal byte. The working row is **00 00 FF FF FE 01 00 00**. The output is a completed diagnostic state, not a recording of movement, input or sound hardware.
+
+## Make it your own
+
+The custom query moves BX from 255 to 200 while BY stays 255 and A remains at the origin. The result is 455, encoded C7 01, rather than 510, encoded FE 01.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/manhattan-distance/custom.asm" lang="m68k" title="Maintained custom configuration or caller" />
+
+The observed custom row is **00 00 C8 FF C7 01 00 00**. The retained records qualify these named configurations; a new input domain or larger layout needs its own bounds and fresh execution checks.
+
+## Common mistake and repair
+
+The wrong client discards DIST_HI after computing the distance. The opposite corners now look 254 units apart rather than 510. Keep the carry byte through both the storage and comparison paths.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/framework/manhattan-distance/wrong.asm" lang="m68k" title="Deliberately wrong client selection" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/manhattan-distance-wrong.png" alt="Amiga shows the deliberate fault result 00 00 FF FF FE 00 00 00." caption="The wrong client completes and records 00 00 FF FF FE 00 00 00. Compare its state with the working row and the explained failure." />
+
+The wrong branch is in the displayed client above, selected by BROKEN. `repaired.asm` selects the original client again. Its executable matches demo exactly; Spectrum tape filenames can differ while loaded CODE is identical. The bad caller is a labelled experiment, not an alternative recommended implementation.
+
+## Cost and verification
+
+The measured helper occupies **92 code bytes plus 6 named state bytes** in this layout. Return addresses, alignment, tables and display diagnostics are additional. The sizes cover init and step together, not the whole standalone program.
+
+Two absolute differences and one wide sum, with no multiply or square root. That makes the result cheap for grid decisions, but it does not make it an interchangeable estimate for every movement model.
+
+This is the shortest distance on an unobstructed four-way grid. Walls can make the actual route longer or unreachable. Eight-way movement may call for Chebyshev or octile distance; Euclidean movement needs a different metric. Wider or signed coordinates need wider differences before taking absolute values.
+
+Four native runs use A500 OCS PAL with Kickstart 1.3 and an OFS boot disk; Asm198x 0.0.72 and Emu198x 0.44.2, with Build198x 0.2.9 for disk mastering. Every run checks 96 table results, dirty initialisation and every state in a separate sequential trace against an independent integer model. This is boundary/varied-input qualification, **not exhaustive coverage of every byte combination**. Source/tool/firmware hashes, native startup and completion, preserved-register sentinels, immutable loaded code, actual helper extent, capture bytes and pixels, and exact repair are checked. Deliberately changed observations must fail. Firmware is hashed, never distributed.
+
+[Related reusable technique](/patterns/commodore-amiga/assembly/framework/approach-target/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/8742e24624333f4e48938796695b6862814fa1e0/commodore-amiga/patterns/assembly/framework/manhattan-distance).
