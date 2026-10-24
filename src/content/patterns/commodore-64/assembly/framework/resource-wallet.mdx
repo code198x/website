@@ -1,0 +1,77 @@
+---
+title: "Resource Counters on C64"
+summary: "An empty magazine should refuse a shot, not turn into 255 rounds."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "game rules", "resource-wallet"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+An empty magazine should refuse a shot, not turn into 255 rounds. A full energy meter should stay full when you collect another recharge. This small counter gives those two operations different rules: refill saturates at 255; spending succeeds in full or leaves the balance alone.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/resource-wallet-demo.png" alt="C64 shows the working result 05 06 01 00 00 00 00 00." caption="The completed native caller shows hexadecimal state bytes. The field order below explains the result; the full verification packet retains every call." />
+
+## Include, initialise and call
+
+Bind **BALANCE, AMOUNT, MODE, OK** as 4 contiguous private bytes in that order. Include the helper once. Call `resource_wallet_init` at the deliberate reset boundary: it clears **all** named bytes, including inputs. Set your starting values afterwards. Call `resource_wallet_step` when this service is needed.
+
+Initialise once, then set the starting balance. Try a spend before creating the effect; consume OK immediately. A rejected request leaves all the resource available for a later affordable action. The helper does not spawn a projectile, reserve an object slot or coordinate another writer.
+
+Set BALANCE to the current unsigned amount, AMOUNT to the requested change and MODE to **0 for refill** or **1 for spend**. Call step, then read OK: 1 means the operation was accepted, 0 means an unaffordable spend or an unknown mode. A zero-amount refill or spend is valid and succeeds. Other MODE values leave BALANCE alone and clear OK. AMOUNT and MODE survive.
+
+<CodeFromFile src="cross-platform/patterns/framework/resource-wallet/6502.inc" lang="6502" title="Reusable initialisation and service" />
+
+## State and ownership
+
+BALANCE is persistent resource state; AMOUNT and MODE are caller inputs; OK is replaced on every call.
+
+A/X/flags may change; Y and decimal mode survive. **Clear decimal mode before binary arithmetic**; the standalone caller uses CLD. A direct call pushes a two-byte return address.
+
+This implementation has fixed symbol bindings and one mutation owner. Independent users need distinct state blocks **and** scoped/renamed bindings; including another copy with the same global labels is not sufficient. Sequential queries may reuse a scratch block only after the previous result has been consumed. Do not let an interrupt and the main loop mutate the same block without a separately designed ownership policy.
+
+The standalone PRG takes over screen/font/colour RAM, disables IRQ sources and does not return to BASIC. Its private diagnostic workspace is $70–$89; its packet starts at $C000.
+
+## A small caller you can adapt
+
+The standalone program includes the helper and a separate client. Its read-only table exercises 96 valid inputs, then this client initialises once and retains state between calls. Replace the supplied input changes with your own game values; the display and packet machinery are diagnostics rather than dependencies of the component.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/resource-wallet/demo.asm" lang="6502" title="Buildable caller, bindings and include order" />
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/resource-wallet/exercise.inc" from="preview_rules:" to="; End of gameplay client." lang="6502" title="A separate client retaining state between calls" />
+
+The eight display fields follow **BALANCE, AMOUNT, MODE, OK**; unused display fields are zero. Each field is a hexadecimal byte. The working row is **05 06 01 00 00 00 00 00**. The output is a completed diagnostic state, not a recording of movement, input or sound hardware.
+
+## Make it your own
+
+The custom caller changes the first spend from five units to two. It succeeds from a balance of three; the later refill still saturates and the later unaffordable spend is still rejected.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/resource-wallet/custom.asm" lang="6502" title="Maintained custom configuration or caller" />
+
+The observed custom row is **05 06 01 00 00 00 00 00**. The retained records qualify these named configurations; a new input domain or larger layout needs its own bounds and fresh execution checks.
+
+## Common mistake and repair
+
+The wrong client labels every request as a refill by replacing MODE with zero. Spending now increases the balance, so an emptying sequence ends at 255. Preserve the requested operation and let the affordability check decide whether to spend.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/resource-wallet/wrong.asm" lang="6502" title="Deliberately wrong client selection" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/resource-wallet-wrong.png" alt="C64 shows the deliberate fault result FF 06 00 01 00 00 00 00." caption="The wrong client completes and records FF 06 00 01 00 00 00 00. Compare its state with the working row and the explained failure." />
+
+The wrong branch is in the displayed client above, selected by BROKEN. `repaired.asm` selects the original client again. Its executable matches demo exactly; Spectrum tape filenames can differ while loaded CODE is identical. The bad caller is a labelled experiment, not an alternative recommended implementation.
+
+## Cost and verification
+
+The measured helper occupies **51 code bytes plus 4 named state bytes** in this layout. Return addresses, alignment, tables and display diagnostics are additional. The sizes cover init and step together, not the whole standalone program.
+
+Refill and spend take bounded branch paths, with no search or loop. Two output bytes can change. A simple decrement is smaller when running out is impossible, but cannot enforce affordability.
+
+For a smaller capacity, clamp refills to an explicit capacity instead of 255 and qualify both the new cap and the initial-balance invariant. Multiple resource types need separate state. Transactions involving both ammo and object slots need an explicit reservation/commit policy; OK is not a lock.
+
+Four native runs use PAL C64 with stock BASIC/KERNAL PRG startup and RUN; Asm198x 0.0.72 and Emu198x 0.44.2. Every run checks 96 table results, dirty initialisation and every state in a separate sequential trace against an independent integer model. This is boundary/varied-input qualification, **not exhaustive coverage of every byte combination**. Source/tool/firmware hashes, native startup and completion, preserved-register sentinels, immutable loaded code, actual helper extent, capture bytes and pixels, and exact repair are checked. Deliberately changed observations must fail. Firmware is hashed, never distributed.
+
+[Related reusable technique](/patterns/commodore-64/assembly/framework/action-cooldown/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/79af631619f13726b5d913fc0caaa1fc0ae41e40/commodore-64/patterns/assembly/framework/resource-wallet).
