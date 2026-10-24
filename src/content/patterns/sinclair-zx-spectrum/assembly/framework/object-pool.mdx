@@ -1,0 +1,79 @@
+---
+title: "Reusable Object Slots on Spectrum"
+summary: "Claim and release fixed game-object slots, handle exhaustion, and expire objects without moving their neighbours."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["objects", "pool", "lifetime", "memory"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A bullet needs somewhere to keep its position and remaining life. When it leaves the screen, that space should become available again. This small fixed pool gives you eight slots, refuses a ninth object, then shows slot 1 being released and reused. A lifetime pass removes the finished objects without shifting anyone else in memory.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/object-pool-demo.png" alt="The Spectrum caller shows 00 01 02 FF 01 01 AA 00, including successful reuse of slot one." caption="The fifth field is 01: slot 1 was released and reclaimed. AA and 00 show occupied slots after two lifetime updates." />
+
+## Include, initialise and call
+
+Reserve **POOL_CAPACITY** contiguous flag bytes at `pool_flags` and include `pool.inc` once. Call `pool_init` at startup; it clears the flags, leaving payload alone. Flag zero means free and one means occupied. The component's capacity contract is **1–255**; these maintained native callers qualify **4 and 8**, and their compact occupancy renderer only represents eight slots.
+
+Call `pool_acquire`: **carry clear / A = slot** means success; carry set / A = capacity means full. `pool_release` takes A = index, and returns carry clear on release or carry set for invalid/already free. It does not promise to preserve A. **AF, BC and HL change; DE, IX and IY survive**. No port, interrupt or hidden scratch ownership. A direct call uses a two-byte return address. The optional ageing pass also saves a two-byte loop counter while making a nested release call.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/object-pool/pool.inc" lang="z80" title="Reusable pool initialisation, acquire and release" />
+
+On success the slot is already marked occupied. Initialise every payload field that its update or renderer will read—position, speed, type or lifetime—before another reader sees it. Keep one owner for pool mutations. Interrupts can record requests for that owner rather than looking at half-initialised objects. The helper is not re-entrant and supplies no locking.
+
+Check the success result **before** indexing a payload array. A full result returns the capacity, just outside the valid index range. It is an ordinary game decision: refuse another shot, drop a cosmetic effect or deliberately choose an eviction policy. The allocator never silently replaces an object.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/object-pool/demo.asm" lang="z80" title="Buildable caller and include order" />
+
+The standalone 48K PAL caller is entered by the ROM tape loader and BASIC USR. It disables interrupts, owns the bitmap, attributes and border port, and uses ROM glyphs for its small diagnostic row. It stays running; it does not restore a BASIC session. Its code starts at $8000 and its private flags, payload, packet and output variables follow the code. The reusable routines touch none of those video or port resources.
+
+## Release during an update
+
+`pool_release` clears one occupied flag. It changes neither position nor any other payload. Invalid and double releases return failure without a write. A reused index refers to a **new object**: clear references held by other objects when releasing it. Generation-tagged handles are a possible later extension when references must survive reuse; this routine has none.
+
+The optional lifetime pass visits fixed indices in order. Each occupied slot needs a lifetime of **1–255**. On each simulation step it decrements live lifetimes and releases those reaching zero. A zero initial lifetime is outside this pass's contract and would wrap. Nothing moves when an object is released, so the loop cannot skip a neighbour that was shifted into its place.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/object-pool/age.inc" lang="z80" title="Optional fixed-slot lifetime pass" />
+
+Apply new spawn requests **after** this pass. Otherwise a new object in a later slot might update immediately while one reusing an earlier slot waits. This is simulation work, not a frame waiter: choose when your game's loop calls it.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/object-pool/exercise.inc" from="preview_pool:" to="; End of standalone pool preview." lang="z80" title="Fill, refuse overflow, reuse and age the collection" />
+
+## Make it your own
+
+`custom.asm` changes capacity from **8 to 4**. Component code size is unchanged in this layout; flags and lifetime storage each shrink by four bytes. The first six output fields stay the same; the first lifetime mask becomes **0A**, meaning slots 1 and 3 survive, then **00**. Both capacities run through the native ownership tests.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/object-pool/custom.asm" lang="z80" title="Use four slots with the same ownership rules" />
+
+The eight fields are the first three acquired indices, FF for the refused allocation, the reclaimed index, status from an invalid release, and occupied-slot masks after two updates. In a mask, bit *i* means slot *i* is live. **AA** means slots 1, 3, 5 and 7 remain. FF is the caller's display sentinel, never a successful slot.
+
+Give bullets position/velocity arrays or enemies a type/state array, without making a pool index into a hardware sprite number. A game object can be offscreen, use several sprites or have no visible sprite. The [sprite lifecycle](/patterns/cross-platform/rendering/sprite-lifecycle/) is a separate drawing concern.
+
+## Common mistake: forget to release
+
+The labelled wrong caller omits the release of slot 1. All flags stay occupied, so the next acquire correctly fails and the fifth field becomes **FF**. The program completes its remaining lifetime passes: this is an observed exhaustion result, not a failed loader. Restore the release call shown in the working preview; the repaired executable is identical to the working executable. The Spectrum's tape header can have a different filename even when its loaded CODE is identical.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/object-pool/wrong.asm" lang="z80" title="Deliberate fault: omit release before reacquiring" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/object-pool-wrong.png" alt="The Spectrum caller shows FF in the fifth field because the pool is still full." caption="An omitted release leaves all slots occupied. The fifth field changes from 01 to FF." />
+
+If a real game stops spawning, inspect every removal path: leaving the playfield, ending an effect and changing rooms all need an ownership decision. Releasing a slot does not erase stale payload or invalidate somebody else's saved index automatically.
+
+## Cost and alternatives
+
+On this layout, the helper uses **56 code bytes plus N flag bytes**. The optional lifetime pass adds **39 code bytes plus N lifetime bytes**. Those are component costs, separate from native packaging and the diagnostic client.
+
+Init writes N flags. Acquisition scans through the first free flag, or all N when full. Release checks a valid slot and writes at most one flag. Ageing scans N flags, decrements each live lifetime and calls release for each expiry. These are work counts, not physical-hardware cycle measurements. Addressing choices and complete update/display work still need a budget.
+
+A free list trades faster allocation for extra bookkeeping. Packed arrays avoid scanning holes but move objects, changing references and deletion rules. For a small bounded collection, the scan keeps ownership easy to inspect. [Maths for Games](/craft/maths-for-games/) connects indexing and bit masks; [The Craft](/craft/) helps decide what exhaustion should mean to the player.
+
+## What ran
+
+Four native executions with **Asm198x 0.0.72 / Emu198x 0.44.2** cover eight slots, four slots, omitted release and exact executable repair. Amiga media is mastered by **Build198x 0.2.9**. A separate caller emits all 256 occupancy masks for each configured capacity, allocation/full/release results, a preserved-register sentinel, guards, cleared flags and untouched lifetime payload. The four-slot fixture ignores upper mask bits. A set-based oracle checks that output; the visible client checks reuse and safe lifetime removal.
+
+The checks also bind actual loaded code, startup completion, component extents, capture hashes and native text pixels. Configuration records pin tools and applicable firmware; no firmware is distributed. These are named emulator workloads, not original-hardware timings or a claim about untested capacities.
+
+[Maintained source and native evidence](https://github.com/code198x/code-samples/tree/16e5a73ba29ab02544a3c61f650c6235fb1be46d/sinclair-zx-spectrum/patterns/assembly/framework/object-pool).
