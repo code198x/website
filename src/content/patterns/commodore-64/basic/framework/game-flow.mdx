@@ -1,0 +1,87 @@
+---
+title: "Keep Starts and Resumes Separate in C64 BASIC"
+summary: "Separate fresh sessions, held-button edges and pause/resume transitions with explicit caller-owned progress."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "game-flow"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A pause button should let you take a breath without losing your score. Starting again is a different request. These routines keep that distinction visible, with four small states and a separate result telling the caller when to create a fresh session.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-game-flow-demo.png" alt="C64 BASIC shows two successful retained-state checks." caption="The maintained caller completes with both saved checks equal to one." />
+
+## Include and call
+
+Combine `routines.bas` with your numbered caller, in numeric order. The supplied `build.py` and Makefile do this. Reserve lines **3000–3470** and call **3000** once to initialise the flow. It sets `S`, `V`, `C`, `F`, `E` and previous input `P` to zero. It does not reset your score, lives or world. Put an END, STOP or jump before the helper so ordinary execution cannot fall into it.
+
+The routine owns state `S`: 0 title, 1 playing, 2 game over, 3 paused. Supply an integral event mask `V` from 0 to 15, then call **3100**. Combine requests by adding their distinct bits once; adding the same bit twice means something different.
+
+| Bit | Request | Where it matters |
+|---|---|---|
+| 1 | start / return to title | title starts play; game over returns to title |
+| 2 | toggle pause | playing pauses; paused resumes |
+| 4 | end game | playing enters game over |
+| 8 | restart | game over starts a fresh session |
+
+The returned `C=1` means the state changed. `F=1` means a **fresh session**, only on title-to-play or game-over-to-play. Otherwise both results are zero. `E=0` is success; invalid state gives `E=1`, invalid event mask `E=2`. Rejection leaves `S` unchanged and clears C/F. When simultaneous requests matter, end-game beats pause, and restart beats return-to-title. Each call makes at most one transition.
+
+## Turn held buttons into requests
+
+If your input routine supplies a held mask, put it in `H` and call **3400** instead. It computes newly pressed bits against retained `P`, updates P, then calls the transition routine. Holding pause does not switch between playing and paused every update. Call this path even when H is zero, so releasing a button is remembered.
+
+It checks H and P as integral masks 0–15. A bad mask returns `E=3` without changing P or S; a later state/event rejection can still leave a valid new P recorded. Scratch variables W, U and I belong to the helper. Do not surround it with a caller's FOR I loop. The routine reads no keyboard, timer, graphics or sound hardware. Translate the machine's keys or joystick into the four request bits in your own input layer.
+
+## The reusable routine
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/game-flow/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+## Use the results in a game
+
+Only reset the score, lives, enemies and map when **F=1**. A pause/resume transition returns C=1 but F=0. Use S to choose your current update and drawing code. The supplied caller increments a small score while playing and records what happens as buttons are held, released, paused and restarted. Its data table and mailbox are diagnostic code; your game needs the helper and its own input/update calls.
+
+The caller owns X (score), L (initial lives), N (number of fresh sessions) and its surrounding J/K loops. The helper does not own those values. The transport's B/Z/G, A/D result digits and RAM mailbox are also outside the game-state contract. A single shared set of globals supports one state machine; a second instance needs consistent renaming and renumbering of every reference.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/game-flow/demo.bas" lang="basic" title="Complete caller with retained state observations" />
+
+## Customise it
+
+The custom caller starts with five lives rather than three. That is a caller policy; the state machine never assumes a health value. To add an options or level-complete state, extend validation and the transition branches together, decide its outgoing requests and add cases to the policy model. Expanding the event mask also requires changing the four-bit edge loop and its validation. Reusing a bit with a new meaning in a different state is possible, but document it at the call site.
+
+For a game with many named states or data-driven transitions, a table can be easier to maintain. For two screens, a couple of explicit branches may be clearer. This helper earns its place when pause, fresh starts and simultaneous requests otherwise become entangled.
+
+## A mistake you can recognise
+
+The wrong caller resets its score whenever it enters playing, including **resume**. It also counts that resume as a new session. Its two saved checks become **0, 0**: the resumed score vanished, and there were three resets instead of two. A later restart still works, so checking only the final state would miss the error.
+
+The repair resets caller-owned progress only on F=1. Its source and actual loaded tokenised program are identical to the working caller. The capture below comes from running the mistake, not drawing a mock error screen.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-game-flow-wrong.png" alt="C64 BASIC shows two failed checks after the deliberate caller mistake." caption="Both saved checks are zero. The error is in when the caller resets retained state." />
+
+## Why the bits and states help
+
+A state is a compact answer to “what is the game doing now?” An event is a request, not a second state. Edge detection keeps bits present in H but absent in P. Here it tests one binary place at a time using division and INT, so Spectrum BASIC's logical AND is never mistaken for a bitwise AND.
+
+[The Craft](/craft/) is a useful home for deciding what pause should freeze. [Maths for Games](/craft/maths-for-games/) develops the binary representation and discrete-state reasoning underneath this implementation.
+
+## Machine and cost
+
+C64 BASIC V2 uses only the first two significant characters of a numeric variable name. The single-letter names are deliberate: check your project for collisions before pasting them. The diagnostic mailbox at $C000 sits outside the normal BASIC heap.
+
+The helper occupies **712 tokenised program bytes** on this interpreter, including numbered-line headers. This excludes the caller, tables, numeric variables/arrays, interpreter stacks and ROM. It is not a machine-code size or cycle count. Flow selection uses a bounded set of branches; the held-mask path examines four bit positions on every call. BASIC arithmetic and line lookup add interpreter cost. Call once per intended input/update step; the helper supplies no real-time clock.
+
+## Verified examples
+
+All four working/custom/wrong/repaired callers ran through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP files; C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters the complete numbered listing through stock MOS/BASIC. Actual loaded programs, complete state traces, positive completion, guards and visible result pixels are checked. Firmware is not distributed.
+
+The independent policy-table model checks all 64 state/event combinations, six invalid cases and a 15-update held-input session. Custom callers change initial lives. These are configuration-specific observations, not a claim about every physical machine or possible game.
+
+Public CI checks retained records and rejects altered source, configuration, loaded program, state, completion and image evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-components.py game-flow commodore-64 --tools /path/to/extracted/releases`; inspect with `python3 scripts/check-basic-components.py game-flow`.
+
+
+## Explore further
+
+[The BASIC object pool](/patterns/commodore-64/basic/framework/object-pool/) offers another caller-owned component. [Compare the assembly version](/patterns/commodore-64/assembly/framework/game-flow/) for its representation and cost choices. [Exact source and native observations](https://github.com/code198x/code-samples/tree/cd15d6a020013fe5642d4570d73ceb44245cb103/commodore-64/patterns/basic/framework/game-flow).
