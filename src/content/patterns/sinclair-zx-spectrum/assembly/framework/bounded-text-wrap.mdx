@@ -1,0 +1,87 @@
+---
+title: "Choose a Bounded Text Line on Spectrum"
+summary: "A dialogue box needs line breaks that fit its width without requiring a second copy of the text."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "bounded-text-wrap"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A dialogue box needs line breaks that fit its width without requiring a second copy of the text.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/bounded-text-wrap-demo.png" alt="Spectrum shows the working diagnostic row 05 06 01 00 07 0B 48 45." caption="A completed native caller displays 05 06 01 00 07 0B 48 45. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+A byte buffer holds COUNT 0–16 ASCII characters. From START≤COUNT, skip leading spaces and choose up to WIDTH 1–16 characters. Prefer the last space before the hard limit; otherwise split a long word. Return LENGTH and NEXT; the visible slice starts at the possibly advanced START. NEXT skips following spaces. No font measurement or newline interpretation is performed.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **LENGTH, NEXT, VALID, START, WIDTH, COUNT, C0, C1, C2, C3, C4, C5, C6, C7, C8, C9, C10, C11, C12, C13, C14, C15**. They occupy 22 contiguous bytes. Also reserve the private workspace: **T0, T1, T2, T3** (4 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `bounded_text_wrap_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `bounded_text_wrap_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | buffer and COUNT |
+| Supply before service | START and WIDTH |
+| Read after service | updated START, LENGTH, NEXT and VALID |
+
+Remember the most recent space while scanning to the width limit. If the next character continues a word, retreat to that space; otherwise keep the whole measured span.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/bounded-text-wrap/component.inc" lang="z80" title="Reusable initialisation and service" />
+
+## Machine contract
+
+AF/BC/DE/HL may change; IX/IY are preserved. A direct CALL needs two return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. The samples use fixed symbol bindings. Scope or rename every label and binding, including the component_end measurement marker, and allocate a separate block for each independent instance. Different helpers can also use common field names, so combining them needs separate namespaces or explicitly renamed bindings. Give each block one mutation owner.
+
+The 48K diagnostic boots through ROM tape loading and USR, disables interrupts and owns the screen. The helper performs no port or screen writes.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/bounded-text-wrap/demo.asm" lang="z80" title="Bindings and include order" />
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/bounded-text-wrap/exercise.inc" from="preview_rules:" to="; End of toolkit client." lang="z80" title="A client retaining state between calls" />
+
+## Customise it
+
+Hard-wrap a word longer than the three-character line width. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/bounded-text-wrap/custom.asm" lang="z80" title="Custom client selection" />
+
+The custom diagnostic row is **03 03 01 00 03 08 41 42**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong caller supplies a one-column width. Ordinary words break into individual letters. Pass the text area’s character width, not a pixel count or an unrelated default.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/framework/bounded-text-wrap/wrong.asm" lang="z80" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/bounded-text-wrap-wrong.png" alt="Spectrum shows the deliberate error row 01 01 01 00 01 0B 48 45." caption="The wrong client completes with 01 01 01 00 01 0B 48 45; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 498 code bytes; public state is 22 bytes and private scratch is 4 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+At most sixteen characters plus skipped spaces, without copying. A proportional font needs a pixel-width accumulator instead of one count per character.
+
+This handles fixed-width ASCII spaces. Proportional fonts, explicit newlines, Unicode and hyphenation need richer rules. The caller must set START=NEXT before requesting the next line.
+
+## Execution evidence
+
+Four variants run on 48K PAL ROM tape load and USR, using Asm198x 0.0.72, Emu198x 0.44.2. Each executes 45 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+## Where it fits
+
+[Text entry buffers](/patterns/sinclair-zx-spectrum/assembly/input/text-entry-buffer/): Keep editing and layout separate so reflow does not mutate the original text.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/54eb2f56466b20bc3446d8b32e3350fe9eb04d09/sinclair-zx-spectrum/patterns/assembly/framework/bounded-text-wrap).
