@@ -1,0 +1,87 @@
+---
+title: "Build Bounded Spatial Buckets on Spectrum"
+summary: "Nearby objects are worth comparing; distant ones usually are not."
+platform: "sinclair-zx-spectrum"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "spatial-bucket"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Nearby objects are worth comparing; distant ones usually are not. A small bucket table can narrow that candidate list.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/spatial-bucket-demo.png" alt="Spectrum shows the working diagnostic row 00 02 00 00 01 02 02 03." caption="A completed native caller displays 00 02 00 00 01 02 02 03. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+Partition a 16×16 logical area into four 8×8 buckets. Each holds four byte item identifiers in S0..S15, with counts C0..C3. MODE=0 clears the table; MODE=1 inserts ITEM at INPUT_X/Y; MODE=2 queries that bucket. Out-of-range coordinates, modes or selected counts return VALID=0 without table writes. A full insertion returns INSERTED=0, FULL=1; successful insertion reports INSERTED=1. Query COUNT and BUCKET identify the active prefix at S[4*BUCKET].
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **BUCKET, COUNT, INSERTED, FULL, VALID, MODE, INPUT_X, INPUT_Y, ITEM, C0, C1, C2, C3, S0, S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14, S15**. They occupy 29 contiguous bytes. Also reserve the private workspace: **T0, T1, T2, EXPR_SAVE** (4 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `spatial_bucket_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `spatial_bucket_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | C0..C3 and S0..S15 |
+| Supply before service | MODE, INPUT_X/Y and ITEM |
+| Read after service | BUCKET, COUNT, INSERTED, FULL and VALID |
+
+Two coordinate high bits select a quadrant. Four fixed slots per bucket avoid allocation; the insertion count is checked before forming the destination index. This is a native bounded companion to the existing broader collision reference, not a replacement for its geometric tests.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/spatial-bucket/component.inc" lang="z80" title="Reusable initialisation and service" />
+
+## Machine contract
+
+AF/BC/DE/HL may change; IX/IY are preserved. A direct CALL needs two return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. The samples use fixed symbol bindings. Scope or rename every label and binding, including the component_end measurement marker, and allocate a separate block for each independent instance. Different helpers can also use common field names, so combining them needs separate namespaces or explicitly renamed bindings. Give each block one mutation owner.
+
+The 48K diagnostic boots through ROM tape loading and USR, disables interrupts and owns the screen. The helper performs no port or screen writes.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/spatial-bucket/demo.asm" lang="z80" title="Bindings and include order" />
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/spatial-bucket/exercise.inc" from="preview_rules:" to="; End of nightone client." lang="z80" title="A client retaining state between calls" />
+
+## Customise it
+
+Fill the bottom-right bucket, then attempt one overflow insertion. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/spatial-bucket/custom.asm" lang="z80" title="Custom client selection" />
+
+The custom diagnostic row is **03 04 00 01 01 01 0F 0F**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong caller selects clear instead of insert/query. Counts remain zero and candidates disappear. Clear once at the intended rebuild boundary, then retain the populated buckets for all queries.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/spatial-bucket/wrong.asm" lang="z80" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/spatial-bucket-wrong.png" alt="Spectrum shows the deliberate error row FF 00 00 00 01 00 02 03." caption="The wrong client completes with FF 00 00 00 01 00 02 03; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 491 code bytes; public state is 29 bytes and private scratch is 4 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+Clear touches twenty table bytes; insert/query takes bounded arithmetic and one selected count read. More buckets reduce candidate density but cost counts/storage, while larger bucket capacity increases worst-case pair testing.
+
+This table stores point membership, not shape overlap. Objects spanning buckets require insertion into every covered bucket or neighbouring-bucket queries; otherwise broad-phase false negatives are possible. Duplicate identifiers are permitted, and a full bucket needs an explicit game policy rather than silently dropping possible collisions.
+
+## Execution evidence
+
+Four variants run on 48K PAL ROM tape load and USR, using Asm198x 0.0.72, Emu198x 0.44.2. Each executes 34 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+## Where it fits
+
+[Rectangle overlap](/patterns/sinclair-zx-spectrum/assembly/physics/rectangle-overlap/): Use the bucket as a broad phase and apply an actual shape test to candidate pairs.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/cbf91a011d404116626e1b109e922e2c5cbba09c/sinclair-zx-spectrum/patterns/assembly/physics/spatial-bucket).
