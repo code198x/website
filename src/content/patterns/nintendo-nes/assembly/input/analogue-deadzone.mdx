@@ -1,0 +1,83 @@
+---
+title: "Turn an Analogue Axis into Intent on NES"
+summary: "A joystick that rests a little off-centre should not make the player creep across the screen.."
+platform: "nintendo-nes"
+category: "input"
+difficulty: "intermediate"
+tags: ["reusable", "analogue-deadzone"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A joystick that rests a little off-centre should not make the player creep across the screen.
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-nes/analogue-deadzone-demo.png" alt="NES shows the working diagnostic row 76 80 04 01 06 01 00 00." caption="A completed native caller displays 76 80 04 01 06 01 00 00. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+SAMPLE and CENTRE are unsigned bytes. RADIUS must be 0–127. The dead zone includes both boundaries: distance at most RADIUS returns still. DIRECTION is 0 still, 1 below centre or 2 above; MAGNITUDE is the distance beyond the zone, not rescaled to 255. Invalid radius returns zero results.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **SAMPLE, CENTRE, RADIUS, DIRECTION, MAGNITUDE, VALID**. They occupy 6 contiguous bytes. Also reserve the private workspace: **T0** (1 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `analogue_deadzone_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `analogue_deadzone_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | none between independent samples |
+| Supply before service | SAMPLE, CENTRE and RADIUS |
+| Read after service | DIRECTION, MAGNITUDE and VALID |
+
+Subtract the centre to find direction and distance, then remove the dead-zone radius. There is no jump to full movement at the boundary: the first accepted sample has magnitude one.
+
+<CodeFromFile src="cross-platform/patterns/input/analogue-deadzone/6502.inc" lang="6502" title="Reusable initialisation and service" />
+
+## Machine contract
+
+A/X/status may change; Y is preserved. The 2A03 has no decimal arithmetic mode. A direct JSR needs two return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. Scope or rename routine and field labels and allocate a separate block for each independent instance. Give each block one mutation owner.
+
+The NROM caller owns PPU setup and background display, with NMI and DMC disabled. Table and packet sizes are bounded to fit the cartridge caller and internal RAM; the helper owns no PPU registers.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/analogue-deadzone/demo.asm" lang="6502" title="Bindings and include order" />
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/analogue-deadzone/exercise.inc" from="preview_rules:" to="; End of gamekit client." lang="6502" title="A client retaining state between calls" />
+
+## Customise it
+
+Widen the dead zone to eight sample units. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/analogue-deadzone/custom.asm" lang="6502" title="Custom client selection" />
+
+The custom diagnostic row is **76 80 08 01 02 01 00 00**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong caller replaces RADIUS with zero. Small sample deviations now produce movement. Use the calibrated dead zone rather than silently bypassing it at the call site.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/input/analogue-deadzone/wrong.asm" lang="6502" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-nes/analogue-deadzone-wrong.png" alt="NES shows the deliberate error row 76 80 00 01 0A 01 00 00." caption="The wrong client completes with 76 80 00 01 0A 01 00 00; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 135 code bytes; public state is 6 bytes and private scratch is 1 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+Constant work with no division. Rescaling the remaining range to a fixed maximum needs additional arithmetic or a lookup table.
+
+No analogue device is assumed on these machines. Feed normalised bytes from an available peripheral driver; digital-only controls do not become analogue by using this routine. Calibration, hysteresis and radial two-axis dead zones are separate techniques.
+
+## Execution evidence
+
+Four variants run on NTSC NROM, background only, DMC/NMI disabled, using Asm198x 0.0.72, Emu198x 0.44.2. Each executes 64 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/6ed5690009f873c098f198b0e36b74cee59e350c/nintendo-entertainment-system/patterns/assembly/input/analogue-deadzone).
