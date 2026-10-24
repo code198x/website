@@ -1,0 +1,77 @@
+---
+title: "Damage and Recovery on C64"
+summary: "Apply damage without byte underflow, give an entity time to recover and emit one fatal-hit event."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["health", "damage", "recovery", "collision"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Touch an enemy for several updates and you should not necessarily lose all your health at once. A short recovery window can turn a stream of overlapping collision results into deliberate, separated hits. This routine handles the arithmetic and timing; your game decides which contacts count and what the player sees or hears.
+
+The example starts with health **3** and supplies damage **1** on twelve consecutive simulation updates. It accepts three hits, reaches zero at update index **6**, and emits **one** fatal-hit event. A dead entity takes no further damage and does not emit that event repeatedly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/damage-rules-demo.png" alt="C64 shows 03 06 00 00 01 04 01 03 after sustained contact: three accepted hits and one death event." caption="The first field counts accepted hits; the second is the zero-based update where health reached zero. The fifth counts fatal-hit events." />
+
+## One service per entity, per simulation update
+
+Reserve five private bytes: **HEALTH**, **REMAINING**, **AMOUNT**, **APPLIED** and **KILLED**. Include the component once. `damage_init` starts health at 3 and clears the other fields. Starting a session or spawning an entity is an appropriate time to initialise; resuming a paused game is not.
+
+Before each `damage_step`, supply **AMOUNT** (0–255). Zero means no requested damage. Aggregate contacts first, then call **once for this entity in this simulation update**. Calling once per overlapping collision pair would also advance recovery once per pair. If adding amounts, use a wider accumulator and clamp deliberately; wrapping a byte sum would change the requested damage.
+
+The step first decrements a **positive** recovery counter. It then accepts a nonzero amount only if health is positive and recovery is zero. A nonfatal hit subtracts the amount and reloads recovery from **PERIOD**. A fatal or oversized hit saturates health at zero, clears recovery and sets both event bytes. It never wraps zero health round to 255.
+
+<CodeFromFile src="cross-platform/patterns/framework/damage-rules/6502.inc" lang="6502" title="Reusable initialise and damage-step routines" />
+
+**APPLIED** pulses for any accepted hit, including a fatal one. **KILLED** pulses only for the positive-to-zero transition. Both clear at the next step; consume them before calling again. Trigger your sound, flash or game-over request from these events rather than repeatedly testing `HEALTH == 0`. The helper leaves AMOUNT alone, so explicitly supply zero on updates without damage.
+
+A/flags change; **X/Y and decimal mode survive**. Damage subtraction requires **decimal mode clear** on C64; the native caller executes CLD. NES ignores decimal arithmetic, but retains the same clear-D calling convention. The helper uses no scratch pointer. A direct call uses two return-address stack bytes.
+
+## Decide what a recovery step means
+
+The default PERIOD is **3**. With tick-before-damage ordering, accepted hits occur at indices **0, 3 and 6**: two intervening requests are blocked between accepted hits. This is three simulation steps between hits, not three complete blocked updates after a hit. No frame rate or wall clock is hidden in the helper.
+
+PERIOD **0** disables recovery gating; values up to **255** fit the component's byte contract. The maintained configurations execute periods **3 and 5**. These tiny values make the diagnostic easy to inspect; they are not a recommendation for every game. Choose your real window against the simulation rate and the experience you want.
+
+When paused, skipping this entity's service freezes its recovery. If recovery should use wall-clock time while simulation is paused, that is a different timing policy; use the [timing choices](/patterns/cross-platform/framework/game-loop-choices/) and elapsed-clock routines rather than pretending update counts measure seconds.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/damage-rules/exercise.inc" from="preview_rules:" to="; End of rules client." lang="6502" title="Sustained-contact client and event counters" />
+
+## Include it in a game
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/damage-rules/demo.asm" lang="6502" title="Buildable caller and exact include order" />
+
+The standalone PAL PRG enters through stock BASIC/KERNAL, then owns the screen/font/colour RAM and disables IRQ sources. Diagnostics use $70–$84 and a buffer at $C000. It does not return to BASIC. The reusable component owns none of that hardware. Move its fields into your own memory layout and keep one owner for mutations. Interrupts can record requests; they must not change health or recovery halfway through this service.
+
+The eight hexadecimal summary fields are **accepted hits, first fatal update (FF if none), final health, recovery remaining, fatal events, blocked requests while still alive, health at index 4, period**. The working row is **03 06 00 00 01 04 01 03**. Counts describe this twelve-update workload, not a frame-time benchmark.
+
+## Make it your own
+
+`custom.asm` changes PERIOD from **3 to 5**, keeping health and requested damage unchanged. Death moves to index **0A** (10), and health at index 4 is **02** rather than **01**. Component code and state sizes are unchanged in these layouts; only a constant changes.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/damage-rules/custom.asm" lang="6502" title="Extend the recovery window to five updates" />
+
+A different initial health, strongest-hit policy, damage types or per-source recovery all need their own caller rules and cases. Healing, armour, stacked damage, revival and object removal are not silently provided by this component. [Object slots](/patterns/commodore-64/assembly/framework/object-pool/) handle ownership after removal, while [game states](/patterns/commodore-64/assembly/framework/game-flow/) distinguish fresh-session reset from resume.
+
+## Common mistake: refresh recovery on every contact
+
+The labelled wrong caller writes PERIOD into REMAINING **before every request**. The service decrements it to 2, sees that recovery is still active, and rejects damage. Sustained contact keeps repeating that mistake. Health stays **03**, accepted hits stay **00**, and the fatal index is **FF**. The whole trace completes; this is not a stalled loader.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/damage-rules/wrong.asm" lang="6502" title="Deliberate fault: re-arm the timer before every contact" />
+
+Remove that write. The component already reloads recovery when it accepts a nonfatal hit. The repaired executable matches the working executable exactly; Spectrum tape filenames can differ while the loaded CODE is identical.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/damage-rules-wrong.png" alt="C64 shows 00 FF 03 02 00 0C 03 03: repeatedly refreshing recovery prevents every hit." caption="The caller keeps refreshing the window. Twelve requests are blocked while health remains three." />
+
+## Cost and verification
+
+This layout uses **72 code bytes and five state bytes**. Each service takes one bounded branch path, without an object scan, input read, display transfer or wait. N entities require N services plus your collision work. These are storage/work descriptions, not measured physical-hardware cycles. A compare-before-subtract and saturation also connect directly to [Maths for Games](/craft/maths-for-games/); [The Craft](/craft/) helps decide what recovery should feel like.
+
+Four native runs on this machine cover normal, changed period, wrong caller and exact repair. **Asm198x 0.0.72 / Emu198x 0.44.2** are pinned, with **Build198x 0.2.9** for Amiga media. A second client checks initialisation from dirty fields, all **256 health bytes at damage 1**, **36 health/damage boundary pairs**, **six recovery boundaries** and every state/event result of the twelve-update trace. This is selected finite-domain coverage, not all possible health/timer/amount combinations.
+
+An independent saturating-integer model checks the **1,248-byte** packet. Native startup, completion, preserved-register sentinels, source/tool/firmware identities, loaded code, capture hashes, text pixels and repair are checked too. Deliberately altered evidence must fail. No firmware is distributed. These are named emulator logic workloads, not another hardware collision/input test or a complete game's acceptance test.
+
+[Maintained source and native evidence](https://github.com/code198x/code-samples/tree/48543010f313c6e4403b7659ad280faf057a56a9/commodore-64/patterns/assembly/framework/damage-rules).
