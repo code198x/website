@@ -98,7 +98,7 @@ that the statement reaches the built page before any stylesheet.
 
 - `base` holds element defaults, `html`, `body` and the `:root` tokens.
   `composition` holds the layout primitives and the page frame
-  (`site-frame.css`): the gutter, width and first-block spacing of every
+  (the global rules in `Layout.astro`): the gutter, width and first-block spacing of every
   child of `<main>`. `blocks` holds each component's own look, and
   `exceptions` its variations, keyed on data attributes.
 - A block does not set the frame. Its rules outrank composition, so a page
