@@ -1,0 +1,74 @@
+---
+title: "Rectangle Overlap"
+summary: "Reuse the Amiga’s unsigned word-edge box test, with touching-edge errors, wider-coordinate limits and native proof."
+platform: "commodore-amiga"
+category: "physics"
+difficulty: "beginner"
+tags: ["collision", "rectangles", "maths"]
+evolution:
+  previous: null
+  next: null
+related:
+  patterns: ["aabb-collision"]
+  vault: ["collision-detection"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+**Code status: assembled and emulator-executed.** A500 OCS PAL, Kickstart 1.3, Asm198x 0.0.72, Build198x 0.2.9 and Emu198x 0.44.2 are the recorded configuration.
+
+
+Two boxes share area and `demo` displays 1. In `custom`, B moves until it touches A’s right edge; the result is 0. The helper is the maintained Collect and Respond collision routine, unchanged. Build with `make`, boot `build/demo.adf` on an A500 OCS PAL with Kickstart 1.3, and reset to leave. Asm198x 0.0.72 and Build198x 0.2.9 build this original OFS caller.
+
+## Include and call
+
+Include `../../framework/collect-and-respond/collision.inc` once, outside fall-through execution, in writable memory. Write four unsigned **word edges** into each of rect_a and rect_b: left, top, right, bottom. Call `bsr boxes_overlap`. D0 is 1 for overlap and 0 for apart/empty; CCR changes. Other registers survive. There is no initialisation, allocation or I/O. The routine owns 16 bytes of rectangle state and uses the caller’s normal return stack. Serialise access with interrupts if they share these records.
+
+```asm
+    move.w #2,rect_a
+    move.w #2,rect_a+2
+    move.w #8,rect_a+4
+    move.w #6,rect_a+6
+    ; Fill rect_b too.
+    bsr boxes_overlap
+    tst.w d0
+    beq no_hit
+```
+
+Right and bottom are excluded: [2,2,8,6] spans six by four units. Touching edges/corners do not share area. Empty or reversed extents return false. All edges must fit 0–65535; these are unsigned word comparisons, not signed screen coordinates. A left edge of 65535 cannot make a positive-width box inside this domain. Form right/bottom from position and size in wider arithmetic and validate/clip before narrowing. Do not let 65530+16 wrap. A separately qualified signed/long variant would be needed for negative world coordinates.
+
+The helper costs 88 instruction bytes and 16 state bytes. Its early exits make runtime depend on the geometry; no cycle budget is measured here. The original diagnostic executable is 13,824 bytes, including the 10,240-byte one-plane display, case table, results, copper list and caller. Those are not helper costs. Copper/bitplane setup belongs to the standalone caller, which takes over custom chips/interrupts and does not return to AmigaDOS. The pure test can instead run inside an OS-friendly engine with its own display.
+
+## Customise and diagnose
+
+Change the eight example edges in `custom.asm`. Smaller collision bounds can forgive a close miss, while larger interaction bounds make items easier to collect. Collision need not match artwork. Keep the response—damage, collection or room entry—outside the helper. A box test can be a cheap broad phase before mask/pixel tests on the remaining candidates, each with its own code, data and CPU costs.
+
+`wrong-touch.inc` deliberately accepts equality in the four separation checks. With touching geometry, `wrong` incorrectly displays 1. The empty/reversed checks remain intact. Restore the original comparisons; `repaired` has exactly the custom executable and returns 0. The fault adds eight instruction bytes. Keep it separate from normal builds.
+
+## Independent qualification
+
+Every native caller traverses 184 supplied edge cases at the word range, including swapping arguments, empty/reversed rectangles, containment, touching/corner cases, separation and 65535 limits. A max/min interval oracle is independent of the machine’s separating-axis instruction sequence. Positive completion markers, a unique relocated program signature and real result bytes must agree. The guest owns its case traversal; the observer neither writes results nor moves the PC.
+
+Verification retains the original executable, parsed single-hunk relocation data, native instruction/case-data readback, tool/firmware identities, all results, full bitplane and PNG. Each changed relocation is applied to the original code before native comparison. The glyph in the plane and visible capture must both agree with the result. Fault and repair are independently cold-booted. Corrupt code, observations, source pins, include tables and pixel expectations fail the publication gate.
+
+Run `python3 scripts/check-amiga-rectangle-overlap.py` and `python3 -m unittest discover -s scripts -p test_amiga_rectangle_overlap.py -v` from the samples root. Re-capture with verify-amiga-rectangle-overlap.py and explicit assembler/build198x/emulator/Kickstart paths. Emu198x 0.44.2 A500 OCS PAL/Kickstart 1.3 is the selected configuration, not every Amiga or original-hardware timing. No firmware is distributed.
+
+
+## Maintained implementation and caller
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/rectangle-overlap/../../framework/collect-and-respond/collision.inc" lang="m68k" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/rectangle-overlap/demo.asm" lang="m68k" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/rectangle-overlap/caller.inc" lang="m68k" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/rectangle-overlap/custom.asm" lang="m68k" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/rectangle-overlap/wrong-touch.inc" lang="m68k" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/rectangle-overlap-demo.png" alt="The working overlap caller displays 1." caption="A shared area returns 1. This native one-plane display is caller instrumentation, not a helper requirement." />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/rectangle-overlap-wrong.png" alt="The faulty edge-contact caller incorrectly displays 1." caption="The equality error reports overlap for touching boxes. The repaired caller has identical geometry and returns 0." />
+
+[Pinned reusable code and caller](https://github.com/code198x/code-samples/tree/605dc95dde5189daafc3f277f7b06a58a22457a6/commodore-amiga/patterns/assembly/physics/rectangle-overlap) · [Native configuration and proof](https://github.com/code198x/code-samples/tree/605dc95dde5189daafc3f277f7b06a58a22457a6/commodore-amiga/patterns/assembly/physics/rectangle-overlap/verification). [Maths for Games](/craft/maths-for-games/) connects intervals, numeric width and coordinate conversion; [AABB geometry](/patterns/cross-platform/physics/aabb-collision/) describes the same test independently of a machine.
