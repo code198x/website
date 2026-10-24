@@ -1,0 +1,83 @@
+---
+title: "Commit a Crafting Recipe Atomically on C64"
+summary: "Do not take the player\u2019s ingredients and only then discover there is nowhere to put the result.."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "recipe-transaction"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Do not take the player’s ingredients and only then discover there is nowhere to put the result.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/recipe-transaction-demo.png" alt="C64 shows the working diagnostic row 01 01 01 02 01 01 04 00." caption="A completed native caller displays 01 01 01 02 01 01 04 00. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+The recipe consumes NEED0 and NEED1 from separate ingredient counts and adds PRODUCE to RESULT. CAP bounds the result stack. Validate all stock and destination capacity before any count changes. CRAFTED=1 means the complete change committed. CAP=0 or RESULT above CAP is invalid. Zero-cost and zero-output recipes are allowed and still atomic.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **HAVE0, HAVE1, RESULT, NEED0, NEED1, PRODUCE, CAP, CRAFTED, VALID**. They occupy 9 contiguous bytes. Also reserve the private workspace: **T0** (1 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `recipe_transaction_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `recipe_transaction_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | HAVE0, HAVE1 and RESULT |
+| Supply before service | NEED0, NEED1, PRODUCE and CAP |
+| Read after service | CRAFTED and VALID |
+
+Validation and commit are separate phases within one call. Only after every ingredient and destination check passes does the helper write any of the three counts.
+
+<CodeFromFile src="cross-platform/patterns/framework/recipe-transaction/6502.inc" lang="6502" title="Reusable initialisation and service" />
+
+## Machine contract
+
+A/X/status may change; Y and decimal mode are preserved. Use CLD for binary arithmetic. A direct JSR needs two return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. Scope or rename routine and field labels and allocate a separate block for each independent instance. Give each block one mutation owner.
+
+The diagnostic PRG owns screen, font and colour RAM and disables interrupts; it does not return to BASIC. The reusable helper does none of those things.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/recipe-transaction/demo.asm" lang="6502" title="Bindings and include order" />
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/recipe-transaction/exercise.inc" from="preview_rules:" to="; End of gamekit client." lang="6502" title="A client retaining state between calls" />
+
+## Customise it
+
+Craft a two-unit output instead of one, retaining the same capacity checks. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/recipe-transaction/custom.asm" lang="6502" title="Custom client selection" />
+
+The custom diagnostic row is **01 01 02 02 01 02 04 00**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong caller clears HAVE0 before asking whether crafting can succeed. The recipe refuses, but the caller has already destroyed the stock. Leave all inventory changes to the checked commit; pre-mutating an input breaks the all-or-nothing promise.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/recipe-transaction/wrong.asm" lang="6502" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/recipe-transaction-wrong.png" alt="C64 shows the deliberate error row 00 02 00 02 01 01 04 00." caption="The wrong client completes with 00 02 00 02 01 01 04 00; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 152 code bytes; public state is 9 bytes and private scratch is 1 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+Constant work for two ingredients and one result. A general recipe table needs iteration and an aliasing policy before committing changes.
+
+Atomic here means all-or-nothing in one main-loop call. It does not provide interrupt exclusion, durable saving or a general dependency graph. Ingredients and result are distinct counters; aliasing them changes the recipe contract.
+
+## Execution evidence
+
+Four variants run on PAL stock-ROM PRG, using Asm198x 0.0.72, Emu198x 0.44.2. Each executes 64 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/c8f0b7d2e83eb1c8178f0fc69977466d9d26fd7c/commodore-64/patterns/assembly/framework/recipe-transaction).
