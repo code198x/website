@@ -1,0 +1,81 @@
+---
+title: "Choose the Highest-priority Request on C64"
+summary: "A pickup chime, a warning and an explosion may all request attention in one update."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "game rules", "priority-arbiter"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A pickup chime, a warning and an explosion may all request attention in one update. Before touching a sound channel or message panel, choose which request should win. This arbiter retains the first request at the highest priority.
+
+
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/priority-arbiter-demo.png" alt="C64 shows the working result 01 07 08 05 02 00 00 00." caption="The completed native caller shows hexadecimal state bytes. The field order below explains the result; the full verification packet retains every call." />
+
+## Include, initialise and call
+
+Bind **PRESENT, ID, PRIORITY, REQUEST_ID, REQUEST_PRIORITY, ACCEPTED** as 6 contiguous private bytes in that order. Include the helper once. Call `priority_arbiter_init` at the deliberate reset boundary: it clears **all** named bytes, including inputs. Set your starting values afterwards. Call `priority_arbiter_step` when this service is needed.
+
+Initialise once at the start of each arbitration round, then offer all candidates. After the offers, inspect PRESENT and dispatch ID once. Keep playback duration, channel preemption and any running effect state outside this component. Starting a new round is different from restarting a sound.
+
+PRESENT says whether a request has already been selected. ID and PRIORITY hold that selection. Offer REQUEST_ID and REQUEST_PRIORITY, then step. It accepts when no selection exists or the new unsigned priority is strictly greater; equal priority retains the first request. ACCEPTED is replaced on every offer. ID zero and priority zero are valid because PRESENT carries emptiness separately.
+
+<CodeFromFile src="cross-platform/patterns/framework/priority-arbiter/6502.inc" lang="6502" title="Reusable initialisation and service" />
+
+## State and ownership
+
+The first three bytes retain the current selection; two request bytes are inputs; ACCEPTED reports whether this offer replaced the selection. Rejection leaves the selection untouched.
+
+
+
+A/X/flags may change; Y and decimal mode survive. **Clear decimal mode before binary arithmetic**; the standalone caller uses CLD. A direct call pushes a two-byte return address.
+
+This implementation has fixed symbol bindings and one mutation owner. Independent users need distinct state blocks **and** scoped/renamed bindings; including another copy with the same global labels is not sufficient. Sequential queries may reuse a scratch block only after the previous result has been consumed. Do not let an interrupt and the main loop mutate the same block without a separately designed ownership policy.
+
+The standalone PRG takes over screen/font/colour RAM, disables IRQ sources and does not return to BASIC. Its private diagnostic workspace is $70–$89; its packet starts at $C000.
+
+## A small caller you can adapt
+
+The standalone program includes the helper and a separate client. Its read-only table exercises 96 valid inputs, then this client initialises once and retains state between calls. Replace the supplied input changes with your own game values; the display and packet machinery are diagnostics rather than dependencies of the component.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/priority-arbiter/demo.asm" lang="6502" title="Buildable caller, bindings and include order" />
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/priority-arbiter/exercise.inc" from="preview_rules:" to="; End of gameplay client." lang="6502" title="A separate client retaining state between calls" />
+
+The eight display fields follow **PRESENT, ID, PRIORITY, REQUEST_ID, REQUEST_PRIORITY, ACCEPTED**; unused display fields are zero. Each field is a hexadecimal byte. The working row is **01 07 08 05 02 00 00 00**. The output is a completed diagnostic state, not a recording of movement, input or sound hardware.
+
+## Make it your own
+
+The custom caller lowers the first request priority from eight to one. The second request, ID 9 at priority eight, now wins. In the default trace it ties and ID 7 remains selected.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/priority-arbiter/custom.asm" lang="6502" title="Maintained custom configuration or caller" />
+
+The observed custom row is **01 09 08 05 02 00 00 00**. The retained records qualify these named configurations; a new input domain or larger layout needs its own bounds and fresh execution checks.
+
+## Common mistake and repair
+
+The wrong client clears PRESENT before every offer. Every request appears to be the first, so the final low-priority ID 5 replaces the earlier priority-eight choice. Clear once before the set of offers, then retain the winner until dispatch.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/priority-arbiter/wrong.asm" lang="6502" title="Deliberately wrong client selection" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/priority-arbiter-wrong.png" alt="C64 shows the deliberate fault result 01 05 02 05 02 01 00 00." caption="The wrong client completes and records 01 05 02 05 02 01 00 00. Compare its state with the working row and the explained failure." />
+
+The wrong branch is in the displayed client above, selected by BROKEN. `repaired.asm` selects the original client again. Its executable matches demo exactly; Spectrum tape filenames can differ while loaded CODE is identical. The bad caller is a labelled experiment, not an alternative recommended implementation.
+
+## Cost and verification
+
+The measured helper occupies **46 code bytes plus 6 named state bytes** in this layout. Return addresses, alignment, tables and display diagnostics are additional. The sizes cover init and step together, not the whole standalone program.
+
+Each offer compares one priority and may copy an ID/priority pair. A round over N requests costs N offers. There is no allocation, queue or hardware access; keeping the current winner is cheaper than sorting all candidates when only one result is needed.
+
+A rotating tie-breaker can improve fairness but changes the stable first-wins contract. Multiple hardware voices may need one arbiter per eligible channel plus ownership and preemption rules. This logical selection does not assert that an effect played or that a device accepted it.
+
+Four native runs use PAL C64 with stock BASIC/KERNAL PRG startup and RUN; Asm198x 0.0.72 and Emu198x 0.44.2. Every run checks 96 table results, dirty initialisation and every state in a separate sequential trace against an independent integer model. This is boundary/varied-input qualification, **not exhaustive coverage of every byte combination**. Source/tool/firmware hashes, native startup and completion, preserved-register sentinels, immutable loaded code, actual helper extent, capture bytes and pixels, and exact repair are checked. Deliberately changed observations must fail. Firmware is hashed, never distributed.
+
+[Related reusable technique](/patterns/commodore-64/assembly/framework/action-cooldown/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/e49341566e23dd704baee67f313c2c0de77a79c3/commodore-64/patterns/assembly/framework/priority-arbiter).
