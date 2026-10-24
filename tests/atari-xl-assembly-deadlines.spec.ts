@@ -10,8 +10,9 @@ for (const entry of entries) test(entry.title, async ({page}, info) => {
  const prose=page.locator('.pattern-prose');
  await expect(prose.locator('.lesson-listing').first()).toBeVisible();
  await expect(page.locator('.code-error')).toHaveCount(0);
- const code=await prose.locator('.lesson-listing').evaluateAll(ns=>ns.map(n=>n.getAttribute('data-code')));
- for(const file of entry.files) expect(code,file).toContain(readFileSync(path.join(root,file),'utf8'));
+ const listings=prose.locator('.lesson-listing');
+ await expect(listings).toHaveCount(entry.files.length);
+ for(const [index,file] of entry.files.entries()) await expect(listings.nth(index),file).toHaveAttribute('data-code',readFileSync(path.join(root,file),'utf8'));
  for(const name of ['working','wrong']) {
   const url=`/images/patterns/atari-800xl/${entry.lang}-deadline-${name}.png`;
   const img=prose.locator(`img[src="${url}"]`); await img.scrollIntoViewIfNeeded();
