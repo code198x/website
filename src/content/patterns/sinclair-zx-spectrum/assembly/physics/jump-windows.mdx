@@ -1,0 +1,77 @@
+---
+title: "Jump Buffering and Coyote Time on Spectrum"
+summary: "Press Jump just before landing and it is frustrating when the press disappears."
+platform: "sinclair-zx-spectrum"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "jump-windows"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press Jump just before landing and it is frustrating when the press disappears. Walk a tiny distance off a ledge and a short forgiveness window can still let the jump happen. These two timers give the game those choices without hiding the rules inside the input reader.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/jump-windows-demo.png" alt="Spectrum shows the working diagnostic row 00 04 00 01 00 00 00 00." caption="A native completed caller shows its state as hexadecimal bytes. The field order below explains the row; the full packet retains every call." />
+
+## Include, initialise and call
+
+Reserve **JUMPED, COYOTE, BUFFER, GROUNDED, PRESSED** as 5 contiguous private bytes in that order. Include the helper once. Call `jump_windows_init` at the intended reset boundary: it clears every named byte, including input fields. Set the starting values afterwards, then call `jump_windows_step` for each intended service.
+
+Initialise at the session/reset boundary. Update grounded state from collision, supply the new-press bit, then service once per simulation update. On JUMPED, the caller applies the chosen vertical velocity and updates its movement state. The helper grants a jump; it does not move the player or decide whether a floor contact is real.
+
+GROUNDED and PRESSED are caller inputs; any nonzero value is true, and PRESSED must mean a new press. Each step first decrements positive COYOTE and BUFFER timers, then reloads COYOTE from COYOTE_STEPS when grounded and BUFFER from BUFFER_STEPS on a press. If both timers are positive, it emits JUMPED = 1 and consumes both timers; otherwise JUMPED is zero. Both configured windows are 1–255 service calls. The maintained builds use four and two.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/jump-windows/component.inc" lang="z80" title="Reusable initialisation and service" />
+
+## State, registers and ownership
+
+Five bytes: JUMPED is a replaced pulse, COYOTE and BUFFER persist, GROUNDED and PRESSED are inputs. A timer of one expires at the start of this call unless its corresponding current input reloads it. A stationary grounded player with no buffered or new press does not jump.
+
+AF/BC/DE/HL may change; IX/IY survive. A direct CALL needs two return-address stack bytes.
+
+The implementation binds fixed symbols and has one mutation owner. Independent users need separate state blocks and scoped/renamed labels, including routine labels; sharing the same bindings means sharing the state. Do not let an interrupt and the main loop mutate the same block without an explicit ownership policy.
+
+The standalone tape program enters at $8000, disables interrupts and owns bitmap/attribute RAM. It does not restore BASIC. Those choices belong to the test program; the helper itself never takes over the display.
+
+## A caller you can adapt
+
+The buildable program supplies bindings and include order. Its separate client retains state between calls. `checked_step` calls the public `jump_windows_step` entry and checks register sentinels; `emit_state` records diagnostics. Your game can call the public entry directly, remove the diagnostics and consume the documented outputs.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/jump-windows/demo.asm" lang="z80" title="Bindings, buildable caller and include order" />
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/jump-windows/exercise.inc" from="preview_rules:" to="; End of playtools client." lang="z80" title="A separate client retaining state between calls" />
+
+The display fields are **JUMPED, COYOTE, BUFFER, GROUNDED, PRESSED**; remaining display fields are zero. Each is one hexadecimal byte. The normal row is **00 04 00 01 00 00 00 00**. This is a completed state observation, not a recording of an actual character jumping, a camera scrolling or an asset being displayed.
+
+## Make it your own
+
+The custom build shortens both windows from four calls to two. In the supplied trace, a press three calls before landing is accepted with the four-call buffer and has expired with the two-call buffer. The final row alone does not count earlier jump pulses; the complete packet retains every call.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/jump-windows/custom.asm" lang="z80" title="Maintained custom configuration or caller" />
+
+The custom row is **00 02 00 01 00 00 00 00**. These records qualify the named builds and inputs; another layout, format or input domain needs explicit bounds and fresh execution evidence.
+
+## Common mistake and repair
+
+The wrong client supplies a held level as PRESSED on every call. The permission can be reissued on successive grounded updates even though the player never made another press. Feed a new-press edge and retain the timers; also update the caller’s grounded/movement state when it accepts a jump.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/jump-windows/wrong.asm" lang="z80" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/jump-windows-wrong.png" alt="Spectrum shows the deliberate fault row 01 00 00 01 01 00 00 00." caption="The wrong client completes with 01 00 00 01 01 00 00 00. Its code and the explanation above identify the cause; the capture observes the result." />
+
+The BROKEN branch is visible in the client. `repaired.asm` restores the normal selection; its executable matches demo exactly. Spectrum tape filenames may differ while loaded CODE remains identical. The fault is a labelled experiment, not a suggested alternative.
+
+## Cost, limits and verification
+
+The measured layout has **85 code bytes, 0 immutable data bytes and 5 private state bytes**. Alignment, stack usage, diagnostic tables and display machinery are additional. The extents come from the loaded program’s symbols, not from counting source lines.
+
+Two saturating decrements, input-dependent reloads and a pair of tests per update. There is no busy wait or keyboard scan. The same call-count settings represent different real durations under different service rates; choose a simulation clock before tuning them.
+
+This is a logical permission service, not a complete platformer jump controller. Variable jump height, multiple air jumps, wall jumps and input consumption across menus need explicit additional policies. Freeze or advance the timers during pause deliberately. Respawn invulnerability is a different grace window and remains covered by damage/recovery.
+
+Four native runs use Spectrum 48K with stock ROM tape loading and USR entry; Asm198x 0.0.72 and Emu198x 0.44.2. Each checks 64 boundary/varied/error cases, dirty initialisation and every state of a separate sequential client against an independent integer model. This is not exhaustive coverage of every possible byte combination. Source/tool/firmware hashes, immutable loaded code/data, native startup/completion, preserved-register sentinels, helper/data sizes, screenshot bytes/pixels and exact repair are checked. Deliberately altered observations must fail. Firmware is hashed, never distributed.
+
+[Related technique](/patterns/cross-platform/input/edge-detection/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/ca209b685ce81eaac8f25be79c25f3a90c1684db/sinclair-zx-spectrum/patterns/assembly/physics/jump-windows).
