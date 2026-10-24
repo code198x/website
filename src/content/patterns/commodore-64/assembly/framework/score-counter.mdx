@@ -1,0 +1,77 @@
+---
+title: "A Saturating 16-bit Score on C64"
+summary: "A coin worth 300 points should still be worth 300 when the low byte fills up."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "game rules", "score-counter"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A coin worth 300 points should still be worth 300 when the low byte fills up. This binary score uses two bytes and keeps the carry between them. It also makes the top of the range deliberate: the score stops at its cap instead of wrapping back to zero.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/score-counter-demo.png" alt="C64 shows the working result FF FF FF FF 01 00 00 00." caption="The completed native caller shows hexadecimal state bytes. The field order below explains the result; the full verification packet retains every call." />
+
+## Include, initialise and call
+
+Bind **SCORE_LO, SCORE_HI, ADD_LO, ADD_HI, CLIPPED** as 5 contiguous private bytes in that order. Include the helper once. Call `score_counter_init` at the deliberate reset boundary: it clears **all** named bytes, including inputs. Set your starting values afterwards. Call `score_counter_step` when this service is needed.
+
+Initialise at the start of a new session. Set both award bytes before each call; an award of 300 is low byte 44, high byte 1. Keep the score in binary for arithmetic and format a separate display copy. Call once for each scoring event, not once per overlapping frame unless that is the scoring rule.
+
+SCORE_LO and SCORE_HI hold an unsigned little-endian score; ADD_LO and ADD_HI hold an unsigned award. The current score must be **0 through SCORE_CAP**. Step adds the award with a wide intermediate, clamps to SCORE_CAP and sets CLIPPED to 1 only when the sum exceeds the cap. An exact hit on the cap leaves CLIPPED zero. The award bytes survive.
+
+<CodeFromFile src="cross-platform/patterns/framework/score-counter/6502.inc" lang="6502" title="Reusable initialisation and service" />
+
+## State and ownership
+
+The two SCORE bytes persist; the two ADD bytes are inputs; CLIPPED is a replaced overflow/cap pulse. Byte order is explicit on every CPU, including the big-endian 68000.
+
+A/X/flags may change; Y and decimal mode survive. **Clear decimal mode before binary arithmetic**; the standalone caller uses CLD. A direct call pushes a two-byte return address.
+
+This implementation has fixed symbol bindings and one mutation owner. Independent users need distinct state blocks **and** scoped/renamed bindings; including another copy with the same global labels is not sufficient. Sequential queries may reuse a scratch block only after the previous result has been consumed. Do not let an interrupt and the main loop mutate the same block without a separately designed ownership policy.
+
+The standalone PRG takes over screen/font/colour RAM, disables IRQ sources and does not return to BASIC. Its private diagnostic workspace is $70–$89; its packet starts at $C000.
+
+## A small caller you can adapt
+
+The standalone program includes the helper and a separate client. Its read-only table exercises 96 valid inputs, then this client initialises once and retains state between calls. Replace the supplied input changes with your own game values; the display and packet machinery are diagnostics rather than dependencies of the component.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/score-counter/demo.asm" lang="6502" title="Buildable caller, bindings and include order" />
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/score-counter/exercise.inc" from="preview_rules:" to="; End of gameplay client." lang="6502" title="A separate client retaining state between calls" />
+
+The eight display fields follow **SCORE_LO, SCORE_HI, ADD_LO, ADD_HI, CLIPPED**; unused display fields are zero. Each field is a hexadecimal byte. The working row is **FF FF FF FF 01 00 00 00**. The output is a completed diagnostic state, not a recording of movement, input or sound hardware.
+
+## Make it your own
+
+The custom build sets SCORE_CAP to 999 instead of 65,535. It uses the same two-byte representation and enforces the smaller cap. The native case table keeps every starting score inside the chosen cap.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/score-counter/custom.asm" lang="6502" title="Maintained custom configuration or caller" />
+
+The observed custom row is **E7 03 FF FF 01 00 00 00**. The retained records qualify these named configurations; a new input domain or larger layout needs its own bounds and fresh execution checks.
+
+## Common mistake and repair
+
+The wrong client clears ADD_HI before awarding points. A 300-point award becomes 44; a 65,535-point award becomes 255. Supply both bytes together. Merely changing a display width cannot restore points that the arithmetic never received.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/score-counter/wrong.asm" lang="6502" title="Deliberately wrong client selection" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/score-counter-wrong.png" alt="C64 shows the deliberate fault result 25 02 FF 00 00 00 00 00." caption="The wrong client completes and records 25 02 FF 00 00 00 00 00. Compare its state with the working row and the explained failure." />
+
+The wrong branch is in the displayed client above, selected by BROKEN. `repaired.asm` selects the original client again. Its executable matches demo exactly; Spectrum tape filenames can differ while loaded CODE is identical. The bad caller is a labelled experiment, not an alternative recommended implementation.
+
+## Cost and verification
+
+The measured helper occupies **59 code bytes plus 5 named state bytes** in this layout. Return addresses, alignment, tables and display diagnostics are additional. The sizes cover init and step together, not the whole standalone program.
+
+The addition and cap comparison use bounded paths. On 6502 the carry joins two byte additions; the Z80 uses a word addition and carry; the 68000 forms a long intermediate. Rendering and decimal conversion are separate costs.
+
+A BCD score can simplify decimal display on some CPUs, but the NES CPU does not implement decimal arithmetic. Wider binary counters or milestone rewards need their own carry, cap and event policies. Saturation deliberately loses later awards; games that need lifetime totals should choose a wider representation.
+
+Four native runs use PAL C64 with stock BASIC/KERNAL PRG startup and RUN; Asm198x 0.0.72 and Emu198x 0.44.2. Every run checks 96 table results, dirty initialisation and every state in a separate sequential trace against an independent integer model. This is boundary/varied-input qualification, **not exhaustive coverage of every byte combination**. Source/tool/firmware hashes, native startup and completion, preserved-register sentinels, immutable loaded code, actual helper extent, capture bytes and pixels, and exact repair are checked. Deliberately changed observations must fail. Firmware is hashed, never distributed.
+
+[Related reusable technique](/patterns/commodore-64/assembly/framework/damage-rules/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/34d919e7c37720821a3649b029c76b71ffaab802/commodore-64/patterns/assembly/framework/score-counter).
