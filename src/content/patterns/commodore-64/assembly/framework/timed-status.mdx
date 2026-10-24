@@ -1,0 +1,87 @@
+---
+title: "Service a Timed Status Effect on C64"
+summary: "A poison effect needs a duration and a pulse interval, not a fresh timer every time the actor is updated."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "timed-status"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A poison effect needs a duration and a pulse interval, not a fresh timer every time the actor is updated.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/timed-status-demo.png" alt="C64 shows the working diagnostic row 00 00 00 05 02 00 01 00." caption="A completed native caller displays 00 00 00 05 02 00 01 00. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+PERIOD must be nonzero and PHASE below it. APPLY nonzero refreshes REMAINING from DURATION and restarts phase. The same service call consumes the first active tick. Each active tick advances PHASE, emitting PULSE=1 on a period boundary. Expiration clears PHASE; a pulse on the final active tick is allowed. Invalid configuration returns VALID=0 and PULSE=0 without changing timer state.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **PULSE, REMAINING, PHASE, DURATION, PERIOD, APPLY, VALID**. They occupy 7 contiguous bytes. Also reserve the private workspace: **none** (0 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `timed_status_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `timed_status_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | REMAINING and PHASE |
+| Supply before service | DURATION, PERIOD and APPLY |
+| Read after service | PULSE and VALID |
+
+Duration bounds the lifetime while phase measures progress within a pulse interval. Keeping those clocks separate avoids making the last partial interval extend the effect forever.
+
+<CodeFromFile src="cross-platform/patterns/framework/timed-status/6502.inc" lang="6502" title="Reusable initialisation and service" />
+
+## Machine contract
+
+A/X/status may change; Y and decimal mode are preserved. Use CLD for binary arithmetic. A direct JSR needs two return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. The samples use fixed symbol bindings. Scope or rename every label and binding, including the component_end measurement marker, and allocate a separate block for each independent instance. Different helpers can also use common field names, so combining them needs separate namespaces or explicitly renamed bindings. Give each block one mutation owner.
+
+The diagnostic PRG owns screen, font and colour RAM and disables interrupts; it does not return to BASIC. The reusable helper does none of those things.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/timed-status/demo.asm" lang="6502" title="Bindings and include order" />
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/timed-status/exercise.inc" from="preview_rules:" to="; End of worldkit client." lang="6502" title="A client retaining state between calls" />
+
+## Customise it
+
+Use a six-tick duration with one pulse every three ticks. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/timed-status/custom.asm" lang="6502" title="Custom client selection" />
+
+The custom diagnostic row is **01 00 00 06 03 00 01 00**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong caller keeps APPLY set. Every call refreshes the effect and restarts its interval, preventing the expected pulses and expiry. Feed an application event once, then service retained state.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="commodore-64/patterns/assembly/framework/timed-status/wrong.asm" lang="6502" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/timed-status-wrong.png" alt="C64 shows the deliberate error row 00 04 01 05 02 01 01 00." caption="The wrong client completes with 00 04 01 05 02 01 01 00; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 161 code bytes; public state is 7 bytes and private scratch is 0 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+Constant work per service. Multiple independent effects need separate state or a bounded effect table; sharing one timer silently merges their lifetimes.
+
+PULSE is an event; a damage routine decides what it means for health and invulnerability. This stores only one effect instance and refreshes rather than stacks it. A paused game must choose whether to service the effect.
+
+## Execution evidence
+
+Four variants run on PAL stock-ROM PRG, using Asm198x 0.0.72, Emu198x 0.44.2. Each executes 64 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+## Where it fits
+
+[Damage rules](/patterns/commodore-64/assembly/framework/damage-rules/): A periodic pulse can request damage without taking ownership of health or its protection policy.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/0ef67c24c11efc105211975dd769b18339a55789/commodore-64/patterns/assembly/framework/timed-status).
