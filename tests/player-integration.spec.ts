@@ -263,9 +263,12 @@ test.describe('soft navigation (Astro ClientRouter)', () => {
     await softNavigate(page, 'Next Unit');
     const run = page.getByRole('button', { name: 'Run it here' });
     await expect(run).toBeVisible();
-    const bar = await page.locator('.breadcrumbs').evaluate(b => (b as HTMLElement).offsetHeight);
-    const crumbs = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue('--crumbs-height'));
-    expect(crumbs).toBe(`${bar}px`);
+    // Breadcrumbs re-measures on astro:page-load and again when its observer
+    // fires, both after the new page can already show its controls.
+    await expect.poll(() => page.evaluate(() => {
+      const bar = document.querySelector<HTMLElement>('.breadcrumbs');
+      return getComputedStyle(document.documentElement).getPropertyValue('--crumbs-height') === `${bar?.offsetHeight}px`;
+    })).toBe(true);
     await run.click();
     await expect(page.locator('run-panel')).toHaveAttribute('data-mode', 'modal');
     await page.evaluate(() => scrollTo(0, 3000));
