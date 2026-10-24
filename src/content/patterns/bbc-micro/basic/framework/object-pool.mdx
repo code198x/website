@@ -1,0 +1,83 @@
+---
+title: "Reuse Object Slots in BBC Micro BASIC"
+summary: "Allocate, release and age reusable object slots, with explicit full-pool results and caller-owned payloads."
+platform: "bbc-micro"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "object-pool"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+An enemy disappearing should make its slot available for the next enemy. A small pool keeps allocation predictable.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-object-pool-demo.png" alt="BBC Micro BASIC shows successful release and reacquire results." caption="The first two saved results are one: a live slot was released and reused. The later values report the final ageing pass." />
+
+## Use it in a project
+
+Reserve arrays `F(8)` and `L(8)`, then set `C` to the number of usable slots, from 1 to 8. Call line **3000** once at a new-session boundary. It clears all eight flags and lifetimes, plus `M`, `S`, `R`, `O` and `E`. Set payloads after initialisation. Line numbers 3000–3450 must be free in your project; move all references together if you renumber them.
+
+| Call | Supply | Result |
+|---|---|---|
+| `GOSUB 3100` — acquire | `C`; retained flags | `O=1` and `R=0..C-1`, or `O=0`, `R=255` when full |
+| `GOSUB 3200` — release | `S=0..C-1` | `O=1`, `R=S` on a live release; otherwise `O=0`, `R=255` |
+| `GOSUB 3300` — age | retained flags and live lifetimes | decrement each live lifetime; `O` counts expiries and `R` is the last expired slot, or 255 |
+
+Spectrum spells the call `GO SUB`; C64 and BBC use `GOSUB`. A returned slot is zero-based, so its flag is `F(R+1)` and its lifetime is `L(R+1)`. **Check `O` before indexing `R+1`.** A full pool returns 255; it is not an array index.
+
+After acquiring a slot, initialise every payload field before another part of the game reads it. Set `L(R+1)` to 1–255 if you will call ageing. Position, velocity, sprite allocation and sound ownership remain your game's responsibility. An acquired slot does not automatically become a fully constructed enemy.
+
+Release clears its occupancy flag only. The old lifetime and your other payload remain; initialise them when reusing the slot. A slot number is not a durable object identity: an old reference can name a different object after reuse. Use generations or discard old references deliberately.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/object-pool/routines.bas" lang="basic" title="Reusable initialisation, allocation, release and ageing" />
+
+## Include and call
+
+Keep `routines.bas` with your caller and combine the numbered listings in numeric order before tokenising or typing them. The supplied `build.py` and Makefile do that. C64 BASIC V2 has no built-in MERGE command; concatenating the listings at authoring time avoids inventing one. Do not paste the helper between executing statements without a STOP, END or explicit jump around its numbered subroutines.
+
+The maintained caller first runs boundary cases, then fills the pool, attempts one extra acquisition, releases slot one, reacquires it, and ages the live slots twice. `M` belongs to its diagnostic dispatcher: 1 acquire, 2 release, 3 age. Your game can call the public line numbers directly. The packet writer and mailbox are verification machinery, not required game state.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/object-pool/demo.bas" lang="basic" title="Complete maintained caller and state observations" />
+
+## Ownership and invalid state
+
+The helper owns numeric globals `C`, `S`, `R`, `O`, `E`, arrays `F` and `L`, and private loop scratch `I`; initialisation also clears diagnostic `M`. Do not use `I` as a caller's surrounding FOR variable. Independent pools need separate variables, arrays, line numbers and references. There are no interrupts, hidden input reads, frame waits or drawing operations in the reusable routines.
+
+Every service validates integral capacity 1–8 and active flags exactly zero or one. `E=1` rejects damaged state before mutation. An ordinary full pool, invalid requested slot or double release returns `E=0`, `O=0`. Ageing additionally validates every occupied lifetime as an integer 1–255 **before** decrementing any of them. A zero live lifetime cannot silently wrap to a long-lived object.
+
+BBC BASIC arrays include element zero, which this one-based interface leaves unused. The diagnostic reserves its mailbox above HIMEM=&6000; the reusable routines do not change HIMEM or the screen mode.
+
+## Customise it
+
+The custom caller uses four live slots instead of eight. The routine and allocated arrays remain the same size; the smaller logical capacity reduces the scan and object budget, not the declared array storage. To change allocation size or raise the supported capacity, update the DIM statements, initialisation bound, validation and tests together. Merely changing C beyond eight is rejected.
+
+Give different object classes different initial lifetimes, or use the flags without ageing when lifetime is irrelevant. Keep the lifetime array allocated for this maintained initializer. A flag-only variant could omit it, but would have a different contract.
+
+## Mistake and repair
+
+The wrong caller loses the live slot reference and asks to release slot 255. Release correctly refuses it; the pool is still full, so the next acquisition also fails. The screen retains both results: **0, 0** instead of **1, 1**. The two later ageing calls still run, so a final empty pool must not hide the earlier failed request.
+
+The repair restores the intended slot-one release. `repaired.bas` is identical to `demo.bas`, and their actual loaded tokenised programs match. The Spectrum tape filenames differ; the loaded program is the relevant identity.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-object-pool-wrong.png" alt="BBC Micro BASIC shows zero release and reacquire results after the wrong slot request." caption="The invalid release leaves the pool full: both saved operation results are zero. Restoring the live slot reference repairs the caller." />
+
+## Cost and alternatives
+
+The numbered helper occupies **676 tokenised program bytes** on the qualified interpreter. This includes its line headers, not the caller, test data or interpreter ROM. Source-character count is a different quantity. Numeric arrays are interpreter-managed, so eight flags are not eight machine-code bytes. Spectrum allocates eight cells per array; C64 and BBC also allocate the unused zero cell. Scalar descriptors, array headers, interpreter stacks and the diagnostic storage add further cost.
+
+Acquire scans at most C flags; release validates up to C flags and changes one; ageing validates the pool and lifetimes before its update pass. The extra safety pass costs runtime but prevents partial ageing when one lifetime is corrupt. No hardware-cycle or whole-game performance claim is made. A free list can reduce search, while a bitset saves flag storage at the cost of bit manipulation. The assembly pool is a useful comparison when interpreter overhead matters.
+
+Single-owner updates keep this simple. Queue spawn/release requests until after traversal if immediate mutation would update a new object twice. Different genres can choose a different full-pool policy; this helper rejects rather than evicting an existing object.
+
+## Execution evidence
+
+Working, four-slot custom, deliberately wrong and exact repaired callers execute on BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. C64 and Spectrum programs are tokenised by Build198x 0.2.9; C64 enters through the stock ROM and RUN, Spectrum through ROM tape loading. BBC source is entered through its stock interpreter, with every loaded line identity and the native tokenised program retained.
+
+Each caller emits its complete state after sixteen varied/boundary/error cases and a retained-state client. An independent set/lifetime model checks the whole trace, positive completion, mailbox guards, actual loaded program and the visible release/reacquire digits. The independent host checks cover every occupancy mask at capacities four and eight; those are host checks, not a claim that all 256 masks ran natively. Native observations qualify these configurations and examples, not every input or physical machine timing. Firmware and snapshots are not distributed.
+
+The public evidence gate checks retained observations and rejects altered source, configuration, loaded program, state, completion and picture claims. It does not run restricted firmware. Refresh with `python3 scripts/verify-basic-pools.py bbc-micro --tools /path/to/extracted/releases`; validate with `python3 scripts/check-basic-pools.py` and `python3 -m unittest discover -s scripts -p test_basic_pools.py -v`.
+
+## Where it fits
+
+[Compare the C64 assembly pool](/patterns/commodore-64/assembly/framework/object-pool/) and [generation handles](/patterns/commodore-64/assembly/framework/generation-handles/) when compact storage or durable references matter. [Maths for Games](/craft/maths-for-games/) develops bounds and invariants; [The Craft](/craft/) places object ownership in a game update. [Source and native evidence](https://github.com/code198x/code-samples/tree/d2ab311248016ba81fa53003efd6e7c3ac7b3a85/bbc-micro/patterns/basic/framework/object-pool).
