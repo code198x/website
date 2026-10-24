@@ -1,0 +1,77 @@
+---
+title: "Fractional Position Updates on Spectrum"
+summary: "A quarter-pixel step should eventually move the sprite a whole pixel."
+platform: "sinclair-zx-spectrum"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "fractional-position"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A quarter-pixel step should eventually move the sprite a whole pixel. Keep the fraction between updates and four small steps add up; throw it away each time and the sprite never gets there.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/fractional-position-demo.png" alt="Spectrum shows the working diagnostic row 00 65 40 00 00 00 00 00." caption="A native completed caller shows its state as hexadecimal bytes. The field order below explains the row; the full packet retains every call." />
+
+## Include, initialise and call
+
+Reserve **POS_LO, POS_HI, VEL_LO, VEL_HI** as 4 contiguous private bytes in that order. Include the helper once. Call `fractional_position_init` at the intended reset boundary: it clears every named byte, including input fields. Set the starting values afterwards, then call `fractional_position_step` for each intended service.
+
+Initialise once, then set both position bytes and both velocity bytes. Call once per simulation update. Use POS_HI as the integer coordinate only where that coordinate range suits the renderer; retain POS_LO in the game state. The normal client adds 0.25 four times to position 100 and reaches exactly 101.
+
+POS_LO/POS_HI hold an unsigned 8.8 position: the low byte counts 1/256 units and the high byte is the integer part. VEL_LO/VEL_HI hold a signed two’s-complement 8.8 displacement. Step adds the whole two-byte displacement to the whole position, preserving both velocity bytes. Position wraps modulo 65,536 raw units by design; this helper does not clamp a world boundary.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/fractional-position/component.inc" lang="z80" title="Reusable initialisation and service" />
+
+## State, registers and ownership
+
+Four persistent/input bytes. A displacement of −0.5 is FF80 in hexadecimal, stored low byte 80 then high byte FF. One raw unit is 1/256 of your chosen world unit; these are units per service call, not per second.
+
+AF/BC/DE/HL may change; IX/IY survive. A direct CALL needs two return-address stack bytes.
+
+The implementation binds fixed symbols and has one mutation owner. Independent users need separate state blocks and scoped/renamed labels, including routine labels; sharing the same bindings means sharing the state. Do not let an interrupt and the main loop mutate the same block without an explicit ownership policy.
+
+The standalone tape program enters at $8000, disables interrupts and owns bitmap/attribute RAM. It does not restore BASIC. Those choices belong to the test program; the helper itself never takes over the display.
+
+## A caller you can adapt
+
+The buildable program supplies bindings and include order. Its separate client retains state between calls. `checked_step` calls the public `fractional_position_step` entry and checks register sentinels; `emit_state` records diagnostics. Your game can call the public entry directly, remove the diagnostics and consume the documented outputs.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/fractional-position/demo.asm" lang="z80" title="Bindings, buildable caller and include order" />
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/fractional-position/exercise.inc" from="preview_rules:" to="; End of playtools client." lang="z80" title="A separate client retaining state between calls" />
+
+The display fields are **POS_LO, POS_HI, VEL_LO, VEL_HI**; remaining display fields are zero. Each is one hexadecimal byte. The normal row is **00 65 40 00 00 00 00 00**. This is a completed state observation, not a recording of an actual character jumping, a camera scrolling or an asset being displayed.
+
+## Make it your own
+
+The custom client uses 0.5 per update instead of 0.25. Four calls reach 102. The representation and helper code are unchanged.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/fractional-position/custom.asm" lang="z80" title="Maintained custom configuration or caller" />
+
+The custom row is **00 66 80 00 00 00 00 00**. These records qualify the named builds and inputs; another layout, format or input domain needs explicit bounds and fresh execution evidence.
+
+## Common mistake and repair
+
+The wrong client clears POS_LO before every call. The quarter-step is always restarted from a whole unit, so four calls leave position 100.25 instead of 101. Retain the fractional byte between calls; discarding it only for drawing is harmless, discarding it from state is not.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/assembly/physics/fractional-position/wrong.asm" lang="z80" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/fractional-position-wrong.png" alt="Spectrum shows the deliberate fault row 40 64 40 00 00 00 00 00." caption="The wrong client completes with 40 64 40 00 00 00 00 00. Its code and the explanation above identify the cause; the capture observes the result." />
+
+The BROKEN branch is visible in the client. `repaired.asm` restores the normal selection; its executable matches demo exactly. Spectrum tape filenames may differ while loaded CODE remains identical. The fault is a labelled experiment, not a suggested alternative.
+
+## Cost, limits and verification
+
+The measured layout has **26 code bytes, 0 immutable data bytes and 4 private state bytes**. Alignment, stack usage, diagnostic tables and display machinery are additional. The extents come from the loaded program’s symbols, not from counting source lines.
+
+One two-byte addition, with no rendering or wait. The 6502 carries from the low byte; Z80 adds a word; 68000 packs the byte binding into a word. Integer movement is smaller when fractional motion is unnecessary, but cannot accumulate these sub-unit steps.
+
+An 8.8 unsigned position covers 0–255.996 units. C64 and Amiga displays can extend beyond 255 horizontal pixels, so do not mistake this for a complete screen-coordinate format. Wider worlds need a wider integer part. The Amiga Flock lessons already use 16.16 positions; that is a useful wider alternative rather than a reason to squeeze those games into this byte-oriented interface. Clamp or wrap at the game’s actual bounds as a separate policy.
+
+Four native runs use Spectrum 48K with stock ROM tape loading and USR entry; Asm198x 0.0.72 and Emu198x 0.44.2. Each checks 64 boundary/varied/error cases, dirty initialisation and every state of a separate sequential client against an independent integer model. This is not exhaustive coverage of every possible byte combination. Source/tool/firmware hashes, immutable loaded code/data, native startup/completion, preserved-register sentinels, helper/data sizes, screenshot bytes/pixels and exact repair are checked. Deliberately altered observations must fail. Firmware is hashed, never distributed.
+
+[Related technique](/patterns/cross-platform/physics/fixed-point-math/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/e1d898ea8d3ad74fff830a6284dd34b3aa72b9d4/sinclair-zx-spectrum/patterns/assembly/physics/fractional-position).
