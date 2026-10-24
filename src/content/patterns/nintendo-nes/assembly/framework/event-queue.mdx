@@ -1,0 +1,77 @@
+---
+title: "A Bounded Event Queue on NES"
+summary: "When three things happen before the game gets around to handling them, one event byte can only remember the last one."
+platform: "nintendo-nes"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "game rules", "event-queue"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+When three things happen before the game gets around to handling them, one event byte can only remember the last one. A small FIFO keeps their order. This queue has an explicit full result, so a burst cannot silently overwrite an event that still matters.
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-entertainment-system/event-queue-demo.png" alt="NES shows the working result 03 03 00 33 02 01 11 22." caption="The completed native caller shows hexadecimal state bytes. The field order below explains the result; the full verification packet retains every call." />
+
+## Include, initialise and call
+
+Bind **HEAD, TAIL, COUNT, VALUE, MODE, OK, B0, B1, B2, B3** as 10 contiguous private bytes in that order. Include the helper once. Call `event_queue_init` at the deliberate reset boundary: it clears **all** named bytes, including inputs. Set your starting values afterwards. Call `event_queue_step` when this service is needed.
+
+Initialise once, then offer each event and check OK. If a push fails, choose a game policy: retry, discard a dispensable effect, or stop producing work. Do not pretend the event was queued. Pop until OK becomes zero, with a per-update work budget if producers could keep adding events.
+
+HEAD and TAIL are indices into contiguous B0–B3. COUNT is the number of occupied entries. MODE **1 pushes VALUE**, MODE **2 pops into VALUE**; other modes do nothing. OK is replaced with 1 on success or 0 on rejection. A full push and an empty pop preserve the queue and VALUE. Use only state produced by init/step: indices are below QUEUE_CAP, COUNT is 0–QUEUE_CAP and TAIL equals (HEAD + COUNT) modulo capacity.
+
+<CodeFromFile src="cross-platform/patterns/framework/event-queue/6502.inc" lang="6502" title="Reusable initialisation and service" />
+
+## State and ownership
+
+Six control/input/output bytes precede four reserved buffer bytes. A queue stores byte event IDs, not payloads or pointers. Popped buffer cells retain stale data; COUNT decides which entries are live. Head equals tail can mean either empty or full, so COUNT must be retained.
+
+A/X/flags may change; Y and decimal mode survive. **Clear decimal mode before binary arithmetic**; the standalone caller uses CLD. A direct call pushes a two-byte return address.
+
+This implementation has fixed symbol bindings and one mutation owner. Independent users need distinct state blocks **and** scoped/renamed bindings; including another copy with the same global labels is not sufficient. Sequential queries may reuse a scratch block only after the previous result has been consumed. Do not let an interrupt and the main loop mutate the same block without a separately designed ownership policy.
+
+The standalone cartridge owns its background, CHR font and RAM layout. Its diagnostic packet is bounded below the end of the NES’s 2 KiB internal RAM; the component owns no PPU or audio registers.
+
+## A small caller you can adapt
+
+The standalone program includes the helper and a separate client. Its read-only table exercises 96 valid inputs, then this client initialises once and retains state between calls. Replace the supplied input changes with your own game values; the display and packet machinery are diagnostics rather than dependencies of the component.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/event-queue/demo.asm" lang="6502" title="Buildable caller, bindings and include order" />
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/event-queue/exercise.inc" from="preview_rules:" to="; End of gameplay client." lang="6502" title="A separate client retaining state between calls" />
+
+The eight display fields follow **HEAD, TAIL, COUNT, VALUE, MODE, OK, B0, B1**; the full packet also retains B2, B3. Each field is a hexadecimal byte. The working row is **03 03 00 33 02 01 11 22**. The output is a completed diagnostic state, not a recording of movement, input or sound hardware.
+
+## Make it your own
+
+The custom build lowers QUEUE_CAP from four to two while retaining the four-byte storage layout. A third push is rejected, and the two original events still pop in order. This demonstrates a capacity limit rather than a RAM-saving layout change.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/event-queue/custom.asm" lang="6502" title="Maintained custom configuration or caller" />
+
+The observed custom row is **00 00 00 22 02 00 11 22**. The retained records qualify these named configurations; a new input domain or larger layout needs its own bounds and fresh execution checks.
+
+## Common mistake and repair
+
+The wrong client resets HEAD, TAIL and COUNT before every push. The later event replaces the history of earlier submissions. The first pop now returns 51 instead of 17. Initialise at session creation or an intentional flush, not when submitting an event.
+
+<CodeFromFile src="nintendo-entertainment-system/patterns/assembly/framework/event-queue/wrong.asm" lang="6502" title="Deliberately wrong client selection" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/nintendo-entertainment-system/event-queue-wrong.png" alt="NES shows the deliberate fault result 01 01 00 33 02 00 33 00." caption="The wrong client completes and records 01 01 00 33 02 00 33 00. Compare its state with the working row and the explained failure." />
+
+The wrong branch is in the displayed client above, selected by BROKEN. `repaired.asm` selects the original client again. Its executable matches demo exactly; Spectrum tape filenames can differ while loaded CODE is identical. The bad caller is a labelled experiment, not an alternative recommended implementation.
+
+## Cost and verification
+
+The measured helper occupies **87 code bytes plus 10 named state bytes** in this layout. Return addresses, alignment, tables and display diagnostics are additional. The sizes cover init and step together, not the whole standalone program.
+
+Each push/pop touches one buffer cell and a few counters, without moving the other entries. This buys constant work at the cost of indices, count and explicit overflow handling. Draining the entire queue is a caller loop and needs its own budget.
+
+Larger queues need wider indices or a bounded capacity and updated storage. A power-of-two capacity can use a mask to wrap, but this version uses comparison so its policy is visible. An IRQ producer and foreground consumer need a separately designed single-producer/single-consumer protocol or critical section; this is a single-owner queue.
+
+Four native runs use NTSC NES with a mapper-0 cartridge, CHR-ROM diagnostic font, NMI and DMC disabled; Asm198x 0.0.72 and Emu198x 0.44.2. Every run checks 96 table results, dirty initialisation and every state in a separate sequential trace against an independent integer model. This is boundary/varied-input qualification, **not exhaustive coverage of every byte combination**. Source/tool/firmware hashes, native startup and completion, preserved-register sentinels, immutable loaded code, actual helper extent, capture bytes and pixels, and exact repair are checked. Deliberately changed observations must fail. Firmware is hashed, never distributed.
+
+[Related reusable technique](/patterns/nintendo-nes/assembly/framework/object-pool/) · [Maths for Games](/craft/maths-for-games/) · [The Craft](/craft/).
+
+[Source and native evidence](https://github.com/code198x/code-samples/tree/0e7fed468a0de5b0b0804e1cf5489257e7abdc41/nintendo-entertainment-system/patterns/assembly/framework/event-queue).
