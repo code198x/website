@@ -1,0 +1,87 @@
+---
+title: "Aim a Projectile with Bounded Integer Speed on Amiga"
+summary: "A turret can fire towards the player without a trigonometry table or floating-point division."
+platform: "commodore-amiga"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "aimed-projectile"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A turret can fire towards the player without a trigonometry table or floating-point division.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/aimed-projectile-demo.png" alt="Amiga shows the working diagnostic row FA FD 01 64 64 50 5A 06." caption="A completed native caller displays FA FD 01 64 64 50 5A 06. The public field order below identifies these bytes; the capture is a state diagnostic, not a recording of a finished game." />
+
+## Use it in a project
+
+Coordinates are unsigned bytes. SPEED is 0–15. Return signed two’s-complement velocity bytes using floor(abs(delta)*SPEED/max(abs(dx),abs(dy))) on each axis, restoring each sign. A coincident target returns zero velocity with VALID=1. Invalid speed clears both outputs and VALID. This uses the maximum norm: the dominant axis has SPEED magnitude, so diagonal Euclidean speed can be up to sqrt(2) times larger.
+
+Include `component.inc` once (MOS callers include the shared 6502 implementation through it). Reserve the public fields in this exact order: **VELOCITY_X, VELOCITY_Y, VALID, ORIGIN_X, ORIGIN_Y, TARGET_X, TARGET_Y, SPEED**. They occupy 8 contiguous bytes. Also reserve the private workspace: **T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10** (11 bytes). Array names in the explanation refer to the numbered consecutive bindings, such as C0, C1 and so on.
+
+Call `aimed_projectile_init` once at the intended reset boundary. It clears inputs as well as outputs and workspace. Set your starting state and configuration afterwards, then call `aimed_projectile_step` whenever the described event occurs. The helper reads no device, waits for no frame and installs no interrupt handler.
+
+| Ownership | Fields |
+|---|---|
+| Retain between calls | none |
+| Supply before service | origin, target and SPEED |
+| Read after service | VELOCITY_X/Y and VALID |
+
+Repeated bounded remainder accumulation computes the scale without overflowing a byte product: compare against denominator minus numerator before each add. Signs are stored separately until the final result. This is a direct link to vector normalisation and norms in Maths for Games.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/aimed-projectile/component.inc" lang="m68k" title="Reusable initialisation and service" />
+
+## Machine contract
+
+D0–D3/A0–A1/CCR may change; D4–D7/A2–A6 are preserved. A direct BSR/JSR needs four return-address stack bytes. The helper makes no nested calls and adds no other stack use. Its named scratch is private workspace, not a pointer, a ROM variable or shared zero-page space that the game may borrow concurrently. The samples use fixed symbol bindings. Scope or rename every label and binding, including the component_end measurement marker, and allocate a separate block for each independent instance. Different helpers can also use common field names, so combining them needs separate namespaces or explicitly renamed bindings. Give each block one mutation owner.
+
+The A500 OCS diagnostic cold-boots an OFS disk, owns the Copper and bitplane and disables interrupt/DMA sources. The helper does not take over hardware or allocate Chip RAM.
+
+## Adapt the caller
+
+`demo.asm` supplies the bindings and include order. `exercise.inc` first runs table cases, then a separate client retaining state between calls. A game can call the public step entry directly and remove the diagnostic packet and display. Do not copy the diagnostic's hardware takeover into an existing game loop.
+
+Build with `make ASM198X=/path/to/asm198x` and `BUILD198X=/path/to/build198x`. The Makefile produces normal, custom, deliberately wrong and repaired programs. Tools must already be installed; the sample downloads nothing.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/aimed-projectile/demo.asm" lang="m68k" title="Bindings and include order" />
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/aimed-projectile/exercise.inc" from="preview_rules:" to="; End of nighttwo client." lang="m68k" title="A client retaining state between calls" />
+
+## Customise it
+
+Aim across the full byte range with a fifteen-unit dominant-axis speed. The maintained custom caller changes its inputs or client sequence rather than hiding a different implementation behind the same label. Compare every state of the two clients, not only their final display.
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/aimed-projectile/custom.asm" lang="m68k" title="Custom client selection" />
+
+The custom diagnostic row is **0F 07 01 00 00 FF 80 0F**. The full client trace in the source explains how it gets there.
+
+## Mistake and repair
+
+The wrong client overwrites the horizontal target with the origin. The projectile travels vertically instead of diagonally. Keep the captured target coordinates distinct from the launch position.
+
+The BROKEN branch lives in the sequential client, not the reusable helper. `wrong.asm` selects it; `repaired.asm` restores the normal call sequence. The repaired executable matches the normal program (for Spectrum, compare loaded CODE rather than the tape filename).
+
+<CodeFromFile src="commodore-amiga/patterns/assembly/physics/aimed-projectile/wrong.asm" lang="m68k" title="Select the deliberately wrong client" />
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-amiga/aimed-projectile-wrong.png" alt="Amiga shows the deliberate error row 00 FA 01 64 64 64 5A 06." caption="The wrong client completes with 00 FA 01 64 64 64 5A 06; its changed inputs and state explain the result." />
+
+## Cost and alternatives
+
+The measured helper extent is 710 code bytes; public state is 8 bytes and private scratch is 11 bytes. There are no immutable helper tables. Caller data, the test cases, return-address stack, alignment and display buffers cost additional space. These are assembled sizes, not cycle measurements.
+
+At most fifteen stages, each handling two axes. A word multiply/divide is attractive on 68000; the byte implementation keeps identical semantics on 6502 and Z80 at the cost of more instructions. No comparative cycle claim is made.
+
+Integer truncation can erase a shallow minor component. For smooth subpixel travel, retain fractional velocity in the movement layer. This computes an initial aim, not homing, intercept prediction, collision or equal Euclidean speed. Widen coordinates and workspace deliberately for larger worlds.
+
+## Execution evidence
+
+Four variants run on A500 OCS PAL, Kickstart1.3 OFS cold boot, using Asm198x 0.0.72, Emu198x 0.44.2 and Build198x 0.2.9. Each executes 64 boundary/varied/error table cases, dirty initialisation and the separate retained-state client. An independent mathematical/container model checks every public byte after every call. This is bounded example coverage, not exhaustive correctness for every possible state.
+
+The records retain loaded immutable code, completion, register sentinels, full packets, source/tool/firmware hashes and captures. The public gate validates these retained observations and rejects altered evidence; it does not run restricted firmware. No firmware is distributed. The eight displayed bytes are the first eight public fields, zero-padded when shorter; the packet includes every field.
+
+## Where it fits
+
+[Fractional position](/patterns/commodore-amiga/assembly/physics/fractional-position/): Feed signed velocities into a suitably widened fractional mover rather than treating them as unsigned coordinates.
+
+[The Craft](/craft/) · [Maths for Games](/craft/maths-for-games/) · [Source and native evidence](https://github.com/code198x/code-samples/tree/e4b7c00e9e41f5a3e666b4ee7dde734f70ef793c/commodore-amiga/patterns/assembly/physics/aimed-projectile).
