@@ -1,0 +1,85 @@
+---
+title: "Convert an Axis Sample to Intent in Spectrum BASIC"
+summary: "Keep an inclusive quiet zone around a calibrated centre, then report direction and distance beyond it."
+platform: "sinclair-zx-spectrum"
+category: "input"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "analogue-deadzone"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A slightly off-centre sample should not make a character creep. A dead zone ignores a small region around the centre, then starts movement gently with magnitude one just beyond the boundary.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-analogue-deadzone-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public S/C/R/D/M/O, private T/A and lines **3000–3180**. There are no arrays. Combine routines.bas and a caller using build.py, with END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at a reset boundary. It clears all public fields. Set sample S, calibrated centre C and radius R afterwards. S/C are integral bytes; R is an integral zero through 127. The sample and centre must use the same logical units and calibration.
+
+## Query one numeric sample
+
+Call **3100**. Distance at most R, including both boundaries, gives D=0,M=0. Outside the zone, D is one below centre or two above centre, and M is the distance **beyond** the radius. O=1 means valid input. Invalid input clears D/M/O and preserves S/C/R; valid calls also preserve all three inputs.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/input/analogue-deadzone/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+| Fields | Use |
+|---|---|
+| S / C / R | Sample / calibrated centre / quiet-zone radius |
+| D / M / O | Direction / excess magnitude / valid-input flag |
+
+Subtraction stays signed before taking the absolute distance. A sample left of centre must not wrap into a large positive byte. Removing the radius gives magnitude one at the first accepted sample, rather than a jump directly to the original distance.
+
+## Compare two quiet zones
+
+At S=110,C=100, normal radius eight returns direction two and magnitude two. The custom radius sixteen returns still. Later calls exercise the two boundaries and the first sample beyond each. The native table includes extreme centres, opposite endpoints and invalid radii.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/input/analogue-deadzone/demo.bas" from={"  70 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ and mailbox writes are diagnostics. These runs verify the numeric routine through each machine's interpreter. They do not verify a physical analogue device or an input adapter. The caller must obtain and calibrate a suitable sample. A digital joystick or keyboard reader does not acquire analogue precision by passing its values through this helper.
+
+## Calibrate and scale deliberately
+
+A centre near an endpoint leaves unequal travel on each side. The mathematical quiet interval may extend beyond the byte sample domain; only supplied byte samples are queried. Calibration and endpoint scaling need their own measurements and policy.
+
+M is not rescaled to 255. If full available travel should always produce full speed, scale each side against its measured endpoint range. A larger radius suppresses more small movement but leaves less usable travel. Hysteresis can prevent chatter around a boundary, at the cost of retained state; this independent-sample query has none.
+
+For two axes, separate axial dead zones create a square quiet region. A radial dead zone is a different geometry and needs a corresponding distance/scaling routine. Choose it for the intended control feel rather than substituting one label for the other.
+
+## Mistake and repair
+
+The wrong caller replaces the calibrated centre with zero. The same sample now appears far from centre, and both the magnitude and preserved-centre checks fail. Keep the actual calibration input and preserve signed subtraction. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-analogue-deadzone-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each query has fixed validation, signed subtraction, absolute distance and comparisons, with no input read, loop, allocation or clock. A simpler threshold can suit a purely digital decision; scaled analogue magnitude or hysteresis adds another policy and cost.
+
+[Maths for Games](/craft/maths-for-games/) connects signed displacement, inclusive intervals and piecewise mappings. [The Craft](/craft/) connects calibration and dead-zone shape to responsive, intentional control.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **312 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-input-models.py analogue-deadzone sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-input-models.py analogue-deadzone`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/input/analogue-deadzone/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/8e1b2584654c3801732cf9f78ec1e4d9ce12e6bd/sinclair-zx-spectrum/patterns/basic/input/analogue-deadzone).
