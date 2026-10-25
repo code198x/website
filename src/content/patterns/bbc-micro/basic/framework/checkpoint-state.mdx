@@ -1,0 +1,84 @@
+---
+title: "Save and Restore a Small Game State in BBC Micro BASIC"
+summary: "Capture three byte-valued fields in RAM and validate the complete stored record before restoring any live field."
+platform: "bbc-micro"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "checkpoint-state"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A restart point should put the player back where you saved them, with the right resource count. Restoring one field before discovering that the rest of the record is damaged can leave a peculiar half-restored world. This helper checks one small RAM snapshot before changing the live fields.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-checkpoint-state-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve live X/Y/R, saved S/T/U, checksum K, presence V, mode M, results O/E and private A/B/C/H/I/P/D. Reserve lines **3000–3820**, combine numbered source using build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Private scratch must not be an enclosing caller FOR variable.
+
+Call **3000** at a deliberate new-session boundary. It clears every public field, including the saved-presence flag. There are no arrays. X/Y can hold coordinates and R a resource count, but their game meaning belongs to the caller. Each is an integral byte value from zero to 255.
+
+## Capture or restore
+
+Set M=0 and call **3100** to capture X/Y/R into S/T/U, compute their XOR checksum K and set V=1. O=1,E=0 reports completion. Set M=1 and call 3100 to restore. It checks the presence flag, saved values and checksum **before changing any live field**. A successful restore copies all three and returns O=1,E=0.
+
+An absent snapshot, V=0, returns O=0,E=0 without changing X/Y/R. A zero checksum is valid; V tells you whether a record exists. E=1 rejects an invalid presence flag or selected source fields; E=2 rejects an unknown mode; E=3 reports a checksum mismatch. Failures preserve live fields. Capture validates the live triple; restore validates the stored triple/checksum. It can replace live destination values without first treating those old destination values as a snapshot.
+
+## The reusable routine
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/checkpoint-state/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The arithmetic bit loop computes XOR parity without assuming every BASIC dialect has the same bitwise operators. Only after the whole record passes validation does the restore copy its fields. This is a single-owner subroutine contract, not interrupt exclusion or a transaction spanning other components.
+
+## Restore a saved position
+
+The maintained caller captures a position/resource count, changes the live values and restores. It then damages one saved field, checks rejection, marks the snapshot absent and captures again. The complete diagnostic also covers empty records, valid zero checksum, maximum bytes, checksum failure and an XOR collision.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/checkpoint-state/demo.bas" from={"70 GOSUB 3000: LET X=10: LET Y=20: LET R=3: GOSUB 3100: GOSUB 2000\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+Line **2000**, mailbox writes, AA/BB and JJ/KK (Z/Q on Spectrum) serve the diagnostic. Your game supplies its fields, calls 3100 and handles O/E. It does not need the packet writer or saved test digits.
+
+## Customise the snapshot
+
+The custom caller changes the initial coordinates and resource count. Choose what those fields mean, and add game-specific checks where needed. A byte range alone cannot tell you whether a coordinate is inside a particular room or a resource count is legal for that actor.
+
+Independent checkpoints or other helpers need distinct variables, private scratch and numbered references. Do not reuse saved fields as another routine’s scratch.
+
+This is one RAM checkpoint, not a whole-game save file. It owns no disk/tape format, room objects, random-generator state, external handles or version migration. Extending a snapshot requires capturing and validating every required field before committing a restore. A saved reference may also need its object's lifetime state; three unrelated bytes do not make a coherent world automatically.
+
+The XOR checksum detects some mistakes but has many collisions. Swapping the two saved coordinates leaves it unchanged, and some paired changes cancel out. It supplies no authenticity guarantee. Stronger checksums and structured validation cost more code/state and need their own format and tests. A missing record and a corrupt one remain distinct outcomes here.
+
+## Mistake and repair
+
+The wrong caller uses the saved checksum K as scratch and sets it to zero before restoring. The chosen record's checksum is nonzero, so restoration is refused. Both saved checks print zero because the live position and resource count still hold the changed values.
+
+The repair preserves the complete saved record until a deliberate recapture. Repaired source and loaded tokenised program match the working caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-checkpoint-state-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each capture or present restore calculates eight bit parities over three values, in addition to range checks and copying. That is more interpreter arithmetic than a native XOR instruction. The fields are BASIC numbers, not eleven packed machine-code bytes. There is no measured cycle budget or durable-storage claim.
+
+[Maths for Games](/craft/maths-for-games/) connects parity, XOR and collisions to error checking. [The Craft](/craft/) helps decide where checkpoints belong and what the player expects a restart to preserve.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **780 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-timelines.py checkpoint-state bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-timelines.py checkpoint-state`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/checkpoint-state/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/241be8d5ff6d4d2868273c431f5ed036c9400f7d/bbc-micro/patterns/basic/framework/checkpoint-state).
