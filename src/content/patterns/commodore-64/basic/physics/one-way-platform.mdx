@@ -1,0 +1,90 @@
+---
+title: "Land While Crossing a One-way Platform in C64 BASIC"
+summary: "Compare old and proposed feet against a platform top, using widened horizontal spans and a deliberate drop-through flag."
+platform: "commodore-64"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "one-way-platform"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A fast fall can carry a character from above a thin platform to below it in one update. The feet never equal the top at either endpoint. Compare the path they crossed, and a landing can still be found without a per-pixel fall loop.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-one-way-platform-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public L/S/X/W/P/N/A/B/Y/D/O and private E/F. Reserve lines **3000–3240**, combine routines.bas and a caller with build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Private E/F hold widened horizontal endpoints.
+
+Call **3000** at a reset boundary. It clears all public fields. Supply actor horizontal X/W, old bottom P, proposed bottom N, platform X/width A/B, top Y and byte-valued drop flag D afterwards. Vertical coordinates increase downwards and do not wrap.
+
+## Query one candidate platform
+
+Call **3100**. O=1 reports byte/integer inputs. L=1 means landing/contact and S is the snapped bottom Y. Otherwise L=0 and S is the proposed bottom N. All inputs survive. Invalid numeric input returns O=0,L=0,S=N; handle O before applying the result.
+
+| Field | Use |
+|---|---|
+| X / W / P / N | Actor horizontal start/width and old/proposed feet |
+| A / B / Y / D | Platform start/width/top and drop-through flag |
+| L / S / O | Contact, proposed/snapped bottom and valid flag |
+
+Horizontal spans are half-open: `[X,X+W)` and `[A,A+B)`. Edge-only touching does not overlap. Width zero is a valid empty span with no contact. Endpoint sums may reach 510 and must stay wide. Landing requires horizontal overlap and `P <= Y <= N`, with D=0. Stationary feet exactly on top count as contact; upward motion passes through.
+
+Any nonzero byte D bypasses contact. Use 0/1 flags and normalise a dialect's−1 true value if needed. How long drop-through stays active belongs to the caller.
+
+## The reusable routine
+
+<CodeFromFile src="commodore-64/patterns/basic/physics/one-way-platform/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The helper checks the crossed vertical interval rather than requiring N to equal Y. Horizontal endpoints are calculated before comparing spans, without narrowing back to a byte. It returns a proposed bottom, not an automatic whole-object position or velocity update.
+
+## Keep old and proposed feet
+
+The normal caller falls from 90 to 110 across top 100 and returns contact with S=100. The custom caller sets D=1, so the same path passes through and keeps S=110. Later calls check rising feet, stationary contact and horizontal edge-only touching.
+
+<CodeFromFile src="commodore-64/patterns/basic/physics/one-way-platform/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK (Z/Q on Spectrum) and mailbox writes are observations. A game supplies the previous and proposed geometry before committing its fall, calls 3100 and uses L/S/O to choose its movement and grounded result. The helper reads no controls or clock.
+
+## Customise platform policy
+
+Query each plausible candidate and choose the nearest valid top along the fall. Accepting an arbitrary last result can put the actor through an earlier surface. Moving platforms, slopes and several collision axes require additional policy; this small query does not select a whole scene's landing for you.
+
+A fall that crosses the byte-coordinate seam is outside this non-wrapping vertical contract. Wider worlds need wider input/result bounds and verification. Horizontal start/width encoding can represent an endpoint beyond 255 internally; that is different from a byte-valued exclusive-edge API. Check contracts before connecting routines.
+
+## Mistake and repair
+
+The wrong caller keeps contact only if N equals Y. It discards the correctly found 90→110 crossing of top 100 and restores the unsnapped bottom. Both saved checks fail. Compare the interval crossed, not just endpoint equality. Repaired source and loaded program match normal.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-one-way-platform-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+There is fixed validation, two widened sums and interval comparisons, independent of fall distance. No pixel visits, allocation or rendering occur. BASIC numeric storage and tokenised size are separate from a packed byte representation. No cycle or frame-time guarantee is made.
+
+[Maths for Games](/craft/maths-for-games/) connects half-open spans, inclusive crossing and widened arithmetic. [The Craft](/craft/) connects intentional pass-through, forgiving landing and which movement state the game should commit.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **491 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-platforms.py one-way-platform commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-platforms.py one-way-platform`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/physics/one-way-platform/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/6b74eb8a6db3f12748a6f861add14e0b60a28e4c/commodore-64/patterns/basic/physics/one-way-platform).
