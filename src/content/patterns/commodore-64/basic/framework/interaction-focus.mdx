@@ -1,0 +1,78 @@
+---
+title: "Keep Interaction Focus Stable in C64 BASIC"
+summary: "Choose an eligible nearby target while retaining the current one within an explicit distance margin."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "interaction-focus"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Two nearby doors should not make the interaction prompt flicker whenever the player moves a fraction closer to one of them. Choose an eligible target, then give the current target a small retention margin. The player gets a stable prompt without making a distant object impossible to leave.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-interaction-focus-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Include routines.bas, reserving lines **3000–3330**. Public fields are S/O/C/A/R/M/D/E/F/G; private scratch names are I/K/P/U/V/T/B. Call **3000** at a chosen reset boundary. It clears public fields. Put a STOP, END or jump before the helper; call **3100** to choose focus.
+
+C is the current target index, zero through three, or 255 for none. A is a four-bit active mask. D/E/F/G are the four target distances, R the maximum allowed distance and M the retention margin. All these values must be integral bytes, and A cannot exceed 15. Supply every distance, even for inactive targets.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/interaction-focus/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+S is the selected index; 255 means none. O=1 means a valid query, including an empty eligible set. Invalid input returns S=255/O=0 and preserves all inputs. The routine does not change C: after a valid query the caller decides when to commit C=S. That includes clearing C when S=255.
+
+## Prefer the nearest, retain the current
+
+A target is eligible only when its active bit is set and its distance is at most R. Without eligible current focus, the nearest eligible target wins; equal distances favour the lower index. With eligible current focus, retain it while its distance is no greater than the best distance plus M. An inactive or out-of-range current target gets no grace from the margin.
+
+The normal caller starts with target one at distance ten and target zero at nine, using margin two. Target one remains selected. At distance eight, target zero is still only two closer, so focus stays. At seven it is three closer, and focus switches to zero.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/interaction-focus/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+The custom caller starts with target three and four equal distances. Even with margin zero, an eligible current target wins a tie. Moving target zero nearer switches focus; removing every active target returns a valid none. A later invalid mask returns O=0. Saved checks verify the first selection and the unchanged input C; diagnostics observe state before the caller's commit.
+
+## Choose what distance means
+
+The helper compares numbers supplied by the game. They might be Manhattan distance, a screen-space score or another consistent metric. R and M must use the same units. If using squared distances to avoid a square root, a fixed score margin is not a fixed physical distance margin. Choose and explain that behaviour deliberately.
+
+Use separate state for separate players. Target identities must remain stable between queries. This four-target interface is useful for a small interaction set; a larger game can gather a bounded shortlist from a spatial query and translate stable identities explicitly. Recycling shortlist indices without translating C would silently change which object owns focus.
+
+## Mistake and repair
+
+The wrong caller sets C to 255 before every query. The helper keeps choosing the nearest or lowest tied index because it never receives the old focus. Both saved first-selection/current-input checks fail. Retain the committed current index between queries and replace it only through the intended game policy. Repaired source and loaded programs match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-interaction-focus-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+The helper validates eight inputs and examines exactly four candidates. It uses no arrays, display access or timer. The best distance starts at 256, outside the valid byte range. Best distance plus margin can reach 510 and deliberately stays wide in BASIC; narrowing that sum to a byte would change the rule near its limit.
+
+Nearest-target selection without memory is cheaper in state and may be exactly right for a single shot. Retention adds deliberate hysteresis. A dwell timer or separate enter/leave radii offer different stability and response costs; they are alternatives, not automatic upgrades.
+
+[Maths for Games](/craft/maths-for-games/) connects ordering, tie rules, distance measures and hysteresis. [The Craft](/craft/) connects predictable prompts and the balance between stability and responsiveness.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **664 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-combat-focus.py interaction-focus commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-combat-focus.py interaction-focus`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/interaction-focus/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/0bf2387a2763ee8360682dc5326f86f59bfe8b65/commodore-64/patterns/basic/framework/interaction-focus).
