@@ -485,11 +485,29 @@ Measured on 2026-10-23, the repeats are, largest first:
 1. **Label** (done first): UI font, semibold, untracked, 0.8125rem, in
    about 66 rules across 30 files. 0.8125rem is off the scale; micro is
    0.875rem. About 45 are labels; the rest are buttons and pills.
-2. Display headings (UI font, 700, ink): about 14 files.
-3. Cards with a 3px ink border that lift on hover: 6 files; controls with
+2. Display headings (UI font, 700, ink): about 50 rules in 31 files, at
+   about 25 sizes from 1.25rem to 90px, many of them fluid. Agreed
+   2026-10-25: a heading glides from one step of the scale on a phone to
+   the next step up on a desktop (a section heading 32px to 40px, a card
+   heading 24px to 32px), so it sits on the scale at both ends and keeps
+   today's shrink on small screens. Four PRs:
+   1. Page titles (no visible change): the five identical title rules
+      become `.page-title`.
+   2. Section headings, h3 to h2 (32 to 40px): today's 34 to 38px
+      headings on CRASH! Live, the Vault index, the timeline, the
+      demoscene page and the articles.
+   3. Card and sub-headings, h4 to h3 (24 to 32px): today's 26 to 30px
+      headings on Field Notes, Updates, the colophon, Contribute, the
+      timeline years and the lessons.
+   4. Small headings: those already at 24px, and those at 20 to 21.6px,
+      which round to the body or h4 step (Pattern Library, Vault
+      sidebars, Foundations, Start Here).
+   Bold elements that are not headings (step numbers, the timeline's
+   year links, the Vault's connection links) stay as they are.
+3. Cards with a 3px ink border (done, `.ink-card`, #973); controls with
    a 1px line border: 15.
-4. Status pills: four identical rules on the family pages, plus chips on
-   CRASH! Live and the demoscene page.
+4. Status pills (done, `.pill`, #1218): the family pages' status, Craft,
+   the demoscene count, CRASH! Live's chips and the track list.
 
 Adopting a block also finds rules that never applied: a scoped rule styles
 only its own file's markup, so `.eyebrow` rules in four pages that render
