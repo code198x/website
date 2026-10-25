@@ -1,0 +1,85 @@
+---
+title: "Edit a Counted Text Buffer in Spectrum BASIC"
+summary: "Append a checked character, erase safely and clear a fixed eight-slot buffer while keeping live length separate from capacity."
+platform: "sinclair-zx-spectrum"
+category: "input"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "text-entry-buffer"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Entering a player's name needs more than appending characters. A full buffer must refuse another character, Backspace at the start must stay at zero, and drawing must know how many characters are real.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-text-entry-buffer-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+DIM B(8). Reserve public L/S/K/M/C, the eight array elements, private I and lines **3000–3300**. Private I must not be a caller's outer FOR variable. Combine routines.bas and the caller through build.py, keeping END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at a reset boundary. It clears the public fields and all eight slots. Set accepted capacity C afterwards, from one to eight. The normal caller uses eight; the custom caller four. Both still allocate eight numeric elements. L starts at zero and counts live characters, not allocated space.
+
+## Choose one edit
+
+Set K to the logical character value and M to an operation, then call **3100**. M=0 appends ASCII 32 through 126 if room remains. M=1 erases the last live character if there is one. M=2 clears all eight slots and L. K/M/C survive; erase and clear ignore K.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/input/text-entry-buffer/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+| S result | Meaning |
+|---|---|
+| 1 | A character changed, or clear succeeded |
+| 0 | Full append or empty Backspace; no change |
+| 2 | Rejected append character |
+| 3 | Invalid capacity, mode, length or stored byte data |
+
+Except for clear, the helper validates integral L from zero through C and every stored byte before editing. Append then checks the character before checking room. Erase clears the removed slot. Clear can recover a damaged length or array contents, provided C and the mode are valid; it deliberately empties the whole owned buffer.
+
+## Keep a live count
+
+The caller appends A and checks L=1 and B(1)=65. It then appends B, erases, clears, appends C and erases twice. The final empty erase is harmless. The native table also tests a full buffer, invalid characters, smaller capacity and clearing a corrupt length.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/input/text-entry-buffer/demo.bas" from={"  90 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK and the mailbox are diagnostics. Draw exactly B(1)..B(L). A full buffer has no promised terminator beyond the live span; do not search past it for a zero. Appending preserves inactive slots, so the count remains the authority even if other slots contain old data.
+
+## Choose the representation
+
+The array stores logical byte values in BASIC numeric elements, not eight packed RAM bytes. BASIC strings may be simpler when only a local name-entry field is needed. This counted representation makes shared byte data and the assembly interface explicit; that benefit has an interpreter storage and validation cost.
+
+ASCII here is an interchange convention, not a promise that keyboard codes, screen codes and font indices match it on every machine. Translate input and presentation deliberately. Cursor movement, insertion, accents and Unicode need additional rules and usually another representation. Smaller C changes accepted length, not the allocation.
+
+## Mistake and repair
+
+The wrong caller sets L=C before the first append, confusing allocated capacity with live length. The supposedly empty buffer now reports full and refuses A. Both saved append/count checks fail. Start the live count at zero and let successful edits update it. Later clear operations may make final states converge, so the early checks are retained. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-text-entry-buffer-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Ordinary edits validate eight stored values and change at most one slot. Clear visits all eight. There is no keyboard scan, repeat timer, allocation or display call inside the helper. Validate-on-load plus a trusted fast edit path can reduce repeated work, but changes the trust contract and needs its own proof.
+
+[Maths for Games](/craft/maths-for-games/) connects counts, capacity bounds and array indices. [The Craft](/craft/) connects forgiving editing and clear feedback to a name-entry screen that behaves predictably.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **607 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-interfaces.py text-entry-buffer sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-interfaces.py text-entry-buffer`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/input/text-entry-buffer/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/629b0d1eaff8246998e9e5b656851a6713432cc9/sinclair-zx-spectrum/patterns/basic/input/text-entry-buffer).
