@@ -1,0 +1,84 @@
+---
+title: "Count Active Play Ticks in C64 BASIC"
+summary: "Keep a two-byte active counter, freeze it during pause and give reset explicit priority."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "pause-clock"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A pause menu should not quietly use up the player's time allowance. This clock counts serviced active-play ticks, so menu activity and play time can follow different rules.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-pause-clock-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public L/H/P/R/O, private T and lines **3000–3200**. There are no arrays. Combine routines.bas and your caller with build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at a new-session boundary. It clears all public fields. L/H retain a low-byte-first unsigned counter, representing `L + 256*H`. Set a different starting counter afterwards if the game needs one.
+
+## Supply pause and reset state
+
+Set P to the current pause flag and R to a reset request, then call **3100**. Any nonzero byte means true. Reset takes priority: it clears L/H even while paused. Without reset, a paused call leaves the counter alone; a running call adds one modulo 65,536. P/R survive.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/pause-clock/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+| Field | Meaning |
+|---|---|
+| L / H | Retained low/high counter bytes |
+| P / R | Pause level / reset request |
+| O | Valid-input flag |
+
+All four inputs/state must be integral bytes. Invalid input clears O and leaves L/H/P/R untouched. Validation occurs before reset; a reset request does not silently repair damaged non-byte fields. Use the known initialisation entry at a deliberate recovery boundary.
+
+## Separate menu time from play time
+
+The normal client starts at 254, services run/pause/pause/run and checks 256. The custom start at 255 checks 257, crossing the carry one call earlier. Both then reset while paused, remain paused and run once, finishing at one. The native table separately checks the 65,535-to-zero wrap.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/pause-clock/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ and mailbox writes are diagnostics. A game supplies one service per intended tick and can keep another always-running clock for menu animation. No hardware clock or interrupt is installed by this helper. If the caller withholds service during pause instead, remember that a reset still needs its own path.
+
+## Customise duration and wrap
+
+These are ticks, not seconds. Conversion depends on the actual service rate. The 16-bit counter eventually wraps; a subtraction-based deadline must use its own documented safe interval rather than treating a wrapped value as a lifetime total. Wider counters postpone wrap at a storage and arithmetic cost.
+
+An ordinary BASIC scalar may be a simpler active counter when binary interchange is unnecessary. The two-byte version makes the assembly/shared-data representation explicit. Decide whether slow-motion, an options menu or an end-of-level tally counts as active play, then supply P consistently. The routine cannot choose that rule for the game.
+
+## Mistake and repair
+
+The wrong caller forces P to zero before every call. Time continues through the two pause samples, and after reset it also counts the paused sample. Both saved checks fail. Supply the actual pause state or deliberately stop servicing active time. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-pause-clock-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each valid call has a bounded reset, hold or increment path. The increment widens before splitting the result, so the carry and full wrap are deliberate. It allocates nothing and makes no display or device calls.
+
+[Maths for Games](/craft/maths-for-games/) connects modular counters, place value and elapsed intervals. [The Craft](/craft/) connects pause behaviour and timed decisions to fair, predictable play.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **311 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-temporal.py pause-clock commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-temporal.py pause-clock`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/pause-clock/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/e649e50f5794cd9687c7032a05cf73a24e31cf71/commodore-64/patterns/basic/framework/pause-clock).
