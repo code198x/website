@@ -1,0 +1,78 @@
+---
+title: "Project a World Point into the View in BBC Micro BASIC"
+summary: "Convert byte-pair world coordinates to visible screen positions without dropping high bytes or wrapping negative differences."
+platform: "bbc-micro"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "viewport-world-transform"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A world can be much larger than the visible screen. Subtract the camera's position from a world point, then decide whether that relative position fits inside the view. Crossing coordinate 255 must not suddenly send the point back to zero.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-viewport-world-transform-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public X/Y/V/O/A/B/C/D/E/F/G/H/W/T, private I/J/K/L and lines **3000–3240**. There are no arrays. Keep private I/J/K/L away from any active caller FOR variables. Combine routines.bas with the caller using build.py, with END, STOP or a jump before the helper. Use GOSUB on C64/BBC or GO SUB on Spectrum. Call **3000** to clear public fields.
+
+Supply world X as low/high bytes A/B and world Y as C/D. Camera X uses E/F and camera Y uses G/H. Each pair represents low+256*high, an unsigned coordinate zero through 65535. W/T are positive byte width/height, in the same units as the coordinates.
+
+## Transform before clipping
+
+Call **3100**. O=1 means valid byte inputs and nonzero dimensions. V=1 means the point is inside; X/Y are its screen coordinates. A point to the left or above has a negative relative coordinate and is outside. The right and bottom boundaries are excluded: relative X must be less than W and relative Y less than T.
+
+<CodeFromFile src="bbc-micro/patterns/basic/rendering/viewport-world-transform/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+An outside but valid point returns X/Y/V=0 and O=1. Invalid input clears X/Y/V/O. Every input survives either result. Check V before using X/Y: zero coordinates can mean the visible top-left point or an invisible result.
+
+## Keep both bytes
+
+The normal caller projects world 261,266 against camera 250,256 in a 32-by-24 view. The result is 11,10. The custom caller uses world 65535,65535 and camera 65534,65534 in a two-by-two view, giving 1,1. These examples cross a byte boundary and approach the full world-coordinate limit.
+
+<CodeFromFile src="bbc-micro/patterns/basic/rendering/viewport-world-transform/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+Later calls move the point outside and submit a zero-width view. AA/BB/JJ, line 2000 and the mailbox are diagnostic machinery. The helper writes no display registers, scrolls no hardware and changes no camera position.
+
+## Match the test to the object
+
+This is point visibility. A sprite can overlap a viewport while its origin lies outside. [Rectangle clipping](/patterns/commodore-64/basic/physics/rectangle-clipping/) includes dimensions and uses the appropriate intersection test. A camera offset or screen shake should be applied at a deliberate rendering stage, with wider signed arithmetic if it can make the visible range extend beyond this origin.
+
+The representation can describe world pixels, tiles or another chosen unit, but all inputs must agree. A width of 32 tiles is not a width of 32 pixels. Nonwrapping subtraction is intentional: a toroidal world needs a shortest-distance or another explicit wrap policy.
+
+## Mistake and repair
+
+The wrong caller discards the world X high byte before conversion. Both normal and custom points move to an unrelated world position and become invisible. The saved X and visible checks fail. Preserve the complete byte pair through subtraction. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-viewport-world-transform-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+The routine validates ten input bytes, reconstructs four words and subtracts two coordinate pairs before four bounds comparisons. Screen outputs fit bytes because valid dimensions are at most 255. The widened differences must remain signed until clipping; masking them back to bytes first would turn some outside points into false positives.
+
+[Maths for Games](/craft/maths-for-games/) connects coordinate spaces, translation and half-open bounds. [The Craft](/craft/) connects camera ownership and clipping to a view that stays stable as the world grows.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **609 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-traversal.py viewport-world-transform bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-traversal.py viewport-world-transform`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/rendering/viewport-world-transform/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/c75e9aba790782b8fb82ccf4c019fca9ce43a858/bbc-micro/patterns/basic/rendering/viewport-world-transform).
