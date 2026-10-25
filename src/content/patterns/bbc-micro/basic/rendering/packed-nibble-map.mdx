@@ -1,0 +1,84 @@
+---
+title: "Read and Edit Packed Four-bit Cells in BBC Micro BASIC"
+summary: "Store two logical cells per numeric byte value and update either half without damaging its neighbour."
+platform: "bbc-micro"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "packed-nibble-map"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Sixteen possible tile values need four bits each. Pair two cells in one byte value and the map data gets smaller, at the cost of extra work whenever a cell is read or changed.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-packed-nibble-map-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+DIM B(8). Reserve public V/O/C/W/N, the eight elements, private I/K/H/L and lines **3000–3240**. Private I must not be the caller's outer FOR variable. Combine routines.bas and the caller through build.py and prevent fall-through with END, STOP or a jump. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at a reset boundary. It clears every public field and all eight elements. Load existing packed values afterwards. Logical cells are zero through fifteen; B(1) is the first packed byte value. An even cell occupies the high nibble and the following odd cell the low nibble.
+
+## Read or replace one cell
+
+Set cell C and write flag W, then call **3100**. W=0 reads; any nonzero byte writes N and returns it. On writes N must fit zero through fifteen. Reads ignore N's value within its byte envelope. V is the returned nibble and O=1 reports success.
+
+<CodeFromFile src="bbc-micro/patterns/basic/rendering/packed-nibble-map/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+| Fields | Use |
+|---|---|
+| B(1)..B(8) | Retained packed byte values |
+| C / W / N | Logical cell / write flag / replacement |
+| V / O | Returned cell value / valid flag |
+
+C, W, N and all stored values must be integral in their bounds. An invalid request clears V/O and preserves the complete array and inputs. The full span is checked before any write. Only the chosen nibble changes; its partner and every other packed byte survive.
+
+## Read back the intended cell
+
+The normal caller writes three to cell nine, then reads cell nine and its neighbour. The custom caller writes seven to the final low nibble, cell fifteen. Both also verify that the unrelated first packed byte remains 18. A later invalid cell request leaves the map alone.
+
+<CodeFromFile src="bbc-micro/patterns/basic/rendering/packed-nibble-map/demo.bas" from={"90 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK and the mailbox are diagnostics. A game passes its logical cell index, not an already halved byte offset. Convert world or map coordinates to that logical index before this layer. Reading data does not draw a tile or decide its properties.
+
+## Weigh the saving
+
+Eight BASIC numeric elements hold sixteen logical cells. They do not occupy eight physical RAM bytes: interpreter numeric storage and array headers still apply. Compared with sixteen numeric elements, fewer elements are needed, but the helper and arithmetic also cost space and time. Measure the whole program before choosing packing for a small map.
+
+The existing tile-map helper provides ordinary cell lookup; the bit-reader/writer process fields through a retained cursor. This component instead offers random-access four-bit cells with checked replacement. Larger tile catalogues need more bits, another mapping or an unpacked representation. Streaming compression is a different trade-off from cheap repeated edits.
+
+## Mistake and repair
+
+The wrong first write passes cell zero instead of the requested cell. The operation succeeds, but reading the real target still returns its old value and the unrelated first packed byte has changed. Both saved checks fail. Keep logical cell identity separate from packed-byte offsets. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-packed-nibble-map-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each query validates eight elements, locates one element and splits its two nibbles. A write recombines only that selected pair. No shifting of the rest of the map, allocation or rendering occurs. Trusted-data variants can reduce validation; direct byte storage avoids numeric-array overhead but needs explicit RAM ownership and machine-specific access.
+
+[Maths for Games](/craft/maths-for-games/) connects quotient/remainder, place value and preserving neighbouring fields. [The Craft](/craft/) connects compact world data to the cost of changing that world during play.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **459 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-interfaces.py packed-nibble-map bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-interfaces.py packed-nibble-map`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/rendering/packed-nibble-map/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/4e5a416d53fc881fb2873d9f474a1041b3f17dec/bbc-micro/patterns/basic/rendering/packed-nibble-map).
