@@ -1,0 +1,84 @@
+---
+title: "Resolve Held Input to Four Directions in BBC Micro BASIC"
+summary: "Cancel opposed directions, then use retained axis preference to choose a single direction from a diagonal."
+platform: "bbc-micro"
+category: "input"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "four-way-input"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A maze character needs one direction even when the player holds a diagonal. Deciding what that means is an input policy, separate from detecting the buttons and deciding whether a wall blocks movement.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-four-way-input-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public H/A/D/O, private L/R/U/V/X/Y and lines **3000–3240**. There are no arrays. Combine routines.bas and the caller using build.py, with END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at an intended reset boundary. It clears all public fields. A is retained axis preference: zero horizontal, one vertical. Set a different starting preference afterwards if needed. H is an integral byte whose low bits mean left, right, up and down respectively; higher bits are ignored.
+
+## Cancel first, then choose
+
+Call **3100**. Opposite directions cancel within each axis. If one axis remains, choose it. If both remain, prefer A. D is zero still, one left, two right, three up or four down. A records the last nonzero chosen axis, and H survives. O=1 reports valid input; an invalid H/A clears D/O and preserves H/A.
+
+<CodeFromFile src="bbc-micro/patterns/basic/input/four-way-input/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+| Field | Use |
+|---|---|
+| H | Held mask: bits zero left, one right, two up, three down |
+| A | Retained preferred axis, zero horizontal or one vertical |
+| D / O | Chosen direction / valid-input flag |
+
+Left plus right does not beat a valid Up request: horizontal intent cancels before arbitration. With no remaining direction, A survives for a later diagonal. This remembers the last **chosen axis**, not which physical button was pressed most recently.
+
+## Watch preference change
+
+The caller supplies left/up, then up alone, then left/up again. Normal initial A=0 chooses left first; custom A=1 chooses up first. The up-only update sets vertical preference, so both finish by choosing up from the final diagonal.
+
+<CodeFromFile src="bbc-micro/patterns/basic/input/four-way-input/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ and the mailbox are observations. A game maps its input reader to H and uses D to propose movement. This routine does not move an actor, consult a tile map or buffer an intended turn until a junction. The chosen direction can still be blocked by game geometry.
+
+## Choose the policy for your game
+
+A fixed horizontal priority needs no retained A, but treats every diagonal the same. Last-pressed priority needs press history and a rule for simultaneous edges. Buffered maze turns need another retained request and a policy for when a turn is legal. Eight-way motion should preserve both axes instead of collapsing them here.
+
+Use one renamed context for each independently controlled player or menu. Resetting on focus/session changes is a deliberate choice; resetting on every update discards the very preference this helper maintains. Logical bits are not a claim about a particular joystick port layout.
+
+## Mistake and repair
+
+The wrong caller resets A to horizontal before every service. The up-only update briefly sets vertical preference, but the next diagonal loses it and chooses left. Both saved final direction and preference checks fail. Keep A between updates. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-four-way-input-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+The routine extracts four bits, forms two signed intents and chooses one axis with bounded comparisons. No search, allocation or input scanning occurs. In an interpreter with suitable bitwise operations extraction may be shorter; verify the same logical mapping and cancellation before substituting it.
+
+[Maths for Games](/craft/maths-for-games/) connects signed axis vectors and cancellation. [The Craft](/craft/) connects direction arbitration, buffered turns and the difference between detected input and allowed movement.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **363 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-input-models.py four-way-input bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-input-models.py four-way-input`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/input/four-way-input/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/bf03a2d6e6e9e40259ad0a3d554761eb10fb83c2/bbc-micro/patterns/basic/input/four-way-input).
