@@ -1,0 +1,95 @@
+---
+title: "Keep an Effect on a Timer in BBC Micro BASIC"
+summary: "Track a finite duration and pulse interval, including a possible pulse on the final active tick."
+platform: "bbc-micro"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "timed-status"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A poison effect needs both a lifetime and a rule for when it hurts. Keeping those counters separate prevents a final partial interval from extending the effect forever. This helper returns pulses and remaining duration; your game supplies the consequence.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-timed-status-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve R/H/D/P/A/F/O/E and lines **3000–3230**. There are no arrays or private scratch globals. Combine numbered source with build.py and prevent fall-through using END, STOP or a jump. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Set D to an integral duration from zero to 255 and P to an integral period from one to 255. Call **3000** to clear remaining R, phase H, apply A, pulse F and O/E, retaining D/P. The effect starts inactive. Each independent effect needs separate state and numbered references, or a deliberate wrapper that loads/stores its context.
+
+## Apply and service
+
+Set A=1 to apply or refresh, then call **3100**. It reloads R from D and H=0. **The same call consumes the first active tick.** Set A=0 on ordinary later services. An active service decrements R, advances H and returns F=1 at a period boundary. Expiration clears H. A period-boundary pulse on the final active tick is valid, even though the returned R is zero.
+
+For duration six and period two:
+
+| Service | Remaining | Pulse |
+|---|---|---|
+| Apply | 5 | 0 |
+| 2 | 4 | 1 |
+| 3 | 3 | 0 |
+| 4 | 2 | 1 |
+| 5 | 1 | 0 |
+| 6 | 0 | 1 |
+
+Process the fresh F result rather than requiring R to remain positive after service; that would lose the final pulse. D=0 with A=1 cancels the effect without a pulse. Valid inactive calls clear H and return F=0. O=1,E=0 means the call is valid, not that the effect is still active.
+
+R/D must be integral bytes, P positive, H in 0..P-1 and A exactly zero or one. E=1 rejects timer/configuration state; E=2 rejects an invalid apply flag. Invalid calls preserve R/H and clear F/O. Configuration is validated before refresh, so changing P below the old phase needs an explicit phase/reset policy rather than expecting apply to repair inconsistent state.
+
+## The reusable routine
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/timed-status/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+Duration decides how many active ticks remain. Phase decides whether this tick emits a pulse. Testing the period boundary before clearing expired phase keeps a valid final pulse while preventing a leftover partial interval from becoming extra lifetime.
+
+## Run through expiry
+
+The working caller applies once and services eight times. It checks that the duration expires and that three pulses occur. The custom duration five/period three produces one pulse; its final partial interval expires without an extra pulse. The earlier table also tests cancellation, period one, maximum values, final pulses and invalid state.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/timed-status/demo.bas" from={"70 LET D=6: LET P=2: GOSUB 3000: LET A=1: LET NN=0: LET AA=0: LET BB=0: FOR JJ=1 TO 8\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+Line **2000**, the mailbox, NN/AA/BB and JJ/KK (Z/Q on Spectrum) are diagnostic machinery. A game calls 3100, consumes the fresh F result once and uses R for its own status display. The helper neither changes health nor plays sound.
+
+## Customise the effect
+
+Choose D and P for a poison pulse, blinking effect or another periodic event. Reapplying resets both duration and phase here. Stacking durations, preserving phase on refresh or limiting refreshes are different rules and need different state/tests. Changing D alone affects a later application; it does not truncate an already-running R.
+
+The units are service calls. They can be turns, simulation updates or clock-driven ticks if that is what the caller supplies. Withholding calls pauses the effect. An elapsed-time deadline or accumulator suits variable update spacing; a timed turn still needs its chosen clock policy. There is no installed interrupt, hidden frame wait or real-time guarantee.
+
+P=1 can pulse on every active call, including an apply with D=1 that also expires immediately. A nonzero duration shorter than the period can expire with no pulse. Neither case is an error; the game chooses whether that behaviour fits the effect.
+
+## Mistake and repair
+
+The wrong caller sets A=1 before every service. Remaining duration repeatedly reloads, while phase repeatedly restarts at zero. With these periods, no pulse arrives and the duration never finishes. Both saved checks print zero.
+
+The repair applies once and retains timer state through later A=0 updates. Repaired source and loaded tokenised program match the working caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-timed-status-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and further steps
+
+Each service performs a bounded sequence of scalar checks/arithmetic with no array scan. BASIC scalar storage is not eight machine-code bytes. There is no measured hardware-cycle claim. A single expiry deadline is cheaper when no periodic pulses are needed; several independently stacked effects require more state and a deliberate ownership policy.
+
+[Maths for Games](/craft/maths-for-games/) connects countdowns, modular phase and discrete intervals. [The Craft](/craft/) helps choose how pulses and expiry are communicated so the player can understand the rule.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **368 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-timelines.py timed-status bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-timelines.py timed-status`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/timed-status/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/805ca7cdd841060e360542bd78228fb42fddc9ec/bbc-micro/patterns/basic/framework/timed-status).
