@@ -1,0 +1,86 @@
+---
+title: "Claim and Reuse Object Slots in Atari 800XL Assembly"
+summary: "Reserve fixed slots, report a full pool safely, release by index and optionally expire objects without moving their payloads."
+platform: "atari-800"
+category: "framework"
+difficulty: "intermediate"
+tags: ["assembly", "reusable", "pool", "ownership"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A game can keep a small stock of enemies, projectiles or effects without allocating a new block of memory every time. A pool gives each live object a stable slot. Releasing one slot makes room for another object without shuffling every payload.
+
+<Figure kind="capture" fit="column" src="/images/patterns/atari-800xl/assembly-object-pool-demo.png" alt="Atari 800XL completes the fixed-slot client with both reuse checks passing." caption="The working client claims, releases, reuses and expires fixed slots." />
+
+## Include and initialise
+
+Define POOL_CAPACITY as an integer from one through 255 and reserve that many private flag bytes. Zero means free and one occupied. Include pool.inc once, then call pool_init at an intended reset boundary. Initialisation clears flags only: payload arrays belong to the caller. Call it once before use, rather than resetting ownership during ordinary spawning.
+
+The Atari 800XL example uses POOL_FLAGS for the flag base. A game chooses RAM it owns and allocates its payload arrays separately. A slot index can address the same position in each parallel array: position, direction, animation, kind or other chosen state.
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/object-pool/pool.inc" lang="6502" title="Reusable slot ownership routines" />
+
+## Acquire, check, then write
+
+Call pool_acquire. **Check carry before using the returned index.** Carry clear means the lowest free slot has been claimed. Initialise its payload before making it visible to another part of the game. Carry set means full; the returned index equals capacity and lies outside every valid slot.
+
+A/status change; init/acquire also change X. Y and decimal mode survive. Acquisition returns carry clear with X=slot, or carry set with X=capacity. Release takes X=slot and reports success through carry.
+
+Call pool_release with a valid occupied index to clear its flag. An invalid index or an already-free slot returns carry set and changes no flag. Release leaves payload intact. Those old bytes are not a live object: the ownership flag decides whether the game may use them.
+
+## Fill, release and reuse
+
+The maintained caller claims slots zero, one and two, then fills the remaining slots. It observes a full-pool result, releases slot one and claims it again. A rejected release of index 255 leaves the pool unchanged in these eight- and four-slot examples.
+
+<CodeFromFile src="cross-platform/patterns/framework/additional-object-pools/exercise6502.inc" from={"preview_pool:\n"} to={"\n; End of standalone pool preview."} lang="6502" title="Retained fill, release, reuse and expiry client" />
+
+The default pool has eight slots; custom.asm uses four. Both reuse slot one after its release. The supplied occupancy display is an eight-bit diagnostic, so that client needs capacity three through eight. The build rejects an unsuitable capacity for that display instead of silently truncating it. Separate native boundary callers exercise capacity one and 255, with complete flag arrays. The helper’s wider contract does not make the small display wider.
+
+## Expire objects without moving them
+
+Optionally include age.inc and reserve a separate lifetime byte for each slot. Before the first age call, every occupied slot must have a lifetime from one through 255. One pool_age call is one chosen simulation step. It decrements occupied lifetimes and releases those reaching zero, keeping every other object at the same index.
+
+<CodeFromFile src="atari-800xl/patterns/assembly/framework/object-pool/age.inc" lang="6502" title="Optional fixed-slot lifetime policy" />
+
+The example assigns alternating lifetimes one and two. After one step the odd slots remain; after the next, none remain. The maximum-capacity native caller also checks all 255 lifetimes changing from 255 to 254, then from one to zero with every slot released.
+
+The caller owns the clock. An untimed game can omit this policy, and a timed-turn game can invoke it at its chosen boundary. Queue new spawns until after the pass: otherwise whether a new object ages immediately would depend on which slot it received. Passing zero as a live lifetime violates this policy’s contract and can wrap the decrement.
+
+## Keep one owner
+
+The routines use ordinary call/return stack space and no device I/O. They are not re-entrant. Do not let an interrupt or another owner mutate the same flags during a traversal. Optional expiry adds a nested release call, and the Z80 policy saves a loop counter on the stack.
+
+A released index can later name a different object. Long-lived references need a generation or another identity policy; a bare index does not solve that problem. Multiple pools need separate storage and renamed labels, or a deliberately designed context-pointer interface. Compacting objects is another approach with different reference and movement costs.
+
+## Mistake and repair
+
+The wrong caller omits the release before trying to reuse slot one. The pool remains full. It returns carry set, and the caller records 255 as its diagnostic failure marker instead of a usable slot. Both saved reuse-index and success checks fail. Check the status and release ownership at the right boundary; do not treat stale payload bytes as spare capacity. Repaired source and emitted machine code match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/atari-800xl/assembly-object-pool-wrong.png" alt="Atari 800XL shows both reuse checks failing after the omitted release." caption="The caller reaches completion, but the still-full pool correctly refuses another allocation." />
+
+The other native callers check full pools, invalid and repeated releases, unchanged guards, preserved context and all 256 ownership masks for the eight- and four-slot configurations. Capacity-255 tests include the high-bit indices and the full result 255; that result must never be used as a table index.
+
+## Machine layout and measured cost
+
+The 64 KiB Atari loader sets RAMTOP to 124 and selects GRAPHICS 0 before installing code at $8000. Native MEMTOP and SAVMSC are checked below $7C00, retaining the existing loader’s gap. Flags begin at $8700, lifetimes at $8900 and the observation buffer at $9000, ending below the BASIC ROM. The harness saves/restores its $CB/$CC scratch bytes, handles the USR entry convention and returns numeric zero. Actual BASIC arithmetic and the USR result are checked afterwards.
+
+These are explicit layouts for the named stock-firmware verification, not a general-purpose memory allocator. The complete diagnostic buffer reserves 4 KiB; it is not required pool state. A game needs capacity flag bytes and, if using expiry, capacity lifetime bytes, plus its own payload. The helper emits **52 bytes**, with **21 additional bytes** for expiry, on this CPU/tool configuration. Those sizes exclude the loader, exhaustive caller, observation buffers, BASIC runtime and payloads.
+
+Initialisation, acquisition and a full expiry pass visit at most capacity slots. Release checks and changes at most one flag. A bitset can reduce flag storage at the cost of mask work. A free-list can avoid a scan but needs links and an explicit free-order policy. No measured cycle budget, original-hardware result or whole-game speed claim follows from these bounded examples.
+
+## Native evidence and Maths for Games
+
+All six programs load through the stock BASIC interpreter’s generated READ/POKE source, with every actual machine-code byte compared before entry. Normal, custom, wrong, exact repair and the two capacity-boundary programs are independent runs. Full ownership/lifetime packets, actual emitted extent, completion, guards, register/context checks, BASIC arithmetic after return and independent screenshot indicators are required. Captures follow two complete frames after completion.
+
+The set model chooses the lowest member of the free set and compares the complete ownership result. Public CI rechecks retained records and rejects altered source, producer, program, state, completion and coupled wrong captures; it does not execute restricted firmware. The retained cases name Emu198x 0.44.2 and Asm198x 0.0.72. Publishing separately checks the existing assembler pin. Host checks complement the native configurations; neither is claimed as every possible capacity, firmware or timing condition.
+
+Run make with ASM198X pointing to the assembler. Each build produces the flat image and its generated stock loader under build/. Follow that loader’s reservation and wait for the editor before its CALL, EXEC or USR entry. The site includes maintained source and pins the complete repository; these payloads use the existing source-delivery path. A game normally includes the helper in its own assembly project and supplies its own layout.
+
+[Maths for Games](/craft/maths-for-games/) connects finite sets, lowest-free selection, bounds and stable indices. [The Craft](/craft/) connects object lifetime, spawn limits and feedback when no slot is available.
+
+
+## Complete source
+
+[Source, stock loaders and native evidence](https://github.com/code198x/code-samples/tree/cf2118ad4dbfe788707b06c9b58acbdd70b5ab8c/atari-800xl/patterns/assembly/framework/object-pool).
