@@ -1,0 +1,89 @@
+---
+title: "Keep Track of Cells That Need Redrawing in BBC Micro BASIC"
+summary: "Mark, inspect and consume pending cell updates without losing repeated marks or crossing the two-byte boundary."
+platform: "bbc-micro"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "dirty-cells"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A score changes, a door opens, an actor leaves a tile behind. Redrawing everything is simple, but sometimes only a few regions need attention. A dirty set remembers which ones, so repeated changes to the same region need only one redraw.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-dirty-cells-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve scalar state L/H, request S/M, results O/R/E and private I/U/V/K. Reserve lines **3000–3910** and combine numbered sources with build.py. Put END, STOP or a jump before the helper. C64/BBC use GOSUB and Spectrum GO SUB. Private scratch must not be an enclosing caller's FOR variable.
+
+Call **3000** at a deliberate reset boundary. It clears both masks, S/M/O/E and returns R=255. L holds cells 0–7; H holds 8–15. Each mask is an integral byte value 0–255. These are sixteen game-chosen work IDs, not a built-in full-screen grid or a display address.
+
+## Mark, inspect and acknowledge
+
+Set M and S, then call **3100**:
+
+| M | Operation | Result |
+|---|---|---|
+| 0 | Mark S, from 0 to 15 | O=1 if newly marked, O=0 if already pending; R=S |
+| 1 | Clear S, from 0 to 15 | O=1 if it was pending, O=0 if already clear; R=S |
+| 2 | Take the lowest pending ID | O=1,R=ID and its bit is cleared; empty gives O=0,R=255 |
+| 3 | Peek at the lowest pending ID | Same result as take, but leaves both masks unchanged |
+
+Peek/take ignore S. E=1 rejects damaged masks; E=2 rejects a bad mode or a bad requested cell for mark/clear. Invalid calls preserve L/H and return O=0,R=255. An empty set or repeated mark is not an error: E remains zero. **Check O before treating R as a cell index.**
+
+## The reusable routine
+
+<CodeFromFile src="bbc-micro/patterns/basic/rendering/dirty-cells/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The helper finds a bit arithmetically, using powers of two and integer division. It does not assume that every BASIC dialect's AND is a bitwise operator. Keeping each half below 256 also makes the boundary between cells seven and eight explicit.
+
+## Keep pending work across updates
+
+The caller marks four cells across both halves, marks one again, peeks, takes one, explicitly clears another and drains the remainder. Repeated marking cannot create duplicate work. The full diagnostic also tests empty/full masks, both byte boundaries and invalid requests.
+
+<CodeFromFile src="bbc-micro/patterns/basic/rendering/dirty-cells/demo.bas" from={"70 GOSUB 3000\n"} to={"\n2000 ?"} lang="basic" title="Maintained retained-state caller" />
+
+The line **2000** writer, mailbox, AA/BB and JJ/KK (Z/Q on Spectrum) are verification machinery. A game owns the loop that obtains an ID and redraws its chosen region.
+
+## Customise and use the set
+
+The custom caller marks different IDs while exercising both mask halves. Map IDs to your own tiles, UI fields or larger regions. C64 character cells, Spectrum bitmap/attribute areas and BBC display modes have different drawing paths; this bookkeeping routine changes none of them. If an update affects neighbouring pixels or attributes, mark every affected region.
+
+If drawing can fail or be deferred, peek first and clear the ID only after a successful draw. A taken ID can instead be re-marked on failure. Keep simulation and acknowledgement under a single ownership rule: a new change arriving between peek and clear could otherwise be lost. A generation counter or queued update protocol is a different contract.
+
+A per-update work budget can stop after a few redraws. Repeatedly choosing the lowest ID can starve higher IDs when low cells change constantly; a queue or rotating scan can be a better scheduling policy. More than sixteen regions needs more masks or another representation, with matching bounds/tests. Merely supplying S=16 is rejected.
+
+## Mistake and repair
+
+The wrong caller clears L/H immediately before consuming the pending work. Peek and take both report empty, so both saved checks are zero. The drawing code cannot redraw changes it was never told about.
+
+The repair preserves the masks until individual work is acknowledged or taken. Repaired source and loaded tokenised program match the working caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-dirty-cells-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and further steps
+
+Mark/clear use one bit calculation; peek/take scan up to sixteen IDs. Scalar BASIC numbers are not packed machine-code bytes, despite the byte-valued interface. This version spends arithmetic on compact logical state. A flag array is easier to inspect, while a queue can avoid scanning but must prevent duplicates and handle capacity.
+
+[Maths for Games](/craft/maths-for-games/) explains sets, bit positions and idempotent operations: marking twice has the same pending result as marking once. [The Craft](/craft/) connects redraw budgets to visible responsiveness. This helper schedules data; it promises no native pixel routine or universal display capability.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **580 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-selection.py dirty-cells bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-selection.py dirty-cells`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/rendering/dirty-cells/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/0a00011a102f2cb20a7755a5968e51fcdd3fc6ec/bbc-micro/patterns/basic/rendering/dirty-cells).
