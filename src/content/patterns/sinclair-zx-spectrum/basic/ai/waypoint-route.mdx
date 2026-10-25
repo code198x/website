@@ -1,0 +1,84 @@
+---
+title: "Follow an Ordered Waypoint Route in Spectrum BASIC"
+summary: "Move through four ordered positions, retaining the route cursor and choosing a loop or a finished one-shot."
+platform: "sinclair-zx-spectrum"
+category: "ai"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "waypoint-route"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A guard reaches one end of a corridor, turns and heads towards the next patrol point. Moving by a fixed amount is easy; reaching each target cleanly needs a little more care. This helper clamps each step to the current target and remembers which point comes next.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-waypoint-route-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve P(4), numeric globals X/T/C/S/L/A/F/O/E and private I/D/B. Reserve lines **3000–3290**, combine the numbered files with build.py and put END, STOP or a jump before the helper. Use GOSUB on C64/BBC or GO SUB on Spectrum. Do not borrow private scratch for an enclosing caller FOR loop.
+
+Set C to an integral count from one to four, S to a speed from one to 255 and L=1 to loop or L=0 for a one-shot. P(1)..P(C) hold byte-valued target positions. Call **3000** to clear X/T/A/F/O/E, retaining that configuration and route. Set the starting X afterwards if it should differ from zero. T is a zero-based target index, so the current point is P(T+1).
+
+## Advance one update
+
+Call **3100**. It moves X towards the target by at most S and snaps to it rather than passing through it. A=1 pulses on reaching that target. The helper then increments T for a later call; reaching the final point either wraps T to zero or latches F=1. An already-finished route clears A but retains X/T/F. O=1,E=0 reports a valid call, including a finished route.
+
+X and every active point must be integral 0–255. T must be 0..C-1; L/F must be exactly zero or one. E=1 rejects invalid state/configuration before changing X/T/F, with A=0,O=0. The routine checks the active route, not unused points beyond C.
+
+## The reusable routine
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/ai/waypoint-route/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+A signed difference gives the direction. Clamping that difference to -S..S bounds the movement and prevents overshoot in either direction. Reaching a point already equal to X still consumes one call and pulses arrival. Several coincident points are not skipped in a single update.
+
+## Retain the patrol cursor
+
+The caller follows positions 6,1,9,3 for twelve updates. It records arrivals at the second and final points, including turns in both directions. The full diagnostic also tests overshoot, same-position arrival, large speed, finished state, looping and invalid configuration.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/ai/waypoint-route/demo.bas" from={"  90 LET C=4: LET S=4: LET L=0: GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Its line **2000** writer, mailbox, AA/BB and JJ/KK (Z/Q on Spectrum) are diagnostic machinery. A game calls 3100 once at its chosen movement update, uses X for its own rendering and handles arrival if A=1.
+
+## Customise the route
+
+The custom caller changes speed from four to five and loops instead of finishing. Change P to define another corridor route, or set starting X after initialisation. To replace a route, deliberately reset T/F and establish a valid new C/P configuration. Changing one without the others can leave the cursor outside the active route.
+
+This scalar state belongs to one actor. Independent actors need separate state, or a deliberate wrapper that loads and stores each actor’s X/T/F and route configuration. Separate helper instances also need distinct globals, scratch and numbered references.
+
+These units are calls, not seconds or guaranteed display frames. A variable-length loop changes the actor's apparent speed unless the game supplies a suitable update policy. S must be positive; pause by withholding movement calls or retaining the state, rather than supplying an invalid zero speed.
+
+This is **one-dimensional movement**, not pathfinding or collision avoidance. Obstacles can still block the corridor. Two-dimensional waypoints need paired coordinates and a chosen metric: stepping each axis independently changes diagonal speed. The helper owns no sprite, input, collision world, timer or interrupt.
+
+## Mistake and repair
+
+The wrong caller resets T to zero before every update. The actor reaches the first point, then keeps arriving there instead of following the route. Neither the second nor final point is reached, so both saved checks print zero.
+
+The repair retains T until a real restart or route replacement. Repaired source and loaded tokenised program match the working caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-waypoint-route-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each call validates up to four points and performs one clamped movement step. It never traverses an unbounded series of coincident targets. P uses interpreter numeric elements rather than four packed machine-code bytes. More points require matching allocation, bounds and tests; a distance-based or two-dimensional route needs more state and arithmetic.
+
+[Maths for Games](/craft/maths-for-games/) connects signed differences, bounds and clamping to target approach. [The Craft](/craft/) is where to choose patrol speed, pauses and anticipation. A movement rule can be mathematically correct and still need better timing to make a character feel convincing.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **579 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-entities.py waypoint-route sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-entities.py waypoint-route`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/ai/waypoint-route/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/e4186503ed0962a5209b8c45c87940a55cd52d81/sinclair-zx-spectrum/patterns/basic/ai/waypoint-route).
