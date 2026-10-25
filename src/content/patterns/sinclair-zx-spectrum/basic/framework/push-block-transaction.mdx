@@ -1,0 +1,85 @@
+---
+title: "Push a Crate After Checking the Whole Move in Spectrum BASIC"
+summary: "Check the adjacent cell and the space beyond a crate before changing the player or map."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "push-block-transaction"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A crate should move with the player only when the space beyond it is free. Clearing its old cell before checking the destination can leave half a move behind. Validate first, then commit the complete logical action.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-push-block-transaction-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+DIM B(16). Reserve public C/R/O/D, private I/K/T/N/X/Y/A and lines **3000–3550**. Private I must not be the caller's outer FOR variable. Combine routines.bas with your caller through build.py and prevent fall-through with END, STOP or a jump. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at an intended reset boundary. It clears all public fields and map elements. Fill the four-by-four row-major map afterwards: zero is empty, two a crate, and any other byte blocks. C is the player's separate zero-based cell index and must point at an empty tile, B(C+1)=0.
+
+## Request one move
+
+Set D to one left, two right, three up or four down, then call **3100**. Zero is not an idle request in this interface: call only for an intended action. A free adjacent cell gives R=1 and moves the player. A crate with free space beyond gives R=2, moves the crate and advances the player into its old cell.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/push-block-transaction/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+| R / O | Meaning |
+|---|---|
+| 0 / 1 | Valid action, blocked by geometry |
+| 1 / 1 | Walked into empty space |
+| 2 / 1 | Pushed one crate |
+| 0 / 0 | Invalid player, request or map data |
+
+Every map value is an integral byte; C and D are integral and bounded. Invalid state preserves the player, map and input. A boundary-blocked action is a valid no-op. D survives. The helper checks both row/column boundaries and destination occupancy before the first map write.
+
+## Follow one transaction
+
+Normal play starts at cell five with a crate at six. A right request pushes the crate to seven and the player to six. The custom caller starts at nine with a crate at five and pushes upwards to cell one, advancing the player to five. Repeating the push is then blocked by an edge; a later action walks sideways, and an invalid zero request changes nothing.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/push-block-transaction/demo.bas" from={"  90 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK and the mailbox are observations. A game uses R/O to choose animation, sound or feedback after the logical result. The player is not painted into the map: keeping it separate avoids destroying the underlying floor during movement.
+
+## Keep one owner through the commit
+
+The old crate cell becomes empty and the destination becomes two only after all checks pass. Keep exclusive ownership of the map while checking and committing. This is one logical transaction under a synchronous owner, not a claim that two BASIC assignments form one hardware atomic instruction.
+
+Larger maps need dimensions, allocation, bounds and index width changed together. Several linked crates need a complete validation pass followed by a commit pass, or an explicitly reversible journal. Goals, undo, pixel animation and a full puzzle game need separate state and policies.
+
+## Mistake and repair
+
+The wrong caller writes a wall into the crate's destination before requesting the push. The helper correctly refuses the altered map, leaving the player stuck. Both saved push-result and player-position checks fail. Keep the authoritative map unchanged until the move has been validated. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-push-block-transaction-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Validation visits sixteen stored values. The action then inspects at most two neighbouring candidates and changes at most two map cells. A failed push leaves every map element untouched. No route search, allocation, rendering or input scanning occurs. Larger transactions need an explicit bound on both checking and commit work.
+
+[Maths for Games](/craft/maths-for-games/) connects grid coordinates, bounds and conservation of crate count. [The Craft](/craft/) connects clear push rules, blocked-action feedback and reversible puzzle moves.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **780 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-world-policy.py push-block-transaction sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-world-policy.py push-block-transaction`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/push-block-transaction/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/51cf421e85056f2d9899daeee13b0a74f7fefe4e/sinclair-zx-spectrum/patterns/basic/framework/push-block-transaction).
