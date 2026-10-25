@@ -1,0 +1,86 @@
+---
+title: "Keep Urgent Events in a Stable Queue in C64 BASIC"
+summary: "Queue four event/priority pairs, service the highest priority first and preserve insertion order for equal priorities."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "priority-event-queue"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+An urgent event should not wait behind three routine ones. But two equally urgent events should not swap places unpredictably either. This small queue gives priority and fairness a precise rule: higher priority first, earlier insertion first when tied.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-priority-event-queue-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve A(4) for events, B(4) for priorities, public V/P/R/O/N/M/E/D and private J/K. Reserve lines **3000–3460**, including the separated insertion and removal branches. Combine routines.bas with your caller using build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Private J/K must not be outer loop variables.
+
+Call **3000** for a new queue. It clears all public fields and both arrays. N is the active count from zero to four. Retain N/A/B between requests. Active pairs must be sorted by descending priority; the helper checks that precondition before changing them.
+
+## Insert or remove one event
+
+Set M=0, new event E and new priority D, then call **3100** to insert. Set M=1 and call 3100 to remove the highest-priority pair. Supply byte-valued events and priorities;255 is a valid event, so use the result flag rather than treating the returned event as an absence test.
+
+| Field | Use |
+|---|---|
+| N, A(1)..A(4), B(1)..B(4) | Retained count, events and priorities |
+| M / E / D | Mode, new event and priority |
+| V / P / R / O | Returned event, priority, changed flag and valid flag |
+
+O=0 rejects invalid count/mode, active pairs, ordering or insertion inputs. The queue survives unchanged. Valid requests return O=1. R=1 reports a change and V/P describes the inserted or removed pair. A full insertion or empty removal is a valid no-op: R=0,V=255,P=0. A full queue rejects a new event even if its priority is higher; it does not evict an existing one.
+
+Removal shifts the remaining active pairs and clears the vacated pair to zero. Insertion keeps existing equal priorities first. Inputs M/E/D survive. Removal ignores E/D because they are not inputs to that operation. This BASIC port explicitly checks numeric/ordering preconditions that byte-valued assembly callers must also respect.
+
+## The reusable routine
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/priority-event-queue/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+Insertion shifts the tail backwards so it cannot overwrite a pair before moving it. Removal shifts the surviving prefix forwards. One owner must perform each whole call; this is not an interrupt-safe producer/consumer queue.
+
+## Service a retained queue
+
+The normal caller inserts events 11, 22, 33, 44 with priorities 1, 9, 9, 3. Removal returns 22, 33, 44, 11. The equal-priority 22 and 33 keep their insertion order. A fifth removal exercises the empty no-op.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/priority-event-queue/demo.bas" from={"100 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK (Z/Q on Spectrum) and the mailbox are observation machinery. A game keeps its own queue, sets M/E/D, calls 3100 and checks both O and R. The complete native trace checks all fields and array cells after every request.
+
+## Customise urgency
+
+The custom caller mixes priorities 0 and 255, keeping ties stable at the maximum too. Choose what those numbers mean for your game; the queue does not decide whether a sound, collision or scene change is urgent.
+
+A plain FIFO is simpler when urgency is unnecessary. A binary heap can suit a much larger queue. High-priority traffic can starve routine work, so a game needing service guarantees must add an explicit budget or scheduling policy. The adjacent round-robin technique provides a different fairness rule, not an automatic replacement.
+
+## Mistake and repair
+
+The wrong caller discards each requested priority by setting D=0. All events now tie, so the queue behaves as a FIFO and returns 11 before urgent 22. Both saved checks fail. Preserve priority alongside each event; the repair matches the normal source and loaded program exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-priority-event-queue-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+The routine validates and searches at most four pairs. Insertion moves at most three existing pairs; removal moves at most three and clears one vacated pair. There is no allocation, clock or display upload. BASIC array cells carry interpreter-managed numeric storage, not a packed sixteen-byte structure.
+
+[Maths for Games](/craft/maths-for-games/) connects ordering, stable ties and bounded lists. [The Craft](/craft/) connects those rules to which events the player should hear or see first and what happens when a queue fills.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **791 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-services.py priority-event-queue commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-services.py priority-event-queue`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/priority-event-queue/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/03370568eb0b37e811273eba60b0f3d1feb7d846/commodore-64/patterns/basic/framework/priority-event-queue).
