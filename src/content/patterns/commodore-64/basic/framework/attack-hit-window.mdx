@@ -1,0 +1,76 @@
+---
+title: "Limit Hits to an Attack Window in C64 BASIC"
+summary: "Accept each target once during a chosen attack interval, retaining a hit set across updates."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "attack-hit-window"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A sword swing can overlap the same enemy for several updates. That should not automatically mean several hits. Give the attack an active interval and remember which targets it has already hit; the collision routine can still report contact every time.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-attack-hit-window-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Include routines.bas, reserving lines **3000–3240**, public H/O/M/F/A/B/T/C/N and private P. Call **3000** at an intended reset boundary. It clears all public fields. Keep a STOP, END or jump before the helper so ordinary execution cannot fall into it. Call **3100** for each candidate contact.
+
+F is the attack frame; A and B are the start and exclusive end of its active interval. T is a stable target index from zero to seven. C is a contact flag and N signals a new attack; any nonzero byte means true. M is the retained eight-target hit mask. H reports a newly accepted hit and O reports valid inputs.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/attack-hit-window/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+All state and inputs must be integral bytes, T must be at most seven, and A must be less than B. Invalid input returns H/O=0 without changing M or the other inputs. A valid query returns O=1. With N nonzero it first clears M, even outside the active interval. Clear N after the first query of the new attack, including when processing several targets in one update.
+
+## Open the window, then remember
+
+A hit is accepted only when F is at least A and less than B, contact is nonzero, and T is not already in M. H becomes one and that target's bit is added. A repeated contact returns H=0 while retaining the complete mask. Target IDs must keep their meaning throughout an attack: recycling an ID during the swing needs an explicit policy.
+
+The default caller opens frames two through four. It accepts target one, ignores another contact with that target, then accepts target two. Its mask is six, with bits one and two set. The custom caller opens frames one and two and hits targets seven and zero, producing129. The saved checks cover both repeat rejection and retention of the earlier target.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/attack-hit-window/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+A later query at B is outside the window. Starting a new attack explicitly clears the remembered targets. AA/BB, the boundary table and mailbox belong to the diagnostic. A real game supplies its animation clock and collision results, applies damage when H=1, and keeps M until the next attack. The helper owns neither collision geometry nor damage, animation or time.
+
+## Customise the attack
+
+Choose a short active interval for a sharp strike or a longer one for a sweep. Use a different hit mask for each simultaneous attacker. An eight-bit target set keeps the example small; more targets need a wider bitset or a bounded identity list. A byte end frame cannot represent256. Longer animations need wider frame fields or a documented local phase counter.
+
+Repeated damage from fire or a beam is a different policy: it can use a per-target cooldown rather than a permanent per-attack mark. A contact-pair cache avoids duplicate pair processing during one traversal; this helper deliberately retains hit history across updates.
+
+## Mistake and repair
+
+The wrong caller asserts N before every query. That clears the hit set each time: repeated contact hits again and switching targets discards the earlier mark. Both saved checks fail. Assert the reset once when the attack starts, then retain the mask. Repaired source and loaded programs match the normal caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-attack-hit-window-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+The query validates seven byte fields and uses powers of two and integer division to inspect a bit without a machine-specific bitwise BASIC operator. There are no arrays or heap allocations in the helper. A machine-code version can use native bit operations; a larger identity list trades memory and search time for more targets and richer identities. No measured cycle budget is inferred.
+
+[Maths for Games](/craft/maths-for-games/) connects half-open intervals, finite sets and bit masks. [The Craft](/craft/) connects active frames, readable anticipation and deliberate hit rules.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **455 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-combat-focus.py attack-hit-window commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-combat-focus.py attack-hit-window`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/attack-hit-window/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/3635e7c3f9a74b53bfd577fb97975f0c978857d6/commodore-64/patterns/basic/framework/attack-hit-window).
