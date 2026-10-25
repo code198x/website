@@ -1,0 +1,82 @@
+---
+title: "Draw Objects in Stable Depth Order in Spectrum BASIC"
+summary: "Sort object indices by depth without moving the objects, keeping equal-depth objects in their original order."
+platform: "sinclair-zx-spectrum"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "stable-depth-order"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+An actor walks behind a tree, then comes out in front of it. Drawing in a useful order is part of making that scene convincing. This helper orders a small set of objects by depth while leaving their positions, images and other game data where they are.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-stable-depth-order-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve D(8) for depth values and P(8) for returned object indices. C is the active object count, from zero to eight. O reports a valid result; E reports an error. Reserve numbered lines **3000–3270** and private scratch I/J/X. Combine routines.bas with your caller using build.py, which rejects duplicate line numbers. Keep END, STOP or an explicit jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** to restore P(1)..P(8) to 0..7 and clear O/E, retaining C and D. Set the scene's depths in D. A public object index zero refers to D(1); index seven refers to D(8). Do not use the private scratch variables in an enclosing caller FOR loop.
+
+## Sort and draw
+
+Call **3100** after setting C and the active depth values. Each active depth must be an integral 0–255. The routine restores the index array to identity, then sorts its first C entries into ascending depth. It returns O=1,E=0. **Equal depths keep their original object-index order.** Unused P entries remain identity indices, and every D value is unchanged.
+
+C=0 is a valid empty scene; C=1 needs no insertion. E=1 rejects a bad count or active depth before changing the old P array. O=0 marks that rejection. Only D(1)..D(C) are validated; unused depth entries do not participate.
+
+Your renderer traverses P(1)..P(C), obtains the object's other data using P(i)+1 and draws it. For a painter's-style renderer, lower depth is drawn first and higher depth last. The helper neither draws nor chooses what depth means. A top-down game may derive it from a foot position; a side-view game may use explicit layers. Those policies need their own bounds rather than silently wrapping a coordinate into a byte.
+
+## The reusable routine
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/rendering/stable-depth-order/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+Insertion sort keeps an ordered prefix. The next object index moves left only while its depth is strictly smaller than the preceding depth. That strict comparison preserves ties. Sorting indices also avoids copying an entire object record whenever two objects change places.
+
+## Reorder a changing scene
+
+The retained caller starts with varied and tied depths, then changes one object's depth and sorts again. It also submits an invalid count and checks that the previous order survives. The complete diagnostic's earlier table includes sorted, reverse, equal, empty and boundary cases.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/rendering/stable-depth-order/demo.bas" from={" 100 LET C=8: GO SUB 3000\n"} to={"\n2000 POKE"} lang="basic" title="Maintained retained-state caller" />
+
+The line **2000** writer, mailbox, AA/BB and JJ/KK (Z/Q on Spectrum) are diagnostic machinery. A game calls 3100 and reads the order. It does not need to emit packets or print the saved checks.
+
+## Customise it
+
+The custom caller sorts four active objects instead of eight; both arrays retain their eight-element allocation. Change the depths in your game, or traverse the returned order backwards if a renderer needs the reverse layering. Backwards traversal also reverses equal-depth ties, so define that policy deliberately. For stable descending order, change the comparison and qualify the new tie behaviour rather than assuming a reversed traversal is identical.
+
+Separate scenes need separate arrays, globals, scratch and numbered references. Hardware sprite priority can impose additional rules: an index list does not create more C64 sprite slots or decide hardware overlap registers. Spectrum software drawing still needs the right background/erase policy. BBC text and bitmap display modes still need their own rendering backend.
+
+## Mistake and repair
+
+The wrong caller passes C=0 for a populated scene. Empty scenes are legal, so the helper returns the identity order successfully. The intended nearest object and tie pair are wrong, making both saved checks zero. A valid result cannot compensate for a wrong scene count.
+
+The repair passes the actual active count. Repaired source and loaded tokenised program match the working caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-stable-depth-order-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and alternatives
+
+The helper validates up to eight depths, restores eight indices and performs insertion sorting. Reverse order needs up to 28 depth comparisons for eight objects, plus validation and interpreter overhead. Both arrays hold interpreter numeric values, not eight packed bytes each. There is no hardware-cycle or whole-game frame-budget claim.
+
+A scene with a few fixed layers may need no sort. Buckets can help when there are many objects but only a few depth bands; larger general sorts need more code and workspace. [Maths for Games](/craft/maths-for-games/) connects comparison, order and stable ties. [The Craft](/craft/) helps choose which overlaps communicate the scene clearly.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **453 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-selection.py stable-depth-order sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-selection.py stable-depth-order`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/rendering/stable-depth-order/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/a017256ce5c4aa0d4a9d62cfc23feb136bc1ecc2/sinclair-zx-spectrum/patterns/basic/rendering/stable-depth-order).
