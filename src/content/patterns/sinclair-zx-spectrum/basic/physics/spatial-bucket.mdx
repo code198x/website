@@ -1,0 +1,87 @@
+---
+title: "Group Nearby Objects into Fixed Buckets in Spectrum BASIC"
+summary: "Store up to four object IDs in each of four spatial buckets, with explicit capacity overflow and read-only queries."
+platform: "sinclair-zx-spectrum"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "spatial-bucket"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Testing every object against every other object gets expensive quickly. A small bucket table lets a game begin with nearby candidates. It only narrows the search: being in the same bucket does not prove that two objects touch.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-spatial-bucket-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+DIM C(4) and S(16). Reserve public B/N/V/F/O/M/X/Y/A, private I/K and lines **3000–3620**. I/K must not be the caller's active FOR variables. Combine routines.bas and a caller with build.py, keeping END, STOP or a jump before the helper. Use GOSUB on C64/BBC or GO SUB on Spectrum. Call **3000** to clear public fields and arrays at an intended reset boundary.
+
+This example divides a sixteen-by-sixteen coordinate region into four eight-by-eight buckets. B is the zero-based bucket index. C(B+1) is its count; S(4*B+1) through S(4*B+4) are its four slots. Arrays are one-based. Item A is an object ID, not a coordinate or size.
+
+## Insert or query
+
+Set X/Y to integral coordinates zero through fifteen and A to an integral byte. Set M=1 to insert or M=2 to query, then call **3100**. Both operations validate all four counts and all sixteen slots before reading a selected prefix. Counts must be integral zero through four and slots integral bytes, including unused slots.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/spatial-bucket/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+| Outputs | Result |
+|---|---|
+| O=1, V=1 | Item inserted; N is the new count |
+| O=1, V=0, F=1 | Insert rejected because the bucket is full |
+| O=1, V=0, F=0 | Read-only query; N is the count |
+| O=0 | Invalid inputs or table; B=255, N/V/F=0 |
+
+A successful query returns B and N without changing either array. A full query returns N=4 with F=0: F reports rejected insertion, rather than merely describing occupancy. Invalid calls preserve inputs and storage. A full insertion preserves all storage too. X/Y/A remain unchanged.
+
+Call with M=0 to clear the arrays between traversals; this preserves X/Y/A, returns B/N/V/F=0 and O=1, and deliberately ignores old contents. It can repair corrupt table values. M must still be one of zero, one or two. Initialisation also clears the public inputs, so use the lighter clear operation when retaining those matters.
+
+## Fill a bucket and observe overflow
+
+The normal caller inserts IDs 10 through 13 at 0,0. The custom caller inserts 200 through 203 at 15,15. A fifth insertion is refused with F=1; a query still reports four, and another bucket remains empty.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/spatial-bucket/demo.bas" from={" 100 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK and the mailbox are diagnostics. In a game, iterate exactly N entries starting at S(4*B+1). Guard N=0 before entering a FOR loop: some BASIC interpreters still execute a descending-empty range once. IDs zero and 255 are valid; an unused-looking value is never an end marker. Duplicate IDs are permitted by this component.
+
+## Choose a safe capacity policy
+
+Four slots are a deliberate small bound. Do not silently lose an object when F=1. Use a fallback search, a separate overflow collection, a larger proven capacity or a world design that guarantees the bound. Clear and refill once per intended collision traversal, rather than once per candidate.
+
+Objects near a bucket boundary may collide with objects in adjacent buckets. Large objects may cover several buckets. A complete broad phase needs a deliberate neighbourhood or multi-bucket policy, followed by duplicate filtering and actual geometry tests. Extending the grid means changing dimensions, storage, coordinate conversion, validation and overflow policy together.
+
+## Mistake and repair
+
+The wrong caller clears the table instead of inserting or querying. It never accumulates four candidates, so both saved overflow and retained-count checks fail. Clear once at the traversal boundary, then keep the requested insert/query mode for each operation. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-spatial-bucket-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Every insert/query validates twenty stored values before constant-sized bucket selection and at most one insertion. This BASIC port checks the whole table, stricter and more expensive than the assembly routine's selected-count validation. It trades early corruption detection for interpreter work; no frame-time saving is assumed. Four counts plus sixteen IDs are logical values, not twenty bytes of BASIC numeric storage.
+
+[Maths for Games](/craft/maths-for-games/) connects spatial partitioning, integer division and bounds. [The Craft](/craft/) connects candidate reduction with the cost and correctness of the following collision tests.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **808 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-contacts.py spatial-bucket sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-contacts.py spatial-bucket`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/physics/spatial-bucket/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/4ba4ae735a117f2010957b9315651bf1344affe0/sinclair-zx-spectrum/patterns/basic/physics/spatial-bucket).
