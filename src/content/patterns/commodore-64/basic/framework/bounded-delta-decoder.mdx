@@ -1,0 +1,86 @@
+---
+title: "Rebuild Byte Values from Deltas in C64 BASIC"
+summary: "Expand up to eight signed byte differences from an explicit base, wrapping modulo 256 and preserving output when input is invalid."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "bounded-delta-decoder"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A route might move one step right, one step left, then two steps right. Storing differences makes that relationship visible, but the differences are useless without their starting point. This decoder keeps the base and wrapping rule explicit.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-bounded-delta-decoder-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve Q(8) for delta bytes, R(8) for output, public W/O/N/B and private I/T. Reserve lines **3000–3190**, combine routines.bas with your caller using build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Private I/T are not caller scratch during a call.
+
+Call **3000** at a deliberate reset boundary. It clears all public fields and both arrays. Then supply base B, count N=0..8 and the selected delta bytes. Retain an output array only as long as your game needs its decoded values; this is a whole-block service, not a streaming cursor.
+
+## Decode the selected deltas
+
+Call **3100**. Each Q element is a two's-complement byte:0..127 mean that nonnegative difference,128..255 mean −128..−1. Starting at B, add each selected difference modulo 256 and place the successive values in R(1)..R(N). B, N and Q survive the call.
+
+| Field | Use |
+|---|---|
+| B / N / Q(1)..Q(8) | Base, selected count and source delta bytes |
+| R(1)..R(8) | Owned destination; unused tail preserved |
+| W / O | Actual written count / valid flag |
+
+N, B and selected Q values must be integral and in range. Success returns W=N,O=1. Invalid input returns W=0,O=0 and preserves **all** output elements; the helper validates the complete selected input before writing. Empty input is valid, writes nothing and does not inspect unused Q elements.
+
+This is deliberate byte wrapping, not clamping. For example 250+10 becomes 4, and 4 plus a delta byte 128(which represents−128) becomes 132 modulo 256. Use a wider or checked-coordinate contract where wrapping would be wrong for the world.
+
+## The reusable routine
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/bounded-delta-decoder/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+Adding the stored unsigned byte and reducing modulo 256 gives the same wrapped result as adding its signed interpretation. That avoids dialect-specific signed-byte conversion while retaining the specified output. The helper allocates no storage or display resources.
+
+## Keep the base with its stream
+
+The normal caller starts at 100 and decodes a mix of forward, backward and zero moves. The custom caller starts at 250 and includes wrapping and the −128 delta. Later calls exercise empty input, invalid count and a new base while checking the untouched output tail.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/bounded-delta-decoder/demo.bas" from={"100 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK (Z/Q on Spectrum) and mailbox writes are diagnostics. A game supplies B/N/Q, calls 3100 and consumes only the first W output elements after checking O. Do not confuse the allocated eight slots with the returned length.
+
+## Customise representation
+
+Choose what the decoded bytes represent: coordinates, table entries or another cyclic byte quantity. A long path needs larger arrays/offsets and perhaps periodic absolute checkpoints for random access. With only deltas, reaching a later point requires summing the earlier differences.
+
+One delta byte still produces one output byte. This alone does **not compress** the stream; savings require narrower packed deltas or another encoding, with an escape rule for changes that do not fit. Absolute bytes can be simpler and give immediate random access.
+
+## Mistake and repair
+
+The wrong caller clears B before decoding. Every output is shifted from the intended route, even though the helper completes successfully. Both saved checks fail because the decoded values and supplied base differ. Preserve the base alongside the deltas. The repair matches the normal source and loaded program exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-bounded-delta-decoder-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+A call scans at most eight selected inputs before making at most eight cumulative additions and output stores. The second phase runs only after validation. BASIC arithmetic and array storage remain interpreter-managed; no native-byte size or cycle budget is inferred.
+
+[Maths for Games](/craft/maths-for-games/) connects signed representations, cumulative sums and modulo arithmetic. [The Craft](/craft/) helps decide whether a path needs wrapping, clamping or a larger coordinate range.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **334 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-services.py bounded-delta-decoder commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-services.py bounded-delta-decoder`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/bounded-delta-decoder/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/a1b637cea0377bbcab8eff52c64db4bd5f271fcd/commodore-64/patterns/basic/framework/bounded-delta-decoder).
