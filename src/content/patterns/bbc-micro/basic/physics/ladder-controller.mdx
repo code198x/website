@@ -1,0 +1,78 @@
+---
+title: "Retain Climbing State on a Ladder in BBC Micro BASIC"
+summary: "Enter, retain and leave a bounded ladder mode with explicit gravity and jump-release outputs."
+platform: "bbc-micro"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "ladder-controller"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A character should be able to stop halfway up a ladder without immediately falling. Climbing is retained state, rather than something reconstructed only from the currently held up/down controls.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-ladder-controller-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public M/Y/G/J/O/L/U/D/B/A/H, private T and lines **3000–3300**. There are no arrays. Combine routines.bas and the caller with build.py, keeping END, STOP or a jump before the helper. Use GOSUB on C64/BBC or GO SUB on Spectrum. Call **3000** to clear public fields, then supply the character's actual position and ladder limits.
+
+M is retained mode: zero outside climbing, one climbing. Y is retained vertical position, increasing downwards. L reports current ladder presence. U/D/B are up, down and jump requests; zero is false and any nonzero byte true. A/H are inclusive vertical bounds. State and inputs must be integral bytes, M must be zero or one and Y must lie within A/H.
+
+## Update one decision
+
+Call **3100**. O=1 means valid data. Outside the ladder, the helper exits climbing and returns G=1 for gravity. On a ladder, an existing climbing mode or either direction request enters/keeps climbing. Without a jump request, it advances one unit down, one up or zero when both are held, clamping Y to A/H; G=0 suppresses gravity.
+
+<CodeFromFile src="bbc-micro/patterns/basic/physics/ladder-controller/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+Within that active climbing branch, a jump request exits M=0, returns J=1 and G=1, without moving Y. Merely standing on a ladder in mode zero with no direction request remains outside climbing, even if jump is requested. Invalid input clears G/J/O while preserving retained M/Y and all inputs.
+
+## Stop without falling
+
+The normal caller starts at Y=10 and requests up, entering M=1 at nine. The custom caller starts at twenty and requests down, reaching twenty-one. Both then release the directional requests. M remains one and gravity stays disabled, which the saved second check verifies.
+
+<CodeFromFile src="bbc-micro/patterns/basic/physics/ladder-controller/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+The later jump request releases climbing; a subsequent directional request can enter again, and leaving ladder presence exits. AA/BB/JJ, line 2000 and the mailbox are diagnostics. The reusable helper reads no keyboard and performs no map lookup.
+
+## Keep control and motion policies explicit
+
+J=1 is a request for the game's jump behaviour, not a velocity impulse. G=1 says gravity should be active; it does not integrate acceleration or move a falling actor. Determine ladder presence and suitable bounds elsewhere, then consume the outputs in a deliberate update order.
+
+This interface accepts level requests. If holding jump must cause only one release, supply an edge-detected request or another chosen input policy. Both up/down can enter climbing but cancel movement. Faster climbing, animation phases, ladder snapping and dismount platforms need explicit extensions and tests rather than hidden side effects.
+
+## Mistake and repair
+
+The wrong caller clears L before every update. The controller correctly sees no ladder, so it neither climbs nor retains the intended mode. Both saved position and retained-mode checks fail. Preserve the map-derived ladder result until the controller has used it. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-ladder-controller-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+One update performs bounded validation, state transitions, a one-unit displacement and optional clamps. It owns no timer, input device or display state. Retained mode adds a small amount of logical state but prevents the control policy from collapsing into a set of disconnected key checks.
+
+[Maths for Games](/craft/maths-for-games/) connects bounded displacement and state transitions. [The Craft](/craft/) connects held input, mode ownership and deliberate jumping/dismount rules.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **613 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-traversal.py ladder-controller bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-traversal.py ladder-controller`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/physics/ladder-controller/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/6c8a10509e320b99ca82e2314f8e22354953d5b7/bbc-micro/patterns/basic/physics/ladder-controller).
