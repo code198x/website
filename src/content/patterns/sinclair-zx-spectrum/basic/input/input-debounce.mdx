@@ -1,0 +1,84 @@
+---
+title: "Accept a Stable Run of Input Samples in Spectrum BASIC"
+summary: "Change a logical byte only after enough consecutive identical samples, retaining candidate and run history."
+platform: "sinclair-zx-spectrum"
+category: "input"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "input-debounce"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A noisy sample should settle before it changes a game's logical state. This routine waits for a run of identical bytes, then emits a change pulse once. The threshold is a count of samples, not a promise about elapsed time.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-input-debounce-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve S/P/C/R/X/T/O and lines **3000–3220**. There are no arrays or private scratch variables. Combine routines.bas with the caller using build.py, with END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at the intended reset boundary. It clears all public fields. Set threshold T afterwards. S is the accepted stable byte, C the current candidate and R the retained run length. Supply each raw sample in X.
+
+## Service one sample
+
+Call **3100**. A new candidate starts a run of one. A repeated candidate grows R up to 255. When the run reaches T, a value different from S replaces it and returns P=1. Repeated acceptance of the same stable value returns P=0.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/input/input-debounce/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+| Fields | Use |
+|---|---|
+| S / C / R | Stable value / candidate / consecutive run |
+| X / T | Raw sample / required run length |
+| P / O | Fresh changed pulse / valid-input flag |
+
+All state and inputs must be integral bytes. Invalid input clears P/O and preserves S/C/R/X/T. T=0 is a valid disabled state: it clears R without accepting X and preserves S/C. O=1 reports valid service. T=1 accepts a new sample immediately. X/T survive each call.
+
+## Compare two thresholds
+
+The caller feeds 1,0,1,1,1,1,0,0,0. Threshold three accepts the sustained one at index four and zero at eight. The custom threshold two accepts them at indices three and seven. Both produce two change pulses and finish with a run of three; the complete traces show their different timing.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/input/input-debounce/demo.bas" from={"  70 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/NN/JJ and the mailbox are observations. A game obtains real samples, retains S/C/R and acts on P or the accepted S. This proof verifies the logical filter in each interpreter; it does not establish physical switch behaviour or a device sampling rate.
+
+## Choose the right granularity
+
+This accepts a complete byte as one value. If one button bit chatters, the whole candidate byte changes. Independent per-button filtering needs separate histories or a bit-oriented filter. For already stable game controls, a simple press-edge detector can give a more responsive result.
+
+Increasing T suppresses short runs but adds acceptance delay. Irregular service changes the physical delay. Changing T does not discard existing history; reset R deliberately, or use disabled service, when the policy requires a fresh run. A timed filter needs an explicit clock and elapsed-time rule.
+
+## Mistake and repair
+
+The wrong caller clears R before every sample. Neither the normal threshold three nor custom threshold two can accumulate enough history, so no changes are accepted. Both saved pulse-count and final-run checks fail. Retain the run between samples. The final stable zero alone would hide the mistake because zero was also the initial value. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-input-debounce-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each call uses fixed validation and a bounded state update, with no input read, wait or allocation. Run saturation prevents a long unchanged signal wrapping back to a short run. Filtering is a trade-off between suppression and latency, not an automatic improvement for every input source.
+
+[Maths for Games](/craft/maths-for-games/) connects consecutive runs, thresholds and discrete time. [The Craft](/craft/) connects stable state and input latency to responsive controls.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **434 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-decisions.py input-debounce sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-decisions.py input-debounce`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/input/input-debounce/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/d9859e5ae89519ecbdf63435fc103b552c3ad0a3/sinclair-zx-spectrum/patterns/basic/input/input-debounce).
