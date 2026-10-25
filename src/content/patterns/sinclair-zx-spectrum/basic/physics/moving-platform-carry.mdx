@@ -1,0 +1,78 @@
+---
+title: "Carry a Passenger with a Platform in Spectrum BASIC"
+summary: "Apply signed platform movement to a supported passenger, with explicit position bounds and clipping feedback."
+platform: "sinclair-zx-spectrum"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "moving-platform-carry"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A passenger needs the platform's movement, not its absolute position. If a platform moves five pixels right, add five to the passenger. If it moves left, preserve that negative displacement before applying it.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-moving-platform-carry-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public P/C/O/X/A/B/S/L/H, private T and lines **3000–3230**. There are no arrays. Combine routines.bas with your caller through build.py, keeping END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Call **3000** to clear public fields at an intended reset boundary, then supply the actual limits and positions.
+
+X is the passenger position, A the platform's old position and B its new position, all in the same nonwrapping coordinate space. S is support: zero false, any nonzero byte true. L/H are inclusive passenger limits. Every input must be an integral byte, with L no greater than H and X already within them.
+
+## Apply the delta
+
+Call **3100**. O=1 reports valid inputs. An unsupported passenger returns P=X and C=0. A supported passenger receives the signed displacement B-A, clamped to L/H. P is the proposed position; C=1 means that clamping changed the mathematical result. Landing exactly on a limit is not clipping.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/moving-platform-carry/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+Invalid input returns P=X, C/O=0 and preserves every input. The helper never commits X itself. This lets the caller decide whether to accept the proposal after consulting other game rules. Do not use P as a newly valid position when O=0.
+
+## Preserve the old position until it has been used
+
+The normal caller carries X=100 from platform 40 to 45, producing P=105. The custom platform moves from 40 to 30: passenger 15 would become five, so it stops at L=10 and returns C=1. The caller then commits X=P only when O=1.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/moving-platform-carry/demo.bas" from={"  70 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Subsequent calls exercise an unsupported passenger, an upper-limit clamp and invalid reversed limits. AA/BB/JJ, line 2000 and the mailbox are observations. In a game, determine support separately, retain old platform position until all passengers have been served, and commit both platform and passenger states at a deliberate stage.
+
+## Choose a clipping response
+
+C=1 is feedback, not a crush policy. A game might stop the platform, detach the passenger, test a ceiling, apply damage or reject the whole move. This one-dimensional helper does none of those automatically. It also cannot discover a passenger on a platform or perform swept collision detection.
+
+For two axes, supply separate contexts or renamed fields and apply the game's collision rules to each proposed displacement. A wrapping world or a platform that teleports needs an explicit displacement convention: subtracting two wrapped positions cannot reliably recover the intended movement. Wider world coordinates need wider validation and intermediate bounds together.
+
+## Mistake and repair
+
+The wrong caller sets old A equal to new B before asking for the displacement. The delta becomes zero, so the passenger stays behind; both saved position and old-position/clipping checks fail. Keep old and new positions distinct through the query. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-moving-platform-carry-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+The helper validates six inputs, performs one signed subtraction and addition, then at most two clamps. The intermediate can lie outside the byte range and must stay wide until bounded. BASIC numeric arithmetic handles that here; assembly must explicitly preserve the carry/borrow and signed meaning. Neither version proves a whole game's platform collision behaviour.
+
+[Maths for Games](/craft/maths-for-games/) connects relative displacement, signed arithmetic and projection onto an interval. [The Craft](/craft/) connects support ownership, movement order and deliberate clipping feedback.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **477 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-contacts.py moving-platform-carry sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-contacts.py moving-platform-carry`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/physics/moving-platform-carry/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/ccc88970a2d25168ef4a7a4b3bce3ad603811f7c/sinclair-zx-spectrum/patterns/basic/physics/moving-platform-carry).
