@@ -1,0 +1,90 @@
+---
+title: "Stop Fast Motion at a Wall Face in BBC Micro BASIC"
+summary: "Sweep one interval towards a requested endpoint, returning first contact instead of letting a fast step pass through a wall."
+platform: "bbc-micro"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "swept-axis-collision"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A fast object can be left of a wall in one update and right of it in the next. Testing only its final position misses the crossing. This routine considers the path along one axis and stops at the first wall face.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-swept-axis-collision-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public P/H/V/X/T/S/A/B and private D/E. Reserve lines **3000–3230**, combine routines.bas with a caller using build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. D/E are private endpoint scratch during a call.
+
+Call **3000** at a reset boundary. It clears every public field. Supply old position X, requested target T, positive size S and wall start/end A/B afterwards. All use the same unsigned byte coordinate space.
+
+## Sweep one interval
+
+The object occupies `[X,X+S)` and the wall `[A,B)`. Call **3100**. V=1 accepts the query; P is the resulting position and H says whether motion reached a wall face. Contact is inclusive: exactly reaching the face counts as a hit, even though the final half-open intervals do not overlap.
+
+| Field | Use |
+|---|---|
+| X / T / S | Old start, requested start and positive size |
+| A / B | Wall's inclusive start / exclusive end |
+| P / H / V | Resulting start / hit flag / valid flag |
+
+Inputs survive. They must be integral bytes, both proposed object end edges must fit at or below 255, the wall must be nonempty, and the old interval must not already overlap it. Invalid requests return P=X,H=0,V=0. Depenetrating an object already inside a wall is a different problem.
+
+Stationary motion is valid but produces no new hit. Moving away from a face is allowed. The routine owns no velocity, timer, display or object pool; it returns a constrained position for the caller to apply.
+
+## The reusable routine
+
+<CodeFromFile src="bbc-micro/patterns/basic/physics/swept-axis-collision/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+Rightward motion follows the object's right edge towards the wall's left face. Leftward motion follows its left edge towards the opposite face. The complete crossing is checked with endpoint comparisons; there is no need to visit every intervening pixel.
+
+## Keep old and requested positions separate
+
+The normal caller moves from 10 towards 100 with size 5 against wall `[50,60)`. It stops at 45 and reports contact. The custom caller approaches from the right and stops at 60. Later calls check moving away and stopping just short of contact.
+
+<CodeFromFile src="bbc-micro/patterns/basic/physics/swept-axis-collision/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK (Z/Q on Spectrum) and the mailbox are diagnostics. A game computes its desired endpoint, supplies the query and applies P only after handling V/H. It can then choose its own stop, bounce or slide response.
+
+## Customise motion and response
+
+Use this for one static wall interval along one axis. A full 2D collision system must also check overlap on the other axis and define ordering or a joint time-of-impact policy. Calling an axis helper twice does not automatically create a complete continuous solver for moving shapes.
+
+The byte envelope matches the assembly contract; an end edge 256 is outside it. Wider coordinates, moving walls, acceleration during the step and several competing obstacles need deliberate extensions and new tests. A slower endpoint-only overlap test may be enough when movement is small, but it has a different guarantee.
+
+## Mistake and repair
+
+The wrong caller passes the old position as T. The request becomes stationary, so no movement or contact is reported. Both saved checks fail. Keep the requested endpoint distinct from the position you are moving from. The repair matches normal source and loaded program exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-swept-axis-collision-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+The helper uses fixed validation and comparisons, independent of travel distance. Private D/E hold endpoint sums before checking the byte bound, so overflow is rejected before it could become a small wrapped endpoint. BASIC numeric storage and interpreter overhead still apply; no cycle budget is claimed.
+
+[Maths for Games](/craft/maths-for-games/) connects intervals, swept motion and contact boundaries. [The Craft](/craft/) connects tunnelling prevention to fast projectiles, predictable walls and the separate choice of collision response.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **437 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-geometry.py swept-axis-collision bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-geometry.py swept-axis-collision`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/physics/swept-axis-collision/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/9f400b208b815cb55de2bd931e07193d2013ce0f/bbc-micro/patterns/basic/physics/swept-axis-collision).
