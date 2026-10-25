@@ -1,0 +1,91 @@
+---
+title: "Remember Jump Presses for a Short Window in Spectrum BASIC"
+summary: "Retain separate jump-buffer and coyote timers, grant a jump only when they overlap and consume permission after the pulse."
+platform: "sinclair-zx-spectrum"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "jump-windows"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press Jump just before landing and it feels poor when the press disappears. Leave a ledge a fraction before pressing and a little forgiveness may still feel fair. These two windows let a game make those choices without turning its input reader into a movement system.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-jump-windows-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public J/C/B/G/P/W/X/O. There are no arrays or private scratch fields. Reserve lines **3000–3230**, combine routines.bas and a caller with build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at a session/reset boundary. It clears every public field, including configuration. Set coyote reload W and buffer reload X afterwards, each from one through 255 service calls. The normal caller uses four for both, the custom caller two.
+
+## Supply ground state and a new press
+
+G is grounded state; P must mean a **new press**, not the held button level. Use 0/1 for flags. Any nonzero byte is treated as true; if a dialect's comparison returns −1, ABS can normalise that numeric result to 1. Normalising a held level does not turn it into a new-press edge.
+
+Call **3100** once per simulation update. It first decrements positive C/B, then reloads C from W while grounded and B from X on a new press. If both are now positive, J=1 grants one jump and consumes both timers. Otherwise J=0. O=1 reports valid input; G/P/W/X survive.
+
+| Field | Use |
+|---|---|
+| C / B | Retained coyote / buffered-press counters |
+| G / P | Grounded state / new-press byte |
+| W / X | Positive reload values |
+| J / O | Fresh jump pulse / valid-input flag |
+
+C/B and inputs must be integral bytes, with positive W/X. Invalid input clears J/O and preserves both timers and request/configuration fields. A timer of one expires at the **start** of this call unless the corresponding current input reloads it. A one-call window therefore does not promise an extra future update of forgiveness.
+
+## The reusable routine
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/jump-windows/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The service order is part of the technique. It gives same-update ground/press an immediate grant, preserves a short earlier press for a later landing, and stops one grant being reused through an unconsumed timer. The helper grants permission; it does not set vertical velocity or decide whether collision really found ground.
+
+## Observe pulses, not just the final row
+
+The maintained caller runs three short traces: one press while continually grounded, a press three calls before landing, and a press after leaving a ledge. Four-call windows preserve the two forgiving opportunities; two-call windows have expired in those traces. Both configurations accept the fresh grounded press once.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/jump-windows/demo.bas" from={"  70 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/NN/SS/JJ/KK (Z/Q on Spectrum) and the mailbox are diagnostics. Their counts record earlier pulses that a final J=0 would not reveal. The first trace deliberately keeps G true to isolate the new-press contract. A real game applies the jump and updates movement/grounded state when J grants it.
+
+## Customise forgiveness
+
+Choose W/X in simulation calls, not seconds. Physical duration depends on the caller's update rate. Changing reload values does not retroactively resize an already retained timer; reset or adjust that state deliberately if the design needs it.
+
+A double jump, variable held-jump height, release-cut velocity and wall jumps need extra state or distinct policies. Keep those choices separate from a forgiving first jump. The input reader still supplies edges; the collision/movement code still supplies G and applies the result.
+
+## Mistake and repair
+
+The wrong caller supplies P=1 on every call as though a held button were a new press. Permission is repeatedly granted on grounded updates and the saved pulse counts fail. Retain timers and feed a genuine press edge; also update the caller's movement state when accepting a grant. The repair matches normal source and loaded program exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-jump-windows-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each call performs fixed validation, two bounded decrements, possible reloads and one grant decision. There is no clock read, input polling or allocation. BASIC numeric variables are not eight packed native bytes, and no frame-time budget is claimed.
+
+[Maths for Games](/craft/maths-for-games/) connects discrete time, expiry boundaries and counted events. [The Craft](/craft/) connects input forgiveness to responsive play without hiding which component owns the jump.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **511 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-platforms.py jump-windows sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-platforms.py jump-windows`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/physics/jump-windows/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/5f21269575d37308439d0cc0e0072ec456229d0f/sinclair-zx-spectrum/patterns/basic/physics/jump-windows).
