@@ -1,0 +1,83 @@
+---
+title: "Service an Action Cooldown in C64 BASIC"
+summary: "Keep time moving between requests, then grant an action only when the cooldown and caller-supplied availability allow it."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "action-cooldown"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A weapon should recover while the player is not pressing Fire. A cooldown that advances only on a request punishes the player for waiting. Separating the timer service from the action attempt makes that mistake visible.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-action-cooldown-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve R/Q/A/P/M/G/O and lines **3000–3210**. Combine routines.bas with your caller using build.py, keeping END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Call **3000** once at a session/reset boundary. It clears every public field; set the desired period P afterwards. There are no arrays or private scratch globals.
+
+| Field | Use |
+|---|---|
+| R / P | Remaining calls / period to reload on grant |
+| Q / A | Request / caller-supplied availability byte |
+| M | Operation: zero services time, one attempts an action |
+| G / O | Fresh grant pulse / valid-input flag |
+
+All retained state and inputs are integral bytes. P=0 disables rate limiting; it does not disable requests or availability checks. Any nonzero byte Q/A is true. Use 0/1 flags, normalising a dialect's comparison result if necessary. Invalid state or an unknown M clears G/O and preserves R and the inputs.
+
+## Service, then try
+
+Call **3100 with M=0 once per simulation update**, whether or not a request exists. It reduces positive R by one, clears G and returns O=1. It never grants an action. Then set M=1 and call 3100 when you want to attempt an action. This second operation never advances the timer. It grants only when R=0, Q is nonzero and A is nonzero, returning G=1 and reloading R=P.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/action-cooldown/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+Read G immediately after the attempt. Another service or rejected attempt replaces it. P=3 permits grants on updates zero, three, six and nine when the caller requests on those updates. An attempt on a still-positive timer leaves it alone. A period of zero permits repeated attempts in the same update, so the caller must still enforce its intended action policy.
+
+## Keep recovery moving
+
+The normal caller requests at updates zero, three, six and nine. It observes both the time-service and attempt states on every update. Period three grants four times; the custom period five grants twice. The final timer check catches a counter that stopped between taps.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/action-cooldown/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/NN/JJ and the mailbox are diagnostics. A game needs the service and attempt calls, the retained fields and immediate handling of G/O. A must reflect whether the game can actually create the action now: enough ammunition, a free projectile slot, or whatever that action requires. This helper neither checks nor reserves those resources. Keep one owner for the check, grant and creation sequence.
+
+## Customise and extend
+
+Change P to alter recovery in simulation calls. Changing P affects the next grant, not an already running R. Pause by withholding the time service deliberately; do not accidentally pause it by withholding requests. Independent weapons need separate renamed fields/line references, or a wrapper that selects and restores each state block.
+
+Automatic repeat and new-press-only actions are input policies supplied through Q. A fixed-step loop makes the period consistent in simulation time; an untimed turn-based game can service it once per turn instead. No video or hardware clock is read here.
+
+## Mistake and repair
+
+The wrong caller services time only on requested updates. Recovery freezes during the gaps: with the normal period it grants at zero and nine instead of four times. Both saved checks fail. Service time independently of input, then attempt. The repair restores normal source and loaded program exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-action-cooldown-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each operation uses a bounded number of validations, comparisons and at most one decrement or reload. There is no input polling, search or allocation. An absolute deadline is an alternative when the game already owns a suitable wrap-aware clock. [Maths for Games](/craft/maths-for-games/) connects expiry boundaries and discrete time; [The Craft](/craft/) connects those boundaries to weapon rhythm and responsiveness.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **328 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-resources.py action-cooldown commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-resources.py action-cooldown`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/action-cooldown/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/cade9d5555df81e08ea1f3803795180a6360772b/commodore-64/patterns/basic/framework/action-cooldown).
