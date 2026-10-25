@@ -1,0 +1,80 @@
+---
+title: "Remember an Unordered Contact Pair in Spectrum BASIC"
+summary: "Remember which pairs have already been considered during one traversal, without treating reversed IDs as a new pair."
+platform: "sinclair-zx-spectrum"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "contact-pair-cache"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A broad phase can discover the same two objects through several cells. Without a shared memory of pairs, one collision might inflict damage twice. This cache answers whether an unordered pair is new to the current traversal.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-contact-pair-cache-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+DIM R(8). Reserve public F/O/M/A/B, private I/J/K/T and lines **3000–3520**. Keep private loop variables away from the caller's active FOR variables. Combine routines.bas with the caller using build.py, with END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Call **3000** to clear the public fields and cache.
+
+A/B are distinct integral object IDs zero through seven. Each array row is an integral byte. For a pair, the lower ID chooses row R(lower+1), and the higher ID chooses its bit. This canonical ordering means 0,3 and 3,0 address the same remembered pair.
+
+## Test, remember or clear
+
+Set M=1 to test and remember, or M=2 to test without changing storage, then call **3100**. O=1 means a valid query. F=1 means the pair was absent; F=0 means it was already present. A read-only query reporting F=1 does not reserve the pair.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/contact-pair-cache/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+M=0 clears all eight rows and returns F=0/O=1 without validating old rows or IDs. It preserves A/B and can repair corrupt cache values. Other invalid calls return F/O=0, preserve IDs and leave every row unchanged. Self-pairs are invalid, as are out-of-range IDs, unsupported modes and non-byte row values.
+
+Only the upper triangle of the conceptual eight-by-eight table is used. Lower-triangle and diagonal bits are left alone by ordinary queries. Clear removes them too. The arithmetic bit test avoids relying on a portable bitwise AND across the three dialects.
+
+## Keep the cache for a whole traversal
+
+The normal caller remembers 0,3, presents its reverse, queries it again, then remembers 1,7. Only the first and fourth queries are new. The custom caller first queries an absent pair without remembering it, then remembers it and checks both orientations. It also reports two new results.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/contact-pair-cache/demo.bas" from={"  90 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+A later clear begins a new traversal: a previously seen pair is new again. The saved early checks distinguish correct retention even though clearing can eventually bring different traces back to the same state. AA/BB/JJ/KK, line 2000 and the mailbox belong to that diagnostic.
+
+## Decide what first means
+
+Clear once before enumerating a step's candidates. If M=1 returns F=1, process that candidate; later presentations can be skipped. Decide deliberately whether to mark a pair before geometry testing or only after some other rule. This cache records consideration, not physical overlap, collision response or an enter/leave event.
+
+IDs must retain their meaning throughout the traversal. Recycling an ID halfway through can make a new object inherit an old object's remembered pair. Stable slots or an explicit generation/epoch policy solve a different part of that problem. Contact history across frames needs retained previous/current contact sets, rather than simply skipping this clear.
+
+## Mistake and repair
+
+The wrong caller clears row one before every query. Reversed pairs involving ID zero are repeatedly reported as new, so the saved duplicate and total-first checks both fail. Keep the cache until the traversal ends, then clear deliberately. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-contact-pair-cache-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Every query validates eight numeric rows, then computes a bounded bit position and tests one row. A clear visits eight entries. Eight IDs admit twenty-eight distinct non-self unordered pairs; expanding the ID range needs a new storage layout and corresponding bounds, rather than merely accepting larger IDs.
+
+[Maths for Games](/craft/maths-for-games/) connects unordered sets, canonical ordering and triangular tables. [The Craft](/craft/) connects collision bookkeeping to effects that should happen once per intended contact decision.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **565 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-contacts.py contact-pair-cache sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-contacts.py contact-pair-cache`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/physics/contact-pair-cache/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/dbcf64838a47ba21c63d25b251bf932959b234d8/sinclair-zx-spectrum/patterns/basic/physics/contact-pair-cache).
