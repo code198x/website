@@ -1,0 +1,78 @@
+---
+title: "Advance an Animation Timeline in C64 BASIC"
+summary: "Return a frame index with configurable duration, looping and one-shot completion."
+platform: "commodore-64"
+category: "rendering"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "animation-timeline"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A coin can loop through its frames while an explosion plays once and stops. Neither needs to own the sprite renderer. This helper advances an animation's frame index; your game uses that index to choose a character, bitmap or hardware-sprite image.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-animation-timeline-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve lines **3000–3240** and numeric globals F/T/C/D/L/O/E. There are no private loop variables or arrays. Combine the numbered files with build.py, keeping END, STOP or a jump before the helper. C64/BBC use GOSUB and Spectrum GO SUB.
+
+Set C to the frame count and D to the duration of each frame, both integral 1–255. Set L=1 to loop or L=0 for a one-shot. Call **3000** to restart: F=0,T=0,O=0,E=0, retaining C/D/L. F is the zero-based frame index, T the elapsed calls within that frame and O the finished flag. Draw frame zero before the first update if it should receive a full visible duration.
+
+## Advance once
+
+Call **3100 once per animation tick**. It increments T and advances F when T reaches D, resetting T to zero. A loop wraps from the last frame to zero. A one-shot keeps the final frame and sets O=1 after that frame has received its full duration. Completed state freezes: later calls leave F/T unchanged until the caller deliberately restarts.
+
+E=1 rejects invalid C/D, F outside 0..C-1, T outside 0..D-1, or L/O other than zero/one. Invalid calls retain progression state. E=0 means the update was valid, including a frozen completed one-shot. O=1 freezes even if L has since been changed to one; call 3000 when changing/restarting the sequence rather than expecting a stale completion flag to disappear.
+
+## The reusable routine
+
+<CodeFromFile src="commodore-64/patterns/basic/rendering/animation-timeline/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The units are calls. D=3 means three animation ticks per frame, not three seconds or necessarily three display frames. A game can tick animation less often than movement. A variable-step loop needs an elapsed-time accumulator or deadline policy rather than assuming every loop iteration has the same duration.
+
+## Watch progression across calls
+
+The maintained caller updates twelve times, saving a check at the first frame change and counting index changes. This catches a lost timer even when a looping animation eventually returns to frame zero.
+
+<CodeFromFile src="commodore-64/patterns/basic/rendering/animation-timeline/demo.bas" from={"70 LET C=3: LET D=2: LET L=0: GOSUB 3000: LET NN=0: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Maintained retained-state caller" />
+
+The full diagnostic also tests frame/duration boundaries, completion, invalid state and frozen updates. Its line **2000** writer, mailbox, JJ/FF/NN and saved AA/BB are diagnostic machinery; the reusable helper needs only its seven public fields.
+
+## Customise and connect
+
+The custom caller changes three frames of duration two in a one-shot to four frames of duration three in a loop. Supply a different image table for each animation and use F to index it after checking the valid state. The routine owns no screen, sprite slot, sound or input. A completed explosion can request object removal; a loop normally keeps O=0.
+
+This scalar version holds one animation context. Multiple actors require deliberately loading/storing separate state or an array-based variant. Do not let several actors share F/T/O accidentally. Per-frame durations, ping-pong playback and timed event markers need an extended contract. An index change alone cannot count every possible event if a future elapsed-time version skips several frames in one call.
+
+## Mistake and repair
+
+The wrong caller resets T before every update. With D greater than one, the tick never reaches its threshold and F never advances. Both saved checks become zero. The repair lets T persist between updates; repaired source and loaded tokenised program match the working caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-animation-timeline-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and alternatives
+
+Each update performs bounded scalar validation and arithmetic with no frame-table scan. It owns seven interpreter numeric fields, not seven bytes of machine-code storage. Calling validation for every actor costs runtime; an unchecked internal variant would need a different caller guarantee and evidence. A hardware display interrupt can provide ticks, but this helper installs none and does not wait for one.
+
+[Maths for Games](/craft/maths-for-games/) connects the tick counter to discrete time and modular wrapping. [The Craft](/craft/) explains why frame duration, anticipation and holds matter to how movement feels. Returning an index keeps those choices independent of a machine's drawing capabilities.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **344 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-world.py animation-timeline commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-world.py animation-timeline`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/rendering/animation-timeline/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/49afa56b64b9aab8a4ca4259a9b98004b94f4f3f/commodore-64/patterns/basic/rendering/animation-timeline).
