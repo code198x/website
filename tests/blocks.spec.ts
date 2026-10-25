@@ -49,3 +49,27 @@ for (const route of CARD_ROUTES) {
     expect(await card.evaluate(element => getComputedStyle(element).boxShadow)).toBe('none');
   });
 }
+
+const PILL_ROUTES = ['/craft/', '/demoscene/', '/crash-live/', '/family/asm198x/'];
+
+for (const route of PILL_ROUTES) {
+  test(`pills on ${route} share one box and the label type`, async ({ page }) => {
+    await page.goto(route);
+    const pills = await page.$$eval('.pill', elements => elements
+      .filter(element => element.getClientRects().length > 0)
+      .map(element => {
+        const style = getComputedStyle(element);
+        return {
+          text: (element.textContent ?? '').trim().slice(0, 40),
+          label: element.classList.contains('label'),
+          size: style.fontSize,
+          border: style.borderTopWidth,
+          padding: style.padding,
+        };
+      }));
+    expect(pills.length, `${route} shows no pills`).toBeGreaterThan(0);
+    for (const pill of pills) {
+      expect(pill, `${route}: "${pill.text}"`).toMatchObject({ label: true, size: '14px', border: '2px', padding: '2px 8px' });
+    }
+  });
+}
