@@ -1,0 +1,82 @@
+---
+title: "Draw Every Item Before Repeating the Bag in BBC Micro BASIC"
+summary: "Select and remove an item from a bounded bag, with explicit reset and caller-owned random indices."
+platform: "bbc-micro"
+category: "ai"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "shuffle-bag"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Sometimes independent random choices are the wrong fit. You may want every music cue, challenge or piece type to appear once before the set starts again. A shuffle bag provides that guarantee inside each bag, without promising anything about the random generator that chooses the order.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-shuffle-bag-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and reset
+
+Reserve B(8), scalars C/N/J/R/O/E and private I/K. Reserve lines **3000–3220**, including line 3185. Combine numbered sources with build.py; keep END, STOP or a jump before the helper. Use GOSUB on C64/BBC or GO SUB on Spectrum. Private scratch must not be a surrounding caller's FOR variable.
+
+Set C to an integral capacity from one to eight and call **3000**. A valid reset fills B with item IDs 0..7, sets N=C, returns O=1,E=0,R=255 and retains J. Only B(1)..B(N) are active. An invalid reset returns O=0,R=255,E=1 while preserving the old N/B. Correct C before trying to reset again. Reset success does not return a drawn item: R remains 255.
+
+## Draw without replacement
+
+Supply J from zero to N-1 and call **3100**. It returns O=1,R=item ID,E=0. It replaces the selected active entry with the last active entry, then decrements N. No active item is returned twice before reset. The consumed tail is not cleared and may contain duplicates; **N defines the active prefix**.
+
+An empty bag returns O=0,R=255,E=0 and ignores J and the consumed tail. It does not refill itself. E=1 rejects an invalid C/N or a damaged active bag, including duplicate active IDs. E=2 rejects an invalid J after state validation. Rejected draws preserve N and every B entry. Always check O before using R as an index.
+
+## The reusable routine
+
+<CodeFromFile src="bbc-micro/patterns/basic/ai/shuffle-bag/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+Swapping in the last item closes the gap without shifting a whole suffix. The internal order changes, but the remaining set loses exactly the returned ID. Validation checks active IDs and uniqueness before any removal.
+
+## Empty one whole bag
+
+The retained caller resets once, draws C times and attempts one extra draw. It tracks returned IDs to check uniqueness and checks that the bag reaches empty. The full diagnostic also covers first/last positions, small capacity, bad indices, invalid counts, damaged active entries and ignored consumed tails.
+
+<CodeFromFile src="bbc-micro/patterns/basic/ai/shuffle-bag/demo.bas" from={"90 LET C=8: GOSUB 3000: GOSUB 2000: LET AA=1: LET SS=0\n"} to={"\n2000 ?"} lang="basic" title="Maintained retained-state caller" />
+
+The line **2000** writer, mailbox, AA/BB, SS/FF and JJ/KK (Z/Q on Spectrum) are diagnostic bookkeeping. They are not required by the reusable helper. The working caller chooses deterministic first-slot indices so its result is reproducible; it is not a demonstration of a random stream.
+
+## Customise and supply randomness
+
+The custom caller uses four items and selects the last active slot. It still returns each item once and empties. Both versions keep the same eight-element array allocation. Your game can map the returned IDs to its own objects, sounds or events; the helper owns no names, rendering or object lifetime.
+
+For a random order, supply an independently uniform J over the current active prefix on each draw. With that assumption, every permutation is equally likely. The helper does not call an interpreter's RND function or prove a source generator meets that assumption. Fixed J=0 still gives a valid non-repeating bag, but its order is deterministic.
+
+Refill at a deliberate boundary. A bag can end with item two and the next bag can begin with item two: there is **no cross-bag no-repeat guarantee**. Avoiding that boundary repeat needs an additional policy and retained previous item; it changes the set of permitted orders. A bag of eight different IDs also differs from a bag containing weighted duplicate types. This maintained version requires unique active IDs.
+
+## Mistake and repair
+
+The wrong caller resets before every draw. The same selected item returns repeatedly and N never reaches zero. Its uniqueness and exhaustion checks both print zero. Resetting is a session boundary, not part of drawing one item.
+
+The repair resets once, then retains N/B through all draws. Repaired source and loaded tokenised program match the working caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-shuffle-bag-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and alternatives
+
+Removal itself changes one array entry and one count. The readable defensive version also scans the active prefix and checks duplicates, taking up to 28 pair comparisons for eight items. Calling the whole routine constant-time would hide that validation cost. Numeric array elements and scalar descriptors also use more than one byte each.
+
+A pre-shuffled array with a read cursor moves the shuffle cost to refill. A weighted independent selector permits immediate repeats but can express rare outcomes. Larger bags or frequent draws may justify a different validation boundary, backed by a clear caller guarantee and new evidence. [Maths for Games](/craft/maths-for-games/) connects sets, permutations and sampling without replacement. [The Craft](/craft/) helps decide when repeat prevention improves a game's rhythm and when it makes events too predictable.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **448 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-selection.py shuffle-bag bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-selection.py shuffle-bag`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/ai/shuffle-bag/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/6ed94303e4314ccd001992ed7cfba49bf539101c/bbc-micro/patterns/basic/ai/shuffle-bag).
