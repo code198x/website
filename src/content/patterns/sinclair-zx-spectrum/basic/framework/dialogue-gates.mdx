@@ -1,0 +1,76 @@
+---
+title: "Offer Dialogue Choices with Quest Flags in Spectrum BASIC"
+summary: "Test quest conditions before accepting a choice, then apply its changes once."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "dialogue-gates"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A guard remembers that you brought the key. A shopkeeper offers a different line after you have helped them. A few quest flags can give a conversation memory without baking every story branch into a nest of IF statements. This helper answers whether a choice is available and applies the chosen changes; it leaves words and presentation to your game.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-dialogue-gates-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Combine routines.bas with your numbered caller using the supplied build.py. Reserve lines **3000–3330**, numeric globals F/R/B/S/C/A/O/T/E and private scratch I/U/V/K/L/X. Call **3000** at a new-game boundary: it clears every public field, including the quest flags F. Load a saved quest state afterwards. Keep END, STOP or an explicit jump before the helper so execution cannot fall into it. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+## Ask, then accept
+
+F is the retained quest mask. R contains required flags; B contains forbidden flags. Each mask is an integral number from 0 to 255: bits 1,2,4,8,16,32,64,128 are eight independent yes/no facts. Set S to flags to set and C to flags to clear after acceptance. Set A=0 to query or A=1 to accept, then call **3100**.
+
+O=1 means every required flag is present and no forbidden flag is present. T=1 means an available choice was actually accepted. A query can therefore return O=1,T=0 and leaves F unchanged. An accepted choice clears C then sets S; **setting wins when those masks overlap**. O describes availability before that update. If the choice becomes unavailable afterwards, query again to obtain its new availability.
+
+E=1 rejects non-integral/out-of-range masks or an A other than zero/one. E=2 rejects a rule that requires and forbids the same flag. Both failures return O=T=0 and leave F unchanged. An ordinary unavailable choice has E=0. R=B=0 imposes no conditions.
+
+## The reusable routine
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/dialogue-gates/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The bit tests use division and INT rather than assuming that every dialect's AND is a bitwise operation. AND/OR in these listings join comparisons. The rule is the same across these three interpreters, while tokenised size and runtime cost differ.
+
+## Let a conversation remember
+
+The maintained caller first asks about a choice, accepts it, then tries again after the acceptance has cleared its required flag. It later tests another choice against the new state. This makes a repeated selection meaningful: it cannot silently grant the same one-time reward forever.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/dialogue-gates/demo.bas" from={"  70 GO SUB 3000: LET F=1: LET R=1: LET B=2: LET S=2: LET C=1: LET A=0\n"} to={"\n2000 POKE"} lang="basic" title="Maintained retained-state caller" />
+
+The complete caller also holds boundary/error tables. Its line **2000** writer, RAM mailbox, saved AA/BB digits and loop JJ are observation machinery, not part of the reusable API. A game calls 3100 directly and uses O/T/E. Private I must not be a caller's enclosing FOR variable.
+
+## Customise the conversation
+
+The custom caller assigns quest facts to bits four/eight instead of one/two. Give each fact a meaning in your game and keep that assignment consistent when saving. An unconditional repeatable choice can leave S=C=0; a one-time choice can forbid the flag it sets. Do not clear F every time the dialogue opens. For more than eight facts, use several masks with a deliberate multi-mask query/commit policy; merely allowing F above 255 changes this contract.
+
+The helper owns no strings, input, choice menu, rewards or inventory. Check T before granting a reward. If a reward can fail because an inventory is full, validate that condition before committing the quest change, or define an explicit transaction. Two separate calls do not automatically become atomic. Separate helpers need distinct globals, scratch and numbered lines.
+
+## Mistake and repair
+
+The wrong caller clears its quest flags before asking about the choice. The required fact vanishes: the choice is unavailable and cannot be accepted. Both saved results are zero. The exact repair retains the quest state between questions; repaired source and loaded tokenised program match the working version.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-dialogue-gates-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and further steps
+
+A valid query checks eight bit positions; an accepted update scans eight more. That bounded arithmetic is more interpreter work than testing a single scalar flag. It saves a large collection of independent flag variables, but does not turn BASIC numbers into packed byte storage. A table-driven dialogue engine can use this query behind text nodes and choice records. [The Craft](/craft/) connects remembered choices to player expectations; [Maths for Games](/craft/maths-for-games/) explains masks, powers of two and predicates.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **958 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-world.py dialogue-gates sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-world.py dialogue-gates`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/dialogue-gates/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/3b785f6309e1df1d9f3c981ad7fa899468ced729/sinclair-zx-spectrum/patterns/basic/framework/dialogue-gates).
