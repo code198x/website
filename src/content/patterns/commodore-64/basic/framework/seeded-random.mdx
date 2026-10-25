@@ -1,0 +1,88 @@
+---
+title: "Repeat a Small Random Sequence in C64 BASIC"
+summary: "Seed and restore a portable eight-bit LFSR, expose corrupted zero state and keep random-call order explicit."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "seeded-random"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A guard makes a surprising choice. To find out why, it helps to make that same choice happen again. A recorded seed and the same sequence of draws give you a repeatable starting point for debugging.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-seeded-random-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public R/S/M/O, private T/V/K/N/I and lines **3000–3250**. There are no arrays. Private I must not be the caller's outer FOR variable. Combine routines.bas with your caller using build.py, keeping END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** to clear public state. Then set S to a seed byte, M=0 and call **3100**. Seed zero deliberately becomes one. Other integral byte seeds are retained as R. O=1 reports successful seeding. The normal caller supplies zero; the custom caller supplies 167.
+
+## Draw and retain
+
+Set M=1 and call **3100** for each next byte. R becomes both the result and the retained generator state; S/M survive. Copy R if several consumers should share that draw. Calling again advances the sequence.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/seeded-random/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+This is the right-shifting eight-bit Galois LFSR with feedback 180 (`$B4`). It shifts R right and applies XOR feedback if the old low bit was one. The portable BASIC version implements XOR with a fixed eight-bit arithmetic walk because bitwise facilities differ between these dialects. AND/OR in validation join comparisons; they are not the feedback operation.
+
+| Field | Use |
+|---|---|
+| R | Current nonzero state / next result |
+| S / M | Seed byte / operation zero seed or one draw |
+| O | Valid operation flag |
+
+All three inputs/state must be integral bytes; unknown modes return O=0 without changing R/S/M. A draw from corrupted R=0 also returns O=0 and preserves zero. It does not silently reseed and hide the corruption. After clearing, call the seed operation before drawing.
+
+## Repeat the sequence
+
+Seeding with zero produces the first eight values 180,90,45,162,81,156,78,39. The custom seed produces a different section of the same cycle. The caller checks after eight draws, then restores that saved nonzero R through the seed operation and draws once more.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/seeded-random/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK and the mailbox are diagnostics. To replay later draws, save R after a draw, validate it is nonzero, restore it using M=0/S=saved and resume M=1 draws. The external-seed zero policy is not validation of a damaged save record.
+
+## Customise and understand the limits
+
+The generator visits every nonzero byte once in a 255-draw cycle. Zero is absent. Masking with 15 therefore produces zero fifteen times and the other nibbles sixteen times over that cycle; a remainder is not automatically unbiased either. Use a selection policy suited to the source domain if equal chances matter.
+
+Seed once per stream, not before every decision. Separate renamed states can keep cosmetic draws from consuming enemy draws, but phases of a tiny cycle are not statistically independent streams. Player timing may vary a seed without guaranteeing entropy. Larger-state generators can postpone repetition, and each has its own arithmetic and distribution requirements.
+
+This repeats random draws, not a whole game: state, inputs, update timing and call order must agree too. It is a short, predictable baseline for understanding and debugging, with visible correlations. Choose a stronger generator for content that needs more variety.
+
+## Mistake and repair
+
+The wrong caller clears R and bypasses the seed operation. Every attempted draw reports invalid state and remains zero. Both saved checks fail; the loader still completes normally. Use the seed entry for initialisation, then investigate any unexpected zero writer. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-seeded-random-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Even states need only a shift; odd states take the eight-bit feedback walk. Those BASIC divisions and loop steps are costly beside a native shift/XOR, despite the same mathematical sequence. Native dialect bitwise operators or assembly are alternatives after verifying their signed/width behaviour and the resulting sequence.
+
+[Maths for Games](/craft/maths-for-games/) connects finite-state cycles, bit operations and distributions. [The Craft](/craft/) connects controlled randomness and reproducible decisions to a game's behaviour. [The shared LFSR discussion](/patterns/cross-platform/framework/lfsr-random/) compares the underlying technique.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **411 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-resources.py seeded-random commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-resources.py seeded-random`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/seeded-random/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/e9105d05f9349c81d67fa48eaaa8fc66d9e2a3f6/commodore-64/patterns/basic/framework/seeded-random).
