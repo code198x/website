@@ -73,3 +73,33 @@ for (const route of PILL_ROUTES) {
     }
   });
 }
+
+// Section headings glide from the h3 step at 320px to h2 at 1100px and up.
+// Headings written in Markdown can't take the class, so the prose ones are
+// named here.
+const SECTION_HEADINGS: Record<string, string> = {
+  '/crash-live/': '.heading-h2',
+  '/demoscene/': '.heading-h2',
+  '/timeline/': '.heading-h2',
+  '/vault/': '.heading-h2',
+  '/systems/sinclair-zx-spectrum/': '.heading-h2',
+  '/vault/studies/simcity/': '.feature-prose h2',
+  '/from-the-metal/powers-of-two/': '.editorial-body h2',
+  '/patterns/atari-7800/assembly/framework/turn-loop/': '.pattern-prose > h2',
+};
+
+for (const [route, selector] of Object.entries(SECTION_HEADINGS)) {
+  test(`section headings on ${route} glide from 32px to 40px`, async ({ page }) => {
+    for (const [width, size] of [[320, '32px'], [1200, '40px']] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto(route);
+      const headings = await page.$$eval(selector, elements => elements
+        .filter(element => element.getClientRects().length > 0)
+        .map(element => ({ text: (element.textContent ?? '').trim().slice(0, 40), size: getComputedStyle(element).fontSize, weight: getComputedStyle(element).fontWeight })));
+      expect(headings.length, `${route} shows no section headings at ${width}px`).toBeGreaterThan(0);
+      for (const heading of headings) {
+        expect(heading, `${route} at ${width}px: "${heading.text}"`).toMatchObject({ size, weight: '700' });
+      }
+    }
+  });
+}
