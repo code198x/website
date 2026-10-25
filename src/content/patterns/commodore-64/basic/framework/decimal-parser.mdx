@@ -1,0 +1,85 @@
+---
+title: "Read Decimal Digits with Bounds in C64 BASIC"
+summary: "Accept one ASCII digit at a time while retaining the valid prefix, rejecting other characters and refusing values above 255."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "decimal-parser"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Type 256 into a byte-sized setting. Wrapping it around to zero would be a nasty surprise. This parser keeps the accepted prefix and tells the caller which character failed, so the interface can explain or correct the input.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-decimal-parser-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public V/C/S and private T. Reserve lines **3000–3170**, combine routines.bas and your caller with build.py, and put END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Keep T private while the call runs.
+
+Call **3000** at the start of a new number. It clears accepted value V, character C and status S. V starts at zero. This routine does not read the keyboard, draw a prompt or decide when input ends.
+
+## Feed a character
+
+Supply ASCII character code C and call **3100**. A digit 0..9 extends the accepted value only if the mathematical result stays in 0..255. Leading zeroes are accepted.
+
+| Status S | Meaning |
+|---|---|
+| 1 | Digit accepted and V updated |
+| 2 | Non-digit rejected; V preserved |
+| 3 | Would overflow 255; V preserved |
+| 4 | Invalid non-byte/non-integral V or C; V preserved |
+
+C survives every call. Status 4 is the BASIC port's explicit numeric-input guard; the assembly routine receives byte-valued bindings. A rejection does not cancel the number or consume an implicit terminator. The caller chooses whether to ignore it, show an error or restart.
+
+## The reusable routine
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/decimal-parser/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The private candidate T is ten times V plus the digit. The helper checks T before assigning V. BASIC has enough numeric range for this intermediate value; it does not let an eight-bit result wrap and then try to detect the damage afterwards.
+
+## Keep a valid prefix
+
+The normal caller feeds 2,5,6,5. It accepts 2 then 25, rejects the 6 because 256 would overflow, then accepts the final 5 to reach 255. That is intentional incremental behaviour: rejecting a character leaves the last accepted prefix available.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/decimal-parser/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+The table also covers zero,255, invalid characters and values immediately either side of a valid final digit. Line 2000, AA/BB/SS/JJ/KK (Z/Q on Spectrum) and mailbox writes observe those results. A game needs only V/C/S, private T and its own input policy.
+
+## Customise the input policy
+
+The custom caller reads 104 instead. Map machine-specific keyboard values to ASCII before calling. Backspace, signs, spaces, decimal points and an Enter key are not digits here. Your editor can retain a character buffer or a stack of accepted values if it needs to undo input.
+
+BASIC's VAL is useful for converting a complete string, but its syntax, trailing-input rules and errors differ by interpreter. This helper exposes one-character acceptance and a shared byte-sized limit. Wider numbers need a deliberate limit/intermediate-range change and corresponding tests; do not just remove the overflow check.
+
+## Mistake and repair
+
+The wrong caller clears V before every character. The final digit replaces the number instead of extending it, and both saved checks fail. Initialise once per new entry; retain V through subsequent accepted and rejected characters. The repair matches the normal source and loaded program exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-decimal-parser-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each character uses fixed range checks and at most one multiply/add candidate. There are no arrays, strings or allocation in the helper. BASIC numeric storage and interpreter overhead still apply, and no cycle budget is inferred.
+
+[Maths for Games](/craft/maths-for-games/) connects decimal place value, bounds and overflow. [The Craft](/craft/) connects those errors to the feedback a player needs when changing a setting or entering a number.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **196 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-records.py decimal-parser commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-records.py decimal-parser`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/decimal-parser/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/d0773544669fc9654d65ae79f70593db7d59bfba/commodore-64/patterns/basic/framework/decimal-parser).
