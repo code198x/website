@@ -1,0 +1,84 @@
+---
+title: "Choose Outcomes with Different Weights in BBC Micro BASIC"
+summary: "Map a caller-supplied bounded draw to one of eight weighted outcomes, skipping zero-weight entries."
+platform: "bbc-micro"
+category: "ai"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "weighted-choice"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A common pickup should appear more often than a rare one. Listing the common pickup several times can work, but weights make the intended balance clearer. This helper maps a draw to a weighted outcome without taking ownership of your random generator.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-weighted-choice-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve W(8), scalar C/A/R/O/E/T and private I/U/V. Reserve lines **3000–3230**, combine numbered sources using build.py and prevent fall-through with END, STOP or a jump. Use GOSUB on C64/BBC or GO SUB on Spectrum. Avoid private scratch in enclosing caller FOR loops.
+
+C is the active outcome count, from zero to eight. W(1)..W(C) are integral weights from zero to 255; their total must not exceed 255. A is the supplied draw. Call **3000** to clear T/O/E and set R=255, retaining C/A/W. Set the weights and draw before selection.
+
+## Supply a draw in the right range
+
+Call **3100**. For a positive total T, A must be an integral number from zero to T-1. R returns a zero-based outcome index, O=1 and E=0. A zero-weight entry has no interval and cannot be selected. The helper retains every weight and the supplied draw.
+
+For weights 1,3,0,4, the intervals are: outcome zero gets draw 0; outcome one gets 1–3; outcome two gets none; outcome three gets 4–7. There are eight possible draws. **If those draws are equally likely**, the outcomes occur in the stated weight ratio. The routine itself does not establish that assumption.
+
+C=0 or an all-zero active table returns T=0,O=0,R=255,E=0 and ignores A. E=1 rejects an invalid count, weight or total, returning T=0 and no selection. E=2 rejects an invalid draw after a valid positive total has been computed; T remains available. Invalid calls never alter C/A/W. Check O before indexing R+1.
+
+## The reusable routine
+
+<CodeFromFile src="bbc-micro/patterns/basic/ai/weighted-choice/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The cumulative total divides the draw range into adjacent intervals. Selection returns the first upper bound greater than A. That strict comparison makes exact boundaries belong to the next interval and naturally skips empty intervals.
+
+## Try more than one interval
+
+The maintained caller makes two high-range selections, then selects from draw zero and tries an all-zero table. Its earlier diagnostic table tests exact boundaries, zero-weight entries, empty tables, maximum weight, invalid draws and a total above 255.
+
+<CodeFromFile src="bbc-micro/patterns/basic/ai/weighted-choice/demo.bas" from={"90 LET C=4: GOSUB 3000\n"} to={"\n2000 ?"} lang="basic" title="Maintained retained-state caller" />
+
+The line **2000** writer, mailbox, AA/BB and JJ/KK (Z/Q on Spectrum) belong to the diagnostic. Your game provides one draw, calls 3100 and uses R when O=1.
+
+## Customise the distribution
+
+The custom caller replaces weights 1,3,0,4 with 2,0,5,1. Both tables total eight, but several draws now choose different outcomes. Increase a weight to make its interval wider, or set it to zero to disable that outcome without changing the table's indices. Revalidate the total after changes.
+
+The helper calls no RND function. Use a bounded draw that matches your generator's actual domain and your desired distribution. Reducing an arbitrary byte modulo T is biased when the source domain does not divide evenly into T buckets; a small-state generator may not even produce all 256 byte values. Rejection sampling can correct a suitable source at the cost of retries, but it must account for that source's real domain. A range check alone does not prove randomness or fairness.
+
+Weights are balance data, not percentages unless the chosen total is 100. Larger totals need a wider documented interface and revised diagnostics. This routine owns no loot inventory, enemy behaviour or repeated-draw history. Drawing a rare outcome does not remove it from future draws; a shuffle bag has a different purpose.
+
+## Mistake and repair
+
+The wrong caller reduces valid high draws modulo four even though the table totals eight. Those draws move into lower intervals. Both saved high-range choices become wrong and print zero. The selector cannot recover the original draw after a caller has discarded part of it.
+
+The repair passes the intended bounded draw unchanged. Repaired source and loaded tokenised program match the working caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-weighted-choice-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Validation scans up to C weights; selection scans up to C cumulative intervals. The array uses interpreter numeric storage, not eight packed bytes. Recomputing totals makes changing weights straightforward but costs time. A precomputed cumulative table can help when weights stay fixed, with a clear rebuild rule when they change. Larger tables may justify binary search or an alias method, which spend storage/code on faster selection.
+
+[Maths for Games](/craft/maths-for-games/) connects intervals, ratios, discrete probability and sampling bias. [The Craft](/craft/) helps choose the distribution players should experience; a technically correct weighted table can still create frustrating streaks.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **377 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-selection.py weighted-choice bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-selection.py weighted-choice`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/ai/weighted-choice/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/069247383e2014566e0f5d935095a40f8ebce8de/bbc-micro/patterns/basic/ai/weighted-choice).
