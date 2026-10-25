@@ -1,0 +1,87 @@
+---
+title: "Repeat a Held Menu Control in Spectrum BASIC"
+summary: "Pulse on a new hold, wait a configurable delay, then repeat at a separate cadence until release."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "input-repeat"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A menu should move once when you press Down, wait briefly, then scroll while you hold it. Reading the held level on every update is too fast; reading only new presses never repeats. This routine supplies the time policy between those choices.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-input-repeat-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve H/W/T/P/D/R/O and lines **3000–3210**. There are no arrays or private scratch globals. Combine routines.bas and your caller with build.py, preventing fall-through with END, STOP or a jump. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** when the menu gains control or another intentional reset occurs. It clears every public field, including configuration. Set positive delay D and repeat interval R afterwards, each one through 255 service calls. Use separate renamed fields/line references for independently repeating controls.
+
+## Feed a held level every update
+
+H is a held byte: zero means release, any nonzero byte means held. W is retained normalised history, zero or one; T is the retained byte timer. Call **3100** regularly, then consume fresh pulse P. O=1 means the state and configuration were valid.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/input-repeat/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+A released call clears W/T and returns P=0. The first held call sets W=1, returns P=1 immediately and loads T=D. Later held calls decrement positive T; reaching zero produces P=1 and reloads T=R. A retained zero timer on an already held control fires immediately and reloads R.
+
+| Fields | Use |
+|---|---|
+| H | Supplied held level |
+| W / T | Retained held history / countdown |
+| D / R | First delay / later repeat interval |
+| P / O | Fresh repeat pulse / valid-input flag |
+
+H/T must be integral bytes, W exactly zero or one, and D/R positive integral bytes. Invalid state clears P/O and preserves the history, timer and supplied inputs. The helper normalises W during valid service; it does not turn a raw keyboard scan into H.
+
+## Watch the pulse sequence
+
+For eight held calls, D=4,R=2 produces pulses on indices zero, four and six. The custom D=6,R=3 produces zero and six. The saved checks verify pulse count and final timer. The later release/repress confirms that a fresh hold gets an immediate pulse again.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/input-repeat/demo.bas" from={"  70 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/NN/JJ/KK and the mailbox are diagnostic machinery. In a menu, move selection on P and use a separately validated navigation routine for bounds or wrapping. Resolve opposing directions before repeating, or give their repeat contexts an explicit arbitration policy.
+
+## Customise the feel
+
+A delay of one repeats on the following held service; an interval of one repeats every later service. These are update counts, not seconds. Slow or irregular service changes the physical repeat rate. An elapsed-time version can use deadlines when the game already owns a suitable clock.
+
+Focus changes need a rule. Resetting on every menu frame defeats the delay; never resetting can carry stale history into a different context. Changing D/R affects later reloads, not the already running T. Acceleration after a long hold needs another counter and its own delay policy.
+
+## Mistake and repair
+
+The wrong caller clears W/T before every held sample. Each update looks like the first press, so all eight samples pulse. Both saved count and timer checks fail. Retain history between services and reset at intentional focus/session boundaries. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-input-repeat-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each call uses fixed validation and one small state transition, with no input scan, busy wait or allocation. A pure press-edge detector is smaller when repetition is unwanted. Hardware or interpreter key-repeat behaviour may not match a controller or a game's chosen cadence.
+
+[Maths for Games](/craft/maths-for-games/) connects state transitions and discrete-time boundaries. [The Craft](/craft/) connects delay, cadence and menu responsiveness to how the player experiences a held control.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **443 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-temporal.py input-repeat sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-temporal.py input-repeat`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/input-repeat/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/1615d95e2135c6e45c47efb43d4fb4d7136d03c6/sinclair-zx-spectrum/patterns/basic/framework/input-repeat).
