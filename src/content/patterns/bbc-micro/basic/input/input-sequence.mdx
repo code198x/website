@@ -1,0 +1,84 @@
+---
+title: "Recognise an Overlapping Input Sequence in BBC Micro BASIC"
+summary: "Remember a short ordered prefix, pulse on a match and retain the useful suffix for overlapping matches."
+platform: "bbc-micro"
+category: "input"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "input-sequence"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Four correct buttons in the wrong order should not open the door. This small recogniser watches for the logical sequence 1,2,1,2 and remembers enough progress to find a second match that shares the end of the first.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-input-sequence-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public P/Q/M/O, private T and lines **3000–3230**. There are no arrays. Combine routines.bas and your caller with build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at a session or intentional sequence-reset boundary. It clears all public fields. P is the retained length of the recognised prefix, zero through three. Q supplies one logical event: one or two. Zero means no event, not a third button.
+
+## Feed ordered events
+
+Set Q and call **3100**. M is a fresh one-call match pulse; O reports valid input. No event leaves P alone and clears M. An invalid progress value or symbol clears M/O and preserves P/Q. Invalid events do not silently reset a partly entered sequence; the caller chooses whether unrelated input should cancel it.
+
+<CodeFromFile src="bbc-micro/patterns/basic/input/input-sequence/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+| Field | Meaning |
+|---|---|
+| P | Retained prefix length, zero through three |
+| Q | Event zero none, one or two |
+| M / O | Match pulse / valid-input flag |
+
+A wrong one can still start a new prefix of length one. A completed 1,2,1,2 ends in 1,2, so the routine returns P=2 rather than throwing away that useful suffix. Feeding 1,2 again produces another match. Q survives the query; P/M/O are replaced according to the result.
+
+## Observe overlapping matches
+
+The normal caller feeds 1,2,1,2,1,2 and counts two matches. The custom caller starts with an extra one, exercising restart, then also finds two matches. Both finish with P=2. The caller saves a count because a final match flag alone says nothing about earlier matches.
+
+<CodeFromFile src="bbc-micro/patterns/basic/input/input-sequence/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/NN/JJ and the mailbox are observations. A game maps its real controls to logical symbols and calls the helper for events in their intended order. A held button level is not automatically a new event on every update. Choose press edges, repeat pulses or another explicit input policy before this recogniser.
+
+## Extend the language deliberately
+
+This implementation recognises one fixed pattern over two symbols. It does not claim to accept an arbitrary configurable combination. A transition table or prefix-function matcher can support longer patterns and alphabets, but needs its own table/state bounds and overlap rules.
+
+There is no expiry timer: a partial prefix can wait indefinitely. Add an explicit deadline/reset policy if the game requires a timed combination. A simultaneous chord is a different question from an ordered sequence. Keep those interpretations separate from scanning a keyboard or controller.
+
+## Mistake and repair
+
+The wrong caller clears P before each event. Every symbol is treated as the first, so no complete match can occur. Both saved checks fail. Retain P until a deliberate reset, and keep the useful suffix after a match. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-input-sequence-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+A call uses fixed validation and a small bounded state transition. It stores no event queue and performs no input scan or allocation. A full event buffer is useful when the game needs timestamps or later reinterpretation; this prefix state is smaller when only this recognition matters.
+
+[Maths for Games](/craft/maths-for-games/) connects finite-state machines, prefixes and suffixes. [The Craft](/craft/) connects combinations and clues to a rule the player can learn and use.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **267 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-input-models.py input-sequence bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-input-models.py input-sequence`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/input/input-sequence/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/b83b864fd645daa17915d6a498d5386a117edfb2/bbc-micro/patterns/basic/input/input-sequence).
