@@ -1,0 +1,84 @@
+---
+title: "Detect a Whole Button Chord Once in Spectrum BASIC"
+summary: "Require a set of held buttons, exclude forbidden buttons and report a rising edge for the complete chord."
+platform: "sinclair-zx-spectrum"
+category: "input"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "input-chord"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press two required buttons one after another and the chord becomes active when the second arrives. Keep holding them and it should not trigger again on every update. Compare the chord's whole condition with its previous condition, rather than demanding that every button have a new edge at once.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-input-chord-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public W/H/R/F/A/E/O, private B/C/D/I/U/V/X/T and lines **3000–3240**. There are no arrays. Private I must not be the caller's outer FOR variable. Combine routines.bas and a caller using build.py and prevent fall-through with END, STOP or a jump. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at the intended reset boundary. It clears all public fields. Set nonempty required mask R and forbidden mask F afterwards. These masks must not overlap. H is the supplied held-button snapshot; bit meanings come from the caller's logical mapping.
+
+## Query a complete held snapshot
+
+Call **3100**. A becomes one when every required bit is held and every forbidden bit is clear. E becomes one only when A rises from the previous whole-chord state W. The helper then retains W=A. O=1 reports valid state/configuration, and H/R/F survive.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/input/input-chord/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+| Fields | Use |
+|---|---|
+| W | Previous whole-chord state, zero or one |
+| H / R / F | Held / required / forbidden masks |
+| A / E / O | Active level / new chord edge / valid flag |
+
+H/R/F are integral bytes, R is nonzero and W is exactly zero or one. Invalid state or overlapping masks clear W/A/E/O. This deliberately removes a stale active latch: a later valid active chord can produce a new edge. Handle O before acting on the outputs.
+
+## Press, hold, interrupt and press again
+
+The normal caller requires mask three and forbids bit two. It feeds no buttons, one required button, both, both again, both plus the forbidden button, both again, then release. Exactly two rising edges occur; the repeated held snapshot has E=0. The custom caller moves the required combination to bits seven and zero and forbids bit one.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/input/input-chord/demo.bas" from={"  70 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/NN/JJ and the mailbox are diagnostics. A game consumes E for a one-time action or A for continuous chord behaviour. The eight logical bits do not promise that any particular physical keyboard or controller can report eight simultaneous buttons. Device scanning, matrix limitations and logical mapping belong to its input reader.
+
+## Customise mapping and ownership
+
+F=0 permits extra held buttons; forbidding every bit outside R instead asks for exactly that chord. Choose the intended behaviour rather than treating these as equivalent. Separate chords need separate history and renamed fields/line references.
+
+Changing masks while retaining W compares a new condition with history from the old one. Reset deliberately on remapping or focus change when that is the intended edge policy. Ordered combinations need a sequence recogniser; a chord query has no memory of which required button arrived first and reads no timer.
+
+## Mistake and repair
+
+The wrong caller clears W before each query. Every held active snapshot appears to be a new chord press. The saved total-edge and repeated-snapshot checks both fail. Retain the whole-chord condition between services. The repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-input-chord-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each valid query walks eight bits arithmetically to test required, forbidden and held membership. Native bitwise operators or assembly can make that cheaper after checking width and signedness. Boolean button arrays are another representation when compact masks are less useful. There is no device read, allocation or wait here.
+
+[Maths for Games](/craft/maths-for-games/) connects subsets, disjoint sets and rising edges. [The Craft](/craft/) connects intentional multi-button actions to clear, reliable controls.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **705 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-input-models.py input-chord sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-input-models.py input-chord`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/input/input-chord/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/8bd1aef4fb0170ebd064a54f6ebcf02f240323c2/sinclair-zx-spectrum/patterns/basic/input/input-chord).
