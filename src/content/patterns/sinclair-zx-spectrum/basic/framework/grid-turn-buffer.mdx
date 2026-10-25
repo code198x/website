@@ -1,0 +1,94 @@
+---
+title: "Keep a Turn Until the Route Opens in Spectrum BASIC"
+summary: "Retain a requested turn, try it before the current direction and move at most one checked grid cell per service."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "grid-turn-buffer"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Press Up just before a junction and the turn should happen when the route opens. Throwing that request away because it was blocked for one update makes a maze feel needlessly fussy.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-grid-turn-buffer-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+DIM B(16). Reserve public C/D/P/M/O/R, private I/T/N/X/Y and lines **3000–3550**. Private I must not be the caller's outer FOR variable. Combine routines.bas with the caller using build.py and prevent fall-through with END, STOP or a jump. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at a reset boundary. It clears every public field and all sixteen map elements. Fill the map afterwards: zero is walkable, any nonzero byte blocks. C is a zero-based row-major cell in a four-by-four map; B(C+1) holds that cell. Direction codes are zero still, one left, two right, three up and four down.
+
+## Offer a turn at a cell-step boundary
+
+Set R to a new direction, or zero for no new request, then call **3100**. A nonzero R replaces pending turn P. The routine tries P first. If it can enter that neighbour it moves C, sets D to the successful turn, clears P and returns M=1. If blocked, it keeps P and tries current direction D instead. At most one cell is moved.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/grid-turn-buffer/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+| Fields | Use |
+|---|---|
+| C / D / P | Retained cell / current direction / pending turn |
+| R | New request, or zero to retain the old request |
+| M / O | Moved this call / valid state and map |
+| B(1)..B(16) | Caller-owned read-only map during service |
+
+The current cell must be walkable. Indices/directions are integral and bounded, and every map value is an integral byte. Invalid input or a blocked current cell clears M/O and preserves movement, inputs and the map. Valid service returns O=1 even when no route is available. R and the map survive.
+
+## Follow the buffered route
+
+The normal map has cell four blocked, so a character starting at eight cannot turn up immediately. It moves right to nine, then up to five and one. The row-major cells are:
+
+```text
+ 0  1  2  3
+ #  5  6  7
+ 8  9 10 11
+12 13 14 15
+```
+
+The custom map also blocks five, keeping the turn pending for another step: nine, ten, six, two. Both later supply a new downward request. The native table also exercises edges, blocked cells, replacement requests and invalid directions.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/grid-turn-buffer/demo.bas" from={"  90 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK and the mailbox are diagnostics. A game calls at a logical cell-step boundary and animates between positions separately. This helper does not interpolate pixels, scan input or choose a movement clock. A zero R means no new request, not cancellation. Set P=0 deliberately at an intended cancellation boundary if that is the game's rule.
+
+## Keep geometry and policy clear
+
+Row and column checks happen before adding a neighbour offset. Moving right from column three must not wrap to the next row. The neighbour routine returns a checked result before any array lookup; the code does not rely on a compound AND expression to avoid an invalid subscript.
+
+Larger maps need declared dimensions, a suitable index range, allocation, stride and edge checks changed together. Merely enlarging DIM does not change this four-by-four contract. A timed turn buffer needs an expiry policy; this one remembers until success, replacement or deliberate cancellation. Separate actors need separate movement/history fields while a read-only map can be shared under a clear owner.
+
+## Mistake and repair
+
+The wrong caller clears P between cells. After the first blocked Up request, it keeps moving right instead of turning when the next junction opens. Both saved final-cell and direction checks fail in normal and custom traces. Retain the pending request until its intended lifetime ends. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-grid-turn-buffer-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Full data validation visits sixteen map values. Movement then checks at most two neighbouring candidates, independent of how long a turn has been waiting. There is no search over a route, allocation or rendering. A trusted-map variant can reduce repeated validation, but needs a different loading/mutation contract and matching proof.
+
+[Maths for Games](/craft/maths-for-games/) connects coordinates, row-major indices and graph neighbours. [The Craft](/craft/) connects buffered intentions and legal movement to a maze that feels forgiving without ignoring its walls.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **882 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-decisions.py grid-turn-buffer sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-decisions.py grid-turn-buffer`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/grid-turn-buffer/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/20a99964384094e39dbbcf1a6340a347deb884f3/sinclair-zx-spectrum/patterns/basic/framework/grid-turn-buffer).
