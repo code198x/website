@@ -1,0 +1,90 @@
+---
+title: "Clip a Rectangle to a View in BBC Micro BASIC"
+summary: "Find the visible intersection of two half-open rectangles, separating an empty result from invalid reversed edges."
+platform: "bbc-micro"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "rectangle-clipping"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A sprite crosses the edge of a panel. The drawing routine needs the part inside that panel, not the part that spills into the score display. This query returns the rectangle that remains visible; a separate drawing routine decides how to render it.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-rectangle-clipping-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+DIM C(4), A(4) and B(4). Reserve public F/V, output C, input rectangles A/B and private I. Reserve numbered lines **3000–3400**, combine routines.bas with a caller using build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Private I must not be an outer caller's FOR variable.
+
+Call **3000** at a reset boundary. It clears all fields and arrays. Supply A and B afterwards, each in left, top, right, bottom order. In this byte-contract example every edge is an integer from zero to 255.
+
+## Clip with half-open edges
+
+Call **3100**. The rectangles use half-open edges: the left/top edges are included and the right/bottom edges are excluded. A horizontal span `[10,20)` covers ten integer positions, from ten through nineteen. Adjacent spans can meet at an edge without sharing a pixel.
+
+| Field | Use |
+|---|---|
+| A(1)..A(4) / B(1)..B(4) | Object / viewport edges; preserved |
+| C(1)..C(4) | Visible left, top, right, bottom |
+| F / V | Has visible area / valid request |
+
+V=0 rejects a non-byte/non-integral edge or reversed horizontal/vertical edges. Outputs F/C become zero. Equal edges are valid empty rectangles. A valid empty intersection returns F=0,V=1,C all zero; a visible one returns F=1,V=1 and its intersection. The helper retains no state between queries and changes no display or drawing mode.
+
+## The reusable routine
+
+<CodeFromFile src="bbc-micro/patterns/basic/physics/rectangle-clipping/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The visible start is the greater left/top edge; the visible end is the lesser right/bottom edge. Both width and height must be strictly positive. Touching at an edge gives no visible area, and every empty result is normalised to four zeroes.
+
+## Clip to the actual panel
+
+The normal caller clips a 60-by-60 rectangle against a view from 10 to 40 on each axis. The result is `[10,40)` on both axes. The custom caller clips the maximum byte-bounded rectangle into a small inset view, then both callers query outside and empty rectangles too.
+
+<CodeFromFile src="bbc-micro/patterns/basic/physics/rectangle-clipping/demo.bas" from={"110 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK (Z/Q on Spectrum) and the mailbox belong to the diagnostic. A game supplies A/B, calls 3100 and uses C only with the appropriate F/V result. Its drawing backend can convert the visible offset into a source-sprite offset; that upload is separate from this query.
+
+## Customise coordinates
+
+Use the same units and origin for both rectangles: pixels, character cells or map cells. Clipping a world-space rectangle against an unrelated screen-space view is a caller error. Convert between those spaces deliberately.
+
+The byte envelope matches the assembly example. An exclusive edge 256 cannot be represented here, and this does not describe every machine's full screen. BASIC can hold wider values; widening this contract means changing bounds and observation/storage encoding, then verifying the larger range. Do not assume the present byte tests establish a 320-pixel or larger viewport.
+
+Complex shapes need a different clipping method. A bounding rectangle can cheaply reject an object before more expensive per-pixel work, but it does not itself prove that an opaque pixel remains visible.
+
+## Mistake and repair
+
+The wrong caller replaces the panel's right edge with 255. The clipped rectangle then leaks past the intended panel; both saved checks fail. Supply the real viewport bounds, not the largest representable coordinate. Repaired source and loaded program match the normal caller.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-rectangle-clipping-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+This is a bounded set of edge checks and comparisons, with four result cells. It performs no pixel visits or allocation. BASIC arrays occupy interpreter-managed numeric storage, not a packed fourteen-byte native structure. No frame-time budget is inferred.
+
+[Maths for Games](/craft/maths-for-games/) connects interval intersections, coordinate spaces and half-open bounds. [The Craft](/craft/) connects those rules to clean panels, camera windows and objects entering or leaving the view.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **543 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-geometry.py rectangle-clipping bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-geometry.py rectangle-clipping`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/physics/rectangle-clipping/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/3193105cc8918a4a884b2eaec215e9c7e96d3185/bbc-micro/patterns/basic/physics/rectangle-clipping).
