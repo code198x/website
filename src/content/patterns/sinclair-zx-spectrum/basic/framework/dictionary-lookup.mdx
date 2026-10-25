@@ -1,0 +1,84 @@
+---
+title: "Find a Value in a Small Dictionary in Spectrum BASIC"
+summary: "Search eight byte-key/value pairs, preserving the dictionary and returning the first match with separate found and validity flags."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "dictionary-lookup"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+An item code can lead to a weight, a tile number to a property, or a command token to an action identifier. A small dictionary makes that association explicit without a long chain of conditions.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-dictionary-lookup-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve A(8) for keys, B(8) for values, public V/F/O/K/N and private I. Reserve lines **3000–3200**, combine routines.bas and your caller with build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Private I must not be an outer caller's FOR variable.
+
+Call **3000** at a reset boundary. It clears N, request K, results V/F/O and both arrays. Fill the dictionary afterwards. N selects the first zero to eight pairs. The dictionary is read-only during each lookup; your caller owns any deliberate edits between calls.
+
+## Look up a key
+
+Set byte key K and call **3100**. O=1 means the request and selected dictionary prefix are valid. If a match exists, F=1 and V is its value; otherwise F=0,V=0. Duplicate keys use the **first** matching pair, in array order.
+
+| Field | Use |
+|---|---|
+| A(1)..A(8), B(1)..B(8), N | Retained keys, values and active count |
+| K | Supplied key; preserved |
+| V / F / O | Value / found flag / valid-input flag |
+
+Key 255 is valid, and a stored value zero is valid too. Neither is an absence marker. Check F to distinguish a zero value from a miss, and O to distinguish a miss from invalid input. Invalid count, key or active key/value element returns V=0,F=0,O=0 and preserves the whole dictionary and inputs. Unused pairs are ignored.
+
+## The reusable routine
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/dictionary-lookup/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The helper validates the whole selected prefix before searching it. A bad later pair cannot be hidden by an early match. It then walks the keys from the beginning, so the first-duplicate rule is straightforward to inspect.
+
+## Find values and handle misses
+
+The normal caller looks up key 7 in a dictionary containing that key twice; the first value 99 wins over 88. The custom caller looks up 255 whose stored value is zero. Later requests cover the duplicate again, a miss, a stored zero and key zero.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/dictionary-lookup/demo.bas" from={" 100 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK (Z/Q on Spectrum) and mailbox writes are observations. A game keeps its dictionary, supplies K, calls 3100 and consumes V only with the appropriate F/O result. The complete trace verifies every dictionary element is preserved.
+
+## Customise the table
+
+Choose what your byte keys and values identify. This is not a text parser: tokenising words and mapping names to these byte IDs are separate work. It can supply one small association table inside a larger system without deciding that system's grammar.
+
+Linear lookup is easy to inspect for eight entries. A sorted table and binary search can reduce comparisons for a much larger immutable dictionary, but sorting changes how duplicate keys must be handled. A direct 256-entry array trades more storage for immediate indexing. A hash table adds hashing, collision and capacity rules that this small component does not need.
+
+## Mistake and repair
+
+The wrong caller clears K before searching. It accidentally matches a real key-zero pair and returns the wrong value, rather than merely missing. Both saved checks fail. Preserve the requested key and inspect F/O; a successful lookup can still be the wrong request. The repair matches the normal source and loaded program exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-dictionary-lookup-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+The routine validates at most eight pairs and then makes at most eight key comparisons. It performs no allocation, display update or input read. BASIC numeric cells are not a packed 21-byte structure, and no cycle budget is claimed.
+
+[Maths for Games](/craft/maths-for-games/) connects mappings, ordered search and the distinction between a value and membership. [The Craft](/craft/) helps decide where a small data table is clearer than a growing collection of special cases.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **440 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-services.py dictionary-lookup sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-services.py dictionary-lookup`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/dictionary-lookup/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/698380321e2be93ce6d2e32eea47a9d96f78db32/sinclair-zx-spectrum/patterns/basic/framework/dictionary-lookup).
