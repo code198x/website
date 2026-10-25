@@ -1,0 +1,92 @@
+---
+title: "Undo Edits to a Small Board in BBC Micro BASIC"
+summary: "Record each cell\u2019s previous value before editing it, then restore edits in reverse order with a four-entry log."
+platform: "bbc-micro"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "bounded-undo"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Change a tile twice, then undo twice. The first undo should return the intermediate tile, and the second the original one. Keeping the old value before each edit gives a small puzzle board a reliable way back.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-bounded-undo-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve B(16) for the board, I(4)/J(4) for logged cell IDs/previous values, N/M/S/V/O/E and private K/T. Reserve lines **3000–3320**, including line 3205. Combine numbered source with build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB and Spectrum GO SUB. Private K/T must not be caller loop scratch.
+
+Call **3000** to clear the board, log arrays, count N and request/result fields. A cell ID S=0..15 maps to B(S+1). Board values and old values are integral bytes. N is the active log count, from zero to four; unused log entries can contain stale values and are ignored.
+
+## Edit, undo or clear history
+
+Set M and call **3100**:
+
+| M | Call | Result |
+|---|---|---|
+| 0 | Edit S to new value V | Record its old value, then change B; O=1 |
+| 1 | Undo the newest edit | Restore the recorded old value and reduce N; O=1 |
+| 2 | Clear history | Set N=0; retain the board and log payload; O=1 |
+
+An edit with a full four-entry log returns O=0,E=0 and changes nothing. Undo with empty history does the same. There is no automatic eviction of older edits. **An edit to the same value still uses a record.** A caller can choose to skip such requests, but that is a separate policy.
+
+E=1 rejects an invalid count or damaged board/active history before an edit/undo can mutate them. E=2 rejects an invalid mode or edit input. Clear-history checks the count/mode but can discard a damaged log without reading its entries. It does not repair or wipe the board. Undo/clear ignore S/V. A popped log entry remains in the unused tail; N defines what can be undone.
+
+## The reusable routine
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/bounded-undo/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The key ordering is small but decisive: store B(S+1) before assigning V. Undo uses the last active log entry and validates its cell index before restoring the board. Recording the new value instead loses the information the next undo needs.
+
+## Edit the same cell twice
+
+The working caller changes one cell twice and undoes both changes, checking the intermediate and original values separately. It then fills the log, attempts an extra edit, clears history and tries an empty undo. The complete table also covers edge cells, invalid counts/indices and corrupted log entries.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/bounded-undo/demo.bas" from={"110 GOSUB 3000: LET S=0: LET B(S+1)=7: LET M=0\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+The line **2000** writer, mailbox, AA/BB and JJ/KK (Z/Q on Spectrum) are diagnostic machinery. A game calls 3100 with its chosen edit and handles O/E directly.
+
+## Customise and own the changes
+
+The custom caller uses cell fifteen and different values. Map the sixteen logical cells to your own tiles, switches or other byte-valued state. The routine draws nothing and has no built-in board dimensions beyond its sixteen cells. Native display updates remain separate on C64, Spectrum and BBC.
+
+Let the routine perform undoable edits. If the game replaces the whole board, deliberately clear the old log; an old history is not automatically meaningful for a new level. Use M=2 to retain the board. Calling 3000 instead would clear the board as well.
+
+Independent boards and other helpers need separate globals, arrays, private scratch and numbered references.
+
+More log entries require changing DIM, bounds and tests together. Grouping several cell changes into one undoable action needs capacity reservation and validation for the whole action. This component provides **undo, not redo**. Redo needs the values being replaced during undo, another log or a deliberate cursor-based history, and a rule for discarding redo after a new edit.
+
+## Mistake and repair
+
+The wrong caller writes the new board value before asking the routine to record the edit. The helper can only record the value that is there now. The first undo repeats the new value, and the second returns the wrong intermediate value. Both saved checks print zero.
+
+The repair lets the helper record first and write second. Repaired source and loaded tokenised program match the working caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-bounded-undo-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and further steps
+
+This defensive version validates the sixteen-cell board and active log before an edit/undo. Recording or restoring one edit then uses a constant number of assignments. Clear-history changes only its count. Numeric arrays occupy interpreter-managed storage rather than 24 packed bytes; descriptor/stack costs add more.
+
+A full snapshot can be simpler for a very small world but copies more state per action. A command log can express larger actions, with more careful validation and ownership. [Maths for Games](/craft/maths-for-games/) connects stacks and reverse-order operations. [The Craft](/craft/) helps decide which actions the player should be able to undo and how limits should be presented.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **694 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-timelines.py bounded-undo bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-timelines.py bounded-undo`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/bounded-undo/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/31523714f616eb4e0d9a4aa91864ced8df7bd919/bbc-micro/patterns/basic/framework/bounded-undo).
