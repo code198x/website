@@ -1,0 +1,90 @@
+---
+title: "Keep Object References with Their Lifetimes in Spectrum BASIC"
+summary: "Allocate, query and release four stable slots while rejecting references to an earlier generation of a slot."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "generation-handles"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+An enemy disappears and its pool slot is reused. An old target reference should not suddenly point at the new enemy. A generation accompanies the slot number so the game can check which lifetime that reference belongs to.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-generation-handles-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve G(4), public A/M/S/T/O/R/V/E and private I/U/K. Reserve lines **3000–3370**, combine numbered sources using build.py and put END, STOP or a jump before the helper. Use GOSUB on C64/BBC or GO SUB on Spectrum. Private scratch must not be an enclosing caller FOR variable.
+
+Call **3000** at a deliberate new-session boundary. It clears A/M/S/T/O/V/E and every generation, with R=255. A is a four-bit live mask, from zero to fifteen; G(1)..G(4) are byte-valued generations. Slot zero uses the bit with value one and G(1). Discard all external handles when resetting the component: resetting generations can make references from a previous session alias new objects.
+
+## Allocate, query and release
+
+Set M and call **3100**:
+
+| M | Call | Result |
+|---|---|---|
+| 0 | Allocate lowest free slot | O=1; R=slot; V=new generation |
+| 1 | Release handle S/T | O=1; R=S; V=T; clears its live bit |
+| 2 | Query handle S/T | O=1; R=S; V=T; retains live state |
+
+Allocation ignores S/T, increments the chosen generation modulo 256 and marks the slot live. A full pool returns O=0,R=255,V=0,E=0. Query/release also return that ordinary failure for an inactive slot or a stale generation. Release keeps the stored generation; the next allocation advances it before returning a handle.
+
+A valid query/release requires integral S=0..3 and T=0..255. E=1 rejects an invalid live mask or generation state. E=2 rejects an invalid mode or needed handle inputs. Invalid requests preserve A/G and return O=0,R=255,V=0. Check O before using R. **Generation zero is a valid lifetime after wrap**, not a free-slot marker; A determines whether the slot is live.
+
+## The reusable routine
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/generation-handles/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+A handle has two parts: where storage lives and which lifetime currently owns it. Matching the slot alone loses that distinction. Keep both returned R and V wherever the game stores a reference.
+
+## Reuse the same slot
+
+The working caller allocates, queries and releases a handle, then allocates again. It checks the old handle and the new one separately. The custom caller starts just before generation wrap: its first allocation returns 255 and reusing the released slot returns zero. The diagnostic table also covers full pools, stale/inactive requests, wrap, different slots and invalid inputs.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/generation-handles/demo.bas" from={"  90 GO SUB 3000\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line **2000**, mailbox writes and AA/BB/SS/GG/RR/VV/JJ/KK (Z/Q for loop controls on Spectrum) are diagnostic machinery. A game can call 3100 directly. The custom generation setup exercises a boundary; ordinary new sessions start through 3000.
+
+## Ownership and customisation
+
+The helper owns identity bookkeeping, not object payload, type, rendering or resource cleanup. After allocating, initialise the game's complete payload before another system reads it. After release, payload storage may still contain old values. It is not a newly constructed object merely because the slot becomes available.
+
+Separate pools need separate live masks, generation arrays, globals, scratch and numbered references. A handle from one pool has no built-in pool/type tag. Give mutations one owner; there is no interrupt exclusion or thread-safety mechanism here.
+
+Four slots are fixed. More slots need wider live-state handling or another representation plus revised bounds/tests. Wider generations postpone wrap but add state and comparison work. A one-byte generation can repeat after **256 allocations of the same slot**, allowing a sufficiently old handle to alias again. This is bounded protection, not eternal uniqueness. A full reset can cause aliasing sooner if external references survive it.
+
+## Mistake and repair
+
+The wrong caller discards the returned generation and supplies zero for its first query and release. Neither matches the actual lifetime, so both saved checks print zero. The supposedly released slot remains live, changing which slot a later allocation can use.
+
+The repair stores and passes both parts of the handle. Repaired source and loaded tokenised program match the working caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-generation-handles-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and further steps
+
+Allocation scans up to four live bits; query/release calculate one bit after state validation. This readable version validates all four generation values first. Four BASIC numeric elements and a numeric mask use more storage than five packed bytes. There is no measured cycle or whole-game performance claim.
+
+Stable slot handles suit storage that stays in place. Compacting object records changes slot indices and needs an explicit identity/remapping policy; these two techniques do not combine automatically. [Maths for Games](/craft/maths-for-games/) connects sets, modular counters and wraparound. [The Craft](/craft/) supplies the game's ownership/lifetime rules that the handle only helps enforce.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **848 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-entities.py generation-handles sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-entities.py generation-handles`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/generation-handles/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/6b9e0648cae417e3ef38c8ce7d9a47b659a874ed/sinclair-zx-spectrum/patterns/basic/framework/generation-handles).
