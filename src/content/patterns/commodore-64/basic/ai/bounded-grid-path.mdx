@@ -1,0 +1,78 @@
+---
+title: "Find a Grid Path and Reachable Cells in C64 BASIC"
+summary: "Return shortest four-neighbour distances, parents and a first step from a bounded tile map."
+platform: "commodore-64"
+category: "ai"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "bounded-grid-path"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+An enemy needs to get around a wall. A turn-based unit needs to show where it can move. Both begin with the same question: which cells can I reach, and how many steps will it take? This breadth-first search returns that information without deciding how your characters move or how the map is drawn.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-bounded-grid-path-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve arrays M(16), D(16), R(16), Q(16), public scalars W/H/S/T/P/F/O/E/C and private scratch I/N/J/V/X/Y/A. Reserve lines **3000–3720** and combine the numbered helper with your caller using build.py. Put END, STOP or a jump before it. Use GOSUB on C64/BBC, GO SUB on Spectrum. Avoid the private globals in surrounding caller loops.
+
+W and H are integral logical dimensions from one to four, with at most sixteen cells. Cells are zero-based, laid out row by row. For cell n, x=n-W*INT(n/W) and y=INT(n/W). Store its map value in M(n+1): zero means walkable, one means blocked. S is the start cell; T is the requested target. Calling **3000** clears results/work arrays, retaining W/H/S/T/M. Calling **3100** does that reset itself before every query, so callers do not need a separate initialisation each time.
+
+## Read the result
+
+When O=1, P is the shortest number of four-neighbour steps and F is the first cell to move into. For S=T, P=0 and F=S. When O=0, no route exists and P/F remain 255. **Check O before using F as an index.** E=1 rejects bad dimensions or endpoints; E=2 rejects a non-binary map value in the active rectangle. Invalid calls clear work/results without changing the map or supplied dimensions/endpoints. Unused map cells outside W*H are ignored.
+
+D(n+1) is a shortest distance or 255 for an unreachable/blocked cell. R(n+1) is its parent cell, or 255 for the start/unvisited cells. C counts reachable cells. Q(1)..Q(C) lists discovery order; unused queue entries are zero. Zero is also a valid queued cell, so use C rather than searching for a zero terminator.
+
+## The reusable routine
+
+<CodeFromFile src="commodore-64/patterns/basic/ai/bounded-grid-path/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The queue visits neighbours **up, right, down, left**. That makes ties predictable. Cells are marked when discovered, before they enter the queue, so each enters at most once. A parent points to a cell exactly one step closer to the start. Following parents backwards finds F without allocating a second path array.
+
+## More than one route question
+
+The search continues after finding the target, building the whole reachable distance map. A blocked target can still return useful distances elsewhere. A blocked start returns no reachable cells. To obtain a movement-range map, query with T=S and examine D; include cells whose distance is within your movement budget. This is the same search, not a separate flood-fill routine.
+
+<CodeFromFile src="commodore-64/patterns/basic/ai/bounded-grid-path/demo.bas" from={"120 LET W=4: LET H=4: LET S=0: LET T=W-1\n"} to={"\n2000 POKE"} lang="basic" title="Maintained retained-state caller" />
+
+The caller first queries a detour around a wall, then adds a second wall and asks again. The earlier table covers narrow rectangles, row edges, blocked endpoints, same-cell queries and invalid inputs. Its line **2000** writer, mailbox, AA/BB and JJ/KK are diagnostic machinery. The helper does not require them.
+
+## Customise it
+
+The custom caller uses a three-column rectangle instead of four. The map and all work arrays retain sixteen allocated elements: this changes the logical world and scan, not the declared allocation. Increase capacity only by changing DIM, bounds, validation, sentinels and tests together. This routine intentionally caps dimensions at four to keep the complete example small. It is a reusable small-region component, not a claim to navigate a whole commercial game's world at this scale.
+
+Move an actor into F only when O=1 and the game permits that move; recompute after obstacles change. Static maps can cache distance fields, while many moving enemies may share a field grown from a common target. A reversed/shared field needs its own direction and tie policy. Weighted terrain needs Dijkstra's algorithm or another cost-aware search; plain BFS assumes every permitted step has equal cost. Diagonals, corner cutting and actor footprints also change the neighbour rules.
+
+## Mistake and repair
+
+The wrong caller erases the wall before querying. It obtains a shorter path through what the game intended to be solid ground; both saved detour checks become zero. The pathfinder is following the supplied map. The repair preserves that wall, with source and loaded tokenised program identical to the working version.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-bounded-grid-path-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+The search visits at most W*H cells and tests at most four neighbours each. Validation scans the active map first; parent reconstruction adds up to one path's length. Four sixteen-element numeric arrays cost far more than 64 machine-code bytes in an interpreter. BFS spends storage on predictable shortest paths. Greedy movement uses less memory but can become trapped behind walls; A* can reduce explored cells on larger maps at the cost of an ordered frontier and heuristic rules.
+
+[Maths for Games](/craft/maths-for-games/) supplies row-major coordinates, graph distance and the Manhattan lower bound on an empty four-neighbour grid. [The Craft](/craft/) helps decide whether an enemy should take the shortest route at all. The returned arrays are data: drawing reachable cells or animating movement belongs to a caller.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **801 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-world.py bounded-grid-path commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-world.py bounded-grid-path`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/ai/bounded-grid-path/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/3fe79dcb519a5dfe7c0908ebb2414117203f4a12/commodore-64/patterns/basic/ai/bounded-grid-path).
