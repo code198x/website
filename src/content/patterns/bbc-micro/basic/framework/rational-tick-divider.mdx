@@ -1,0 +1,84 @@
+---
+title: "Keep Fractional Tick Credit in BBC Micro BASIC"
+summary: "Emit a chosen numerator of events per denominator calls without discarding the remainder."
+platform: "bbc-micro"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "rational-tick-divider"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Three updates from five source ticks cannot be represented by rounding 3/5 down to zero. Keep the fractional credit between calls, and it accumulates into evenly spread opportunities to update.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-rational-tick-divider-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public P/N/D/F/O, private T and lines **3000–3160**. There are no arrays. Combine routines.bas and a caller using build.py, with END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at a reset boundary. It clears every public field. Then set numerator N and denominator D: D is one through 255, and N is zero through D. P starts at zero. An intentional nonzero initial phase must remain below D.
+
+## Service one source tick
+
+Call **3100** once per source tick. It adds N to retained P. On crossing D it emits F=1 and removes one denominator of credit; otherwise F=0. P is the remainder. O=1 means valid state; N/D survive. At most one event occurs per call because N cannot exceed D.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/rational-tick-divider/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+| Field | Use |
+|---|---|
+| P | Retained phase, zero through D−1 |
+| N / D | Events per denominator source ticks |
+| F / O | Fresh event pulse / valid-input flag |
+
+All values are integral, with byte-sized inputs and a widened temporary sum. N=0 is valid and never fires. N=D fires every call. Invalid bounds, zero denominator or phase outside its range clear F/O without changing P/N/D.
+
+## Observe the remainder
+
+The normal caller uses N=3,D=5 for twelve calls, producing seven events with one unit of phase left. The custom caller uses one per three, producing four events with phase zero. Read F on every call; a final phase alone cannot tell you how many events happened.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/rational-tick-divider/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/NN/JJ/KK and the mailbox are observations. A game supplies the source tick and performs the desired work on F. This helper does not wait for a display frame, read a hardware timer or promise that an interpreted update fits the available time.
+
+## Choose the rate policy
+
+A 3/5 divider fed fifty actual source ticks gives thirty opportunities, provided those source ticks are really counted. A slower interpreter that calls it only twenty times has not measured fifty ticks. Keep timing observation and rate conversion separate.
+
+The phase deliberately keeps the remainder rather than introducing long-term rounding drift. Event spacing still alternates: a fractional average cannot make every interval identical. Changing D while P is already retained needs a deliberate reset or rescaling policy. More than one event per source call needs a different accumulator and a bounded catch-up policy.
+
+## Mistake and repair
+
+The wrong caller clears P before each call. A fraction smaller than one never accumulates enough credit to fire. Both event-count and final-phase checks fail. Keep P even when F=0. The repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-rational-tick-divider-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each call uses fixed validation, an addition, a comparison and at most one subtraction. It does no allocation or work loop. A simple countdown is easier when the ratio is exactly one event every fixed number of calls; the accumulator preserves ratios such as three per five.
+
+[Maths for Games](/craft/maths-for-games/) connects rational numbers, division with remainder and accumulated error. [The Craft](/craft/) connects update cadence to animation, enemy decisions and other work that need not run on every source tick.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **214 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-temporal.py rational-tick-divider bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-temporal.py rational-tick-divider`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/rational-tick-divider/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/67e13d17ae7b45eb89d8771e1aed529cd87b85d6/bbc-micro/patterns/basic/framework/rational-tick-divider).
