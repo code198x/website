@@ -1,0 +1,83 @@
+---
+title: "Accumulate a Capped Binary Score in Spectrum BASIC"
+summary: "Add two-byte awards through a wide intermediate, distinguish an exact cap from clipping and preserve the award."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "score-counter"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A 300-point bonus must remain worth 300 when its low byte holds only 44. This score counter keeps the full award, carries into the high byte and stops deliberately at a chosen cap.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-score-counter-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public L/H/A/B/C/D/F/O, private E/N/T and lines **3000–3210**. Combine routines.bas with the caller using build.py, with END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. There are no arrays.
+
+Call **3000** at a session/reset boundary. It clears all public fields, including the cap. Set both cap bytes C/D and the starting score L/H afterwards. A zero cap is valid and accepts only zero without clipping. A retained score already above its cap is rejected rather than silently repaired.
+
+## Supply the whole award
+
+L/H are score low/high, A/B award low/high, and C/D cap low/high. Each pair represents `low + 256*high`, with integral byte fields. An award of 300 is A=44,B=1. Call **3100**, then read O: one means the inputs were valid. F is a fresh clipping flag, set only when the sum exceeded the cap. An exact hit leaves F=0.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/score-counter/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The intermediate may reach 131,070, even though every public field is a byte. It must remain wide before comparing with the cap. On success the helper replaces L/H with the capped sum and preserves award/cap inputs. Invalid byte fields or score above cap clear F/O and preserve L/H and all inputs.
+
+| Fields | Meaning |
+|---|---|
+| L / H | Retained score, low byte then high byte |
+| A / B | Current award, low byte then high byte |
+| C / D | Maximum score, low byte then high byte |
+| F / O | Clipped this call / valid input |
+
+## Award points at an event
+
+Starting from 250, both normal and custom callers award 300 and check 550. The normal cap is 65,535; the custom cap is 999. A later award of 65,000 reaches the selected cap and reports clipping. A final zero award leaves the score exactly at the cap with F=0. F describes this call, not a permanent history of overflow.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/score-counter/demo.bas" from={"  70 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ and mailbox writes are diagnostics. A game calls the helper for each scoring event, then formats a separate display copy. Calling on every frame of an overlap can repeatedly award the same pickup; a correct adder cannot decide whether an event should occur again.
+
+## Choose the representation
+
+These byte pairs match the assembly contract and make saved data/interchange explicit. BASIC already has wider numeric values, so a scalar score plus checked cap may be clearer when nothing needs the byte representation. More fields do not make an implementation inherently better.
+
+A wider lifetime total avoids losing later points at the cap. Decimal formatting, a high-score table and milestone rewards are separate jobs. If you change the cap during play, choose whether to reject or adjust an existing score above it; this routine currently rejects it. It owns no screen, sound, timer or game event.
+
+## Mistake and repair
+
+The wrong caller drops B before each call. The first 300-point award becomes 44 and reaches 294 instead of 550. Both saved checks fail: the amount changed before the helper received it. Supply both award bytes together. A wider display cannot restore the missing points. The repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-score-counter-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each call performs fixed validation, wide addition, a cap comparison and two-byte extraction. Numeric variables and interpreter operations are different costs from assembly carry instructions. [Maths for Games](/craft/maths-for-games/) connects place value, wide intermediates and saturation. [The Craft](/craft/) connects scoring events and deliberate reward limits to play.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **485 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-resources.py score-counter sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-resources.py score-counter`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/score-counter/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/347b95f112f456d4eebad6cd1ab98460c7a6e064/sinclair-zx-spectrum/patterns/basic/framework/score-counter).
