@@ -1,0 +1,84 @@
+---
+title: "Encode a Small Run-length Block in BBC Micro BASIC"
+summary: "Group up to eight byte values into count/value pairs, checking complete output capacity before changing any encoded byte."
+platform: "bbc-micro"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "bounded-rle-encoder"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A long stretch of the same tile is a good candidate for run-length coding. A stretch of different tiles is not: each value needs its own count too. This encoder measures the runs first, so even the worst case cannot spill into the next array.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-bounded-rle-encoder-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve B(8) for input, R(16) for output, public W/E/O/N/C and private I/J/K/V. Reserve numbered lines **3000–3300**, combine routines.bas and your caller using build.py and put END, STOP or a jump before the helper. Use GOSUB on C64/BBC and GO SUB on Spectrum. Do not use private scratch as an outer loop variable.
+
+Call **3000** at a new-block boundary. It clears input and output arrays and all public fields. Supply input after init. N selects the first zero to eight B elements; C supplies actual allocated output capacity, from zero to sixteen.
+
+## Encode a complete block
+
+Call **3100**. Success returns O=1,E=0 and even output length W. R(1)..R(W) contains positive count/value pairs. Equal adjacent values become one run; separate runs with the same value remain separate. Bytes after W are preserved.
+
+| Field | Use |
+|---|---|
+| B(1)..B(8), N | Caller-owned source and selected element count |
+| R(1)..R(16), C | Owned destination and its available capacity |
+| W / E / O | Written length / error / valid-input flag |
+
+Invalid N/C or a selected source value returns W=0,E=1,O=0. Valid input that needs more than C bytes returns W=0,E=2,O=1. **Both failures preserve every output element.** O=1 alone does not mean encoding succeeded: check E as well. Empty input succeeds with W=0, including C=0. Unselected source elements are ignored.
+
+## The reusable routine
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/bounded-rle-encoder/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The first pass counts runs and checks twice that number against C. Only then does the second pass emit pairs. This extra scan buys an all-or-nothing destination contract. N never exceeds eight, so a run count cannot overflow its byte representation.
+
+## Encode and retry safely
+
+The normal caller encodes AAABBCCC into 3,65,2,66,3,67, then tries an undersized destination and confirms the earlier output survives. It also covers empty and single-value requests. Source and input parameters remain available after each call.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/bounded-rle-encoder/demo.bas" from={"100 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+The complete trace observes every field and output element after each request. The diagnostic's line 2000, AA/BB, JJ/KK (Z/Q on Spectrum) and mailbox can be removed from a game. Your caller owns B/N/C/R and checks W/E/O after calling 3100.
+
+## Customise the source
+
+The custom caller uses eight distinct values. That expands eight input cells into sixteen encoded bytes, the worst case here. Allocate for that bound unless you are prepared to reject incompressible input. Repetition can reduce encoded length; it does not remove the need to reserve enough destination space.
+
+There is no file header, terminator or literal-packet scheme. This remains a small local count/value example. Bigger blocks need wider limits and updated tests. Precompressing immutable assets in the build avoids runtime encoding cost; live map edits or generated records may justify doing it in the game.
+
+## Mistake and repair
+
+The wrong caller passes C=0 for nonempty input, confusing available capacity with the number of bytes currently filled. The encoder safely refuses the request and preserves all sixteen old output values. Both saved checks fail because no expected record was produced. The repair supplies the real reserved capacity. Its source and loaded program match the normal caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-bounded-rle-encoder-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+The encoder makes two bounded scans of at most eight input cells and writes at most sixteen output cells. Output count is twice the number of runs. BASIC numeric arrays themselves are not packed byte storage; the values describe a byte format that could later be written through a suitable byte-output routine.
+
+[Maths for Games](/craft/maths-for-games/) connects worst-case size, runs and compression ratio. [The Craft](/craft/) helps choose between runtime conversion and build-time assets. Compare encoder and decoder failure contracts: this encoder preserves the whole destination on failure, while the decoder can return a useful partial prefix.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **564 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-packing.py bounded-rle-encoder bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-packing.py bounded-rle-encoder`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/bounded-rle-encoder/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/938b5b396ea56ae1128766055dd4900b605f0717/bbc-micro/patterns/basic/framework/bounded-rle-encoder).
