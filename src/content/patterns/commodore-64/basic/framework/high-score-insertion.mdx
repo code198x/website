@@ -1,0 +1,86 @@
+---
+title: "Insert a Score and Keep Ties Stable in C64 BASIC"
+summary: "Maintain four descending byte scores with associated tags, retaining existing equal scores first and rejecting an invalid table without changing it."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "high-score-insertion"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Two players finish on the same score. Which name comes first? A small table needs an answer for that tie, for a full board, and for a new score just below the cut. This routine makes each rule visible.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-high-score-insertion-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve S(4) for scores, I(4) for their tags, public R/F/O/V/T/N and private J/K/P. Reserve lines **3000–3340**, including 3320 after the shift loop. Combine routines.bas with your caller using build.py and put END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Private loop/shift scratch must not be borrowed by an outer caller.
+
+Call **3000** for a new table. It clears N, inputs V/T, F/O and arrays, and sets rank R=255. N is the active count, zero to four. Scores are descending in S(1)..S(N); I holds each score's associated byte tag. Unused elements can retain old values and are ignored.
+
+## Insert a completed score
+
+Supply byte score V and byte tag T, call **3100**, then read R/F/O. Tags are identifiers, not name strings; your game can use them to find a name or another record. Keep each score/tag pair together during every move.
+
+| Field | Use |
+|---|---|
+| N, S(1)..S(4), I(1)..I(4) | Retained table and active count |
+| V / T | New score / associated tag; preserved |
+| R / F / O | Zero-based rank / inserted flag / valid-input flag |
+
+O=0 rejects invalid N, inputs, active score/tag values or a prefix that is not descending. N and the whole table survive. This BASIC guard checks the sorted-prefix precondition explicitly. Valid requests return O=1. If retained, F=1 and R=0..3; otherwise F=0,R=255. A valid low score can miss a full table without being an input error.
+
+Existing equal scores keep their order, and the new equal score comes after them. A better score in a full table drops the last pair. A score tied with all four existing scores misses the cut. R=255 is an absence marker; a score of 255 is still valid.
+
+## The reusable routine
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/high-score-insertion/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The routine finds the first strictly smaller score and shifts the tail from the end backwards. Copying forwards would overwrite a pair before its old value was moved. The insertion position is zero-based; arrays are one-based, so R=0 maps to S(1)/I(1).
+
+## Keep one table across results
+
+The normal caller submits repeated scores, a low score that misses the cut, a new maximum and a zero. It finishes with scores 255,100,100,90 and tags 6,1,3,4. The two original 100-point entries keep their order.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/high-score-insertion/demo.bas" from={"100 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+The diagnostic's line 2000, AA/BB/JJ/KK (Z/Q on Spectrum) and mailbox can be removed. A game retains the table between completed sessions, passes the achieved V/T before resetting gameplay, and uses R/F/O to decide what to show.
+
+## Customise the table
+
+The custom caller includes maximum 255, zero and a tie at the maximum. It finishes 255,255,1,0 with the two tied tags still in submission order. Choose what each tag identifies; the helper does not store a name or write a save file.
+
+Wider scores need a wider comparison and bounds. More entries need larger arrays, a new rank/count limit and tests for the longest shift. If a whole unsorted collection needs ordering, sorting it once may be a better fit than repeatedly inserting. Four entries keep this component small enough to inspect.
+
+## Mistake and repair
+
+The wrong caller clears V before insertion. The table can only record the zero it receives; both the expected scores and their tag order are wrong. Pass the completed score before resetting it. The repair matches the normal source and loaded program exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-high-score-insertion-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+A call validates at most four active pairs, searches at most four scores and moves at most three pairs. It allocates no dynamic storage and performs no display or persistent I/O. BASIC numeric fields and arrays have interpreter-managed cost; these are not 14 packed native bytes.
+
+[Maths for Games](/craft/maths-for-games/) connects ordering, stable ties and insertion bounds. [The Craft](/craft/) connects the table's rules to fair, predictable player feedback and when a completed score should become a saved result.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **656 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-records.py high-score-insertion commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-records.py high-score-insertion`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/high-score-insertion/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/a0fbe414716d81f9be2d1c7a6fabc33dac366913/commodore-64/patterns/basic/framework/high-score-insertion).
