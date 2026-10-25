@@ -1,0 +1,86 @@
+---
+title: "Report Trigger Entry, Stay and Exit in Spectrum BASIC"
+summary: "Turn an eight-bit overlap snapshot into separate entered, stayed and exited masks while retaining the previous snapshot."
+platform: "sinclair-zx-spectrum"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "trigger-transitions"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Standing in a doorway should not count as entering it on every update. Comparing this update's overlap with the previous one gives three useful answers: just entered, still inside, and just left.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-trigger-transitions-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public E/S/X/P/C/O, private A/B/I/K/U/V and lines **3000–3200**. There are no arrays. Private I must not be a caller's outer FOR variable. Combine routines.bas and your caller with build.py and prevent fall-through with END, STOP or a jump. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at the intended reset boundary. It clears all public fields. P is the previous complete snapshot and C the current one, with one bit per trigger. Each bit must keep the same meaning between updates. Separate actors need separate previous snapshots and renamed fields/line references.
+
+## Compare one complete snapshot
+
+Set C and call **3100**. E contains current-only bits, S the shared bits and X previous-only bits. P becomes C for the next call; C survives. Read E/S/X before calling again. O=1 reports valid integral byte masks. Invalid P/C clear E/S/X/O and preserve P/C.
+
+| Field | Meaning |
+|---|---|
+| P / C | Retained previous mask / supplied current mask |
+| E / S / X | Newly entered / stayed / exited masks |
+| O | Valid-input flag |
+
+## The reusable routine
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/trigger-transitions/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The portable BASIC implementation walks eight bits arithmetically. This avoids treating a dialect's logical AND as though it necessarily meant bitwise intersection. It costs more than native bit operations; the three masks still describe the same set relationships.
+
+## Retain history between calls
+
+The normal client supplies masks 1,1,3,2,0,1. Trigger zero enters, stays, shares occupancy with trigger one, leaves, then enters again. The custom client exercises bit seven with 128,128,129,1,0,128. The caller accumulates entered and exited masks separately, retaining observations that the last snapshot alone cannot show.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/framework/trigger-transitions/demo.bas" from={"  70 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/NN/SS/JJ and the mailbox are diagnostics. Those sums are test checks, not a way to count trigger events in a game: adding mask values weights higher bits more heavily. A game tests the relevant bits of E/S/X and chooses the associated action. Supply a complete C once per chosen simulation step, after collision/region queries have established overlap.
+
+## Choose reset and identity rules
+
+With P initially zero, starting inside a trigger produces an entered event. To suppress that event, seed P with the initial complete overlap before the first comparison. Changing a bit's meaning or reusing an actor without resetting its history can manufacture an entry or exit. Keep geometry, identity and temporal history separate.
+
+A snapshot cannot reveal a fast object that entered and left entirely between samples. Swept overlap or more frequent sampling is a separate geometry policy. More than eight triggers need a wider mask, several stable groups or explicit boolean arrays. Do not reuse one P for several actors.
+
+## Mistake and repair
+
+The wrong caller clears P before every query. Occupied regions enter repeatedly and exits disappear. Both saved aggregate checks fail, even though a final current mask can look plausible. Retain the previous complete snapshot for the same actor and trigger mapping. The repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-trigger-transitions-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each valid query visits exactly eight bit positions, independent of the number of occupied regions. No geometry search, device reading or allocation occurs. On an interpreter with suitable bitwise operators, native masks can shorten the routine after checking signedness and width. Boolean arrays trade compact representation for clearer direct indexing.
+
+[Maths for Games](/craft/maths-for-games/) connects set intersection and differences to binary masks. [The Craft](/craft/) connects one-time entry actions, continuous occupancy and exit behaviour to readable game rules.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **466 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-temporal.py trigger-transitions sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-temporal.py trigger-transitions`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/trigger-transitions/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/196aa21f7006271294aa3748bc13c703f5e09255/sinclair-zx-spectrum/patterns/basic/framework/trigger-transitions).
