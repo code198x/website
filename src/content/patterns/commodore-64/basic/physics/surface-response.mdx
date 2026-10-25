@@ -1,0 +1,78 @@
+---
+title: "Reflect Speed with a Material Coefficient in C64 BASIC"
+summary: "Scale a normal-speed magnitude by quarter-step restitution, reverse its direction and preserve its tangential component."
+platform: "commodore-64"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "surface-response"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A ball can lose speed when it hits a surface without losing all of its sideways motion. Separate the component along the chosen surface normal from the tangent, then apply a deliberate bounce coefficient.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-surface-response-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public N/D/T/O/A/B/C/R, private P and lines **3000–3150**. There are no arrays. Combine routines.bas and the caller through build.py, keeping END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Call **3000** to clear public fields.
+
+A is the incoming normal-speed magnitude, an integral byte. B is its direction bit, zero or one. C is the tangential component's byte representation. R is restitution in quarters: zero through four. The normal uses magnitude plus direction; it is not a signed byte. The tangent is copied unchanged, so the caller owns its interpretation.
+
+## Apply one response
+
+Call **3100**. For valid inputs, N becomes the integer part of A*R/4, D becomes 1-B, T copies C and O=1. All input fields survive. Invalid data clears N/D/T/O while preserving inputs.
+
+<CodeFromFile src="commodore-64/patterns/basic/physics/surface-response/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+R=4 preserves normal-speed magnitude and reverses direction. R=0 removes normal speed, while still reversing the direction bit; a zero magnitude has no motion whichever direction bit is retained. Intermediate multiplication can reach 1020 and must stay wide until divided.
+
+## Compare two materials
+
+The normal caller uses speed eleven, direction one, tangent byte 254 and R=3. It returns normal magnitude eight, direction zero and unchanged tangent 254. The custom caller uses speed 255, direction zero, tangent 128 and R=2, giving 127, one and 128. Fractional remainders are deliberately discarded.
+
+<CodeFromFile src="commodore-64/patterns/basic/physics/surface-response/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Later calls cover zero speed, fully elastic response and an invalid direction. AA/BB/JJ, line 2000 and the mailbox are diagnostics. A game must decide when a contact is approaching the surface and convert its chosen components back to world velocities.
+
+## Choose the physical approximation
+
+This helper does not discover a surface normal, calculate impact geometry or check whether an object is already moving away. Applying it repeatedly to the same unresolved contact can reverse velocity repeatedly. Separate collision detection, depenetration and response ownership before calling it.
+
+A quarter-step coefficient offers five material choices. Finer fixed-point coefficients can reduce quantisation, at the cost of wider multiplication and additional data or arithmetic. Retaining a fractional remainder changes the interface and state. Tangential friction, spin, coupled bodies and energy conservation need more than this single normal-component calculation.
+
+## Mistake and repair
+
+The wrong caller forces R=4 for every material. It turns the intended damped response into a full-speed bounce; both saved magnitude and preserved-coefficient checks fail. Keep the requested material coefficient authoritative. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-surface-response-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+The component performs fixed validation, one bounded multiply/divide, a direction reversal and a tangent copy. It allocates nothing and owns no world geometry. [Bounded wall reflection](/patterns/commodore-64/basic/physics/reflected-axis/) solves a different problem: finding a final position after crossing limits. Here the caller has already chosen a contact and its normal basis.
+
+[Maths for Games](/craft/maths-for-games/) connects vector components, rational scaling and rounding. [The Craft](/craft/) connects material response to bounce, friction and readable feedback.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **272 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-traversal.py surface-response commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-traversal.py surface-response`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/physics/surface-response/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/8afcf1db3f2e86c6bb2c42fe4acd499ba2665d0a/commodore-64/patterns/basic/physics/surface-response).
