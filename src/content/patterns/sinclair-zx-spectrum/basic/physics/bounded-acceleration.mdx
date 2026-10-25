@@ -1,0 +1,91 @@
+---
+title: "Add Signed Acceleration Without Wrapping in Spectrum BASIC"
+summary: "Add a signed eight-point-eight velocity increment in a wider range, then clamp to an explicit symmetric limit before encoding the result."
+platform: "sinclair-zx-spectrum"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "bounded-acceleration"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Gravity should keep adding downward speed until terminal velocity. It should not turn a fast fall into an upward launch because a narrow integer overflowed. This helper clamps the mathematical sum before putting it back into a signed word.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-bounded-acceleration-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public L/H/A/B/C/D/F/O and private V/R/T/G. Reserve lines **3000–3240**, combine routines.bas and a caller with build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Private numeric scratch is overwritten by each call.
+
+Call **3000** at a reset boundary. It clears every public field. Set velocity L/H, acceleration A/B and limit C/D afterwards, low byte first. Velocity and acceleration are signed two's-complement 8.8 words; the limit is a nonnegative raw magnitude.
+
+## Add, then clamp
+
+Call **3100**. O=1 reports a valid operation. L/H becomes the wide mathematical sum clamped to `-limit..+limit`. F=1 only if the unclamped sum was outside that interval. An exact endpoint is not clipped. Acceleration and limit bytes survive.
+
+| Field | Use |
+|---|---|
+| L / H | Retained signed velocity bytes |
+| A / B | Signed velocity increment per service; preserved |
+| C / D | Nonnegative raw magnitude limit; preserved |
+| F / O | Clipped flag / valid-input flag |
+
+All six input bytes must be integral, and D must be below 128. Invalid input clears F/O and preserves velocity, acceleration and limit. A valid limit is 0..32,767 raw units. The symmetric magnitude 32,768 cannot be used because its positive signed endpoint is not representable. Zero is a valid limit that holds the resulting velocity at zero.
+
+Initial velocity can be anywhere in the signed-word range, including outside a newly chosen limit. The helper adds in a wider range and then clamps. It does not wrap first or reject that initial velocity merely because the limit is smaller.
+
+## The reusable routine
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/bounded-acceleration/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The two words are decoded as signed values, added using BASIC's wider numeric intermediate, then clamped and encoded again. For example 32,767+32,767 must remain a large positive sum until clamping; interpreting its wrapped sixteen-bit result would reverse its sign.
+
+## Retain velocity across updates
+
+The normal caller adds −0.5 per call with a 2.0 limit. Four calls reach −2.0 exactly; the next call is clipped there. The custom caller lowers the limit to 1.0 and clips on later calls. The trace also exercises an invalid limit and a valid zero limit.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/bounded-acceleration/demo.bas" from={"  70 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK (Z/Q on Spectrum) and the mailbox are diagnostics. A game retains L/H, supplies A/B/C/D and calls 3100 at its chosen simulation point. Acceleration here is a velocity increment per service; no elapsed-time conversion happens inside the helper.
+
+## Customise speed and integration
+
+Choose the limit and increment for the intended update rate. Applying acceleration before position or after position changes the integrator's behaviour; make that order explicit in the game. This component clamps one axis. Applying it independently to two axes does not enforce a circular vector-speed limit.
+
+BASIC real-valued velocity and an ordinary clamp can be simpler where no packed-word contract is needed. This port makes signed representation, precision and interoperability inspectable. Higher-resolution formats, asymmetric limits, drag and a magnitude-based speed cap need deliberate extensions and tests.
+
+## Mistake and repair
+
+The wrong caller clears the acceleration's high byte B. The intended FF80 word, −0.5, becomes 0080, +0.5. The helper validly accelerates the wrong way and both saved checks fail. Preserve the signed high byte rather than zero-extending a negative value. Repaired source and loaded program match the normal caller.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-bounded-acceleration-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+The helper performs fixed validation, signed conversion, addition, two clamp comparisons and result encoding. Its intermediate covers sums from −65,536 through 65,534 without wrapping. BASIC numeric storage and tokenised size are not the native eight-byte binding. No frame-time or cycle guarantee is made.
+
+[Maths for Games](/craft/maths-for-games/) connects signed ranges, fixed-point units, saturation and integration order. [The Craft](/craft/) connects acceleration, terminal speed and predictable control.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **610 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-motion.py bounded-acceleration sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-motion.py bounded-acceleration`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/physics/bounded-acceleration/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/5cbf2e82e8a84cc904099a8681090853ebd07f89/sinclair-zx-spectrum/patterns/basic/physics/bounded-acceleration).
