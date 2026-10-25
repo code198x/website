@@ -1,0 +1,86 @@
+---
+title: "Allocate Slots with an Occupied Mask in C64 BASIC"
+summary: "Reserve the lowest free slot and release an occupied slot using one retained eight-bit mask."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "bitset-slot-allocation"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Eight occupied flags can fit in one byte value when objects already live in fixed slots. The useful part is not merely finding a free bit: the game must keep that bit set until the object is actually released.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-bitset-slot-allocation-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public S/R/O/U/M/Q, private I/K/T and lines **3000–3270**. There are no arrays. Private I must not be a caller's outer FOR variable. Combine routines.bas and the caller using build.py and prevent fall-through with END, STOP or a jump. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** once at an intended pool-reset boundary. It clears every public field. U is the retained occupied mask: bit zero belongs to slot zero, through bit seven for slot seven. Initialise any real object payloads separately.
+
+## Allocate or release
+
+Set M=0 and call **3100** to allocate the lowest free slot. Success sets its occupied bit and returns S=0..7,R=1,O=1. A full mask returns S=255,R=0,O=1. The mask survives a failed allocation.
+
+Set M=1 and Q to the slot zero through seven to release. Releasing an occupied slot clears its bit and returns that slot with R=1,O=1. An already free slot is a valid no-op with S=255,R=0. Allocation ignores Q's slot meaning, but Q must still be an integral byte.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/bitset-slot-allocation/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+| Fields | Use |
+|---|---|
+| U | Retained occupied mask |
+| M / Q | Operation / requested release slot |
+| S / R / O | Returned slot / successful change / valid input |
+
+U/Q must be integral bytes and M must be zero or one. Invalid state, mode or release index returns S=255,R=0,O=0 without changing U/M/Q. Check O/R before using S: the sentinel 255 is not an array subscript. Every service replaces the result flags, so consume them immediately.
+
+## Retain live occupancy
+
+The normal caller starts empty and allocates slots zero then one. The custom caller starts with every slot except zero already occupied, so its second allocation reports full. Both release zero and allocate again. The early checks retain the second allocation result and mask.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/bitset-slot-allocation/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ and the mailbox are diagnostics. A game initialises all payload fields after a successful allocation, before other code reads that object. Releasing occupancy does not clear positions, velocities, sprites, sound ownership or old references. A reused slot number can name a different object; references that outlive release need an identity policy such as generations.
+
+## Compare the array-based pool
+
+The existing object-pool routine also maintains numeric flags and optional lifetime ageing. This compact allocator does not provide lifetimes or ageing. It replaces eight occupancy values with one mask value, while payload storage remains elsewhere. In BASIC, that mask is still an interpreter numeric variable, not a one-byte allocation.
+
+A free list can reduce repeated searches for a larger pool, at the cost of more state and invariants. A wider bitset needs wider arithmetic or several groups. Separate pools need renamed fields/line references or a context wrapper. Give occupancy and object creation one owner.
+
+## Mistake and repair
+
+The wrong caller clears U before every service. Its second allocation reuses zero even though the first object is still live. Both saved slot and mask checks fail. Initialise once and retain occupancy until a genuine release. Repaired source and loaded program match normal exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-bitset-slot-allocation-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Allocation tests at most eight bits; release tests one selected bit. There is no payload scan, allocation from a heap or device call. Fewer occupancy values trade storage for arithmetic; measure the complete component rather than assuming that one compact field makes the whole game smaller or faster.
+
+[Maths for Games](/craft/maths-for-games/) connects sets, bit positions and bounded search. [The Craft](/craft/) connects object budgets and safe reuse to predictable game behaviour.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **396 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-decisions.py bitset-slot-allocation commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-decisions.py bitset-slot-allocation`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/bitset-slot-allocation/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/d2807a59c1215534f21656ccc3637428d289f669/commodore-64/patterns/basic/framework/bitset-slot-allocation).
