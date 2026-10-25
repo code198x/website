@@ -1,0 +1,84 @@
+---
+title: "Check a Byte Stream with CRC-8 in C64 BASIC"
+summary: "Retain an eight-bit remainder while feeding a message byte by byte, with two explicit polynomial choices and a clear reset boundary."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "streaming-crc8"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A saved score changes by one byte. Will the loader notice? A checksum gives it something to compare before accepting that record. This streaming CRC needs one retained remainder rather than a second copy of the message.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-streaming-crc8-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public R/D/P/O and private A/B/H/W/I/J/K/T. Reserve lines **3000–3820**, combine routines.bas with your caller using build.py, and put END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Private I/J must not be outer FOR variables.
+
+Call **3000** once per message. It clears R, input D, polynomial P and validity O. Set P afterwards: decimal **7** is polynomial hex 07; decimal **49** is hex 31. The x-to-the-eighth term is implicit. This port deliberately accepts those two qualified choices; other CRC parameter sets need their own contract and checks.
+
+## Feed each byte
+
+Set D to the next byte, call **3100**, check O and retain R. This is a non-reflected, left-shifting CRC, initial remainder zero and no final XOR. Producer and consumer must use the same parameters, message order and covered bytes. P is retained unchanged; changing it halfway through a message creates a different calculation.
+
+| Field | Use |
+|---|---|
+| R | Retained eight-bit remainder, updated on accepted input |
+| D / P | Next byte / polynomial selection; preserved |
+| O | Fresh valid flag |
+
+R and D must be integral bytes; P must be 7 or 49. Invalid input returns O=0 and preserves R/D/P. A valid call returns O=1. This BASIC validity flag is additional to the assembly helper's byte-only input contract. Zero is a valid CRC, not an absence marker.
+
+## The reusable routine
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/streaming-crc8/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The helper XORs the new byte into R, then performs eight polynomial steps. Its private arithmetic XOR helper avoids relying on incompatible bitwise operators across BASIC dialects. It reads no device, owns no file or clock and installs no interrupt handler.
+
+## Check a complete message
+
+The caller feeds ASCII 123456789 once, retaining R between bytes. Polynomial 7 finishes at decimal 244 (hex F4); polynomial 49 finishes at decimal 162 (hex A2). The complete trace checks every intermediate remainder, beyond the two visible final/prefix summary checks.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/streaming-crc8/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, the mailbox and AA/BB/SS/JJ/KK (Z/Q on Spectrum) are diagnostics. A game feeds its own counted payload, stores the final R separately and recomputes over the same payload when reading. Do not include the stored checksum on only one side of the comparison.
+
+## Customise the parameters
+
+The custom caller selects polynomial 49 for the same message. Keep that choice fixed for both writer and reader. If your record changes layout, say which bytes are covered and where its stored CRC lives; the helper creates no project-wide file format.
+
+An eight-bit result has only 256 possible values, so collisions exist. It can detect accidental damage but cannot prove authenticity or validate game-specific fields. Compare it alongside bounds/version/content checks. A lookup table or native XOR/shift instructions can make a hot checksum faster at a space cost; offline assets may need no runtime CRC at all.
+
+## Mistake and repair
+
+The wrong caller resets R before every byte. Only the final character influences its final remainder, and both saved checks fail. Initialise at the message boundary and preserve R until the last byte. The repair's source and loaded tokenised program match the normal caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-streaming-crc8-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Each input performs one arithmetic XOR plus eight bit steps and up to eight more arithmetic XORs. This readable interpreter version is much dearer than a native eight-bit CRC. Its private scratch is global BASIC numeric storage; calls must have one mutation owner. No cycle or frame-time budget is claimed.
+
+[Maths for Games](/craft/maths-for-games/) connects binary polynomials, remainders and collisions. [The Craft](/craft/) helps decide what a save record must validate before it becomes live game state.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **425 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-records.py streaming-crc8 commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-records.py streaming-crc8`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/streaming-crc8/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/95a612386f3999496e05a571a1ff92697902896f/commodore-64/patterns/basic/framework/streaming-crc8).
