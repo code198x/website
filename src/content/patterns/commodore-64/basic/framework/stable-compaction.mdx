@@ -1,0 +1,82 @@
+---
+title: "Pack Live Objects and Keep Their Order in C64 BASIC"
+summary: "Compact paired flag/payload arrays in place, clearing vacated entries while preserving unused capacity."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "stable-compaction"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A particle update can leave holes where objects have expired. Packing the survivors into a live prefix lets later work visit them directly. This helper keeps survivors in their original order and moves each flag with its payload value.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-stable-compaction-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve F(8)/P(8), C/R/O/E and private I/N/W. Reserve lines **3000–3280**, combine numbered source using build.py and put END, STOP or a jump before the helper. Use GOSUB on C64/BBC or GO SUB on Spectrum. The private globals must not be borrowed by an enclosing caller FOR loop.
+
+Call **3000** to clear every field and array element. Set C to the number of owned entries, from zero to eight, then fill F/P. A zero flag is dead; **any nonzero flag is live** and its exact value is retained. P holds a byte-valued payload such as an object ID; zero is a valid payload. The flag, not the payload value, decides liveness.
+
+## Compact the owned prefix
+
+Call **3100**. It keeps live F/P pairs from entries 1..old C in order, moves them to the front and returns the new C. R counts removed entries, O=1 and E=0. The vacated part of the original prefix is cleared to zero in both arrays. Entries beyond the **original C** are untouched.
+
+C=0 is a valid empty operation and leaves the arrays unchanged. E=1 rejects a non-integral/out-of-range count or an invalid active byte value before any array/count mutation, with R=0,O=0. Only the owned prefix is validated. Capacity is not a promise that all eight entries currently belong to this live collection.
+
+## The reusable routine
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/stable-compaction/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The read cursor visits each old entry. The write cursor advances only for a survivor and never overtakes the read cursor, so a move cannot destroy a future unread pair. A second pass clears only the vacated old prefix. The routine explicitly guards empty ranges rather than relying on every BASIC dialect treating a zero-trip FOR the same way.
+
+## Preserve the unused tail
+
+The working caller owns four entries and leaves a flagged sentinel beyond that prefix. It compacts, kills one survivor, compacts again and submits an invalid count before recovering. The custom caller uses a different three-entry prefix. The complete earlier table also covers empty, all-dead, all-live, mixed flags and invalid counts.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/stable-compaction/demo.bas" from={"100 GOSUB 3000\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line **2000**, the mailbox, AA/BB/NN and JJ/KK (Z/Q on Spectrum) serve the diagnostic. A game calls 3100 with its current owned count and then traverses the returned prefix.
+
+## Customise payloads carefully
+
+The custom caller changes the active prefix and arrangement without changing the implementation or allocated arrays. If an object has position, velocity, image and lifetime arrays, **every field must follow the same move**. Extending only F/P while leaving another payload in its old slot attaches data to the wrong survivor. Qualify the complete extended record, not just the new count.
+
+Nonzero means live here; a more elaborate bitfield may need a chosen live-bit test instead. Identifiers are payload values, not a uniqueness guarantee. The helper does not allocate IDs, destroy resources, update external references or draw objects.
+
+Moving records also moves their slot indices. A reference to old slot three may no longer mean the same object after compaction. Stable slots with live flags, generation-checked handles or a separate ID-to-storage mapping are alternatives with different costs. Choose the identity rule before combining storage techniques. Independent collections also need separate globals, arrays, scratch and numbered references.
+
+## Mistake and repair
+
+The wrong caller supplies capacity eight instead of its actual prefix length. A flagged entry in unused capacity is pulled into the survivor set, and the later cleanup clears its old sentinel. Both saved checks print zero: the live count is wrong and data outside the intended owned prefix was changed.
+
+The repair passes the actual owned C. Repaired source and loaded tokenised program match the working caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-stable-compaction-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Validation scans the active prefix, filtering scans it again and cleanup visits only vacated entries. Work grows linearly with the old count, with no second object buffer. F/P are interpreter numeric arrays rather than sixteen packed bytes. Copying a larger payload adds work to each move.
+
+Stable filtering preserves draw/update order, which can matter when objects interact. Swap-removal can avoid shifting a suffix when removing one object, but changes order; sparse stable slots avoid moves but require live tests during traversal. [Maths for Games](/craft/maths-for-games/) connects filtering, order preservation and count conservation. [The Craft](/craft/) helps decide which ordering changes players would notice.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **452 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-entities.py stable-compaction commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-entities.py stable-compaction`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/stable-compaction/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/bf3ae77ee016d14dbec64317ee4fbcdc48a79a3c/commodore-64/patterns/basic/framework/stable-compaction).
