@@ -88,15 +88,38 @@ const SECTION_HEADINGS: Record<string, string> = {
   '/patterns/atari-7800/assembly/framework/turn-loop/': '.pattern-prose > h2',
 };
 
-for (const [route, selector] of Object.entries(SECTION_HEADINGS)) {
-  test(`section headings on ${route} glide from 32px to 40px`, async ({ page }) => {
-    for (const [width, size] of [[320, '32px'], [1200, '40px']] as const) {
+// Card and sub-section headings glide from h4 at 320px to h3 at 1100px and up.
+const CARD_HEADINGS: Record<string, string> = {
+  '/craft/': '.heading-h3',
+  '/field-notes/': '.heading-h3',
+  '/updates/': '.heading-h3',
+  '/colophon/': '.heading-h3',
+  '/contribute/': '.heading-h3',
+  '/timeline/': '.heading-h3',
+  '/timeline/1980s/': '.heading-h3',
+  '/vault/': '.heading-h3',
+  '/systems/': '.heading-h3',
+  '/systems/sinclair-zx-spectrum/assembly/': '.heading-h3',
+  '/crash-live/': '.heading-h3',
+  '/craft/game-feel/unit-01/': '.unit-content > h2',
+  '/systems/sinclair-zx-spectrum/assembly/gloaming/': '.prose h2',
+  '/try/': '.guide-prose h2',
+};
+
+const GLIDES = [
+  { name: 'section headings', from: '32px', to: '40px', routes: SECTION_HEADINGS },
+  { name: 'card headings', from: '24px', to: '32px', routes: CARD_HEADINGS },
+];
+
+for (const { name, from, to, routes } of GLIDES) for (const [route, selector] of Object.entries(routes)) {
+  test(`${name} on ${route} glide from ${from} to ${to}`, async ({ page }) => {
+    for (const [width, size] of [[320, from], [1200, to]] as const) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(route);
       const headings = await page.$$eval(selector, elements => elements
         .filter(element => element.getClientRects().length > 0)
         .map(element => ({ text: (element.textContent ?? '').trim().slice(0, 40), size: getComputedStyle(element).fontSize, weight: getComputedStyle(element).fontWeight })));
-      expect(headings.length, `${route} shows no section headings at ${width}px`).toBeGreaterThan(0);
+      expect(headings.length, `${route} shows no ${name} at ${width}px`).toBeGreaterThan(0);
       for (const heading of headings) {
         expect(heading, `${route} at ${width}px: "${heading.text}"`).toMatchObject({ size, weight: '700' });
       }
