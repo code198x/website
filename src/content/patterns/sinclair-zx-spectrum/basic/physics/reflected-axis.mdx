@@ -1,0 +1,88 @@
+---
+title: "Keep Travel Remaining After a Bounce in Spectrum BASIC"
+summary: "Move within inclusive axis bounds while consuming the whole requested distance, retaining direction and counting repeated reflections."
+platform: "sinclair-zx-spectrum"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "reflected-axis"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A ball reaches the wall with five units of travel still to use. Stopping it there throws away movement and changes its speed. This routine reflects and spends the remaining travel, even when a narrow interval causes several bounces in one update.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-reflected-axis-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public P/A/B/D/S/C/O and private I. Reserve numbered lines **3000–3240**, combine routines.bas and a caller with build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Private I must not be an outer caller's FOR variable.
+
+Call **3000** for a new state. It clears every public field. Set position P, inclusive minimum A/maximum B, requested distance D and direction S afterwards. S=0 moves towards A; S=1 towards B. Retain P/S between updates.
+
+## Spend the whole distance
+
+Call **3100**. A valid request sets O=1, updates P/S and returns reflection count C. A and B must be integral byte bounds with `A < B`, P must be inside them, D an integral byte, and S either zero or one. Invalid input returns C=0,O=0 and preserves P/S and the request fields.
+
+| Field | Use |
+|---|---|
+| P / S | Retained position and direction |
+| A / B / D | Inclusive bounds and requested travel; preserved |
+| C / O | Reflections this call / valid flag |
+
+Landing exactly on an endpoint does not reflect yet. Reflection happens before a subsequent unit step would leave the interval. Moving from zero to ten with distance ten can finish at ten still facing right; the next outward step flips direction and moves to nine. A zero-distance request is valid and changes neither position nor direction.
+
+## The reusable routine
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/reflected-axis/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The bounded unit-step loop makes each reflection rule easy to inspect. It explicitly returns before a zero-distance FOR loop, avoiding dialect-dependent empty-loop behaviour. Every accepted step remains inside the bounds.
+
+## Retain the reflected state
+
+The normal caller starts at eight inside `[0,10]`, moving right by seven. It reaches ten, reflects and spends five more units to finish at five facing left. The custom caller uses a narrower `[0,3]` interval and needs two reflections in its first call. Further calls keep position and direction, then exercise zero distance and an invalid direction.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/reflected-axis/demo.bas" from={"  70 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK (Z/Q on Spectrum) and the mailbox observe those calls. A game supplies bounds and travel, calls 3100 and retains both P and S. Final position alone is not enough to describe the motion: different travel can fold back to the same point.
+
+## Customise the range
+
+D is travel per service call, not a velocity with its own clock. A game can derive it from another movement component, but must make units and rounding explicit. The bounds are inclusive positions, unlike the half-open rectangle edges used by clipping and sweep queries.
+
+The loop makes at most 255 unit steps. A folded-coordinate formula can reduce work for large distances, but must preserve the endpoint and direction rules and report the same number of reflections. The independent verifier uses a mathematical folded reference; it is not a separately qualified BASIC replacement. Moving boundaries and damped bounces need another contract.
+
+## Mistake and repair
+
+The wrong caller reduces D to one. It loses intended travel and changes speed instead of preserving the distance after a bounce. Both saved checks fail. Pass the full requested distance; choose a faster verified algorithm if the readable loop is too expensive. The repair matches normal source and loaded program exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-reflected-axis-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Work grows with D, from zero through 255 unit iterations. A one-unit-wide interval can reflect on every step, so C may reach 255. No allocation, display update or timer occurs here. BASIC numeric fields and interpreter overhead remain separate from tokenised code size; no frame budget is claimed.
+
+[Maths for Games](/craft/maths-for-games/) connects reflection, triangle waves, modulo arithmetic and endpoint conventions. [The Craft](/craft/) connects conserved travel to consistent bounce speed and predictable movement.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **500 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-motion.py reflected-axis sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-motion.py reflected-axis`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/physics/reflected-axis/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/3aac67514bd9e109f4c0e85d9a0905ac156cd026/sinclair-zx-spectrum/patterns/basic/physics/reflected-axis).
