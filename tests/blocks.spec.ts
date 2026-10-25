@@ -146,3 +146,33 @@ for (const { name, from, to, weight, routes } of GLIDES) for (const [route, sele
     }
   });
 }
+
+// Controls are square, flat and on the 8px cell, with the small step's type.
+const CONTROL_ROUTES = [
+  '/patterns/',
+  '/timeline/1980s/',
+  '/vault/category/tools/',
+  '/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer/',
+];
+
+for (const route of CONTROL_ROUTES) {
+  test(`controls on ${route} are square, 48px and set at the small step`, async ({ page }) => {
+    await page.goto(route);
+    const controls = await page.$$eval('.control', elements => elements
+      .filter(element => element.getClientRects().length > 0)
+      .map(element => {
+        const style = getComputedStyle(element);
+        return {
+          text: (element.textContent ?? element.getAttribute('name') ?? '').trim().slice(0, 30),
+          height: Math.round(element.getBoundingClientRect().height) >= 48,
+          radius: style.borderTopLeftRadius,
+          border: style.borderTopWidth,
+          size: style.fontSize,
+        };
+      }));
+    expect(controls.length, `${route} shows no controls`).toBeGreaterThan(0);
+    for (const control of controls) {
+      expect(control, `${route}: "${control.text}"`).toMatchObject({ height: true, radius: '0px', border: '1px', size: '16px' });
+    }
+  });
+}
