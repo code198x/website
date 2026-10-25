@@ -86,9 +86,13 @@ its own parent commit, because other work lands on main in between.
 | Start Here owns its styles; `approved-start-here.css` deleted (#1036) | +404 | |
 | `approved-pages.css` renamed `homepage.css` (#1047) | −762 | |
 | Site frame moved into Layout; `site-frame.css` deleted (#1048) | −420 | 350,444 |
+| `magazine-vault.css` moved to the Vault and FleetBoard, and deleted (#1090) | −1,119 | |
+| Vault styles split by page type (#1139) | +483 | |
+| Vault category pages: one set of masthead and feature styles (#1153) | −562 | |
+| Vault article prose: one rule per element (#1164) | −625 | 348,621 |
 
-Net of every addition above, the source is 125,543 bytes (26.4%) smaller
-than the starting point (#1048). #1025 and #1036 grew it because each page
+Net of every addition above, the source is 127,366 bytes (26.8%) smaller
+than the starting point (#1164). #1025 and #1036 grew it because each page
 took its own copy of the shared base rules that `approved-pages.css` had
 held; #1047 removed the last shared copy. The primitives were an investment step 6
 had to repay; the recompositions took out 27,793 bytes of hand-written
@@ -544,13 +548,20 @@ Three more lessons from applying it to the rollout files (#1000 to #1048):
   scope attribute and lets them beat the child's own rules;
   `:where(.page) :global(p)` keeps the original specificity (#1025).
 
+- A reach check that loads pages with scripts off misses content scripts
+  build. The Vault's table of contents is built in the browser, so its link
+  rule looked dead (#1090). Check candidate dead rules with scripts on too;
+  a scripts-on recheck of the 309 selectors deleted earlier found none in
+  use. Content that appears only after a click or a search (the Vault's
+  search results) still needs a targeted test.
+
 One false alarm: right after load, Chrome reports the auto margin of
 `main` as 0px on about half the loads, though the box is centred every
 time. Sweeps show this as `main` margins flipping between 0 and 88px.
 Compare bounding boxes, or let the page settle, before treating it as a
 change.
 
-### 7. Files by purpose (rollout files done, #1000 to #1048)
+### 7. Files by purpose (done, #1000 to #1164)
 
 Rename or merge the files named after rollouts (`design-rollout.css`,
 `approved-pages.css`, `approved-learning.css`) into files named for what they
@@ -561,9 +572,14 @@ describe the layers and primitives. Zero differences.
 Done: `magazine-pages.css`, `design-rollout.css`, `approved-learning.css`,
 `approved-start-here.css` and `site-frame.css` are gone, their rules now in
 the components, pages and layout they style. `approved-pages.css` is
-`homepage.css`. Still to do: the Vault stylesheets (`magazine-vault.css`,
-`vault.css`, `vault-inner.css`), which share the category masthead between
-them.
+`homepage.css`. The Vault's three files became one per page type
+(#1090, #1139): `vault.css` holds what the Vault pages share (each
+subject's ink and paper, focus and hidden rules) and `vault-index.css`,
+`vault-category.css` and `vault-article.css` hold the rest. A scripts-on
+check of every Vault page showed no other rule reaches more than one page
+type, so the split kept every competing rule's order. #1153 and #1164
+then gave the category masthead, featured article and article prose one
+rule per element.
 
 ### 8. Move the primitives to 198x-ui
 
