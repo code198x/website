@@ -1,0 +1,90 @@
+---
+title: "Keep Fractions Between Position Updates in Spectrum BASIC"
+summary: "Add a signed eight-point-eight displacement to a retained position, preserving sub-unit motion and making wrapping explicit."
+platform: "sinclair-zx-spectrum"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "fractional-position"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Four quarter-pixel updates should move a sprite one whole pixel. If the game throws away the quarter after every update, it never gets there. Keep the fraction in state and discard it only when a particular renderer needs a whole-pixel coordinate.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-fractional-position-demo.png" alt="Spectrum BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public L/H/U/V/O and private T. Reserve lines **3000–3160**, combine routines.bas and a caller with build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Private T belongs to the call.
+
+Call **3000** at a new-state boundary. It clears all fields. Set position L/H and displacement U/V afterwards. The low byte comes first in each pair.
+
+## Add one fixed-point displacement
+
+Position is unsigned 8.8: L holds 1/256-unit fractions and H its whole-unit part. U/V is a signed two's-complement 8.8 displacement. Call **3100** once per intended simulation update. The full word is added, position wraps modulo 65,536 raw units and U/V survive.
+
+| Field | Use |
+|---|---|
+| L / H | Retained fractional / whole position bytes |
+| U / V | Low/high signed displacement bytes; preserved |
+| O | Fresh valid-input flag |
+
+All four fields must be integral bytes. Invalid input returns O=0 and preserves both pairs; success returns O=1. This is an explicit BASIC numeric guard. The helper owns no timer, velocity calculation, display or world boundary.
+
+One raw unit is 1/256 of your chosen world unit. A quarter unit is U=64,V=0. Negative half a unit is U=128,V=255: signed word FF80 in hexadecimal. These are units per service call, not per second. An update rate belongs to the caller.
+
+## The reusable routine
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/fractional-position/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+Unsigned addition followed by modulo 65,536 has the same wrapped result as adding the signed two's-complement displacement. BASIC's numeric intermediate can hold the complete sum before it is reduced. The fractional carry is retained rather than discarded.
+
+## Accumulate small steps
+
+The normal caller starts at 100 and adds 0.25 four times, reaching 101 exactly. The custom caller uses 0.5 and reaches 102. Later calls apply a negative half step and a zero displacement while retaining the resulting fraction.
+
+<CodeFromFile src="sinclair-zx-spectrum/patterns/basic/physics/fractional-position/demo.bas" from={"  70 GO SUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK (Z/Q on Spectrum) and the mailbox are observations. A game retains L/H, supplies U/V and calls 3100. H is suitable as an integer coordinate only for a renderer whose coordinate envelope fits; keep L even when it is not drawn.
+
+## Customise representation
+
+BASIC can also keep an ordinary real-valued position and use an integer view for drawing. That can be simpler. This word representation is useful when sharing an exact binary format, comparing native implementations or choosing fixed fractions deliberately; BASIC numeric variables themselves do not occupy one byte each.
+
+The position covers zero through 255 and 255/256 world units and wraps by design. Wrapping is not a substitute for a clamp, collision response or a larger world coordinate. Wider positions or a different fractional split require matching arithmetic, storage and verification. Do not silently reuse the byte-facing result contract for a wider renderer.
+
+## Mistake and repair
+
+The wrong caller clears L before every update. Each quarter step starts again from the whole position, so four calls leave 100.25 rather than 101. Both saved checks fail. Preserve the fraction in game state; ignoring it only for display is harmless. The repair matches normal source and loaded program exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/sinclair-zx-spectrum/basic-fractional-position-wrong.png" alt="Spectrum BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+A call performs fixed validation and one bounded word addition/reduction. There are no arrays or helper allocations. Tokenised listing size and BASIC numeric storage are different costs from the four packed state bytes used by a native implementation. No cycle budget is claimed.
+
+[Maths for Games](/craft/maths-for-games/) connects fixed point, carries, signed words and update units. [The Craft](/craft/) connects retained sub-unit motion to smooth acceleration and consistent slow movement.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+Spectrum FOR variables must be single letters: this diagnostic uses Z/Q instead of the other callers’ JJ/KK. Numeric arrays start at one. AND/OR in these listings join comparisons; neither is being used as a bitwise operator. The diagnostic reserves its mailbox above CLEAR 59999.
+
+The numbered helper occupies **341 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through Spectrum's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-motion.py fractional-position sinclair-zx-spectrum --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-motion.py fractional-position`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/physics/fractional-position/). [The BASIC game-flow routine](/patterns/sinclair-zx-spectrum/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/b0706c8de2b4e44efb5e69672711c4baafd82c8f/sinclair-zx-spectrum/patterns/basic/physics/fractional-position).
