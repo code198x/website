@@ -1,0 +1,76 @@
+---
+title: "Query a Thin Grid Sight Line in C64 BASIC"
+summary: "Visit the cells along an integer line and stop at the first blocking cell."
+platform: "commodore-64"
+category: "ai"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "grid-line-sight"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Can the enemy see the player across the room? A line through a tile map offers a useful answer, provided the game is clear about what that line means. This helper follows a thin integer line, records its tested cells and stops when one blocks it. It draws nothing and makes no decision about lighting, cone angles or perception.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-grid-line-sight-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve M(16), V(16), public W/H/S/T/O/E/C and private I/N/X/Y/A/B/D/G/U/L/J/K. Reserve lines **3000–3360**. Combine numbered sources with build.py and prevent fall-through with END, STOP or a jump. Use GOSUB on C64/BBC or GO SUB on Spectrum. Private scratch must not overlap a caller's surrounding FOR variables.
+
+W/H are integral dimensions one to four. S/T are zero-based start/target cells in the W*H rectangle. A cell n maps to M(n+1): zero is clear, one blocks sight. Call **3100** for a query. It calls **3000** itself to reset O/E/C and fill V with 255 while retaining the supplied map/endpoints/dimensions.
+
+O=1 means the line reaches a clear target. O=0,E=0 means a blocker stopped it. C counts cells tested; V(1)..V(C) lists them in order, including the blocking cell when present. Both endpoints are tested. A clear S=T visits one cell and succeeds; a blocked start fails immediately. E=1 rejects invalid dimensions/endpoints; E=2 rejects non-binary active map values. Invalid calls retain M/W/H/S/T, return O=0,C=0 and leave V cleared. Unused map cells outside the rectangle are ignored.
+
+## The reusable routine
+
+<CodeFromFile src="commodore-64/patterns/basic/ai/grid-line-sight/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+Bresenham's integer error term chooses when to advance each axis. The same loop covers horizontal, vertical and all diagonal directions. The helper returns cell numbers rather than setting pixels; a caller can use them for sight, debug highlighting or a deliberately thin hitscan rule.
+
+## Choose the corner rule deliberately
+
+This is a **thin line**, not a supercover of every cell a geometric segment touches. Two diagonally touching walls do not automatically close their shared corner. For a half-slope line from cell zero to six on a four-column grid, the sequence is 0,5,6; in reverse it is 6,1,0. Ties round away from the start on the dominant axis. Therefore reversing a query can test a different intermediate cell: visibility is not always reciprocal.
+
+Those details are gameplay rules, not cosmetic implementation trivia. If closed corners or reciprocal visibility are required, use a qualified supercover/corner policy or check both directions under an explicitly chosen rule. Do not describe this thin query as a general solution to field of view.
+
+<CodeFromFile src="commodore-64/patterns/basic/ai/grid-line-sight/demo.bas" from={"100 LET W=4: LET H=4: LET S=0: LET T=W*H-1\n"} to={"\n2000 POKE"} lang="basic" title="Maintained retained-state caller" />
+
+The maintained caller tests a blocked diagonal, removes its blocker deliberately, then asks again. The full diagnostic covers every octant, cardinal rays, same-cell queries, both directions of a half-slope tie, blocked endpoints, narrow maps and invalid inputs. Its line **2000** writer, mailbox, saved AA/BB and JJ/KK belong to verification rather than the API.
+
+## Customise the rule
+
+The custom caller changes the logical rectangle and its blocking cell. All arrays remain allocated at sixteen elements. Cardinal rays already work through this interface: choose endpoints on the same row or column. A range limit can choose a nearer endpoint, but clipping and world-to-cell conversion need their own deliberate bounds. Transparent terrain can be mapped to zero and opaque terrain to one by the caller; this helper has no partial-opacity accumulator.
+
+The query validates the active map on every call, then visits max(abs(dx),abs(dy))+1 cells at most. For this bounded rectangle the visited array cannot overflow. Larger maps need larger arrays or a streaming callback/interface and revised tests. A validated immutable map could avoid repeated validation, but that would change who owns the safety guarantee.
+
+## Mistake and repair
+
+The wrong caller removes the intended blocker before the first query. The line reaches the target and tests more cells: both expected blocked-line checks become zero. The repair retains that blocker for the first query. Repaired source and actual loaded tokenised program match the working caller.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-grid-line-sight-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and further steps
+
+This stores a map and visited list as interpreter-managed numeric arrays, plus scalar line state. Those are not byte-packed arrays. There is no floating-point slope division in the traversal, although these BASIC interpreters still execute their numeric arithmetic. No hardware-cycle budget is inferred. A cardinal-only scan can use less scratch; a supercover tests more cells; a full field-of-view algorithm considers many targets together.
+
+[Maths for Games](/craft/maths-for-games/) connects the error accumulator to raster lines, coordinates and rounding. [The Craft](/craft/) is where to choose readable stealth rules: if a monster sees around a corner, the player needs a rule they can learn. The helper supplies tested cells; the game supplies that policy.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **601 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-world.py grid-line-sight commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-world.py grid-line-sight`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/ai/grid-line-sight/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/bc5f4cdd06fe25b35d81b5be94fc06b736ba1988/commodore-64/patterns/basic/ai/grid-line-sight).
