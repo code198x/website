@@ -1,0 +1,74 @@
+---
+title: "Choose a Winning Request in BBC Micro BASIC"
+summary: "Select the highest-priority request while keeping the first equal-priority winner and explicit batch ownership."
+platform: "bbc-micro"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "priority-arbiter"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A pickup sound and a death sound may be requested in the same update. If only one can play, decide which request wins before touching the sound hardware. This small selector works just as well for choosing a message, animation request or another single shared resource.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-priority-arbiter-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Combine the numbered routine with your caller, reserving lines **3000–3200**. Call **3000 once before a batch of requests**. It clears F/I/P/R/A/O/E. F says whether a winner exists; I holds its ID and P its priority. Callers may use IDs and priorities from 0 to 255. Zero is a valid ID and priority, so F must distinguish no request from request zero.
+
+Spectrum uses GO SUB, while C64 and BBC use GOSUB. Keep END, STOP or an explicit jump before the helper. The supplied build.py combines numbered files and rejects duplicate lines; it does not depend on a BASIC MERGE command.
+
+## Submit and read
+
+Put a request ID in R and its priority in A, then call **3100**. A larger priority wins. O=1 means this request became the winner; O=0 means the previous winner remains. **An equal priority keeps the first request.** After all producers have submitted, check F and use I to dispatch the winner once. Do not dispatch every time O=1 or lower-priority work may already have escaped before a later request wins.
+
+E=1 rejects damaged F/I/P state and E=2 rejects an invalid request. Numeric IDs and priorities must be integral 0–255; F must be exactly zero or one. Invalid calls clear O but preserve the winner. An empty selector can contain stale I/P, but F=0 means the next valid request wins regardless of those stale values.
+
+## The routine
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/priority-arbiter/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+## A batch of competing requests
+
+The retained client below submits five requests. ID20 has the highest priority, and an equal-priority ID40 arrives later. ID20 remains selected. The complete diagnostic also tests priority boundaries, equal values and a damaged present flag.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/priority-arbiter/demo.bas" from={"70 GOSUB 3000: FOR J=1 TO 5\n"} to={"\n2000 ?"} lang="basic" title="Maintained retained-state caller" />
+
+## Ownership and customisation
+
+The helper owns F/I/P/R/A/O/E, with no private loop scratch. It does not own sound channels, sprites or messages. This selects one winner, not one winner per channel; use a separate state set for each independently arbitrated resource. Rename all references and line numbers for a second instance. The diagnostic's W/Z/G and Y/D are not required by a game.
+
+The custom caller changes the game-chosen priority values while keeping the same ordering and tie policy. Agree on priority bands across producers: for example, reserve a higher range for events that must interrupt ordinary feedback. The actual numbers have no built-in meaning. Reordering producers can change the winner of a tie, so make that ordering deliberate. To prefer the last equal request, change the comparison and add tests/captures that establish that different contract.
+
+## Mistake and repair
+
+The wrong caller initialises before **each** request. Every request looks like the first, so the last low-priority request wins. Both saved checks become 0,0: the winner's ID and priority are wrong. The selector itself is obeying the empty-state contract.
+
+The repair initialises once at the batch boundary and retains state through all submissions. Its source and loaded tokenised program match the working caller.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-priority-arbiter-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Costs and alternatives
+
+Each request takes constant scalar work and a comparison; a batch of N requests is O(N). It stores a winner instead of an entire queue. That loses information deliberately: if every request must eventually run, use an event queue or priority queue. A long-running sound also needs its own rule for whether a new batch may interrupt it; this selector has no playback timer. [The Craft](/craft/) helps choose what deserves precedence; [Maths for Games](/craft/maths-for-games/) connects stable maximum selection to ordering and ties.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; the inventory interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **318 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller's W/Z/G, Y/D and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-rules.py priority-arbiter bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-rules.py priority-arbiter`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/priority-arbiter/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/9b984fb98c8233be179e35a0b9b07aafb73da73d/bbc-micro/patterns/basic/framework/priority-arbiter).
