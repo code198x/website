@@ -106,12 +106,32 @@ const CARD_HEADINGS: Record<string, string> = {
   '/try/': '.guide-prose h2',
 };
 
+// Small headings glide from the body step at 320px to h4 at 1100px and up.
+// Lesson and Vault article h3s keep their lighter weight, so only size is
+// checked here.
+const SMALL_HEADINGS: Record<string, string> = {
+  '/patterns/': '.pattern-results h3',
+  '/vault/': '.vault-contribute h2',
+  '/vault/category/techniques/': '.vault-path-list h3',
+  '/vault/category/tools/': '.vault-directory-entries h3',
+  '/timeline/': '.timeline-coverage h2',
+  '/systems/': '.ghead h3',
+  '/crash-live/': '.section-title',
+  '/systems/sinclair-zx-spectrum/': ':is(.machine-setup h2, .language-routes h3, .machine-references h3, .system-launcher h2)',
+  '/systems/sinclair-zx-spectrum/basic/': '.section-title',
+  '/curriculum/': ':is(.panel h2, .section-head h2)',
+  '/foundations/': ':is(.group-title, .card h3, .after h2)',
+  '/start-here/': '.start-route-body h3',
+  '/family/asm198x/': '.prose h2',
+};
+
 const GLIDES = [
-  { name: 'section headings', from: '32px', to: '40px', routes: SECTION_HEADINGS },
-  { name: 'card headings', from: '24px', to: '32px', routes: CARD_HEADINGS },
+  { name: 'section headings', from: '32px', to: '40px', weight: '700', routes: SECTION_HEADINGS },
+  { name: 'card headings', from: '24px', to: '32px', weight: '700', routes: CARD_HEADINGS },
+  { name: 'small headings', from: '20px', to: '24px', weight: undefined, routes: SMALL_HEADINGS },
 ];
 
-for (const { name, from, to, routes } of GLIDES) for (const [route, selector] of Object.entries(routes)) {
+for (const { name, from, to, weight, routes } of GLIDES) for (const [route, selector] of Object.entries(routes)) {
   test(`${name} on ${route} glide from ${from} to ${to}`, async ({ page }) => {
     for (const [width, size] of [[320, from], [1200, to]] as const) {
       await page.setViewportSize({ width, height: 900 });
@@ -121,7 +141,7 @@ for (const { name, from, to, routes } of GLIDES) for (const [route, selector] of
         .map(element => ({ text: (element.textContent ?? '').trim().slice(0, 40), size: getComputedStyle(element).fontSize, weight: getComputedStyle(element).fontWeight })));
       expect(headings.length, `${route} shows no ${name} at ${width}px`).toBeGreaterThan(0);
       for (const heading of headings) {
-        expect(heading, `${route} at ${width}px: "${heading.text}"`).toMatchObject({ size, weight: '700' });
+        expect(heading, `${route} at ${width}px: "${heading.text}"`).toMatchObject(weight ? { size, weight } : { size });
       }
     }
   });

@@ -490,20 +490,23 @@ Measured on 2026-10-23, the repeats are, largest first:
    2026-10-25: a heading glides from one step of the scale on a phone to
    the next step up on a desktop (a section heading 32px to 40px, a card
    heading 24px to 32px), so it sits on the scale at both ends and keeps
-   today's shrink on small screens. Four PRs:
-   1. Page titles (no visible change): the five identical title rules
-      become `.page-title`.
-   2. Section headings, h3 to h2 (32 to 40px): today's 34 to 38px
-      headings on CRASH! Live, the Vault index, the timeline, the
-      demoscene page and the articles.
-   3. Card and sub-headings, h4 to h3 (24 to 32px): today's 26 to 30px
-      headings on Field Notes, Updates, the colophon, Contribute, the
-      timeline years and the lessons.
-   4. Small headings: those already at 24px, and those at 20 to 21.6px,
-      which round to the body or h4 step (Pattern Library, Vault
-      sidebars, Foundations, Start Here).
-   Bold elements that are not headings (step numbers, the timeline's
-   year links, the Vault's connection links) stay as they are.
+   today's shrink on small screens. Done in four PRs:
+   1. Page titles (#1219, no visible change): the five identical title
+      rules became `.page-title`.
+   2. Section headings, h3 to h2 (32 to 40px, #1220): `.heading-h2` and
+      `--heading-h2-size`.
+   3. Card and sub-section headings, h4 to h3 (24 to 32px, #1221):
+      `.heading-h3` and `--heading-h3-size`.
+   4. Small headings, body to h4 (20 to 24px): `--heading-h4-size` in
+      the rules that set them, since most set only a size. Lesson and
+      Vault article h3s keep their lighter weight.
+   The tokens live in `src/styles/site-tokens.css`; Markdown headings,
+   which can't take a class, use them directly. Left as they are: bold
+   elements that are not headings (step numbers, the timeline's year
+   links, the Vault's connection links, the footer promise), headings
+   already at the body step, the homepage's own responsive headings,
+   the magazine-face headings, and pages' own mastheads (lesson,
+   module, pattern and study titles).
 3. Cards with a 3px ink border (done, `.ink-card`, #973); controls with
    a 1px line border: 15.
 4. Status pills (done, `.pill`, #1218): the family pages' status, Craft,
