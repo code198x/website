@@ -1,0 +1,86 @@
+---
+title: "Spend and Refill a Resource in C64 BASIC"
+summary: "Reject unaffordable spending atomically, but accept a refill and cap it deliberately at 255."
+platform: "commodore-64"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "resource-wallet"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+You have three rounds and try to spend five. Nothing should happen to the balance. Pick up a large refill while almost full and a different rule may make sense: keep what fits and stop at the cap. This small wallet makes those two choices explicit.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-resource-wallet-demo.png" alt="C64 BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve public B/A/M/O/E and lines **3000–3200**. There are no arrays or private scratch variables. Combine routines.bas with your caller through build.py and prevent fall-through with END, STOP or a jump. C64/BBC use GOSUB; Spectrum uses GO SUB.
+
+Call **3000** at a reset boundary. It clears all five fields. Set the starting balance B afterwards. Each independent resource needs its own renamed fields/line references, or a deliberate wrapper that loads and stores the selected balance.
+
+## Request one operation
+
+Set amount A and mode M, then call **3100**. M=0 refills: B becomes the smaller of 255 and B+A, with O=1. Excess refill is deliberately discarded. M=1 spends: if A fits the balance it subtracts the whole amount with O=1; otherwise B survives with O=0.
+
+| Field | Use |
+|---|---|
+| B | Retained balance, zero through 255 |
+| A / M | Requested amount / operation |
+| O / E | Accepted flag / invalid-input flag |
+
+B/A must be integral bytes. Only modes zero and one are valid. Invalid input preserves B/A/M and returns O=0,E=1. An unaffordable but valid spend returns O=0,E=0. A zero amount is a successful no-op in either mode. A/M survive all helper calls.
+
+## The reusable routine
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/resource-wallet/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The addition stays wide until it has been capped. Spending tests affordability before touching B. Decrementing first and repairing a negative balance later can already have exposed the wrong state to another part of a game.
+
+## Try a purchase
+
+The normal caller tries five from a balance of three and checks the refusal. The custom caller changes only that first spend to two: it succeeds and leaves one. Both later refill to 255, spend 250 and reject an unaffordable six. The saved early checks matter because distinct histories can converge on the same final balance.
+
+<CodeFromFile src="commodore-64/patterns/basic/framework/resource-wallet/demo.bas" from={"70 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 POKE"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ and mailbox writes are observations. A game checks E, then O, and creates the effect or purchase only after acceptance. This routine cannot atomically coordinate a second wallet, an object pool or another writer. Validate and reserve all resources before committing a multi-resource action.
+
+## Customise the economy
+
+For a smaller capacity, add an explicit cap and validate the initial balance against it; simply truncating a stored value changes the game economy. For multiple fixed categories, use the existing inventory-stacks routine. Its addition rejects a request that does not fit in full; this wallet instead accepts a saturating refill. Pick that policy deliberately.
+
+A partial pickup that leaves a remainder in the world also needs an accepted-quantity result. O alone does not report how much refill was lost. Currency above 255 needs a wider representation; an ordinary wider BASIC scalar may be simpler than byte pairs when there is no binary interchange requirement.
+
+## Mistake and repair
+
+The wrong caller labels spends as refills by setting M=0. The balance increases instead of being charged. The saved operation/acceptance and balance checks both fail, even for the custom affordable purchase. Preserve the requested mode and handle its result. Repaired source and loaded program match normal.
+
+<Figure kind="capture" fit="column" src="/images/patterns/commodore-64/basic-resource-wallet-wrong.png" alt="C64 BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+The helper has fixed validation and one bounded arithmetic path; no category scan or allocation occurs. Atomic rejection and saturating acceptance enforce different invariants. [Maths for Games](/craft/maths-for-games/) connects conservation, limits and inequality checks. [The Craft](/craft/) connects capacity and pickup rules to the player's decisions.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+C64 BASIC V2 recognises only the first two significant characters of numeric variable names. Short names make the ownership visible; check for collisions before including another component. Array element zero exists but is unused here. The diagnostic uses a mailbox at $C000, outside the normal BASIC heap.
+
+The numbered helper occupies **258 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through C64's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-resources.py resource-wallet commodore-64 --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-resources.py resource-wallet`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/resource-wallet/). [The BASIC game-flow routine](/patterns/commodore-64/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/72e1d7dfcd7af5d619a12f80859dbbb55e65f766/commodore-64/patterns/basic/framework/resource-wallet).
