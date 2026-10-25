@@ -1,0 +1,88 @@
+---
+title: "Look Up a Small Slope Surface in BBC Micro BASIC"
+summary: "Query an eight-column height profile, mirror it without copying data and reject a surface that would exceed the byte coordinate range."
+platform: "bbc-micro"
+category: "physics"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "slope-height"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A sloping tile cannot use one flat top edge for every foot position. A short height profile gives each horizontal column its own surface. Mirroring the lookup supplies the opposite slope without a second table.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-slope-height-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+DIM H(8). Reserve public X/B/M/S/O and private I/K/T. Reserve lines **3000–3200**, combine routines.bas with a caller using build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB; Spectrum uses GO SUB. Private I must not be an outer caller's FOR variable.
+
+Call **3000** at a reset boundary. It clears all public fields and the height array. Fill H afterwards. X is a zero-based local column from zero to seven; H(1) is column zero. B is the base vertical coordinate and M a byte-valued mirror flag.
+
+## Query one local column
+
+Call **3100**. M=0 uses the profile in order; any nonzero byte reverses its column order. S becomes B plus the selected height, with O=1, only when the result fits zero through 255. Inputs and the whole profile survive.
+
+| Field | Use |
+|---|---|
+| X / B / M | Local column, vertical base and mirror flag |
+| H(1)..H(8) | Caller-owned byte height offsets |
+| S / O | Surface coordinate / valid flag |
+
+Invalid numeric input, X outside 0..7, or coordinate overflow returns S=255,O=0. A valid surface can also equal 255: always check O. The BASIC port validates all eight table values, not merely the selected one. Pass a normalised 0/1 flag when using a BASIC comparison whose true value is outside the byte range.
+
+## The reusable routine
+
+<CodeFromFile src="bbc-micro/patterns/basic/physics/slope-height/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+Mirroring changes the index from X+1 to 8-X. The maintained profile includes repeated heights, so it is a lookup rather than an assumption that height always equals X. The base sum is checked before assigning the returned surface.
+
+## Keep the real local position
+
+The normal caller queries column three above base 100 and gets 103. The custom caller mirrors the same profile and gets 104. Further queries cover the two end columns, an invalid column and overflow.
+
+<CodeFromFile src="bbc-micro/patterns/basic/physics/slope-height/demo.bas" from={"90 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+Line 2000, AA/BB/JJ/KK (Z/Q on Spectrum) and the mailbox are observations. A game converts a world foot position into the correct tile-local column, supplies the tile's base/profile, calls 3100 and consumes S only with O=1.
+
+## Customise the surface
+
+Change H to describe another eight-column surface, including flat sections or repeated heights. The table width is this example's choice, not a universal hardware tile size. Wider profiles require a new column bound, mirror calculation, array extent and verification.
+
+A surface query alone does not decide whether an actor should land. Its old/proposed feet, horizontal footprint, neighbouring tiles and movement direction still matter. Sampling one point under a wide actor may be insufficient. Keep world, tile-local and rendering coordinates distinct.
+
+## Mistake and repair
+
+The wrong caller replaces X with zero before every query. The profile appears flat because the game keeps sampling one column; both saved checks fail. Retain the actual local coordinate and mirror through M. Repaired source and loaded program match the normal caller exactly.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-slope-height-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Validation scans eight numeric heights, then the helper performs one indexed lookup and checked sum. It allocates no table and draws nothing. BASIC numeric arrays are not thirteen packed native bytes, and no frame-time budget is claimed.
+
+[Maths for Games](/craft/maths-for-games/) connects lookup functions, local coordinates, mirroring and range checks. [The Craft](/craft/) connects a surface profile to readable slopes and the separate rules for landing and walking.
+
+## Global names and line numbers
+
+BASIC numeric names, arrays and numbered lines are global. To combine helpers, rename public and private fields and renumber the helper together with every GO SUB/GO TO reference. Keep each state block under one owner. The maintained build.py rejects duplicate line numbers; it does not automatically namespace or renumber routines.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **334 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-platforms.py slope-height bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-platforms.py slope-height`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/physics/slope-height/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/12287846c737a1d21b346dc4bd48371dea0745c0/bbc-micro/patterns/basic/physics/slope-height).
