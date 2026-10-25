@@ -1,0 +1,86 @@
+---
+title: "Decode a Small Run-length Block in BBC Micro BASIC"
+summary: "Expand count/value pairs into an eight-cell output with explicit input bounds, actual written length and useful partial-error results."
+platform: "bbc-micro"
+category: "framework"
+difficulty: "intermediate"
+tags: ["reusable", "basic", "bounded-rle"]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+A row of three identical tiles can be stored as a count and a tile value. Stretching it back out is straightforward until the data ends halfway through a pair, or a run is larger than the space you reserved. This decoder stops safely and tells you what it produced.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-bounded-rle-demo.png" alt="BBC Micro BASIC shows both retained behaviour checks passing." caption="The working caller completes with both saved checks equal to one." />
+
+## Include and initialise
+
+Reserve I(13) for the encoded source, B(8) for decoded output, public W/E/S/T/L and private J/K/V. Reserve lines **3000–3240**, combine the helper and caller with build.py and keep END, STOP or a jump before the helper. C64/BBC use GOSUB and Spectrum GO SUB. Do not borrow private scratch for an enclosing loop.
+
+Call **3000** at a deliberate reset boundary. It clears all source/output array cells and all public scalars. Supply source bytes afterwards. The maintained 13-byte source includes both a valid asset and deliberate malformed examples; these bytes are caller data, not a required immutable format table.
+
+## Decode a selected span
+
+S is an inclusive **zero-based source byte offset**, T the exclusive end, with `0 <= S <= T <= 13`. L is the available output capacity from zero to eight. Set them and call **3100**. Pairs are positive count followed by byte value. S=0 refers to I(1), and decoded bytes begin at B(1).
+
+| Field | Use |
+|---|---|
+| I(1)..I(13), S/T | Caller-owned encoded bytes and selected span; preserved |
+| B(1)..B(8), L | Owned destination and supplied capacity |
+| W / E | Actual bytes produced / fresh completion or error code |
+
+E=0 means the selected span completed, E=1 invalid bounds or non-byte source data, E=2 a truncated pair, E=3 a zero count, E=4 insufficient output space. Input bounds and all 13 source values are validated before writing. W resets to zero each call. An empty span succeeds without output, even at zero capacity.
+
+On a stream error, B contains a **valid decoded prefix of W bytes**. Bytes after that prefix are preserved. The routine can stop inside a run when capacity is exhausted. It does not roll back that prefix and returns no continuation cursor. Re-decoding with more capacity starts at S again. If you need an all-or-nothing asset, use a staging buffer and publish it only when E=0.
+
+## The reusable routine
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/bounded-rle/routines.bas" lang="basic" title="Reusable numbered routines" />
+
+The loop checks for a complete pair and rejects zero counts before emitting its run. Every store checks remaining capacity. Filling the destination exactly can succeed if that also finishes the selected stream; a full buffer alone is not proof of success.
+
+## Decode and use the returned length
+
+The normal source begins 3,65,2,66,1,67. It expands to AAABBC: six values, with capacity eight. The custom caller offers five cells, producing AAABB and E=4. Both are expected, useful outcomes with different completeness.
+
+<CodeFromFile src="bbc-micro/patterns/basic/framework/bounded-rle/demo.bas" from={"100 GOSUB 3000: LET AA=0: LET BB=0\n"} to={"\n2000 ?"} lang="basic" title="Example calls from the maintained caller" />
+
+The full diagnostic also exercises truncated and zero runs, empty spans, invalid bounds and output exhaustion. Line 2000, AA/BB/SS/JJ/KK (Z/Q on Spectrum) and the mailbox are observers. Your game calls 3100 and accepts only the first W cells, applying its own policy to E.
+
+## Customise capacity and data
+
+Counts describe repeats, not byte offsets. Values can be tiles, pixels or any byte-valued token. Runs of one work but cost two encoded bytes, so alternating input may grow. There is no zero terminator or literal-packet escape in this small local codec.
+
+L never exceeds the allocated eight cells. A larger decoder needs corresponding arrays, limits and tests, and perhaps wider counters. A streaming decoder must retain pair/run progress explicitly. If assets never change, build-time expansion may remove runtime decode work entirely.
+
+## Mistake and repair
+
+The wrong caller replaces W with L after decoding. It advertises eight output cells although only six were produced; two old values become part of the alleged asset. The length and consumed-data checks both fail. The repair preserves the decoder's returned W, checks E and consumes exactly that prefix. Repaired source and loaded program match the normal caller.
+
+<Figure kind="capture" fit="column" src="/images/patterns/bbc-micro/basic-bounded-rle-wrong.png" alt="BBC Micro BASIC shows two failed checks from the deliberate caller mistake." caption="The wrong caller runs to completion, but both saved behaviour checks are zero." />
+
+## Cost and Maths for Games
+
+Validation scans 13 source values. Decoding visits the selected pairs and performs at most eight output stores. A count of 255 still cannot overrun the reserved destination. This bounded interpreter routine is not a measured frame-time guarantee.
+
+[Maths for Games](/craft/maths-for-games/) connects run lengths, sums and bounds. Compare encoded size 2*number_of_runs with the original length before choosing compression. [The Craft](/craft/) helps decide whether partial output is useful or whether loading should commit only a complete asset.
+
+## Machine and measured size
+
+BBC BASIC arrays include element zero; this one-based array interface leaves it unused. Its diagnostic uses MODE 7 and HIMEM=&6000 to separate program storage, mailbox and screen. The helper itself changes neither mode nor HIMEM.
+
+The numbered helper occupies **470 tokenised program bytes** on this interpreter, including line headers. This excludes the caller, test tables, numeric scalar/array storage, interpreter stacks and ROM. Tokenised size is not machine-code size or a hardware-cycle count. No real-time or whole-game performance budget is inferred from the diagnostic. The caller’s AA/BB, JJ/KK and RAM mailbox are observation machinery, not required game state.
+
+## Execution evidence
+
+Working, custom, deliberately wrong and exact repaired callers executed through BBC Micro's stock BASIC interpreter under Emu198x 0.44.2. Build198x 0.2.9 tokenises C64 PRG and Spectrum TAP programs. C64 enters stock RUN, Spectrum uses ROM tape loading, and BBC enters every numbered source line through MOS/BASIC. Actual loaded program bytes, complete state packets, positive completion/count/guards and visible result pixels are checked. After the positive completion marker, the observer advances two complete display frames before capturing, so a partially scanned final character cannot masquerade as a finished picture. Firmware is not distributed.
+
+An independent mathematical/order model checks the trace and rejects altered source, configuration, loaded program, state, completion and image evidence. Host exhaustive checks complement the native boundary/sequential examples; those host ranges are not claimed as natively exhaustive. The supplied diagnostic callers deliberately end with STOP; the interpreter report is expected. The wrong caller prints 0,0 and the normal/custom/repaired callers print 1,1.
+
+Public CI checks retained evidence; it does not execute restricted firmware. Refresh with `python3 scripts/verify-basic-packing.py bounded-rle bbc-micro --tools /path/to/extracted/releases` and inspect with `python3 scripts/check-basic-packing.py bounded-rle`.
+
+
+## Explore further
+
+[Compare the assembly technique](/patterns/commodore-64/assembly/framework/bounded-rle/). [The BASIC game-flow routine](/patterns/bbc-micro/basic/framework/game-flow/) makes session boundaries explicit. [Complete source and native evidence](https://github.com/code198x/code-samples/tree/ad89d0a5fe30cd6934030ae0a981cd9982febb29/bbc-micro/patterns/basic/framework/bounded-rle).
