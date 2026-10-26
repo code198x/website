@@ -67,3 +67,14 @@ The owner requested an explicit connection between Barbara Liskov, the Liskov Su
 Follow-up evidence: Liskov and Wing, *A Behavioral Notion of Subtyping*, TOPLAS 16(6), November 1994, introduction and section 2, pp. 1811–1814 (https://www.cs.cmu.edu/~wing/publications/LiskovWing94.pdf), supports the formal requirement and joint authorship. Robert C. Martin, *Solid Relevance*, 18 October 2020, LSP section (https://blog.cleancoder.com/uncle-bob/2020/10/18/Solid-Relevance.html), independently identifies the principle within SOLID. The stack-order illustration is an explanatory example, not a reproduction of the paper’s bag/stack example.
 
 Follow-up verification: existing content/link/imagery checks pass. Astro compiles and serves the revised MDX successfully; targeted Chromium checks at 390px and 1440px confirm the new section, explanation, source links, unchanged unreviewed/noindex state, no overflow and two passing main-content WCAG A/AA axe checks. The phone rendering was visually inspected. This narrow prose follow-up does not claim a repeated full production build. The backlog validates all 2,966 records and its 19 regressions pass; VC-2964–VC-2966 record Wing, the substitution principle and SOLID as needs-triage after duplicate checks. Prior candidate statuses are preserved.
+
+## Owner-approved publication
+
+The owner approved all ten completed entries, including the Liskov/SOLID follow-up, on 26 October 2026.
+
+1. Set only the ten commissioned reviewed flags to true; retain AI provenance. Run full local checks and a production build using current isolated samples. Verify indexable/rendered articles, imagery, incoming/outgoing links, sources, sitemap inclusion and main-content accessibility at phone/desktop widths.
+2. Push one approval commit to website PR #1241, make it ready, complete required checks and merge by rebase. Verify the deployed revision and each live article and required relationship.
+3. After live verification, mark VC-2816–VC-2825 published with their real paths. Replace planned source references to those entries with verified paths. Preserve every other candidate identity and status. Validate the complete backlog and its regressions; update and rebase-merge docs PR #268, then close the ten writing issues.
+4. Record outcome evidence, confirm all commits are retained on remote refs, stop task-owned processes and remove temporary checkouts and caches.
+
+Approval commit verification: full checks pass with 230 tests and no additions to the accepted 73-finding type baseline. The production build passes at 2,982 pages, with 50 shared-frame rendering families checked. The article diff changes only the ten reviewed flags; prose and AI provenance match the approved drafts. Final local browser outcomes and deployment evidence will be retained in docs PR #268 before publication is marked complete.
