@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
-// The layout primitives on their catalogue specimen (src/components/
-// LayoutSpecimen.astro), at the three widths the restructure is reviewed at.
+// The kit's layout primitives on its catalogue entry (_198x-ui/catalogue/
+// entries/Layout.astro), at the three widths the restructure is reviewed at.
 // Each check is what the primitive promises, measured in the browser.
 
 const WIDTHS = [320, 768, 1440];
