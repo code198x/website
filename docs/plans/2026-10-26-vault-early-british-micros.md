@@ -50,7 +50,7 @@ The optional whole-backlog website check still reports the existing unrelated fa
 - `npm run check` passes: 230 unit tests; 73 pre-existing type errors match the accepted baseline; content, link, imagery, prepared NES assembler and player checks pass. No baseline or checks changed.
 - Full production build passes: 2,788 public pages with the shared frame verified. No new dependencies, shared styles or templates.
 - All ten required candidate relationships are present, plus an additional BBC-project-to-Atom link. The built articles' internal Vault destinations respond successfully.
-- All 19 Vault images across 13 manifests are accounted for. The three new images decode and preserve their original proportions at 390px and 1440px.
+- All 21 Vault images across 15 manifests are accounted for after the rebase. The three new images decode and preserve their original proportions at 390px and 1440px.
 - Browser checks on all three entries at both widths verify titles, images, alt text, credits, sources, noindex/review status and no horizontal overflow. axe reports no main-content WCAG A/AA violations.
 - The unreviewed articles are excluded from the built sitemap. Their publication/review status is not changed by automated checks.
 - Manual visual review caught raw Markdown in an Atom caption; the caption is now plain text. Existing prose links carry the relationships. A regression assertion rejects raw link syntax in captions.
