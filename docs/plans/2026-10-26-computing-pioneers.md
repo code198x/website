@@ -59,3 +59,11 @@ Disagreements: 2
 Visual inspection covers all six new diagrams and both original report pages, plus representative rendered phone/desktop pages. Immediate scroll captures preceded lazy image decoding; repeat captures explicitly wait for decoded images. No shared component change was needed.
 
 The full-site browser/release suites are left to CI; this report claims the bounded production checks above. Publication, indexability, live backlinks, issue closure and published candidate states require owner review and a later publication pass.
+
+## Liskov and SOLID follow-up
+
+The owner requested an explicit connection between Barbara Liskov, the Liskov Substitution Principle and SOLID. Update only her summary/opening, add a short beginner-readable section using the existing stack example, cite Liskov and Wing’s 1994 paper and Martin’s account of SOLID, and extend the evidence record. Keep the existing unreviewed state. Verify MDX compilation, existing content/link/imagery checks and candidate validation before pushing to the same draft PRs. Record missing distinct follow-up subjects after checking entries, aliases and candidates.
+
+Follow-up evidence: Liskov and Wing, *A Behavioral Notion of Subtyping*, TOPLAS 16(6), November 1994, introduction and section 2, pp. 1811–1814 (https://www.cs.cmu.edu/~wing/publications/LiskovWing94.pdf), supports the formal requirement and joint authorship. Robert C. Martin, *Solid Relevance*, 18 October 2020, LSP section (https://blog.cleancoder.com/uncle-bob/2020/10/18/Solid-Relevance.html), independently identifies the principle within SOLID. The stack-order illustration is an explanatory example, not a reproduction of the paper’s bag/stack example.
+
+Follow-up verification: existing content/link/imagery checks pass. Astro compiles and serves the revised MDX successfully; targeted Chromium checks at 390px and 1440px confirm the new section, explanation, source links, unchanged unreviewed/noindex state, no overflow and two passing main-content WCAG A/AA axe checks. The phone rendering was visually inspected. This narrow prose follow-up does not claim a repeated full production build. The backlog validates all 2,966 records and its 19 regressions pass; VC-2964–VC-2966 record Wing, the substitution principle and SOLID as needs-triage after duplicate checks. Prior candidate statuses are preserved.
