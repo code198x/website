@@ -197,6 +197,8 @@ people/louis-castle
 
 They remain outside this batch. The corpus-based date diagnostic is a list of leads, not a historical verdict: its full-tree run reported 1,016 tested claims and 513 differences in estimated coverage onset, with no new magazine or book in that disagreement list. A corpus silence or a later British review does not disprove a subject's documented earlier origin.
 
+A separate final community diagnostic tested 14 claims and raised a Codebase64 lead of `emerged 2007 / corpus onset 1914`. Inspection found a current programming-wiki page labelled 1914 in the search index, rather than a publication from 1914. Other wiki records in the same result set were labelled 1930, 2035 and 2043. This is a date-metadata false positive; the documented 2007 date is retained. The site's account and its preserved 2016 homepage are the relevant evidence. The diagnostic/indexing behaviour is not changed in this content batch.
+
 ## Review boundary
 
 Human review is pending for the nine articles and the added VIC-II section. No new entry is marked reviewed or published, and no writing issue is closed. On approval, update the agreed review flags, verify the published pages and their incoming links, then mark the nine candidate rows published. The fourteen stale backlink proposals remain explicitly distinguished from completed links.
