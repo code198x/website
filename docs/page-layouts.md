@@ -106,12 +106,12 @@ that the statement reaches the built page before any stylesheet.
   shared frame; set only what the frame leaves alone, such as bottom padding.
 - Wrap new CSS in a layer. CSS outside every layer beats every layer, so an
   unwrapped rule silently outranks the whole site.
-- The exception is a rule that overrides a 198x-ui component, either through
-  its `h-` classes or a class passed to it (`<Shell class="nx">`). The kit's
-  component styles are unlayered, so these overrides stay unlayered too, after
-  the layer block, under a comment that says why.
 - The kit's tokens and fonts come in through `src/styles/kit.css`, in the
-  `kit` layer.
+  `kit` layer. Its components style themselves in `kit-components`, which
+  sits after `utilities` and before `blocks`: a component keeps its look over
+  the site's element defaults and layout, and a rule in `blocks` that
+  overrides one, through its `h-` classes or a class passed to it
+  (`<Shell class="nx">`), wins without out-specifying it.
 
 ## Layout primitives
 
