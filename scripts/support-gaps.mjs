@@ -15,51 +15,56 @@ import { ASM198X_ISAS } from '../src/lib/surfaces.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const systemsDir = join(root, 'src/content/systems');
-// `Emu198x/` is the org *container*; the flagship repo is `Emu198x/emu198x/`
-// inside it, so the crates live one level deeper than this once pointed. The
-// cross-check is guarded by `existsSync`, so the wrong path did not error — it
-// silently skipped, and every core that exists but is unflagged went unreported.
-const emuCratesDir = join(root, '../../Emu198x/emu198x/crates');
+// Emu198x's system registry names every machine it ships, one `machine_id`
+// per machine, including the ones that share a runner (the C128 inside the
+// C64's, the CoCo inside the Dragon's). Reading it, not the crates folder,
+// keeps chip crates out of the cross-check and counts shared runners once per
+// machine. The read is guarded by `existsSync`, so a fresh website-only
+// checkout skips the cross-check and says so.
+const emuRegistry = join(root, '../../Emu198x/emu198x/docs/status/systems.toml');
 
-// Emu198x machine crates → website system slug. Extend when a new core lands
-// (unmapped crates are listed by the report). Non-machine crates are skipped.
-const CRATE_SLUGS = {
-  'emu198x-acorn-atom': 'acorn-atom',
-  'emu198x-acorn-bbc-micro': 'bbc-micro',
-  'emu198x-acorn-electron': 'acorn-electron',
-  'emu198x-amiga': 'commodore-amiga',
-  'emu198x-atari-800xl': 'atari-800',
-  'emu198x-atari-2600': 'atari-2600',
-  'emu198x-atari-5200': 'atari-5200',
-  'emu198x-atari-7800': 'atari-7800',
-  'emu198x-c64': 'commodore-64',
-  'emu198x-colecovision': 'colecovision',
-  'emu198x-commodore-pet': 'commodore-pet',
-  'emu198x-commodore-vic-20': 'commodore-vic-20',
-  'emu198x-dragon': 'dragon-32',
-  'emu198x-game-boy': 'game-boy',
-  'emu198x-jupiter-ace': 'jupiter-ace',
-  'emu198x-mattel-aquarius': 'mattel-aquarius',
-  'emu198x-memotech-mtx': 'memotech-mtx',
-  'emu198x-msx': 'msx',
-  'emu198x-nes': 'nintendo-entertainment-system',
-  'emu198x-oric-atmos': 'oric-atmos',
-  'emu198x-sega-master-system': 'sega-master-system',
-  'emu198x-sega-sg-1000': 'sega-sg-1000',
-  'emu198x-sinclair-zx80': 'sinclair-zx80',
-  'emu198x-sinclair-zx81': 'sinclair-zx81',
-  'emu198x-sord-m5': 'sord-m5',
-  'emu198x-spectravideo-svi-328': 'spectravideo-svi-328',
-  'emu198x-spectrum': 'sinclair-zx-spectrum',
-  'emu198x-tatung-einstein': 'tatung-einstein',
+// Emu198x machine id → website system slug. `null` means the machine has no
+// system page of its own yet; the report lists it so the gap is visible.
+// Extend when the registry gains a machine (unmapped ids are reported).
+const MACHINE_SLUGS = {
+  'acorn-atom': 'acorn-atom',
+  'acorn-bbc-micro': 'bbc-micro',
+  'acorn-electron': 'acorn-electron',
+  'amstrad-cpc': 'amstrad-cpc',
+  'atari-2600': 'atari-2600',
+  'atari-5200': 'atari-5200',
+  'atari-7800': 'atari-7800',
+  'atari-800xl': 'atari-800',
+  'atari-st': 'atari-st',
+  'coleco-colecovision': 'colecovision',
+  'commodore-amiga': 'commodore-amiga',
+  'commodore-c64': 'commodore-64',
+  'commodore-c128': 'commodore-128',
+  'commodore-pet': 'commodore-pet',
+  'commodore-vic-20': 'commodore-vic-20',
+  'dragon': 'dragon-32',
+  'jupiter-ace': 'jupiter-ace',
+  'mattel-aquarius': 'mattel-aquarius',
+  'memotech-mtx': 'memotech-mtx',
+  'microsoft-msx1': 'msx',
+  'microsoft-msx2': null,
+  'nintendo-game-boy': 'game-boy',
+  'nintendo-nes': 'nintendo-entertainment-system',
+  'nintendo-snes': 'super-nintendo',
+  'oric': 'oric-atmos',
+  'sega-game-gear': 'sega-game-gear',
+  'sega-master-system': 'sega-master-system',
+  'sega-mega-drive': 'sega-mega-drive',
+  'sega-sg-1000': 'sega-sg-1000',
+  'sinclair-zx-spectrum': 'sinclair-zx-spectrum',
+  'sinclair-zx80': 'sinclair-zx80',
+  'sinclair-zx81': 'sinclair-zx81',
+  'snk-neo-geo': 'neo-geo',
+  'sord-m5': 'sord-m5',
+  'spectravideo-svi-328': 'spectravideo-svi-328',
+  'tandy-coco': 'tandy-coco',
+  'tatung-einstein': 'tatung-einstein',
 };
-const NON_MACHINE_CRATES = new Set([
-  'emu198x-catalogue',
-  'emu198x-native-video',
-  'emu198x-shell',
-  'emu198x-test-skip',
-  'emu198x-ui',
-]);
 
 const scalar = (src, key) => {
   const m = src.match(new RegExp(`^${key}: *"?([^"\\n]+)"?$`, 'm'));
@@ -88,16 +93,16 @@ const systems = readdirSync(systemsDir)
 const bySlug = new Map(systems.map(s => [s.slug, s]));
 
 let coreSlugs = new Set();
-let unmappedCrates = [];
-if (existsSync(emuCratesDir)) {
-  const crates = readdirSync(emuCratesDir).filter(
-    c => c.startsWith('emu198x-') && !NON_MACHINE_CRATES.has(c)
-  );
-  for (const crate of crates) {
-    const slug = CRATE_SLUGS[crate];
-    if (!slug) unmappedCrates.push(crate);
-    else if (!bySlug.has(slug)) unmappedCrates.push(`${crate} → ${slug} (no such system)`);
-    else coreSlugs.add(slug);
+let unmappedMachines = [];
+let pagelessMachines = [];
+if (existsSync(emuRegistry)) {
+  const machines = [...readFileSync(emuRegistry, 'utf8').matchAll(/^machine_id = "([^"]+)"$/gm)].map(m => m[1]);
+  if (machines.length === 0) throw new Error(`no machine_id entries in ${emuRegistry}`);
+  for (const id of machines) {
+    if (!(id in MACHINE_SLUGS)) unmappedMachines.push(id);
+    else if (MACHINE_SLUGS[id] === null) pagelessMachines.push(id);
+    else if (!bySlug.has(MACHINE_SLUGS[id])) unmappedMachines.push(`${id} → ${MACHINE_SLUGS[id]} (no such system)`);
+    else coreSlugs.add(MACHINE_SLUGS[id]);
   }
 } else {
   console.log('(Emu198x checkout not found — skipping core cross-check)\n');
@@ -129,8 +134,11 @@ for (const s of closest) console.log(`  ${label(s)}`);
 const coreUnflagged = [...coreSlugs].filter(slug => !bySlug.get(slug).emu198x);
 console.log(`\nEMULATOR — core exists, flag unset; verify boots-and-validates, then set emu198x: true (${coreUnflagged.length}):`);
 for (const slug of coreUnflagged.sort()) console.log(`  ${label(bySlug.get(slug))}`);
-if (unmappedCrates.length) {
-  console.log(`  unmapped crates (extend CRATE_SLUGS): ${unmappedCrates.join(', ')}`);
+if (unmappedMachines.length) {
+  console.log(`  unmapped Emu198x machines (extend MACHINE_SLUGS): ${unmappedMachines.join(', ')}`);
+}
+if (pagelessMachines.length) {
+  console.log(`  Emu198x machines with no system page: ${pagelessMachines.join(', ')}`);
 }
 
 const noCore = systems.filter(s => !s.emu198x && !coreSlugs.has(s.slug));
