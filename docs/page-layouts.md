@@ -115,17 +115,19 @@ that the statement reaches the built page before any stylesheet.
 
 ## Layout primitives
 
-`src/components/layout/` holds ten primitives after
-[Every Layout](https://every-layout.dev). Compose a page from them instead of
-writing `display`, `gap`, `max-width` or a breakpoint for layout. Each renders
-one element with an `l-` class from `src/styles/composition.css` and takes
-`as` for the element, plus `class` and any attribute.
+Ten primitives after [Every Layout](https://every-layout.dev) come from the
+198x-ui kit: import them from `@198x-ui/components/layout/`. Compose a page
+from them instead of writing `display`, `gap`, `max-width` or a breakpoint for
+layout. Each renders one element with an `l-` class from the kit's
+`layout.css`, which `src/styles/composition.css` imports into the
+`composition` layer, and takes `as` for the element, plus `class` and any
+attribute. A change to a primitive is a kit change; see its README.
 
 | Primitive | Use it for | Main props |
 |---|---|---|
 | `Stack` | Vertical rhythm between siblings | `space` |
 | `Box` | Padding, optionally a hairline, around content | `padding`, `border` |
-| `Center` | A capped, centred measure | `max` (`measure`, `frame` or a length), `gutters`, `intrinsic` |
+| `Center` | A capped, centred measure | `max` (`measure`, a length or a token), `gutters`, `intrinsic` |
 | `Cluster` | Wrapping rows of tags, buttons or links | `space`, `justify`, `align` |
 | `Sidebar` | Two panes that stack when the main one gets too narrow | `side`, `sideWidth`, `contentMin`, `space`, `noStretch` |
 | `Switcher` | Equal items in a row that become a column all at once | `threshold`, `space`, `limit` |
@@ -142,14 +144,18 @@ one element with an `l-` class from `src/styles/composition.css` and takes
 - A block's own rules come later in the cascade than `composition`, so a
   block can override a primitive. Style what is inside a primitive; leave its
   spacing and sizing to the primitive's props.
-- `Frame` refuses a capture at build time. Captures are never cropped to fill
-  a box (`decisions/family-visual-identity.md`); use `Figure` or
-  `NativeImage`.
+- The site's page frame is `PageFrame`, a `Center` given the site's tokens:
+  `max="var(--site-frame-width)" gutters="var(--page-gutter)"`.
+- `Frame` refuses a capture at build time. A capture is never cropped just to
+  fill a box (`decisions/family-visual-identity.md` §7); use `Figure` or
+  `NativeImage`. Both mark their root with `data-capture`, which is how
+  `Frame` recognises them; a new capture component must do the same.
 - `Sidebar`, `Switcher` and `Reel` pass their settings to their children by
   inheritance, so one that is a direct child of another of the same kind
   would be sized by the inner one's settings. Each fails the build when that
-  happens (`src/components/layout/nesting.ts`); wrap the inner one in an
+  happens (the kit's `components/layout/nesting.ts`); wrap the inner one in an
   element.
 
-Preview them at `/catalogue/layout/` on the development server.
+Preview them at `/catalogue/layout/` on the development server, the kit's
+catalogue entry.
 `tests/layout-primitives.spec.ts` measures that page at 320, 768 and 1440px.

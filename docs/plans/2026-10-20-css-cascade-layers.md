@@ -618,11 +618,30 @@ type, so the split kept every competing rule's order. #1153 and #1164
 then gave the category masthead, featured article and article prose one
 rule per element.
 
-### 8. Move the primitives to 198x-ui
+### 8. Move the primitives to 198x-ui (done)
 
 Once step 6 has used them across every family, propose them to the kit as a
 release for the other family sites, and switch the website to the kit's copy.
 Steve owns the kit's releases.
+
+Done 2026-10-26. The identity record first said the kit shares tokens, not
+utility classes, because those sit closer to shared layout; Steve approved an
+amendment counting the primitives as components (`family-visual-identity.md`
+§6). The kit had also split at v0.10.0 into `main` and `v1-paper`, the line
+this site pins; they were merged back first (198x-ui #24), keeping the pinned
+commit on `main`. Then:
+
+- The kit gained `components/layout/`, `layout.css` (unlayered), the guards'
+  tests and a `layout` catalogue entry (198x-ui #26).
+- `Center` no longer knows this site's frame and gutter: `PageFrame` passes
+  `max="var(--site-frame-width)" gutters="var(--page-gutter)"`.
+- `Frame` recognises captures by the kit's classes and a `data-capture`
+  attribute, which this site's `Figure` (for a capture) and `NativeImage` now
+  carry.
+- This site imports the kit's components, `composition.css` imports
+  `layout.css` into the `composition` layer, and the local copies, their unit
+  tests and `LayoutSpecimen` are gone. `tests/layout-primitives.spec.ts`
+  measures the kit's catalogue entry at the same route.
 
 ## Risks
 
