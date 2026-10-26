@@ -65,3 +65,5 @@ Full release and broad browser suites are not claimed for this draft content bat
 While preparing this batch, approved website PR #1229 merged and deployed successfully. Both live reviewed pages returned 200; all ten referring links were present; both photograph checksums matched their manifests; both entries appeared in the live sitemap. VC-0001 and VC-0002 are therefore recorded as published, with their covered paths retained. This does not approve VC-0003–0005.
 
 The unpushed website branch was rebased onto current main after that merge. The three new article files and runtime components, styles and package versions were unchanged by the rebase. Content checks then passed with 26,087 resolving references and 1,492 Vault entries; a fresh 2,788-page production build passed on that base. The three new entries remain unreviewed.
+
+The MK14 has no matching platform-directory record. Its optional platform field is omitted so the details panel does not expose a raw identifier; the Vault title and category provide its identity. This adds no new system-support record.
