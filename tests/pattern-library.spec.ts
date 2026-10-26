@@ -9,6 +9,7 @@ test('find a technique across combined filters and recover from no results',asyn
  const rows=page.locator('[data-pattern]:visible');
  const expectedAudioRoutes = [
   '/patterns/commodore-64/assembly/audio/logical-envelope/',
+  '/patterns/commodore-64/assembly/audio/music-command-stream/',
   '/patterns/commodore-64/assembly/audio/sid-multi-voice/',
   '/patterns/commodore-64/assembly/audio/sid-note-trigger/',
   '/patterns/commodore-64/assembly/audio/sid-voice-setup/',
