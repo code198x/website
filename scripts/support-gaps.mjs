@@ -47,7 +47,7 @@ const MACHINE_SLUGS = {
   'mattel-aquarius': 'mattel-aquarius',
   'memotech-mtx': 'memotech-mtx',
   'microsoft-msx1': 'msx',
-  'microsoft-msx2': null,
+  'microsoft-msx2': 'msx2',
   'nintendo-game-boy': 'game-boy',
   'nintendo-nes': 'nintendo-entertainment-system',
   'nintendo-snes': 'super-nintendo',
