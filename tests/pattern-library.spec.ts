@@ -7,7 +7,16 @@ test('find a technique across combined filters and recover from no results',asyn
  await page.getByRole('combobox',{name:'Machine',exact:true}).selectOption('commodore-64');
  await page.getByRole('combobox',{name:'Subject',exact:true}).selectOption('audio');
  const rows=page.locator('[data-pattern]:visible');
- await expect(rows).toHaveCount(3);
+ const expectedAudioRoutes = [
+  '/patterns/commodore-64/assembly/audio/logical-envelope/',
+  '/patterns/commodore-64/assembly/audio/sid-multi-voice/',
+  '/patterns/commodore-64/assembly/audio/sid-note-trigger/',
+  '/patterns/commodore-64/assembly/audio/sid-voice-setup/',
+ ];
+ await expect(rows).toHaveCount(expectedAudioRoutes.length);
+ await expect.poll(async()=>rows.locator('a[href^="/patterns/"]').evaluateAll(
+  links=>links.map(link=>link.getAttribute('href')).sort(),
+ )).toEqual(expectedAudioRoutes);
  await expect(rows.filter({hasText:'SID Voice Setup'})).toHaveCount(1);
  await page.getByLabel('Search patterns',{exact:true}).fill('impossible-value-732');
  await expect(rows).toHaveCount(0);
