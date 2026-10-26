@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 // The site's CSS relies on one cascade layer order. A browser fixes the order
 // at the first mention of each layer, so the statement has to reach the page
 // before any stylesheet that uses a layer, in the build as well as in dev.
-const ORDER = ['kit', 'base', 'composition', 'utilities', 'blocks', 'exceptions'];
+const ORDER = ['kit', 'base', 'composition', 'utilities', 'kit-components', 'blocks', 'exceptions'];
 
 for (const route of ['/', '/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-01/', '/vault/']) {
   test(`${route} declares the layer order before any stylesheet @built`, async ({ page }) => {
