@@ -153,6 +153,13 @@ const CONTROL_ROUTES = [
   '/timeline/1980s/',
   '/vault/category/tools/',
   '/systems/sinclair-zx-spectrum/basic/meet-basic/unit-01-make-the-spectrum-answer/',
+  // The lesson widgets and the assembly sandbox around them.
+  '/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-02/',
+  '/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-05/',
+  '/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-06/',
+  '/systems/sinclair-zx-spectrum/assembly/meet-assembly/unit-08/',
+  '/systems/sinclair-zx-spectrum/assembly/meteor-storm/unit-28/',
+  '/systems/nintendo-entertainment-system/assembly/meet-the-machine/unit-01/',
 ];
 
 for (const route of CONTROL_ROUTES) {
