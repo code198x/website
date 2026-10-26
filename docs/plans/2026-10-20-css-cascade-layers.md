@@ -161,7 +161,7 @@ the ones above.
 ## Target
 
 ```css
-@layer kit, base, composition, utilities, blocks, exceptions, legacy;
+@layer kit, base, composition, utilities, kit-components, blocks, exceptions, legacy;
 ```
 
 - `kit`: `_198x-ui` tokens and fonts, imported with `layer(kit)`.
@@ -170,6 +170,9 @@ the ones above.
   and footer. Nothing else sets layout.
 - `utilities`: single-purpose classes generated from tokens, added only where
   a pattern repeats.
+- `kit-components`: the kit's components, which style themselves in it
+  (198x-ui #27, 2026-10-26). Above element defaults and layout, so a
+  component keeps its look; below `blocks`, so the site can override one.
 - `blocks`: components. A block styles its own look (colour, type, borders)
   and leaves its layout to composition.
 - `exceptions`: variations of a block, expressed as data attributes
@@ -295,7 +298,10 @@ kit component stay unlayered, after each layer block, with a note. These are
 the ones that name a kit class, or whose subject carries a class the site
 passes to a kit component. Pagefind and the editor's runtime CSS caused no
 differences. **Proposed kit change:** wrap 198x-ui's component styles in
-`@layer kit`, so the overrides can join the layers.
+`@layer kit`, so the overrides can join the layers. Done 2026-10-26 (198x-ui
+#27), as a layer of their own, `kit-components`: in `kit` they sat below the
+site's element defaults, and its `a` rule restyled Chip and Tile links
+(71,292 computed values on 23 pages). The overrides moved into `blocks`.
 
 The release checks then caught what the gate missed:
 `public/workbooks/…/workbook.css` is served as-is, so the wrap skipped it, and
