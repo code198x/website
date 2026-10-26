@@ -90,9 +90,19 @@ its own parent commit, because other work lands on main in between.
 | Vault styles split by page type (#1139) | +483 | |
 | Vault category pages: one set of masthead and feature styles (#1153) | −562 | |
 | Vault article prose: one rule per element (#1164) | −625 | 348,621 |
+| The menu on tablets and phones (#1006) | +388 | |
+| One shared pill (step 6b, #1218) | −126 | |
+| One shared page title (step 6b, #1219) | −311 | |
+| Section headings on the type scale (step 6b, #1220) | −229 | |
+| Card headings on the type scale (step 6b, #1221) | −470 | |
+| Small headings on the type scale (step 6b, #1222) | +1,927 | |
+| One control style: filters and the BASIC machine (step 6b, #1223) | −480 | |
+| One control style: the lesson widgets (step 6b, #1224) | −1,819 | 347,501 |
 
-Net of every addition above, the source is 127,366 bytes (26.8%) smaller
-than the starting point (#1164). #1025 and #1036 grew it because each page
+Net of every addition above, the source is 128,486 bytes (27.0%) smaller
+than the starting point (#1224). #1222 grew it because each of about 30
+small-heading rules now names `var(--heading-h4-size)` instead of a
+literal size. #1025 and #1036 grew it because each page
 took its own copy of the shared base rules that `approved-pages.css` had
 held; #1047 removed the last shared copy. The primitives were an investment step 6
 had to repay; the recompositions took out 27,793 bytes of hand-written
@@ -508,7 +518,13 @@ Measured on 2026-10-23, the repeats are, largest first:
    the magazine-face headings, and pages' own mastheads (lesson,
    module, pattern and study titles).
 3. Cards with a 3px ink border (done, `.ink-card`, #973); controls with
-   a 1px line border: 15.
+   a 1px line border (done, `.control`, #1223 and #1224): square, 48px,
+   8px 16px padding, at the small step. They cover the filters, the Vault's
+   letter buttons, the BASIC machine, the assembly sandbox, the lesson
+   machine and the lesson widgets. Each component keeps its own fills,
+   weight, touch handling and state marks (the held-key ring, the
+   current-stage underline). The byte lesson's bit cells are drawn pixels
+   rather than controls and keep their own look.
 4. Status pills (done, `.pill`, #1218): the family pages' status, Craft,
    the demoscene count, CRASH! Live's chips and the track list.
 
