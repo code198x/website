@@ -1,0 +1,96 @@
+---
+title: "Pause and restart a Blitz session"
+summary: "Preserve score, health and held-input history on resume, and reset them only for a fresh session."
+platform: commodore-amiga
+category: framework
+difficulty: intermediate
+tags: [states, sessions, pause, restart, basic, blitz]
+---
+
+import CodeFromFile from '../../../../../components/CodeFromFile.astro';
+import Figure from '../../../../../components/Figure.astro';
+
+Pause with score four. Resume with score four, then finish that session with six. Starting a fresh game should reset progress; returning from pause should preserve it. A state-entry pulse and a fresh-session request let the owner tell those actions apart.
+
+<Figure src="/images/patterns/commodore-amiga/blitz-game-flow-working.png" alt="Blitz reports resumed four, two resets and finished six; a later fresh restart leaves state one, score two and health three." caption="Resume keeps progress. A later restart requests a fresh session." />
+
+## Put it in your project
+
+Run `make` in the [source folder](https://github.com/code198x/code-samples/tree/21575697a26c624fc94ad0bb03eb818bcfe84d76/commodore-amiga/patterns/blitz/framework/game-flow). Insert `build/working.asc` into a blank **Blitz BASIC 2.10 / Ted 1.1** project, then compile and run with Amiga-X. Q closes the result window. Import complete variants into fresh blank projects to avoid duplicate labels. These ASCII sources are not compiled executables or native editor saves.
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/game-flow/caller.bb2" lang="blitz" />
+
+The builder joins settings, caller and helper routines. Keep the dot-prefixed labels in `routines.bb2` after `End`; calls such as `Gosub PL_GF_INIT` omit the dot. Reserve the `PL_GF_` names and initialise once. One mutable context belongs to one caller; it is not reentrant. The helper owns no arrays, input reader, clock, window, bank or interrupt.
+
+## Make one decision per update
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/game-flow/routines.bb2" lang="blitz" />
+
+| Long field | Contract |
+| --- | --- |
+| `PL_GF_STATE` | Title 0, Play 1, Over 2, Paused 3 |
+| `PL_GF_EVENTS` | Caller-supplied integer mask 0..15, preserved by Step |
+| `PL_GF_CHANGED` | One-update state-entry pulse |
+| `PL_GF_FRESH` | One-update request to reset session data |
+| `PL_GF_ERROR` | Zero valid, one invalid state, two invalid events |
+| `PL_GF_NEXT` | Private transition scratch |
+
+Init zeros all six `.l` fields. Before `Gosub PL_GF_STEP`, supply Start 1, Pause 2, Loss 4 and Restart 8 as logical event bits.
+
+| Old state | Decision |
+| --- | --- |
+| Title | Start enters Play with a fresh session |
+| Play | Loss enters Over; otherwise Pause enters Paused |
+| Over | Restart enters fresh Play; otherwise Start enters Title |
+| Paused | Pause resumes Play without requesting a reset |
+
+**Loss wins over Pause. Restart wins over Start.** Unused bits in a valid mask have no effect. The helper chooses one next state and commits it once, avoiding a cascade through newly entered states during the same update.
+
+Step clears pulses and error before validating state, then events. Invalid input preserves the supplied state, events and scratch with cleared pulses and error one or two. Negative masks and values such as 256 are invalid; inspecting only low-byte bits would miss them. Consume `CHANGED` and `FRESH` before another Step clears them.
+
+The helper uses bounded `MOD` arithmetic for bit membership after validating 0..15. It does not assume another BASIC dialect's numeric `AND` behaviour. The original compiler executed this typed-long version.
+
+## Keep simulation and reset in the owner
+
+The small caller processes fifteen fixed held-event samples. A bounded four-bit pass derives fresh events from current and previous held masks. It updates score only for the **old Play state**, calls Step, then resets score and health only when `FRESH` is set. Entering Play does not run its simulation during that same update.
+
+Pause preserves score, health and input history. Keep that history when resuming so a still-held press does not become a fresh second event. This trace qualifies logical event policy, not a physical keyboard reader. A game supplies sampling and rendering separately, as in the [loop choices](/patterns/cross-platform/framework/game-loop-choices/).
+
+## Choose fresh-session health
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/game-flow/settings.bb2" lang="blitz" />
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/game-flow/custom.bb2" lang="blitz" />
+
+The custom build starts health at five instead of three with the same transitions. Other session data belongs in the caller's fresh-reset block. Resetting it on resume should be an explicit game rule, not an accidental consequence of entering Play.
+
+## When resume quietly resets progress
+
+The wrong build replaces the caller's FRESH-only condition with:
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/game-flow/wrong.bb2" lang="blitz" />
+
+Now every entry to Play resets progress. The actual wrong owner resumes at zero, counts three resets and finishes at two.
+
+<Figure src="/images/patterns/commodore-amiga/blitz-game-flow-wrong.png" alt="The faulty Blitz owner reports resumed zero, three resets and finished two, exposing its reset on resume." caption="The final score alone hides the fault: both callers later restart and end at score two." />
+
+Restore `If PL_GF_FRESH.l<>0`, generate `build/repaired.asc`, then import and compile it independently. Working and repaired report resumed four, two resets and finished six. Both later end in Play with score two after a fresh restart. Inspect the resumed and finished observations, not just the final score.
+
+## Costs and native checks
+
+Six signed longs hold **24 bytes of numeric payload**. The owner separately stores score, health, input history and trace counters. Compiled instructions, runtime bookkeeping, call-stack use, editor and window storage are additional and have not been isolated. This is not a total-heap, executable-size, minimum-memory or peak-stack measurement. ASCII lengths measure source text.
+
+The small owner opens a 420×180 Workbench window and reserves no bank. Normal Q exit restores default input/output and closes its window. Arbitrary interruption and another owner's resources need their own cleanup policy.
+
+Diagnostics are separate programs. Six independent imports hold 64, 64, 64, 64, 64 and 46 records, covering **366 complete native records**. Each record stores eleven signed longs plus a four-byte row marker: 48 bytes. Five native banks are 3,080 bytes and the last is 2,216 bytes, confirmed by actual bank-size pixels. Each has its own final guard pair; headers are additional.
+
+Total allocation across those independent runs is 17,616 bytes. Joining only their record bodies with one final guard pair yields the 17,576-byte canonical observation packet. No single run needs the combined allocation. These bounded imports fit the checked original compiler's default object buffer without increasing RAM or compiler settings. Adding DATA requires checking that limit again. Completion does not establish a frame-time or throughput budget.
+
+Original **Blitz BASIC 2.10 / Ted 1.1**, compiled through **Emu198x 0.44.1**, ran all eleven imports on a PAL A1200 with 2 MiB chip RAM and no fast RAM. Five usable owners cover working, custom, wrong and independently repaired behaviour. An independent literal four-by-sixteen table checks all 64 valid state/event pairs. Other records cover all 252 remaining byte states, four signed/wide states, forty invalid event pairs, five guest-constructed signed-minimum inputs and one nonzero-seeded Init.
+
+Full longs retain upper bits: owner payload 65537 exposes truncation, and seeded pulses/error/scratch expose missing resets. Every unique chunk and all 366 rows must join in order; missing, empty, duplicate or swapped observations cannot qualify the model.
+
+The [retained evidence](https://github.com/code198x/code-samples/tree/21575697a26c624fc94ad0bb03eb818bcfe84d76/commodore-amiga/patterns/blitz/framework/game-flow/verification) binds source, imported programs, fixture, runtime, firmware and captures. Complete banks agree with independent expectations and actual count, pulse, allocation, font and owner pixels. Corruption controls challenge packets and identities. CI rechecks retained proof without booting licensed software. This qualifies the named workload, not another compiler, original hardware, NTSC or smaller machines.
+
+Both pictures export native captures at 768×576. Every omitted framebuffer column has an identical retained partner across the complete decoded image. Original captures and export hashes remain retained; no unique pixels are removed or invented.
+
+For [Maths for Games](/craft/maths-for-games/), the table maps one old-state/event pair to one next state. Priorities make simultaneous inputs deterministic. For game structure, keep that transition decision separate from simulation and session ownership: state entry and a fresh session serve different purposes.
