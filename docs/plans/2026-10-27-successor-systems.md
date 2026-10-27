@@ -1,0 +1,11 @@
+# Vault batch: successor systems
+
+Authorised 27 October 2026 while the owner reviews the existing nineteen drafts. Work on new branches based on the pending reference/press branches so the previous review is unchanged. New PRs target those parent branches; retarget to main when the parents merge.
+
+1. Triage VC-0007 Spectrum 128, VC-0011 Commodore 128, VC-0013 SX-64, VC-0021 TI-99/4A, VC-0030 Atari 7800, VC-0031 Jaguar, VC-0032 Falcon030, VC-0051 Electron, VC-0068 Atari 5200 and VC-0079 CDTV. Read titles, aliases, redirects and referring contexts, search open/closed issues by name and ID, and record each bounded scope or existing coverage in vault-candidates.csv.
+2. Read original manufacturer manuals and technical records, with contemporary independent reporting where possible. Distinguish announcement from availability, regional launches, compatibility modes, optional expansions and marketing terms. Make no unmeasured performance or execution claim.
+3. Create/reuse writing issues only after ready triage. Write needed MDX under src/content/vault/systems/ with source notes, British English and concrete mechanisms. Keep ai_generated true and reviewed false; retain current nineteen review flags.
+4. Add selective links at real referring mentions and useful reciprocal connections. Reject stale suggestions explicitly. Register missing named subjects as uncommissioned candidates after identity checks.
+5. Use original explanatory diagrams where useful and rights-compliant original material when available; do not borrow hardware photographs or portraits. Record image provenance and inspect rendering. No dependencies or schema changes.
+6. Save claim-level evidence under docs/reviews/2026-10-27-successor-systems/. Verify CSV regressions/references, site checks/build, source/date checks and a broken-link negative control. Check actual built routes/fragments, noindex/sitemap and phone/desktop article layout, imagery and accessibility.
+7. Commit and push one complete batch per repository; create and attach separate draft PRs with the evidence reports. Leave human sign-off and publication pending. Verify remote retention, remove all task worktrees/caches/downloads and stop task-owned processes.
