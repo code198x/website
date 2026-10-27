@@ -1,0 +1,89 @@
+---
+title: "Reuse bounded object slots in Blitz"
+summary: "Acquire the lowest free slot, validate releases before indexing, and let the game own object lifetime."
+platform: commodore-amiga
+category: framework
+difficulty: intermediate
+tags: [objects, pools, memory, ownership, basic, blitz]
+---
+
+import CodeFromFile from '../../../../../components/CodeFromFile.astro';
+import Figure from '../../../../../components/Figure.astro';
+
+Eight objects fill the pool. A ninth request reports full. Release slot 0 and the next request reuses it, while the stored payload remains 60. A bullet, enemy or effect can reuse that place without the helper deciding what the object means.
+
+<Figure src="/images/patterns/commodore-amiga/blitz-object-pool-working.png" alt="Blitz fills eight slots, reports full, then reuses slot zero with acquired one; payload stays 60 and guard stays 99." caption="The owner releases a finished object. The next acquisition selects its now-free slot." />
+
+## Put it in your project
+
+Run `make` in the [source folder](https://github.com/code198x/code-samples/tree/21575697a26c624fc94ad0bb03eb818bcfe84d76/commodore-amiga/patterns/blitz/framework/object-pool). Insert `build/working.asc` into a blank **Blitz BASIC 2.10 / Ted 1.1** project, then compile and run with Amiga-X. Q closes the result window. Use a fresh blank project for each complete variant so labels do not collide. These are ASCII source imports, not compiled executables or native editor saves.
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/object-pool/caller.bb2" lang="blitz" />
+
+The builder joins settings, caller and helper routines. Keep dot-prefixed helper labels after the owner's `End`. Calls use `Gosub PL_OP_INIT`, `Gosub PL_OP_ACQUIRE` and `Gosub PL_OP_RELEASE`, without the label's dot. Reserve the `PL_OP_` names and occupancy array for one owner and one mutable pool. It is not reentrant.
+
+The caller allocates `Dim PL_OP_LIVE.l(8)`: **nine long elements**, with slots 0..7 usable at maximum capacity eight and element 8 acting as an external guard. Allocate and retain that storage before calling the helper. It cannot detect a missing or undersized array. Payload and optional lifetime arrays belong to the owner and use matching indices.
+
+## Initialise, acquire and release
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/object-pool/routines.bb2" lang="blitz" />
+
+| Long field | Contract |
+| --- | --- |
+| `PL_OP_CAP` | Init input: integer capacity 1..8 |
+| `PL_OP_SIZE` | Private configured extent; zero disables |
+| `PL_OP_SLOT` | Acquisition result or release input |
+| `PL_OP_OK` | One on success, zero otherwise |
+| `PL_OP_ERROR` | Zero valid/full, one invalid context/init, two invalid or already-free release |
+| `PL_OP_I` | Private scan index |
+
+The `.l` declarations make these signed longs. Occupancy is zero for free and nonzero for occupied; the helper writes zero or one. Valid init clears only the configured occupancy slots, preserving payload and lifetime data. Invalid init disables the context without writing occupancy, even after an earlier valid configuration. Changing capacity takes effect through another init; keep private size and scan state private.
+
+Acquire selects the lowest free index and marks it occupied. **Check `PL_OP_OK` before subscripting an array.** Full returns slot equal to size, success zero and error zero. The bounded search completes its `For`/`Next` before returning.
+
+To release, supply the slot and call Release. Context and both index bounds are checked before any subscript. Releasing an already-free slot is rejected. Payload is not erased. An active object keeps its index until release; after reuse, an old saved index can refer to a different object. Generation counters and stale-handle detection are outside this component.
+
+## Let the owner decide when an object expires
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/object-pool/age.bb2" lang="blitz" />
+
+This separate owner starts four objects with lifetimes 1, 2, 1 and 3. Each pass visits occupied slots, reduces lifetime and releases expired objects. Only after the first complete traversal does it acquire slot 0 again with lifetime two. Spawning during traversal would let index order decide whether a new object ages immediately.
+
+Native observations give live counts 3, 2, 0 and expiry counts 2, 1, 2. Every occupancy, lifetime and payload element remains observable, including unused elements and guards. One pass means your game's chosen unit, not automatically one second. Keep clocks, input, drawing and spawning outside the occupancy helper; the [loop choices](/patterns/cross-platform/framework/game-loop-choices/) explain where that ownership fits.
+
+## Change capacity without changing the helper
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/object-pool/settings.bb2" lang="blitz" />
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/object-pool/custom.bb2" lang="blitz" />
+
+The custom build configures four slots; `build/single.asc` configures one. Both fill, report full and reuse the lowest released slot with the same routines. Keep the allocation and success checks. Enlarging the helper's supported bound also requires revisiting storage and native qualification.
+
+## When a finished object still occupies its slot
+
+The deliberate wrong owner replaces release followed by acquire with this fragment:
+
+<CodeFromFile src="commodore-amiga/patterns/blitz/framework/object-pool/wrong.bb2" lang="blitz" />
+
+<Figure src="/images/patterns/commodore-amiga/blitz-object-pool-wrong.png" alt="The wrong Blitz owner reports reuse slot eight with acquired zero; payload and guard remain unchanged." caption="Without a release, the pool correctly remains full." />
+
+Restore `PL_OP_SLOT.l=0`, `Gosub PL_OP_RELEASE`, then `Gosub PL_OP_ACQUIRE`. Import and compile `build/repaired.asc` separately: reuse returns slot zero with success one. Working, wrong and repaired all compile and complete. A compiler error or missing observation would not demonstrate this ownership fault.
+
+## Costs and native checks
+
+Six scalar longs hold **24 bytes of numeric payload**. Nine occupancy elements add 36 bytes; the caller's optional payload and lifetime arrays each add 36 more. Compiled instructions, descriptors, runtime bookkeeping, call-stack use, editor, screen and window storage are additional and have not been isolated. These are not total-heap, executable-size, minimum-memory or peak-stack measurements. ASCII lengths measure source text.
+
+The small owner opens a 420×180 Workbench window and reserves no bank. Normal Q exit restores default input/output and closes its window. This does not qualify arbitrary interruption or cleanup of another owner's resources. Diagnostic programs separately reserve bank 0 and free it on normal exit; coordinate that bank number with other code.
+
+Three full mask runs each use a **380,936-byte diagnostic bank**: 768 records of 496 bytes plus two final long guards. Each record contains inputs, five complete snapshots of all six helper longs and every occupancy/payload element, then a row guard. Compact native loops generate masks without a large DATA table consuming the original compiler's object buffer.
+
+Separate native bank-size observations confirm 5,344 bytes for 46 domain boundaries, 704 for six signed-minimum records and 464 for three lifetime passes. Those allocations belong to diagnostics. Headers are additional; completion gives no frame-time or throughput budget.
+
+All twelve imports ran through original **Blitz BASIC 2.10 / Ted 1.1**, compiled using **Emu198x 0.44.1**, a PAL A1200 with 2 MiB chip RAM and no fast RAM. Six usable owners cover default, custom, single-slot, wrong and repaired behaviour. Full working/wrong/repaired diagnostics cover every byte occupancy mask at capacities one, four and eight, including init, acquire, release, repeated release and invalid release.
+
+Boundaries include invalid capacities and contexts, invalid init followed by another call, and negative or oversized indices. The guest constructs -2147483648 by subtracting one from -2147483647. Full longs expose upper-bit corruption; payload 65537, unused flags and guard 99 expose writes outside helper ownership. These checks qualify the named software and workload, not another compiler, NTSC, original hardware or smaller machines.
+
+The [retained evidence](https://github.com/code198x/code-samples/tree/21575697a26c624fc94ad0bb03eb818bcfe84d76/commodore-amiga/patterns/blitz/framework/object-pool/verification) binds source, imported programs, fixture, runtime, firmware and captures. Independent models check every native packet byte and actual screen digits. Corruption controls challenge records, coverage, owners, identities and pixels. CI validates retained proof without booting the licensed runtime.
+
+Both pictures export native captures at 768×576. Every omitted framebuffer column has an identical retained partner, checked across the complete decoded image. Original captures and export hashes remain retained; no unique pixels are removed or invented.
+
+For [Maths for Games](/craft/maths-for-games/), occupancy is a finite set: acquire chooses the smallest missing member and release removes a member. The practical design lesson is to separate storage reuse from lifetime and update order.
