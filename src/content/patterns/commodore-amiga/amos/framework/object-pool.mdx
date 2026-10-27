@@ -1,0 +1,84 @@
+---
+title: "Reuse bounded object slots in AMOS"
+summary: "Acquire the lowest free slot, reject invalid releases, and keep object lifetime in the game."
+platform: commodore-amiga
+category: framework
+difficulty: intermediate
+tags: [objects, pools, memory, ownership, basic, amos]
+---
+
+import CodeFromFile from '../../../../../components/CodeFromFile.astro';
+import Figure from '../../../../../components/Figure.astro';
+
+Eight objects fill the pool. A ninth request reports full. Release slot 0 and the next request reuses it, while the object's stored payload remains 60. This gives a game a fixed number of reusable places for bullets, enemies or effects.
+
+<Figure src="/images/patterns/commodore-amiga/amos-object-pool-working.png" alt="AMOS fills eight slots, reports full, then reuses slot zero with success one; payload is 60 and guard is 99." caption="Release makes a slot available again. The owner decides what data to put there." />
+
+## Put it in your project
+
+The [source folder](https://github.com/code198x/code-samples/tree/96545d128f95aacef9b0abaa5fe2befad89afca6/commodore-amiga/patterns/amos/framework/object-pool) contains the modules and Makefile. Run `make`, then Merge ASCII from `build/working.asc` into a blank AMOS Professional 2.00 project. F2 checks syntax; after it finishes, F1 runs. Q leaves the result screen. Import each complete variant into a fresh blank project so labels do not collide. These are ASCII import files, not tokenised AMOS saves.
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/object-pool/caller.amos" lang="amos" />
+
+The builder puts settings and the caller before `routines.amos`. Keep the routines after `End`: falling into a `Return` without a matching `Gosub` is an error. Reserve the `PL_OP_` names for one owner and one pool. This mutable context is not reentrant.
+
+`Dim PL_OP_LIVE(8)` allocates **nine elements**, because AMOS includes the upper bound. Slots 0..7 support our maximum capacity of eight; element 8 is a diagnostic guard. Allocate the array before calling the helper and keep it alive. The helper cannot discover missing or undersized caller storage. Payload and lifetime arrays are separate caller-owned data.
+
+## Initialise, acquire and release
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/object-pool/routines.amos" lang="amos" />
+
+| Field | Contract |
+| --- | --- |
+| `PL_OP_CAP` | Init input: integer capacity 1..8 |
+| `PL_OP_SIZE` | Private configured extent; zero disables the context |
+| `PL_OP_SLOT` | Acquisition result or release input |
+| `PL_OP_OK` | One on success, zero otherwise |
+| `PL_OP_ERROR` | Zero for valid operation/full, one for invalid context/init, two for invalid or already-free release |
+| `PL_OP_I` | Private scan index |
+| `PL_OP_LIVE()` | Occupancy only: zero free, nonzero occupied |
+
+Set capacity and call `Gosub PL_OP_INIT`. Valid init clears only the configured occupancy slots. It preserves payload and lifetime data. Invalid init disables the context and returns error one without writing occupancy, even after a previous valid configuration. Changing capacity takes effect only through another init; keep private size and scan state private.
+
+`Gosub PL_OP_ACQUIRE` selects the lowest free index and marks it occupied. **Check `PL_OP_OK` before indexing an array.** Full returns slot equal to size, success zero and error zero. The bounded scan completes its `For` loop before returning, leaving no abandoned loop frame.
+
+To release, supply the slot and call `Gosub PL_OP_RELEASE`. Context and both index bounds are checked before subscripting. An already-free slot is rejected. Release does not erase payload. Active objects keep their indices until released; once reused, an old saved index may refer to another object. This helper has no generation counters or stale-handle detection.
+
+## Let the game own lifetime
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/object-pool/age.amos" lang="amos" />
+
+The optional lifetime caller starts four objects with lifetimes 1, 2, 1 and 3. Each pass visits occupied slots, reduces lifetime and releases expired objects. It waits until the first complete traversal ends before spawning into slot 0 with lifetime two. Spawning during traversal would make update order decide whether the new object ages immediately.
+
+Native observations give live counts 3, 2, 0 and expiry counts 2, 1, 2. One pass is your chosen game unit, not automatically one second. Input, clocks, drawing, spawning and payload policy stay outside the helper. This separation connects storage reuse to the [game-loop choices](/patterns/cross-platform/framework/game-loop-choices/); the owner decides when the world advances.
+
+## Change capacity without changing the helper
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/object-pool/settings.amos" lang="amos" />
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/object-pool/custom.amos" lang="amos" />
+
+`build/custom.asc` uses capacity four; `build/single.asc` uses one. Both fill, report full and reuse the lowest released slot. Keep the allocation contract and success check when choosing a capacity. Enlarging the supported bound also requires revisiting storage and verification.
+
+## When a finished object still occupies its slot
+
+The deliberate wrong owner replaces release followed by acquire with this fragment:
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/object-pool/wrong.amos" lang="amos" />
+
+<Figure src="/images/patterns/commodore-amiga/amos-object-pool-wrong.png" alt="The wrong AMOS owner reports reuse slot eight with acquired zero, while payload and guard remain intact." caption="The pool stays full because the owner never releases its finished object." />
+
+Restore `PL_OP_SLOT=0`, `Gosub PL_OP_RELEASE`, then `Gosub PL_OP_ACQUIRE`. Import `build/repaired.asc` separately: reuse returns zero with success one. The working, wrong and repaired programs all run; a syntax error or missing completion would not demonstrate this ownership fault.
+
+## Costs and native checks
+
+The six scalar helper integers hold **24 bytes of numeric payload**. Nine occupancy elements add 36 bytes. The caller's optional payload and lifetime arrays add another 36 bytes each. Names, array descriptors, labels, interpreter tables and return frames cost additional memory. These are not total heap, compiled-code, minimum-memory or peak-stack measurements. ASCII file lengths measure source text.
+
+The small caller reserves no work bank. Separate diagnostics confirm native bank lengths of 190,468 bytes per mask run, 4,972 for boundaries, 388 for lifetime and 652 for signed-minimum cases. Runtime, screen and bank headers are additional. Completion does not establish frame time or throughput.
+
+Original **AMOS Professional 2.00**, interpreted through **Emu198x 0.44.1**, ran all six small callers on a PAL A1200 with 2 MiB chip RAM and no fast RAM. Three 768-record mask runs cover every byte occupancy mask at capacities one, four and eight, observing init, acquisition, release, repeated release and invalid release. Separate runs cover 46 boundary records, three lifetime passes and six signed-minimum inputs. The guest constructs -2147483648 by decrementing -2147483647; full integer observations retain upper bits, unused elements, payload and guards.
+
+The [retained evidence](https://github.com/code198x/code-samples/tree/96545d128f95aacef9b0abaa5fe2befad89afca6/commodore-amiga/patterns/amos/framework/object-pool/verification) binds source, imported programs, runtime, firmware and captures. Independent models check complete native banks and screen digits; corruption controls reject altered records and identities. CI rechecks retained proof without booting the licensed interpreter. This qualifies the named workload and configuration, not another compiler, original hardware, NTSC or smaller machines.
+
+Both pictures export native captures at 768×576. Every omitted framebuffer column has an identical retained partner, checked across the full decoded image. Original captures and export identities remain in the evidence; no unique pixels are removed or invented.
+
+For [Maths for Games](/craft/maths-for-games/), occupancy is a finite set: acquire chooses its smallest missing member, and release removes a member. The practical design lesson is to keep that storage decision separate from the game's lifetime and update order.
