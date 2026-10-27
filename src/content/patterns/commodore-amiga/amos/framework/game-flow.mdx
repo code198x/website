@@ -1,0 +1,88 @@
+---
+title: "Pause and restart an AMOS session"
+summary: "Separate state entry from a fresh session so pause preserves score, health and held-input history."
+platform: commodore-amiga
+category: framework
+difficulty: intermediate
+tags: [states, sessions, pause, restart, basic, amos]
+---
+
+import CodeFromFile from '../../../../../components/CodeFromFile.astro';
+import Figure from '../../../../../components/Figure.astro';
+
+Pause with score four. Resume with score four, then finish that session with six. Starting a fresh session should reset progress; returning from pause should preserve it. This helper makes those two requests distinct.
+
+<Figure src="/images/patterns/commodore-amiga/amos-game-flow-working.png" alt="AMOS reports resumed score four, two resets and finished score six; a later restart leaves state one, score two and health three." caption="Resume preserves progress. A later fresh restart resets the session." />
+
+## Put it in your project
+
+Run `make` in the [source folder](https://github.com/code198x/code-samples/tree/96545d128f95aacef9b0abaa5fe2befad89afca6/commodore-amiga/patterns/amos/framework/game-flow). Merge ASCII from `build/working.asc` into a blank AMOS Professional 2.00 project, check with F2, then run with F1 after the checker finishes. Q leaves the result screen. Import complete variants into separate blank projects to avoid duplicate labels. Generated ASCII imports are not tokenised AMOS saves.
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/game-flow/caller.amos" lang="amos" />
+
+The builder joins settings, the caller and the helper. Keep `routines.amos` after `End`, reserve its `PL_GF_` names and call `Gosub PL_GF_INIT` once. One mutable context belongs to one caller; it is not reentrant. The helper owns no arrays, input reader, clock, screen or bank.
+
+## Make one state decision per update
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/game-flow/routines.amos" lang="amos" />
+
+| Field | Contract |
+| --- | --- |
+| `PL_GF_STATE` | Title 0, Play 1, Over 2, Paused 3 |
+| `PL_GF_EVENTS` | Caller-supplied integer event mask 0..15; Step preserves it |
+| `PL_GF_CHANGED` | One-update state-entry pulse |
+| `PL_GF_FRESH` | One-update request to reset a session |
+| `PL_GF_ERROR` | Zero valid, one invalid state, two invalid events |
+| `PL_GF_NEXT` | Private transition scratch |
+
+Init zeros all six fields. Before `Gosub PL_GF_STEP`, supply logical events: Start 1, Pause 2, Loss 4 and Restart 8. Combine simultaneous events by their bits.
+
+| Old state | Decision |
+| --- | --- |
+| Title | Start enters Play with a fresh session |
+| Play | Loss enters Over; otherwise Pause enters Paused |
+| Over | Restart enters fresh Play; otherwise Start enters Title |
+| Paused | Pause resumes Play without a fresh session |
+
+**Loss wins over Pause. Restart wins over Start.** Unused events in a valid mask have no effect. The helper chooses one next state and commits it once, rather than cascading through several states in one call.
+
+Step clears both pulses and error before validation. Invalid state is checked first. Invalid input preserves state, events and transition scratch, returning the relevant error with cleared pulses. Events such as 256 are invalid even though their low byte appears harmless. Consume `CHANGED` and `FRESH` before another Step clears them.
+
+## Keep simulation and session data in the owner
+
+The small caller runs a fixed fifteen-sample logical held-event trace. It derives fresh events using the previous held mask, updates score only for the **old Play state**, calls Step, then resets score and health only when `FRESH` is set. Entering Play does not simulate Play during that same update.
+
+Pause preserves score, health and input history. Keep that history on resume so a still-held press does not become a second fresh event. This trace checks logical event policy; it does not qualify a physical keyboard reader. A game supplies its own sampling and rendering, following the [loop choices](/patterns/cross-platform/framework/game-loop-choices/).
+
+## Choose the fresh session's health
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/game-flow/settings.amos" lang="amos" />
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/game-flow/custom.amos" lang="amos" />
+
+The custom build changes starting health from three to five without changing transitions. Other session data belongs in the same caller-owned reset block. Keep pause/resume free of that reset unless discarding progress is an intentional game rule.
+
+## When resume quietly resets progress
+
+The deliberate wrong build replaces the caller's fresh-session condition with:
+
+<CodeFromFile src="commodore-amiga/patterns/amos/framework/game-flow/wrong.amos" lang="amos" />
+
+This resets whenever Play is entered, including resume. The native result resumes at zero, counts three resets and finishes at two.
+
+<Figure src="/images/patterns/commodore-amiga/amos-game-flow-wrong.png" alt="The faulty AMOS owner reports resumed zero, three resets and finished two, exposing its reset on resume." caption="The final score alone hides the fault: both callers later restart and end at score two." />
+
+Restore `If PL_GF_FRESH<>0`, generate `build/repaired.asc` and import it separately. Working and repaired report resumed four, two resets and finished six. Inspect those intermediate observations: the final state and score are identical after the later fresh restart.
+
+## Costs and native checks
+
+Six integer fields hold **24 bytes of numeric payload**. Names, labels, interpreter tables and return frames add overhead. The owner separately stores score, health, held-input history and trace counters. This is not a total heap, executable-size, minimum-memory or peak-stack measurement; maintained ASCII lengths measure source text.
+
+The small caller reserves no bank. A separate 360-row diagnostic requests 17,284 bytes, confirmed by native allocation pixels. Each 48-byte row records inputs, all six context fields, three owner values and a completion marker. Five further signed-minimum records use a separate 244-byte diagnostic bank. Headers, runtime/editor and screen memory are additional. No throughput claim follows from these runs.
+
+All five small variants ran separately in original **AMOS Professional 2.00**, interpreted through **Emu198x 0.44.1** on a PAL A1200 with 2 MiB chip RAM and no fast RAM. A literal independent four-by-sixteen table checks all 64 valid state/event pairs. The diagnostic also observes all 252 other byte-valued states, four signed/wide state inputs and forty invalid event pairs. Five additional records construct the signed minimum inside the guest and reject it as state or events.
+
+Full integer records preserve upper bits: owner payload 65537 exposes truncation that a byte-only check would miss. Nonzero seeded pulses expose invalid calls that fail to clear old signals. Native bank contents, screen digits, imported source, runtime, firmware and capture identities are bound in the [retained evidence](https://github.com/code198x/code-samples/tree/96545d128f95aacef9b0abaa5fe2befad89afca6/commodore-amiga/patterns/amos/framework/game-flow/verification). Corruption controls challenge those records; CI validates retained proof without booting the licensed interpreter. This qualifies the named workload and configuration, not compiled output, another interpreter, NTSC, original hardware or smaller machines.
+
+Both pictures are native captures exported at 768×576. Every omitted framebuffer column has an identical retained partner across the full decoded image. Original captures and export hashes remain retained; no unique pixels are removed or invented.
+
+For [Maths for Games](/craft/maths-for-games/), states form a finite set and events a bit set. The transition table maps one old-state/event pair to one next state; priorities resolve simultaneous inputs. For game structure, keep that decision separate from simulation and session ownership: entering a state and resetting a session serve different purposes.
