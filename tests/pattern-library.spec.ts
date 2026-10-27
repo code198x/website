@@ -13,6 +13,7 @@ test('find a technique across combined filters and recover from no results',asyn
   '/patterns/commodore-64/assembly/audio/sid-multi-voice/',
   '/patterns/commodore-64/assembly/audio/sid-note-trigger/',
   '/patterns/commodore-64/assembly/audio/sid-voice-setup/',
+  '/patterns/commodore-64/basic/audio/logical-envelope/',
  ];
  await expect(rows).toHaveCount(expectedAudioRoutes.length);
  await expect.poll(async()=>rows.locator('a[href^="/patterns/"]').evaluateAll(
