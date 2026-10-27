@@ -1,0 +1,96 @@
+---
+title: "Pause and restart an Ace FORTH session"
+summary: "Choose one next state, preserve progress while paused, and reset the owner only for a fresh session."
+platform: jupiter-ace
+category: framework
+difficulty: intermediate
+tags: [FORTH, states, sessions, pause, restart, ownership]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Start, play, pause, then resume: the score is still **4**. Lose that session and it finishes at 6. A later fresh restart resets the owner's progress. Returning to Play and starting a new session are different decisions.
+
+<Figure src="/images/patterns/jupiter-ace/forth-game-flow-working.png" alt="Original Ace FORTH owner has resumed in state one with score four." caption="Resume preserves the existing session. Only a fresh start or restart resets its progress." />
+
+## Load the helper, policy and owner
+
+Run `make` in the [source folder](https://github.com/code198x/code-samples/tree/0741a4de4b7ba8d263032a2ff98283282f4a4a63/jupiter-ace/patterns/forth/framework/game-flow). Enter `build/working.fth` one line at a time in the **stock Jupiter Ace FORTH ROM**, on the unexpanded 3 KiB configuration. It loads `routines.fth`, `reset.fth`, `caller.fth`, then `settings.fth`, followed by fifteen ordinary interpreted updates. It is ASCII source, not a tape or saved native dictionary.
+
+Reset before another complete variant. In particular, load the reset policy **before compiling the caller**: FORTH binds a word reference while compiling. Redefining `GRESET` afterwards does not change the reference already stored in `GTICK`.
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/game-flow/caller.fth" lang="forth" />
+
+`GNEW` initialises the helper and owner. `GTICK ( held -- )` consumes one logical held mask in 0..15. It computes fresh presses as `(held XOR previous) AND held`, saves the new history, advances this owner's score if the **old state was Play**, then steps the helper and applies the fresh-session reset policy. The score wraps modulo 256. All values below the argument remain on the data stack.
+
+This is a small deterministic owner, not a keyboard reader or timed game loop. Your input adapter supplies the logical mask. Your simulation owns score, health, loss and drawing. The sample health cell shows reset/preservation; these words do not reduce health or infer when an object has collided. Keep held masks inside the owner's 0..15 contract.
+
+## Choose one next state
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/game-flow/routines.fth" lang="forth" />
+
+| State | Value | Transitions |
+| --- | --- | --- |
+| Title | 0 | Start enters Play with a fresh-session pulse. |
+| Play | 1 | Loss enters Over; otherwise Pause enters Paused. |
+| Over | 2 | Restart enters fresh Play; otherwise Start returns to Title. |
+| Paused | 3 | Pause returns to Play without a fresh-session pulse. |
+
+| Event | Bit value |
+| --- | --- |
+| Start | 1 |
+| Pause | 2 |
+| Loss | 4 |
+| Restart | 8 |
+
+These are numeric bit masks. Test a bit with `AND`; ordinary true/false comparisons do not replace that operation. **Loss wins over Pause** in Play. **Restart wins over Start** in Over. Events without a transition in the current state do nothing.
+
+`GINIT ( -- )` clears all six helper cells. `GSTEP ( -- )` clears the previous entry/fresh/error pulses, validates current state and events, chooses one next state, and commits it once. Reserve `GS` for current state, `GE` for event mask, `GC` for the one-update entry pulse, `GF` for the one-update fresh-session pulse, `GX` for error and `GN` for private next-state scratch. The helper preserves `GE`.
+
+Invalid state gives `GX=1`; invalid events give `GX=2`. State validation wins when both are invalid. Rejected input preserves state and next-state scratch, while clearing the old pulses. No owner payload is part of these state words. They allocate no objects, read no keyboard and take over no interrupts. The names belong to one mutable context; it is not reentrant.
+
+## Reset the owner only for a fresh session
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/game-flow/reset.fth" lang="forth" />
+
+The normal `GRESET ( -- flag )` returns `GF`. The owner uses that pulse to clear score, restore starting health and count a new session. `GC` says that a state changed; it does not say the session is new. On resume, state changes to Play with `GC=1` and `GF=0`, so progress survives.
+
+The owner reserves five more cells: `GP` for previous held input, `GV` for score, `GH` for configured starting health, `GL` for current health and `GR` for reset count. Gameplay pauses because simulation checks the state. The helper does not stop the program from running. Input history continues to update while paused, so a held button cannot repeatedly toggle the state.
+
+There is one final simulation update when the old state was Play and the new event pauses or ends it. Resume begins in old Paused, so that update does not advance score. This ordering is deliberate; changing it changes the game's boundary behaviour.
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/game-flow/settings.fth" lang="forth" />
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/game-flow/customise.fth" lang="forth" />
+
+The normal owner starts with health 3; `build/custom.fth` uses 5. The helper and transition table stay unchanged. The complete trace displays state/score 1/4 after resume, 2/6 after loss, and 1/2 after fresh restart:
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/game-flow/demo.fth" lang="forth" />
+
+## When resuming erases progress
+
+The wrong policy also resets when a state-entry pulse enters Play:
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/game-flow/mistakes/reset-on-resume.fth" lang="forth" />
+
+<Figure src="/images/patterns/jupiter-ace/forth-game-flow-wrong.png" alt="The wrong Ace FORTH reset policy resumes in state one with score zero." caption="Treating every entry into Play as a new session discards the paused progress." />
+
+The wrong owner resumes at score 0 and finishes that session at 2. A later fresh restart leaves both working and wrong owners at score 2, so **the final score alone hides the fault**. Observe the pause/resume boundary and reset count as well.
+
+Restore the `GF`-only policy before compiling the owner in a fresh ROM session. `build/repaired.fth` is byte-for-byte identical to the working program. All four native owners enter and complete; a missing trace or ROM error would not establish this reset fault.
+
+## Costs and native checks
+
+The original ROM compiles the helper into **492 dictionary bytes**, the normal reset policy into 19 and the owner into 252: **763 dictionary bytes** altogether, including word headers. The six helper cells contain 12 bytes of numeric payload and the five owner cells contain 10 more. The wrong reset policy adds 18 dictionary bytes. Source text length is a separate measurement.
+
+The external `NUMBER` observer adds 19 bytes. With it, normal/custom/repaired `HERE` ends at 16223 and wrong at 16241; stock RAM top remains 16384. The empty data stack begins at `HERE+12`. Remaining room also serves interpreter input and stacks, so this is not a minimum-memory or peak-stack budget. It does not prove this sample and the separate pool fit together with a game.
+
+The separate state diagnostic adds 261 dictionary bytes to the helper, ending at `HERE=16213` with the observer. Nine samples while its release-gated caller was still waiting measured CPU/data-stack separations of 147..149 bytes. Those are observations, not an exhaustive minimum. No `FAST` check disabling, RAM expansion or entry-pointer injection was used.
+
+The [retained proof](https://github.com/code198x/code-samples/tree/0741a4de4b7ba8d263032a2ff98283282f4a4a63/jupiter-ace/patterns/forth/framework/game-flow/verification) covers all 64 valid state/event pairs, 252 remaining byte states, seven signed/wide input spellings, forty invalid event pairs, two both-invalid cases and a nonzero-seeded init: **366 input-syntax cases**. Aliases are syntax observations, not different 16-bit cell values. Four independent owner boots run the fifteen-update trace and check every helper/owner cell, input history and custom health.
+
+Every newly compiled dictionary byte is retained before and after calls. Only the observed variable payload cells may change; code, headers and strings must remain identical. Source/load order, original 8,192-byte ROM, Emu198x 0.44.1, completion, preserved stack tags and native screen/font pixels are bound to the evidence. Deliberately corrupted records must fail. CI checks retained proof without booting the ROM; this does not qualify original hardware, another FORTH or every caller stack depth.
+
+Both figures preserve the original 320×288 PNG bytes, with every decoded pixel unchanged. Primary reference: *Jupiter Ace User's Manual* (1982), unsigned arithmetic, control flow and chapter 24's dictionary/data-stack layout.
+
+For [Maths for Games](/craft/maths-for-games/), the four states form a finite set and the event bits select a deterministic next state. For [loop design](/patterns/cross-platform/framework/game-loop-choices/), keep that decision separate from input history, simulation and fresh-session ownership.

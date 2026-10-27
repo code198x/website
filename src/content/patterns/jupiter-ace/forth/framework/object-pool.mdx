@@ -1,0 +1,90 @@
+---
+title: "Reuse object slots in Ace FORTH"
+summary: "Acquire the lowest free slot, check success before indexing, and keep object lifetime with the caller."
+platform: jupiter-ace
+category: framework
+difficulty: intermediate
+tags: [FORTH, objects, pools, memory, ownership, stacks]
+---
+
+import CodeFromFile from '@components/CodeFromFile.astro';
+import Figure from '@components/Figure.astro';
+
+Eight objects fill the pool. A ninth request fails. Release slot 0 and the next request reuses it: **SLOT 0 OK 1**. A bullet, enemy or effect can use that index while the helper handles occupancy and the game decides when the object finishes.
+
+<Figure src="/images/patterns/jupiter-ace/forth-object-pool-working.png" alt="Original Ace caller reports slot zero and success one after reuse, then prints payload 60 and guards 99 and 65535." caption="A finished object's owner releases its slot. The next successful request initialises payload for the new occupant." />
+
+## Put it in your project
+
+Run `make` in the [source folder](https://github.com/code198x/code-samples/tree/0741a4de4b7ba8d263032a2ff98283282f4a4a63/jupiter-ace/patterns/forth/framework/object-pool). Enter `build/demo.fth` one line at a time in the **original Jupiter Ace FORTH ROM**, on the unexpanded 3 KiB configuration. These are ASCII keyboard-entry sources, not a saved dictionary or tape image. Reset before loading another complete variant to reclaim dictionary space and avoid binding an old definition.
+
+The generated file loads `routines.fth`, `storage.fth`, `caller.fth` and `settings.fth`, then runs `demo.fth`. Keep that order: FORTH resolves a referenced word when it compiles its caller. For a game, keep the first four files and replace the demonstration with your owner.
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/object-pool/caller.fth" lang="forth" />
+
+`PNEW` leaves an initialisation flag. Consume it and stop if it is zero. `NEWOBJ` leaves **slot, then success flag**. Consume the flag before using the slot. On success, the owner writes 60 to that slot's payload cell. On failure, discard the sentinel without indexing payload. The earlier data-stack entries belong to the caller and are preserved.
+
+## Allocate and retain the storage
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/object-pool/storage.fth" lang="forth" />
+
+`SLOTS` contains eight occupancy bytes plus guard byte 99. `PAYLOAD` contains eight two-byte cells plus guard cell 65535. Neither guard is a ninth object. A zero occupancy byte means free; every nonzero value means occupied. Acquisition writes 1 and release writes 0. Payload belongs entirely to the owner.
+
+Pass a live caller-owned **dictionary buffer with at least the configured number of bytes**. Do not `FORGET` it while selected. The helper checks that the base is at least 15441, below `HERE`, and has room for the selected extent before `HERE`, before indexed access. That range check cannot discover a `CREATE` object's true boundary or distinguish data from compiled words. An arbitrary dictionary address or undersized allocation is not a supported buffer. ROM, screen and arbitrary external RAM buffers are outside this contract.
+
+## Initialise, acquire and release
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/object-pool/routines.fth" lang="forth" />
+
+| Word | Stack effect |
+| --- | --- |
+| `PINIT` | `( base capacity -- ok )` |
+| `PGET` | `( -- slot ok )` |
+| `PREL` | `( slot -- ok )` |
+
+`PINIT` selects and clears occupancy for capacity 1..8. `PGET` occupies the lowest free slot, or returns the extent and zero. `PREL` releases an occupied slot and rejects a free or invalid slot.
+
+Reserve the seven context cells and helper word names for one mutable pool. `PB` is the selected base; `PC` stores the requested capacity; `PS` is the private selected extent; `PK` is the last result or release index; `PF` is success; `PX` is error; and `PI` is private scan state. The helper is not reentrant. `PCHK` is internal validation, not an allocation operation.
+
+Valid init clears only the configured occupancy bytes. It preserves payload and unused storage. Invalid init disables the pool with `PS=0`, returns zero and writes no occupancy bytes, even after a valid earlier selection. Changing `PC` later does not resize `PS`; deliberately call `PNEW` to initialise again. Reinitialisation invalidates all old object references.
+
+**Full is a valid outcome:** `PK=PS`, `PF=0`, `PX=0`. Invalid context gives `PX=1`; the returned slot is still a sentinel and must not be used as a subscript. Release checks context and the unsigned index before access. An out-of-range or already-free release returns zero with `PX=2`. Successful release leaves payload unchanged.
+
+An occupied object keeps its index until release. Afterwards, an old saved index may refer to a new occupant. There are no generation numbers or stale-handle checks. End the owner's references when its object finishes. Keep drawing, collision, lifetime countdowns and spawning outside these occupancy words; the [loop choices](/patterns/cross-platform/framework/game-loop-choices/) explain where those decisions fit.
+
+The search uses bounded `BEGIN`/`WHILE`/`REPEAT`, so its early `EXIT` does not abandon a `DO` loop. The original manual's `LEAVE` waits until the next `LOOP`; it is not a modern immediate break. The init clear has a positive bounded `DO` loop which completes before returning. The caller uses the ROM words `2 *` for a two-byte cell offset; do not assume the exercise word `2*` is already defined.
+
+## Use fewer slots
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/object-pool/settings.fth" lang="forth" />
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/object-pool/customise.fth" lang="forth" />
+
+The custom build selects four slots; `build/single.fth` selects one. The same allocation supports either smaller extent. The owner still checks success before touching payload. Changing the supported maximum needs a fresh review of storage, arithmetic, dictionary room and native checks.
+
+This complete small demonstration makes nine requests at every capacity, releases slot 0, then requests again:
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/object-pool/demo.fth" lang="forth" />
+
+## When a finished object still occupies its slot
+
+The wrong owner replaces `0 PREL DROP` with this fragment:
+
+<CodeFromFile src="jupiter-ace/patterns/forth/framework/object-pool/mistakes/omit-release.fth" lang="forth" />
+
+<Figure src="/images/patterns/jupiter-ace/forth-object-pool-wrong.png" alt="The wrong Ace caller still reports slot eight and success zero after omitting release; payload and both guards remain intact." caption="The pool cannot infer that an object finished. Without a release it correctly remains full." />
+
+Restore the release before the next acquisition. Enter `build/repaired.fth` in a fresh ROM session: slot 0 is reused with success one. It is byte-for-byte identical to the normal program. Working, wrong and repaired all enter and complete; a ROM error would not demonstrate this ownership fault.
+
+## Costs and native checks
+
+The original ROM adds **656 dictionary bytes** for the helper, 53 for storage and 110 for the caller: **819 dictionary bytes** in total, including headers and compiled words. Numeric storage is 14 context bytes, nine occupancy/guard bytes and 18 payload/guard bytes: **41 bytes**. Source-file length is a different measurement.
+
+The external `NUMBER` observer costs another 19 dictionary bytes; with it, `HERE` ends at 16279 and RAM top remains 16384. The empty data stack starts at `HERE+12`. Interpreter input and CPU/data stacks share the remaining room. Observed stopped-at-prompt separations are not a peak-stack measurement or a budget for adding more words. This does not establish that this pool, the separate session sample and a game fit together in stock RAM.
+
+Native checks cover all **274 occupancy masks** across capacities 1, 4 and 8, using occupied bytes 1, 128 and 255. There are 1,843 complete operation observations, including 99 invalid-capacity, extent, pointer and index cases, and 300 single-slot release/reuse cycles. Distinct payload seeds, unused bytes, both guards, upper cell bits and the caller's lower stack tag remain observable. Five further fresh boots execute every line of the complete generated callers.
+
+The [retained evidence](https://github.com/code198x/code-samples/tree/0741a4de4b7ba8d263032a2ff98283282f4a4a63/jupiter-ace/patterns/forth/framework/object-pool/verification) binds source, typed recipes, original ROM and Emu198x 0.44.1. Independent models check every helper field, array element, result and compiled dictionary byte. Failure controls challenge coverage, code, storage, stack and pixels. CI checks retained proof without booting the ROM. These observations qualify this configuration and workload, not original hardware, another FORTH or arbitrary caller stack depths.
+
+Both figures preserve the original 320×288 PNG bytes. Every decoded pixel remains unchanged and agrees with native screen and character RAM. Primary reference: *Jupiter Ace User's Manual* (1982), control flow and chapter 24's dictionary/data-stack layout.
+
+For [Maths for Games](/craft/maths-for-games/), occupancy is a finite set: acquire chooses its smallest missing index and release removes a member. The practical design lesson is to separate storage reuse from the object's meaning and lifetime.
