@@ -1,0 +1,11 @@
+# Packing programs and making games — 28 October 2026
+
+Prepare two editorial groups in one draft website PR, stacked on the music-and-sharing batch. Preserve all earlier review states.
+
+1. Triage candidate IDs VC-2426, VC-2449, VC-2487, VC-2551, VC-2624, VC-2628 (compression) and VC-2395, VC-2459, VC-2513, VC-2530, VC-2539, VC-2568, VC-2642, VC-2687 (authoring). Inspect referring entries, titles, aliases, redirects and open/closed issues. Record decisions in `docs/reviews/2026-10-28-packing-and-authoring/triage.json` and the companion docs audit. Decide combined-row scope before commissioning; retain stable identities.
+2. Read original manuals, authors' documentation and source releases; seek independent corroboration where available. Record claim-level evidence, limitations and source fingerprints in that review directory. Create or reuse canonical writing issues only for ready candidates.
+3. Write the distinct entries under `src/content/vault/tools/`, with `ai_generated: true` and `reviewed: false`. Follow the site's concrete, approachable British English. Add helpful original diagrams under `public/images/vault/tools/` with provenance manifests under `capture/vault/`; inspect their phone rendering. Add selective incoming links without changing existing claims or review states.
+4. Run content, sources, imagery, prose and candidate checks, including a deliberately broken-link control. Run the complete website checks and production build with matching sample artefacts. Verify built links/fragments, review state and sitemap exclusions, and capture every new page on desktop and phone with accessibility/image/overflow checks. Keep portable verification scripts and results in the review directory.
+5. Retain candidate rows in `vault-candidates.csv`, mark drafts in-progress, record canonical issues and paths, audit named follow-up subjects and add only useful missing candidates. Run the backlog validator and its regression tests. Commit and push verified website/docs branches; open and attach two draft PRs, update writing issues and remove temporary worktrees/processes after checking remote retention.
+
+Human sign-off and publication remain separate steps; writing does not confer reviewed status.
