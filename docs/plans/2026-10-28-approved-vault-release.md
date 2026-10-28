@@ -1,0 +1,10 @@
+# Release all approved Vault batches
+
+The owner approved all batches for release on 28 October 2026. Five open website PRs (#1310, #1334, #1351, #1368, #1385) and companion docs PRs (#271–#275) cover 88 entries. Earlier attached batches are already merged.
+
+1. Preserve unrelated original-checkout changes. Use isolated site/docs worktrees on the current top branches. Merge current website main into the top branch, preserving its dependency updates. Verify the five manifests give exactly 88 distinct existing article paths and match 88 in-progress candidate issues.
+2. Change only those articles' `reviewed` flags to true; preserve AI provenance and every other byte. Record owner sign-off, before/after hashes and the exact release list under `docs/reviews/2026-10-28-approved-vault-release/`.
+3. Prepare matching samples and installed dependencies. Run full website checks/build, source/link/image validation and targeted rendered-page verification. Assert all 88 routes are reviewed, indexable and in the built sitemap; check links/fragments, loaded imagery and search inputs. Preserve unrelated review states. Record existing date disagreements without changing unrelated articles.
+4. Push the approval commit. Merge the stacked website PRs from the top down with expected-head checks, keeping each existing PR's history and making one final merge into main. Wait for the resulting deployment; verify all 88 live pages, canonical/review/indexing state, image hashes, links and sitemap before claiming publication.
+5. Only after positive live evidence, update the 88 retained candidate rows to published, replace planned referring IDs where the referring article is now published, and close writing issues with evidence. Validate the entire CSV and regression tests. Push/merge the companion docs stack; retain durable publication evidence there.
+6. Confirm both remote histories and every completed merge. Stop task processes, inspect ignored files, verify remote retention and remove temporary worktrees/caches. Preserve original-checkout changes.
