@@ -1,0 +1,7 @@
+import {chromium} from '@playwright/test';
+import fs from 'node:fs';import path from 'node:path';import assert from 'node:assert/strict';import crypto from 'node:crypto';
+const ev=path.dirname(new URL(import.meta.url).pathname),root=path.resolve(ev,'../../..');
+const items=JSON.parse(fs.readFileSync(path.join(ev,'figures.json')));assert.equal(items.length,4);
+const browser=await chromium.launch();
+try{for(const item of items){const base=path.join(root,'public/images/vault',item.entry,item.name),svg=fs.readFileSync(base+'.svg','utf8');const h=Number(svg.match(/height="(\d+)"/)[1]);const page=await browser.newPage({viewport:{width:960,height:h},deviceScaleFactor:1});await page.setContent(svg);await page.locator('svg').screenshot({path:base+'.png'});await page.close();
+const sha=p=>crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');const manifest={entry:'vault/'+item.entry,image_dir:'vault/'+item.entry,captures:[{screenshots:[item.name+'.png'],class:'original-diagram',source:item.source,credit:'Code198x',rights:'Original Code198x illustration',changes:'Original explanatory schematic; no third-party artwork, screenshots, scans or program code.',purpose:item.purpose,source_file:path.relative(root,base+'.svg'),source_sha256:sha(base+'.svg'),sha256:sha(base+'.png')}]};fs.writeFileSync(path.join(root,'capture/vault',item.entry.replaceAll('/','-')+'.json'),JSON.stringify(manifest,null,2)+'\n');console.log(item.entry);}}finally{await browser.close()}
