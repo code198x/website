@@ -1,16 +1,16 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const systems = ['commodore-amiga', 'commodore-64', 'sinclair-zx-spectrum', 'nintendo-entertainment-system', 'game-boy'];
+const systems = ['commodore-amiga', 'commodore-64', 'sinclair-zx-spectrum', 'nintendo-entertainment-system', 'game-boy', 'bbc-micro', 'sinclair-zx81', 'sega-master-system', 'commodore-vic-20', 'acorn-electron', 'atari-800'];
 
 test('system and Vault openings use static hardware illustrations', async ({ page }) => {
-  test.setTimeout(90_000);
+  test.setTimeout(150_000);
   const meshes: string[] = [];
   page.on('request', request => { if (/\.glb(?:\?|$)/.test(request.url())) meshes.push(request.url()); });
   for (const system of systems) {
-    for (const path of [`/systems/${system}/`, `/vault/systems/${system}/`]) {
+    for (const path of [`/systems/${system}/`, `/vault/systems/${system === 'atari-800' ? 'atari-8-bit' : system}/`]) {
       await page.goto(path);
-      const opening = page.locator(path.startsWith('/vault') ? '.vault-reading-header' : system === 'game-boy' ? '.intro' : '.machine-masthead');
+      const opening = page.locator(path.startsWith('/vault') ? '.vault-reading-header' : ['commodore-amiga', 'commodore-64', 'sinclair-zx-spectrum', 'nintendo-entertainment-system'].includes(system) ? '.machine-masthead' : '.intro');
       const figure = opening.locator(`[data-model-illustration="${system}"]`);
       await expect(figure).toBeVisible();
       await expect.poll(() => figure.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
@@ -24,7 +24,7 @@ test('system and Vault openings use static hardware illustrations', async ({ pag
 
 test('image index provides all machines and alternate render links', async ({ page }) => {
   await page.goto('/systems/models/');
-  await expect(page.locator('[data-model-illustration]')).toHaveCount(5);
+  await expect(page.locator('[data-model-illustration]')).toHaveCount(systems.length);
   for (const system of systems) {
     const image = page.locator(`#${system} img`);
     await image.scrollIntoViewIfNeeded();

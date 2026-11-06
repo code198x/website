@@ -1,6 +1,6 @@
 # Hardware illustrations
 
-The model renders are editorial images, embedded directly in the five system
+The model renders are editorial images, embedded directly in the eleven system
 page openings and their matching Vault system articles. The shared image index
 at `/systems/models/` provides alternate keyboard, rear and top views. There is
 no interactive 3D viewer or mesh download.
@@ -48,3 +48,17 @@ The illustrations contain estimated details and are not manufacturing drawings.
 Run the normal type, content and build checks, plus
 `playwright test tests/hardware-models.spec.ts --workers=1`. Inspect the system
 and Vault openings at desktop and phone sizes when changing image framing.
+
+
+The approved second and third groups add BBC Micro Model B, UK-keyboard ZX81,
+overseas Master System I, brown-key VIC-20, Acorn Electron and Atari 800XL.
+Each supplies a front, detail and top view. The Atari 8-bit Vault article uses
+an explicit `vaultSystem` association; its caption identifies the illustrated
+800XL rather than implying that it depicts the original Atari 800.
+
+Sources with a `receipt` bind the selected image to its qualified native model,
+review and renderer inputs. Preparation rejects changed native files, images or
+source inputs. The BBC/ZX81/Master System inputs use the approved case-profile
+checkpoints; VIC/Electron/800XL use the fitted lettering/material checkpoints.
+The VIC-20 uses the same credited CC0 keycap typeface as the C64. No reference
+photographs or local library paths are added to the public image provenance.
