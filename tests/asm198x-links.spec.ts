@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { ASM198X_INSTRUCTION_PAGES } from '../src/lib/surfaces';
+import { ASM198X_INSTRUCTION_PAGES, asmInstructionReference } from '../src/lib/surfaces';
 
 /**
  * System stub pages link out to Asm198x's instruction reference.
@@ -18,7 +18,7 @@ test.describe('Asm198x instruction links', () => {
     const link = page.getByRole('link', { name: /cp1610 instructions/i });
     await expect(link).toHaveAttribute(
       'href',
-      'https://asm198x.github.io/docs/instructions/cp1610.html',
+      'https://asm198x.github.io/reference/instructions/cp1610/',
     );
   });
 
@@ -26,14 +26,17 @@ test.describe('Asm198x instruction links', () => {
     // The WonderSwan is a Sphinx/NEC V30-class part; Asm198x has no page.
     await page.goto('/bandai-wonderswan');
     await expect(
-      page.locator('a[href*="asm198x.github.io/docs/instructions"]'),
+      page.locator('a[href*="asm198x.github.io/reference/instructions"]'),
     ).toHaveCount(0);
   });
 
   test('every mapped page is one Asm198x actually publishes', async ({ request }) => {
-    for (const page of Object.values(ASM198X_INSTRUCTION_PAGES)) {
-      const url = `https://asm198x.github.io/docs/instructions/${page}.html`;
-      const response = await request.head(url);
+    // The URL the system pages link to, not a copy of how it is built.
+    for (const cpu of Object.keys(ASM198X_INSTRUCTION_PAGES)) {
+      const url = asmInstructionReference(cpu)!;
+      // A redirect stub answers 200 once followed, so refuse to follow: the
+      // link should name the page itself, not an old address that forwards.
+      const response = await request.head(url, { maxRedirects: 0 });
       expect(response.status(), `${url} should resolve`).toBe(200);
     }
   });

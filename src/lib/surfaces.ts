@@ -11,7 +11,7 @@
  *
  * Asm198x publishes a generated instruction reference — one page per CPU,
  * built from its `isa` spec — under
- * `asm198x.github.io/docs/instructions/<page>.html`. The two projects name the
+ * `asm198x.github.io/reference/instructions/<page>/`. The two projects name the
  * same chip differently (`6502` here, `mos6502` there; `mcs48` here, `i8048`
  * there), so the join is stated rather than guessed at from a prefix.
  *
@@ -68,5 +68,5 @@ export const asmCoversCpu = (cpuArchitecture: string): boolean =>
  */
 export const asmInstructionReference = (cpuArchitecture: string): string | null => {
   const page = ASM198X_INSTRUCTION_PAGES[cpuArchitecture];
-  return page ? `https://asm198x.github.io/docs/instructions/${page}.html` : null;
+  return page ? `https://asm198x.github.io/reference/instructions/${page}/` : null;
 };
