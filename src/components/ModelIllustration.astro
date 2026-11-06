@@ -1,0 +1,112 @@
+---
+import type { HardwareModel } from '../data/hardware-models';
+import { modelImage, modelSrcset } from '../data/hardware-models';
+import provenance from '../../public/images/models/provenance.json';
+import webModels from '../../public/models/provenance.json';
+interface Props { model: HardwareModel; priority?: boolean; }
+const { model, priority = false } = Astro.props;
+const first = model.views[0];
+const web = (webModels as Record<string, { bytes: number }>)[model.system];
+const download = `${(web.bytes / 1048576).toFixed(1)} MB`;
+const records = provenance as Record<string, Record<string, { images: Record<string, { width: number; height: number }> }>>;
+const dimensions = records[model.system][first.id].images['1280'];
+const views = model.views.map(view => ({ ...view, src: modelImage(model.system, view.id), srcset: modelSrcset(model.system, view.id), full: modelImage(model.system, view.id, 1920), dimensions: records[model.system][view.id].images['1280'] }));
+---
+<figure class="model-illustration" data-model-illustration data-views={JSON.stringify(views)} data-name={model.name} data-model-url={`/models/${model.system}.glb`}>
+  <div class="model-stage" data-model-stage>
+  <a class="model-image-link" data-model-enlarge href={modelImage(model.system, first.id, 1920)} aria-label={`Open a larger ${first.label.toLowerCase()} illustration of ${model.name}`}>
+    <img data-model-image src={modelImage(model.system, first.id)} srcset={modelSrcset(model.system, first.id)} sizes="(max-width: 760px) 100vw, 800px" width={dimensions.width} height={dimensions.height} alt={first.alt} loading={priority ? 'eager' : 'lazy'} fetchpriority={priority ? 'high' : undefined} decoding="async" />
+  </a>
+  <div class="model-canvas-host" data-model-canvas-host hidden></div>
+  </div>
+  <figcaption>
+    {views.length > 1 && <div class="model-views" data-model-views hidden role="group" aria-label={`Views of ${model.name}`}>
+      {views.map((view, index) => <button type="button" data-model-view={index} aria-pressed={index === 0 ? 'true' : 'false'}>{view.label}</button>)}
+    </div>}
+    <div class="model-3d-trigger" data-model-3d-trigger hidden><button type="button" data-model-3d aria-pressed="false" aria-expanded="false" aria-controls={`controls-${model.system}`}><span data-model-3d-label>Explore in 3D</span></button><span>{download} download · only loads when opened</span></div>
+    <div class="model-3d-controls" data-model-3d-controls id={`controls-${model.system}`} hidden role="group" aria-label={`3D controls for ${model.name}`}>
+      <button type="button" data-model-action="left">Turn left</button><button type="button" data-model-action="right">Turn right</button><button type="button" data-model-action="in">Zoom in</button><button type="button" data-model-action="out">Zoom out</button><button type="button" data-model-action="reset">Reset view</button><button type="button" data-model-action="images">Back to images</button>
+    </div>
+    <p class="model-feedback" data-model-feedback aria-live="polite" hidden></p>
+    <p class="model-caption">3D illustration. Some proportions and small details are estimated. <a data-model-open href={modelImage(model.system, first.id, 1920)}>Open image</a></p>
+    {model.credit && <p class="model-credit"><a href={model.credit.href}>{model.credit.label}</a></p>}
+    <span class="model-status" data-model-status aria-live="polite" aria-atomic="true"></span>
+    {views.length > 1 && <noscript><p>Other views: {views.slice(1).map(view => <a href={view.full}>{view.label}</a>)}</p></noscript>}
+  </figcaption>
+</figure>
+<script>
+  function initialiseIllustrations() {
+    document.querySelectorAll<HTMLElement>('[data-model-illustration]').forEach(figure => {
+      if (figure.dataset.ready) return;
+      figure.dataset.ready = 'true';
+      const views = JSON.parse(figure.dataset.views ?? '[]') as Array<{ label: string; alt: string; src: string; srcset: string; full: string; dimensions: { width: number; height: number } }>;
+      let viewer: typeof import('../lib/model-viewer') | undefined;
+      let generation = 0;
+      figure.querySelector<HTMLElement>('[data-model-3d-trigger]')!.hidden = false;
+      const trigger = figure.querySelector<HTMLButtonElement>('[data-model-3d]')!;
+      trigger.addEventListener('click', async () => {
+        const request = ++generation;
+        try {
+          viewer ??= await import('../lib/model-viewer');
+          if (request === generation && figure.isConnected) await viewer.openModelViewer(figure);
+        } catch {
+          const feedback = figure.querySelector<HTMLElement>('[data-model-feedback]')!;
+          feedback.hidden = false;
+          feedback.textContent = 'The 3D viewer could not start. You can keep browsing the images or try again.';
+        }
+      });
+      const image = figure.querySelector<HTMLImageElement>('[data-model-image]')!;
+      const large = figure.querySelector<HTMLAnchorElement>('[data-model-enlarge]')!;
+      const open = figure.querySelector<HTMLAnchorElement>('[data-model-open]')!;
+      const controls = figure.querySelector<HTMLElement>('[data-model-views]');
+      if (controls) controls.hidden = false;
+      figure.querySelectorAll<HTMLButtonElement>('[data-model-view]').forEach(button => {
+        button.addEventListener('click', () => {
+          generation++;
+          viewer?.closeModelViewer(figure);
+          figure.dataset.selectedView = button.dataset.modelView;
+          const view = views[Number(button.dataset.modelView)];
+          image.srcset = view.srcset;
+          image.src = view.src;
+          image.alt = view.alt;
+          image.width = view.dimensions.width;
+          image.height = view.dimensions.height;
+          large.href = open.href = view.full;
+          large.setAttribute('aria-label', `Open a larger ${view.label.toLowerCase()} illustration of ${figure.dataset.name}`);
+          figure.querySelectorAll('[data-model-view]').forEach(option => option.setAttribute('aria-pressed', String(option === button)));
+          figure.querySelector('[data-model-status]')!.textContent = `${figure.dataset.name}: ${view.label.toLowerCase()} view`;
+        });
+      });
+    });
+  }
+  initialiseIllustrations();
+  document.addEventListener('astro:page-load', initialiseIllustrations);
+</script>
+<style>@layer blocks {
+  .model-illustration { margin: 0; min-width: 0; }
+  .model-stage { position: relative; aspect-ratio: 3 / 2; background: var(--h-ground); }
+  .model-image-link { display: grid; width: 100%; height: 100%; }
+  .model-canvas-host { position: absolute; inset: 0; }
+  .model-canvas-host :global(canvas) { display: block; width: 100%; height: 100%; }
+  .model-canvas-host :global(canvas:focus-visible) { outline: 3px solid var(--h-spot); outline-offset: -4px; }
+  [hidden] { display: none !important; }
+  .model-image-link img { display: block; width: 100%; height: 100%; min-height: 0; object-fit: contain; }
+  figcaption { padding-top: 16px; }
+  .model-views { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .model-views[hidden] { display: none; }
+  .model-3d-trigger { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+  .model-3d-trigger > span { font: .9375rem/1.5 var(--h-font-ui); color: var(--h-ink-muted); }
+  .model-3d-controls { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 12px; }
+  .model-feedback { margin: 12px 0; font: 1rem/1.6 var(--h-font-ui); color: var(--h-ink-body); }
+  .model-views button, .model-3d-trigger button, .model-3d-controls button { min-height: 44px; padding: 8px 16px; border: 1px solid var(--h-line); border-radius: 0; background: transparent; color: var(--h-ink); font: 600 1rem/1.4 var(--h-font-ui); cursor: pointer; } /* taste-skill-ignore: House button treatment matches the existing Systems pages. */
+  .model-views button[aria-pressed="true"], .model-3d-trigger button[aria-pressed="true"] { background: var(--h-ink); border-color: var(--h-ink); color: var(--h-page); }
+  .model-views button:hover, .model-3d-trigger button:hover, .model-3d-controls button:hover { border-color: var(--h-ink); }
+  .model-caption, .model-credit { margin: 0; max-width: 65ch; color: var(--h-ink-muted); font: .9375rem/1.6 var(--h-font-ui); }
+  .model-credit { margin-top: 8px; }
+  button:disabled { cursor: wait; opacity: .65; }
+  a { color: inherit; text-underline-offset: .2em; }
+  a:hover { color: var(--h-spot-ink); }
+  :is(a, button):focus-visible { outline: 3px solid var(--h-spot); outline-offset: 4px; }
+  .model-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  noscript a { margin-inline-end: 16px; }
+}</style>
