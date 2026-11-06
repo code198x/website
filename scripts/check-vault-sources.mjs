@@ -6,10 +6,15 @@
 // check. This counts how many of them have a source behind them, and ranks what
 // is left by how far the error would travel if it were wrong.
 //
-// It reports; it does not fail. Grounding is a long job and a red build helps
-// nobody. `--queue N` prints the next N entries worth working on.
+// With `--strict` it fails on any uncited dated claim; check:content runs it
+// that way. Every dated claim was cited by November 2026, so the gate
+// grandfathers nothing: a new entry cites each date or leaves it out, as the
+// Vault specification asks ("Leave unknown dates unstated").
 //
-//   node scripts/check-vault-sources.mjs
+// Without `--strict` it reports and exits 0. `--queue N` prints the next N
+// entries worth working on.
+//
+//   node scripts/check-vault-sources.mjs --strict
 //   node scripts/check-vault-sources.mjs --queue 20
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -19,6 +24,7 @@ const VAULT = 'src/content/vault';
 const args = process.argv.slice(2);
 const qi = args.indexOf('--queue');
 const QUEUE = qi >= 0 ? Number(args[qi + 1] ?? 15) : 0;
+const STRICT = args.includes('--strict');
 
 const DATED = ['released', 'founded', 'introduced', 'emerged', 'originated', 'born'];
 const LINK = /\]\(\/vault\/([a-z0-9-]+\/[a-z0-9-]+)\)/g;
@@ -84,3 +90,13 @@ if (QUEUE) {
   }
 }
 console.log();
+
+if (STRICT && totalSourced < totalClaims) {
+  console.error('Uncited dated claims. Add a source under `sources:` for each, or leave the date out:\n');
+  for (const e of withClaims) {
+    const missing = e.claims.filter((c) => !e.sourced.includes(c));
+    if (missing.length) console.error(`  · ${e.ref}: ${missing.join(', ')}`);
+  }
+  console.error();
+  process.exit(1);
+}
