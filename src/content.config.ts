@@ -600,6 +600,12 @@ const unitPages = defineCollection({
     tags: z.array(z.string()).default([]),
     status: z.string().optional(),
     heroImage: z.string().optional(),
+    // Pages this lesson would link to for depth but can't yet: a Vault entry
+    // still awaiting review (`category/slug`) or a Vault candidate (`VC-0123`).
+    // The content factory ranks the Vault queue by these, and
+    // check-lesson-wants.mjs fails once a wanted entry is reviewed, so the
+    // want becomes a link. See code198x/docs vault-candidates.md.
+    wants: z.array(z.string().regex(/^(?:[a-z0-9-]+\/[a-z0-9-]+|VC-[0-9]{4,})$/)).default([]),
   }),
 });
 
