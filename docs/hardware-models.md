@@ -1,6 +1,6 @@
 # Hardware illustrations
 
-The model renders are editorial images, embedded directly in the eleven system
+The model renders are editorial images, embedded directly in the thirteen system
 page openings and their matching Vault system articles. The shared image index
 at `/systems/models/` provides alternate keyboard, rear and top views. There is
 no interactive 3D viewer or mesh download.
@@ -62,3 +62,8 @@ source inputs. The BBC/ZX81/Master System inputs use the approved case-profile
 checkpoints; VIC/Electron/800XL use the fitted lettering/material checkpoints.
 The VIC-20 uses the same credited CC0 keycap typeface as the C64. No reference
 photographs or local library paths are added to the public image provenance.
+
+The CPC 464 and original short-case Atari 520ST use their approved photo-guided
+profile renders. Each adds front, keyboard, top and low-angle views. Their
+case radii and key profiles remain illustration estimates. The public images
+contain reconstructed artwork; comparison photographs are not distributed.
