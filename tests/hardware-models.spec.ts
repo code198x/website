@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const systems = ['commodore-amiga', 'commodore-64', 'sinclair-zx-spectrum', 'nintendo-entertainment-system', 'game-boy', 'bbc-micro', 'sinclair-zx81', 'sega-master-system', 'commodore-vic-20', 'acorn-electron', 'atari-800', 'amstrad-cpc', 'atari-st'];
+const systems = ['commodore-amiga', 'commodore-64', 'sinclair-zx-spectrum', 'nintendo-entertainment-system', 'game-boy', 'bbc-micro', 'sinclair-zx81', 'sega-master-system', 'commodore-vic-20', 'acorn-electron', 'atari-800', 'amstrad-cpc', 'atari-st', 'sega-mega-drive', 'super-nintendo', 'atari-2600'];
 
 test('system and Vault openings use static hardware illustrations', async ({ page }) => {
   test.setTimeout(150_000);
@@ -30,9 +30,14 @@ test('image index provides all machines and alternate render links', async ({ pa
     await image.scrollIntoViewIfNeeded();
     await expect.poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
   }
-  for (const system of ['amstrad-cpc', 'atari-st']) {
+  for (const system of ['amstrad-cpc', 'atari-st', 'super-nintendo']) {
     const item = page.locator(`#${system}`);
     await expect(item.getByRole('link', { name: 'Low angle', exact: true })).toHaveAttribute('href', new RegExp(`${system}-low-angle-1920.webp$`));
+  }
+  for (const system of ['sega-mega-drive', 'super-nintendo', 'atari-2600']) {
+    for (const [name, view] of [['Above', 'top'], ['Controls', 'controls'], ['Rear', 'rear']]) {
+      await expect(page.locator(`#${system}`).getByRole('link', { name, exact: true })).toHaveAttribute('href', new RegExp(`${system}-${view}-1920.webp$`));
+    }
   }
   const amiga = page.locator('#commodore-amiga');
   await expect(amiga.getByRole('link', { name: 'Keyboard', exact: true })).toHaveAttribute('href', /keyboard-1920.webp$/);

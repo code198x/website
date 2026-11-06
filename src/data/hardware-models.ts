@@ -132,6 +132,37 @@ export const hardwareModels: HardwareModel[] = [
       { id: 'low-angle', label: 'Low angle', alt: 'Low-angle rendered illustration showing the Atari 520ST key profiles and rounded rear shoulder' },
     ],
   },
+  {
+    system: 'sega-mega-drive', name: 'Sega Mega Drive', variant: 'Japanese Model 1 · HAA-2500',
+    description: 'The circular cartridge deck, red power badge and front controls of the original Japanese Mega Drive.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of the Japanese Model 1 · HAA-2500, viewed from above its front-right corner' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Japanese Model 1 · HAA-2500 viewed from directly above' },
+      { id: 'controls', label: 'Controls', alt: 'Close rendered illustration of the Japanese Model 1 · HAA-2500 cartridge opening and controls' },
+      { id: 'rear', label: 'Rear', alt: 'Rendered illustration of the Japanese Model 1 · HAA-2500 viewed from behind' },
+    ],
+  },
+  {
+    system: 'super-nintendo', name: 'Super Nintendo', variant: 'PAL SNES',
+    description: 'The raised deck, curved cartridge opening and recessed controls of the PAL Super Nintendo.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of the PAL SNES, viewed from above its front-right corner' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the PAL SNES viewed from directly above' },
+      { id: 'controls', label: 'Controls', alt: 'Close rendered illustration of the PAL SNES cartridge opening and controls' },
+      { id: 'rear', label: 'Rear', alt: 'Rendered illustration of the PAL SNES viewed from behind' },
+      { id: 'low-angle', label: 'Low angle', alt: 'Low-angle rendered illustration of the PAL SNES showing its raised deck and inset lower case' },
+    ],
+  },
+  {
+    system: 'atari-2600', name: 'Atari 2600', variant: 'Six-switch VCS · Light sixer',
+    description: 'The woodgrain fascia, ribbed upper case and six switches of the Atari VCS.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of the Six-switch VCS · Light sixer, viewed from above its front-right corner' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Six-switch VCS · Light sixer viewed from directly above' },
+      { id: 'controls', label: 'Controls', alt: 'Close rendered illustration of the Six-switch VCS · Light sixer cartridge opening and controls' },
+      { id: 'rear', label: 'Rear', alt: 'Rendered illustration of the Six-switch VCS · Light sixer viewed from behind' },
+    ],
+  },
 ];
 
 export const hardwareModelFor = (system: string) => hardwareModels.find(model => model.system === system);
