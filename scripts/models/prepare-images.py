@@ -16,6 +16,26 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def validate_render(library, source, receipt_path):
+    receipt = json.loads(receipt_path.read_text())
+    build = json.loads(receipt_path.with_name("build.json").read_text())
+    review = json.loads(receipt_path.with_name("review.json").read_text())
+    native_hash = digest(library / build["native_path"])
+    if not receipt["passed"] or not review["passed"] or any(
+        record["native_sha256"] != native_hash for record in (build, review, receipt)
+    ):
+        raise ValueError(f"Unqualified or stale native render: {source.name}")
+    image = next(
+        (item for item in receipt["images"].values() if item["path"] == source.name),
+        None,
+    )
+    if image is None or image["sha256"] != digest(source):
+        raise ValueError(f"Render differs from its receipt: {source.name}")
+    for path, expected in receipt["source_inputs"].items():
+        if digest(library / path) != expected:
+            raise ValueError(f"Render input changed: {Path(path).name}")
+
+
 def prepare(library):
     sources = json.loads(Path(__file__).with_name("sources.json").read_text())
     output = SITE / "public/images/models"
@@ -28,6 +48,8 @@ def prepare(library):
                 relative = spec if isinstance(spec, str) else spec['path']
                 crop = None if isinstance(spec, str) else spec.get('crop')
                 source = library / relative
+                if isinstance(spec, dict) and spec.get("receipt"):
+                    validate_render(library, source, library / spec["receipt"])
                 if model == 'sinclair-zx-spectrum':
                     # A plausible filename is not evidence that a portrait is current.
                     receipt = json.loads(source.with_suffix('.png.json').read_text())

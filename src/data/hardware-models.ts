@@ -8,6 +8,7 @@ export interface HardwareModel {
   system: string;
   name: string;
   variant: string;
+  vaultSystem?: string;
   description: string;
   views: ModelView[];
   credit?: { label: string; href: string };
@@ -56,8 +57,64 @@ export const hardwareModels: HardwareModel[] = [
       { id: 'side', label: 'Side', alt: 'Side-view 3D illustration of the original Game Boy case and controls' },
     ],
   },
+  {
+    system: 'bbc-micro', name: 'BBC Micro', variant: 'Model B',
+    description: 'The cream case, black keyboard and red function-key row of the BBC Micro Model B.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of a BBC Micro Model B, with a cream case, dark base and red function keys' },
+      { id: 'keyboard', label: 'Keyboard', alt: 'Close rendered illustration of the BBC Micro keyboard and indicator lights' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the BBC Micro Model B viewed from directly above' },
+    ],
+  },
+  {
+    system: 'sinclair-zx81', name: 'Sinclair ZX81', variant: 'UK keyboard study',
+    description: 'The flat membrane keyboard, raised rear deck and black case of the ZX81.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of a black Sinclair ZX81 with a UK membrane keyboard and raised rear deck' },
+      { id: 'keyboard', label: 'Keyboard', alt: 'Close rendered illustration of the ZX81 membrane keys and printed BASIC commands' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Sinclair ZX81 viewed from directly above' },
+    ],
+  },
+  {
+    system: 'sega-master-system', name: 'Sega Master System', variant: 'Master System I · overseas Power Base',
+    description: 'The raised centre, red panel and front controller sockets of the original overseas Master System.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of a Master System I Power Base, with a red control panel and two front controller sockets' },
+      { id: 'controls', label: 'Controls', alt: 'Close rendered illustration of the Master System reset and pause buttons and printed connection diagram' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Master System I Power Base from above, showing its cartridge slot and controls' },
+    ],
+  },
+  {
+    system: 'commodore-vic-20', name: 'Commodore VIC-20', variant: 'Brown keyboard · gold badge',
+    description: 'A rounded cream case with brown keys, tan function keys and a gold VIC-20 badge.',
+    credit: { label: 'Keycap typeface: Levente Szabadkai · CC0', href: 'https://github.com/szabadkai/c64-keyboard-font' },
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of a Commodore VIC-20 with a rounded cream case, brown keyboard and tan function keys' },
+      { id: 'keyboard', label: 'Keyboard', alt: 'Close rendered illustration of the VIC-20 keyboard, including front-face graphics, colour names and Commodore marks' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Commodore VIC-20 viewed from directly above' },
+    ],
+  },
+  {
+    system: 'acorn-electron', name: 'Acorn Electron', variant: 'Original unexpanded case',
+    description: 'The cream keyboard, front-face BASIC shortcuts and dark grid strip of the Acorn Electron.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of an Acorn Electron with a cream keyboard and dark strip carrying the acorn electron wordmark' },
+      { id: 'keyboard', label: 'Keyboard', alt: 'Close rendered illustration of the Electron keyboard and its front-face BASIC shortcuts' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Acorn Electron viewed from directly above' },
+    ],
+  },
+  {
+    system: 'atari-800', name: 'Atari 800XL', variant: '800XL · cream and charcoal case', vaultSystem: 'atari-8-bit',
+    description: 'The 800XL keyboard, silver console buttons and cartridge shutters from the Atari 8-bit family.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of an Atari 800XL with a charcoal keyboard deck, cream rear case and silver controls' },
+      { id: 'keyboard', label: 'Keyboard', alt: 'Close rendered illustration of the Atari 800XL keyboard and silver console-button column' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Atari 800XL from directly above, showing its cartridge shutters and five console buttons' },
+    ],
+  },
 ];
 
 export const hardwareModelFor = (system: string) => hardwareModels.find(model => model.system === system);
+export const hardwareModelForVault = (system: string) => hardwareModels.find(model => (model.vaultSystem ?? model.system) === system);
 export const modelImage = (system: string, view: string, width = 1280) => `/images/models/${system}-${view}-${width}.webp`;
 export const modelSrcset = (system: string, view: string) => [640, 1280, 1920].map(width => `${modelImage(system, view, width)} ${width}w`).join(', ');
