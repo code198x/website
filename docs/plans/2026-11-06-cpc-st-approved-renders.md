@@ -39,3 +39,9 @@ complete cases and wrapped captions remain intact. The family theme keeps its
 paper surface in both preference modes. Source design lint reports no findings;
 the page inspector supplies desktop/tablet/phone captures, with existing family
 page styling retained under the component-only scope.
+
+The whole-page design inspector reports seven existing family-page findings
+(eyebrow, CRT shadow, rules, outlines, picture quota, motion quota and footer
+spacing) plus three warnings (paper palette, body ink and no footage). These
+are outside this media/catalogue extension. No new page styling, video or motion
+is added to satisfy a general landing-page rubric.
