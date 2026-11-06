@@ -112,6 +112,26 @@ export const hardwareModels: HardwareModel[] = [
       { id: 'top', label: 'Above', alt: 'Rendered illustration of the Atari 800XL from directly above, showing its cartridge shutters and five console buttons' },
     ],
   },
+  {
+    system: 'amstrad-cpc', name: 'Amstrad CPC 464', variant: 'CPC 464 · English keyboard',
+    description: 'The dark case, colourful keyboard and built-in cassette recorder of the CPC 464.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of an Amstrad CPC 464, with a dark case, green modifiers, blue Enter keys and built-in cassette recorder' },
+      { id: 'keyboard', label: 'Keyboard', alt: 'Close rendered illustration of the CPC 464 keyboard, cursor keys, numeric pad and cassette controls' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Amstrad CPC 464 viewed from directly above' },
+      { id: 'low-angle', label: 'Low angle', alt: 'Low-angle rendered illustration showing the CPC 464 key profiles and case moulding' },
+    ],
+  },
+  {
+    system: 'atari-st', name: 'Atari 520ST', variant: 'Original short case',
+    description: 'The slanted function keys, pale keyboard and diagonal rear grille of the short-case 520ST.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of an original short-case Atari 520ST, with slanted function keys and a diagonal rear ventilation grille' },
+      { id: 'keyboard', label: 'Keyboard', alt: 'Close rendered illustration of the Atari 520ST keyboard, rounded function-key fronts and numeric pad' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the original short-case Atari 520ST viewed from directly above' },
+      { id: 'low-angle', label: 'Low angle', alt: 'Low-angle rendered illustration showing the Atari 520ST key profiles and rounded rear shoulder' },
+    ],
+  },
 ];
 
 export const hardwareModelFor = (system: string) => hardwareModels.find(model => model.system === system);
