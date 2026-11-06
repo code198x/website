@@ -3,10 +3,17 @@
 Run with Blender's Python. Source native/Blender documents are read, never saved.
 """
 import argparse
+import hashlib
+import json
 import sys
 from pathlib import Path
 
 import bpy
+
+
+def digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--library', type=Path, required=True)
@@ -32,7 +39,13 @@ bpy.ops.export_scene.gltf(filepath=str(args.output / 'game-boy.glb'), export_for
 
 # Only the selected exterior is imported; the third-party reference motherboard is excluded.
 bpy.ops.wm.read_factory_settings(use_empty=True)
-obj = args.library / 'assets/by-system/sinclair-zx-spectrum/model/solidcraft-issue3b-case/portraits-tapered/exterior.obj'
+obj = args.library / 'assets/by-system/sinclair-zx-spectrum/model/solidcraft-issue3b-case/portraits/exterior.obj'
+receipt = json.loads((obj.parent / 'export-provenance.json').read_text())
+if digest(obj.parent.parent / 'spectrum.sc') != receipt['native_sha256']:
+    raise ValueError('Spectrum exterior export does not match the current native model')
+for source in [obj, obj.with_suffix('.mtl')]:
+    if digest(source) != receipt['files'][source.name]:
+        raise ValueError(f'Spectrum export differs from its provenance: {source.name}')
 bpy.ops.wm.obj_import(filepath=str(obj), forward_axis='Y', up_axis='Z')
 colours = {}
 current = None
