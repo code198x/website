@@ -18,10 +18,16 @@
  * against lucasarts, and epic-megagames against epic-games, none of which any
  * name-based check had reported.
  *
- * ⚠ This REPORTS, it does not fail the build, and that is deliberate. A high
- * score means "about the same things", which is also true of a person and the
- * company they founded, or a company and its best-known game. Around 600 pairs
- * score above 0.30 and most are legitimate. The output is a reading list.
+ * By default this REPORTS: a high score means "about the same things", which
+ * is also true of a person and the company they founded, or a company and its
+ * best-known game. Around 600 pairs score above 0.30 and most are legitimate.
+ * The output is a reading list.
+ *
+ * With `--fail-at X` it is also a gate, and check:content runs it at 0.9. A
+ * copied entry scores 1.000; the highest legitimate pair in November 2026
+ * scored 0.801, so the gate grandfathers nothing. A pair at or above X fails
+ * unless vault-distinct-pairs.json lists it: add a pair there only once a
+ * person has confirmed the two entries are different subjects, and say why.
  *
  * The tell for a real duplicate is agreement on identity, not similarity of
  * subject: both LucasArts entries claimed founded 1982 and ended 2013, and both
@@ -29,6 +35,7 @@
  * entry.
  *
  *   node scripts/find-vault-duplicates.mjs [minCosine]
+ *   node scripts/find-vault-duplicates.mjs --fail-at 0.9
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
@@ -37,7 +44,20 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const VAULT = join(ROOT, 'src/content/vault');
-const MIN = Number(process.argv[2] ?? 0.45);
+const args = process.argv.slice(2);
+const fi = args.indexOf('--fail-at');
+const FAIL_AT = fi >= 0 ? Number(args[fi + 1]) : null;
+if (fi >= 0 && !(FAIL_AT > 0 && FAIL_AT <= 1)) {
+  console.error('--fail-at needs a cosine between 0 and 1.');
+  process.exit(2);
+}
+const positional = args.filter((a, i) => !a.startsWith('--') && !(fi >= 0 && i === fi + 1));
+// As a gate, list only what fails; as a report, the reading list.
+const MIN = Number(positional[0] ?? (FAIL_AT ?? 0.45));
+const DISTINCT = new Set(
+  JSON.parse(readFileSync(join(ROOT, 'scripts/vault-distinct-pairs.json'), 'utf8'))
+    .map(({ pair: [a, b] }) => (a < b ? `${a}|${b}` : `${b}|${a}`)),
+);
 
 function* walk(dir) {
   for (const e of readdirSync(dir, { withFileTypes: true })) {
@@ -113,3 +133,17 @@ console.log(
   `  company also are. Pairs marked SAME LIFESPAN agree on identity as well as\n` +
   `  subject, and are the ones worth opening first.\n`
 );
+
+if (FAIL_AT !== null) {
+  const failing = hits.filter(({ s, a, b }) =>
+    s >= FAIL_AT && !DISTINCT.has(a.id < b.id ? `${a.id}|${b.id}` : `${b.id}|${a.id}`));
+  if (failing.length) {
+    console.error(`Vault duplicates gate: ${failing.length} pair(s) at cosine ≥ ${FAIL_AT}.`);
+    console.error('Merge them, or, if a person has confirmed they are different subjects,');
+    console.error('add the pair and the reason to scripts/vault-distinct-pairs.json.\n');
+    for (const { s, a, b } of failing) console.error(`  · ${s.toFixed(3)}  ${a.id}  ${b.id}`);
+    console.error();
+    process.exit(1);
+  }
+  console.log(`Vault duplicates gate: no unconfirmed pair at cosine ≥ ${FAIL_AT}.\n`);
+}
