@@ -1,6 +1,6 @@
 # Hardware illustrations
 
-The model renders are editorial images, embedded directly in the thirteen system
+The model renders are editorial images, embedded directly in the sixteen system
 page openings and their matching Vault system articles. The shared image index
 at `/systems/models/` provides alternate keyboard, rear and top views. There is
 no interactive 3D viewer or mesh download.
@@ -67,3 +67,12 @@ The CPC 464 and original short-case Atari 520ST use their approved photo-guided
 profile renders. Each adds front, keyboard, top and low-angle views. Their
 case radii and key profiles remain illustration estimates. The public images
 contain reconstructed artwork; comparison photographs are not distributed.
+
+
+The console group adds the Japanese HAA-2500 Mega Drive Model 1, PAL SNES and
+six-switch light-sixer Atari VCS. Each supplies front, top, controls and rear
+views; the SNES also has a low-angle view of its inset base. The SNES uses the
+accepted shallow rear-fin checkpoint, with a continuous raised deck. Their
+captions identify these variants rather than implying every regional version
+looks the same. The console artwork is reconstructed; reference photographs
+are not distributed.
