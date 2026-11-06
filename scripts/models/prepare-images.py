@@ -24,7 +24,9 @@ def prepare(library):
     with tempfile.TemporaryDirectory(prefix="code198x-model-images-") as scratch:
         for model, views in sources.items():
             manifest[model] = {}
-            for view, relative in views.items():
+            for view, spec in views.items():
+                relative = spec if isinstance(spec, str) else spec['path']
+                crop = None if isinstance(spec, str) else spec.get('crop')
                 source = library / relative
                 if model == 'sinclair-zx-spectrum':
                     # A plausible filename is not evidence that a portrait is current.
@@ -41,7 +43,11 @@ def prepare(library):
                 opaque = subprocess.check_output([
                     "magick", "identify", "-format", "%[opaque]", str(source),
                 ], text=True).strip().lower() == "true"
-                if opaque:
+                if crop:
+                    subprocess.run([
+                        'magick', str(source), '-crop', crop, '+repage', str(framed),
+                    ], check=True)
+                elif opaque:
                     shutil.copyfile(source, framed)
                 else:
                     subprocess.run([
@@ -62,6 +68,8 @@ def prepare(library):
                         "width": int(dimensions[0]), "height": int(dimensions[1]),
                     }
                 manifest[model][view] = {"source_sha256": digest(source), "images": derivatives}
+                if crop:
+                    manifest[model][view]['crop'] = crop
     (output / "provenance.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print(f"Prepared {sum(len(v) for v in sources.values())} views at three sizes.")
 
