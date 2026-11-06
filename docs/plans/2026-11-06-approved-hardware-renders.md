@@ -47,3 +47,10 @@ The skill source lint has no findings. Its whole-page inspector flags existing
 family eyebrows/rules/paper palette, picture/motion quotas and long-article
 footer spacing. Those concern the inherited page design, not the inserted image
 component; no broad redesign or extra motion was introduced for this task.
+
+The required full CI browser suite caught the image index's inherited 32px
+outer top padding, which conflicts with the shared-frame rule. The gallery
+now leaves that opening space to Layout. Twelve targeted desktop/mobile tests
+pass: the six existing hardware checks and the six gallery frame cases at
+390, 1440 and 1920px. The full suite passed the hardware checks; its only six
+failures were those gallery frame cases.
