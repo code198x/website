@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { ASM198X_INSTRUCTION_PAGES, asmInstructionReference } from '../src/lib/surfaces';
+import { headRetryingServerErrors } from './support/head-retrying-server-errors';
 
 /**
  * System stub pages link out to Asm198x's instruction reference.
@@ -36,7 +37,8 @@ test.describe('Asm198x instruction links', () => {
       const url = asmInstructionReference(cpu)!;
       // A redirect stub answers 200 once followed, so refuse to follow: the
       // link should name the page itself, not an old address that forwards.
-      const response = await request.head(url, { maxRedirects: 0 });
+      // Another site's server error is retried, not counted against us.
+      const response = await headRetryingServerErrors(request, url, { maxRedirects: 0 });
       expect(response.status(), `${url} should resolve`).toBe(200);
     }
   });
