@@ -7,6 +7,10 @@ House typography, palette and controls.
 The first five models are the Amiga 500 with UK keyboard, Commodore 64
 breadbin, Spectrum 48K, NES-001 and original Game Boy. The Amiga uses the
 accepted special-key-fit checkpoint, and the C64 uses port-surrounds.
+The Spectrum uses `solidcraft-issue3b-case/portraits/`, whose export receipt
+matches the current native model (`b9acda79db9c…`). This is the shallow-front-base
+revision with the returned faceplate. Image and mesh preparation reject stale
+receipts; the earlier `portraits-tapered` export is excluded.
 The accepted native model sources are unchanged.
 
 The implementation shares one image/viewer component between the gallery and

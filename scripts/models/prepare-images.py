@@ -26,6 +26,16 @@ def prepare(library):
             manifest[model] = {}
             for view, relative in views.items():
                 source = library / relative
+                if model == 'sinclair-zx-spectrum':
+                    # A plausible filename is not evidence that a portrait is current.
+                    receipt = json.loads(source.with_suffix('.png.json').read_text())
+                    native = source.parent.parent / 'spectrum.sc'
+                    if receipt['source']['native_sha256'] != digest(native):
+                        raise ValueError('Spectrum portrait does not match the current native model')
+                    recorded = receipt['images']
+                    image = next(value for name, value in recorded.items() if Path(name).name == source.name)
+                    if image['sha256'] != digest(source):
+                        raise ValueError('Spectrum portrait differs from its provenance')
                 # Remove only empty alpha borders. Authored opaque studio framing stays intact.
                 framed = Path(scratch) / "framed.png"
                 opaque = subprocess.check_output([

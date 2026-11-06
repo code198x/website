@@ -38,8 +38,11 @@ node scripts/models/prepare-web-models.mjs /path/to/198x /tmp/code198x-model-exp
 `scripts/models/sources.json` identifies accepted render inputs. The mesh
 preparer identifies the accepted Amiga, C64 and NES GLBs. Blender exports the
 Game Boy's complete exterior with its lettering and the Spectrum's selected
-exterior OBJ. The Spectrum reference motherboard is excluded. OBJ material
-colours are converted from sRGB to linear values before GLB export to match
+exterior OBJ. The Spectrum reference motherboard is excluded. Its
+inputs come from `solidcraft-issue3b-case/portraits/`, with the shallow front
+base and returned faceplate. Both its image and mesh preparation verify the
+export receipts against the current native document and source hashes.
+OBJ material colours are converted from sRGB to linear values before GLB export to match
 the portrait renderer.
 
 The optimiser uses pinned glTF Transform and Meshoptimizer packages. It merges
