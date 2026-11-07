@@ -163,6 +163,87 @@ export const hardwareModels: HardwareModel[] = [
       { id: 'rear', label: 'Rear', alt: 'Rendered illustration of the Six-switch VCS · Light sixer viewed from behind' },
     ],
   },
+  {
+    system: 'sega-game-gear', name: 'Sega Game Gear', variant: 'Original Game Gear',
+    description: 'The broad black handheld, colour-screen surround and blue Start button of the Game Gear.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of the Sega Game Gear handheld with a black case, directional pad and blue Start button' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Game Gear from directly above' },
+      { id: 'controls', label: 'Controls', alt: 'Rendered illustration of the Game Gear screen surround and controls' },
+    ],
+  },
+  {
+    system: 'neo-geo', name: 'Neo Geo AES', variant: 'AES home console · main unit',
+    description: 'The curved black shell, cartridge opening and gold lettering of the Neo Geo AES.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of the Neo Geo AES main unit with a curved black shell and gold lettering' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Neo Geo AES cartridge opening and top controls' },
+      { id: 'controls', label: 'Controls', alt: 'Rendered illustration of the Neo Geo AES cartridge opening and controls in close view' },
+    ],
+  },
+  {
+    system: 'vectrex', name: 'Vectrex', variant: 'Main unit · controller excluded',
+    description: 'The upright screen housing, recessed bezel and built-in handle of the Vectrex.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of the Vectrex upright main unit viewed from its front-right corner' },
+      { id: 'straight-on', label: 'Straight on', alt: 'Rendered illustration of the Vectrex screen and recessed front bezel viewed straight on' },
+      { id: 'rear', label: 'Rear', alt: 'Rendered illustration of the Vectrex rear housing, ventilation and handle' },
+    ],
+  },
+  {
+    system: 'commodore-128', name: 'Commodore 128', variant: 'Original C128 · integrated keyboard',
+    description: 'The pale case, numeric pad and grouped function keys of the original Commodore 128.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of the Commodore 128 with a pale case, full keyboard and numeric pad' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Commodore 128 viewed from directly above' },
+      { id: 'keyboard', label: 'Keyboard', alt: 'Rendered illustration of the Commodore 128 keyboard, numeric pad and grouped function keys' },
+    ],
+  },
+  {
+    system: 'oric-atmos', name: 'Oric Atmos', variant: 'Atmos · black case and red modifiers',
+    description: 'The compact black case, red modifier keys and black spacebar of the Oric Atmos.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of the Oric Atmos with a compact black case and red modifier keys' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Oric Atmos viewed from directly above' },
+      { id: 'keyboard', label: 'Keyboard', alt: 'Rendered illustration of the Oric Atmos keyboard with red modifiers and a black spacebar' },
+    ],
+  },
+  {
+    system: 'msx', name: 'Toshiba HX-10', variant: 'MSX · Toshiba HX-10',
+    description: 'The Toshiba HX-10 implementation of the MSX standard, with blue cursor keys and a pale keyboard.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of a Toshiba HX-10 MSX computer with a pale keyboard and blue cursor keys' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Toshiba HX-10 MSX computer viewed from directly above' },
+      { id: 'keyboard', label: 'Keyboard', alt: 'Rendered illustration of the Toshiba HX-10 keyboard with blue cursor keys, red STOP and green GRAPH' },
+    ],
+  },
+  {
+    system: 'thomson-mo5', name: 'Thomson MO5', variant: 'MO5 · French rubber keyboard',
+    description: 'The low rubber keys, French AZERTY layout and outlined MO5 wordmark of the Thomson MO5.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of the Thomson MO5 with a French rubber keyboard and outlined MO5 wordmark' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the Thomson MO5 viewed from directly above' },
+      { id: 'keyboard', label: 'Keyboard', alt: 'Rendered illustration of the Thomson MO5 French AZERTY rubber keyboard' },
+    ],
+  },
+  {
+    system: 'robotron-kc85', name: 'KC85/3', variant: 'Mühlhausen KC85/3 · main unit',
+    description: 'The module covers, cream connection strip and top vent banks of the Mühlhausen KC85/3.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of the Mühlhausen KC85/3 main unit with module covers and a cream connection strip' },
+      { id: 'straight-on', label: 'Straight on', alt: 'Rendered illustration of the KC85/3 module covers, connection strip and power switch viewed straight on' },
+      { id: 'top', label: 'Above', alt: 'Rendered illustration of the KC85/3 top vent banks viewed from above' },
+    ],
+  },
+  {
+    system: 'sharp-x68000', name: 'Sharp X68000', variant: 'Original CZ-600C · main unit',
+    description: 'The twin towers, central bridges and paired vertical drive slots of the original X68000.',
+    views: [
+      { id: 'front', label: 'Front', alt: 'Rendered illustration of the original Sharp X68000 main unit with twin towers and vertical drive slots' },
+      { id: 'straight-on', label: 'Straight on', alt: 'Rendered illustration of the Sharp X68000 twin towers, drive slots and base connections viewed straight on' },
+      { id: 'side', label: 'Side', alt: 'Rendered illustration of the Sharp X68000 case depth and twin-tower profile from the side' },
+    ],
+  },
 ];
 
 export const hardwareModelFor = (system: string) => hardwareModels.find(model => model.system === system);

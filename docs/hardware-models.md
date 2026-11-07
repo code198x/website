@@ -1,6 +1,6 @@
 # Hardware illustrations
 
-The model renders are editorial images, embedded directly in the sixteen system
+The model renders are editorial images, embedded directly in the twenty-five system
 page openings and their matching Vault system articles. The shared image index
 at `/systems/models/` provides alternate keyboard, rear and top views. There is
 no interactive 3D viewer or mesh download.
@@ -76,3 +76,18 @@ accepted shallow rear-fin checkpoint, with a continuous raised deck. Their
 captions identify these variants rather than implying every regional version
 looks the same. The console artwork is reconstructed; reference photographs
 are not distributed.
+
+
+The next nine first-pass illustrations add Game Gear, Neo Geo AES, Vectrex,
+Commodore 128, Oric Atmos, Toshiba HX-10, Thomson MO5, Mühlhausen KC85/3 and
+Sharp X68000 CZ-600C. All have system openings and gallery entries; five also
+have existing Vault system articles. The MSX caption identifies the HX-10 as
+one implementation of the standard. The KC85 directory alias covers a broader
+family; the illustration specifically depicts the Mühlhausen KC85/3. The AES,
+Vectrex, KC85/3 and X68000 captions identify main-unit-only scope.
+
+These first passes retain estimated details and reconstructed lettering. The
+MO5 uses low rubber keys; the C128, Atmos and HX-10 use tapered mechanical caps.
+The source receipts select the accepted first-pass checkpoints, including the
+corrected Vectrex badge and fitted C128/HX-10 keyboard beds. The 27 added views
+supply 81 responsive WebP files; reference photographs remain excluded.
