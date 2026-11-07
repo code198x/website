@@ -1,19 +1,19 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const systems = ['commodore-amiga', 'commodore-64', 'sinclair-zx-spectrum', 'nintendo-entertainment-system', 'game-boy', 'bbc-micro', 'sinclair-zx81', 'sega-master-system', 'commodore-vic-20', 'acorn-electron', 'atari-800', 'amstrad-cpc', 'atari-st', 'sega-mega-drive', 'super-nintendo', 'atari-2600', 'sega-game-gear', 'neo-geo', 'vectrex', 'commodore-128', 'oric-atmos', 'msx', 'thomson-mo5', 'robotron-kc85', 'sharp-x68000'];
-const withoutVaultArticle = new Set(['oric-atmos', 'thomson-mo5', 'robotron-kc85', 'sharp-x68000']);
+const systems = ['commodore-amiga', 'commodore-64', 'sinclair-zx-spectrum', 'nintendo-entertainment-system', 'game-boy', 'bbc-micro', 'sinclair-zx81', 'sega-master-system', 'commodore-vic-20', 'acorn-electron', 'atari-800', 'amstrad-cpc', 'atari-st', 'sega-mega-drive', 'super-nintendo', 'atari-2600', 'sega-game-gear', 'neo-geo', 'vectrex', 'commodore-128', 'oric-atmos', 'msx', 'thomson-mo5', 'robotron-kc85', 'sharp-x68000', 'apple-ii', 'macintosh', 'atari-400', 'acorn-archimedes', 'trs-80', 'amstrad-pcw', 'kim-1', 'game-boy-color'];
+const withoutVaultArticle = new Set(['oric-atmos', 'thomson-mo5', 'robotron-kc85', 'sharp-x68000', 'macintosh', 'amstrad-pcw', 'kim-1', 'game-boy-color']);
 
 test('system and Vault openings use static hardware illustrations', async ({ page }) => {
   test.setTimeout(240_000);
   const meshes: string[] = [];
   page.on('request', request => { if (/\.glb(?:\?|$)/.test(request.url())) meshes.push(request.url()); });
   for (const system of systems) {
-    const paths = [`/systems/${system}/`];
-    if (!withoutVaultArticle.has(system)) paths.push(`/vault/systems/${system === 'atari-800' ? 'atari-8-bit' : system}/`);
+    const paths = [`/systems/${system === 'atari-400' ? 'atari-800' : system}/`];
+    if (!withoutVaultArticle.has(system)) paths.push(`/vault/systems/${['atari-800', 'atari-400'].includes(system) ? 'atari-8-bit' : system}/`);
     for (const path of paths) {
       await page.goto(path);
-      const opening = page.locator(path.startsWith('/vault') ? '.vault-reading-header' : ['commodore-amiga', 'commodore-64', 'sinclair-zx-spectrum', 'nintendo-entertainment-system'].includes(system) ? '.machine-masthead' : '.intro');
+      const opening = page.locator(system === 'atari-400' ? 'article' : path.startsWith('/vault') ? '.vault-reading-header' : ['commodore-amiga', 'commodore-64', 'sinclair-zx-spectrum', 'nintendo-entertainment-system'].includes(system) ? '.machine-masthead' : '.intro');
       const figure = opening.locator(`[data-model-illustration="${system}"]`);
       await expect(figure).toBeVisible();
       await expect.poll(() => figure.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
@@ -43,6 +43,14 @@ test('image index provides all machines and alternate render links', async ({ pa
     }
   }
   const additionalViews: Record<string, [string, string][]> = {
+    'apple-ii': [['Above', 'top'], ['Keyboard', 'keyboard'], ['Low angle', 'low-angle']],
+    'macintosh': [['Straight on', 'straight-on'], ['Rear', 'rear']],
+    'atari-400': [['Above', 'top'], ['Keyboard', 'keyboard']],
+    'acorn-archimedes': [['Above', 'top'], ['Keyboard', 'keyboard'], ['Low angle', 'low-angle']],
+    'trs-80': [['Straight on', 'straight-on'], ['Keyboard', 'keyboard'], ['Low angle', 'low-angle']],
+    'amstrad-pcw': [['Straight on', 'straight-on'], ['Side', 'side']],
+    'kim-1': [['Above', 'top'], ['Keypad', 'keypad'], ['Low angle', 'low-angle']],
+    'game-boy-color': [['Above', 'top'], ['Controls', 'controls']],
     'sega-game-gear': [['Above', 'top'], ['Controls', 'controls']],
     'neo-geo': [['Above', 'top'], ['Controls', 'controls']],
     'vectrex': [['Straight on', 'straight-on'], ['Rear', 'rear']],
@@ -58,6 +66,7 @@ test('image index provides all machines and alternate render links', async ({ pa
       await expect(page.locator(`#${system}`).getByRole('link', { name, exact: true })).toHaveAttribute('href', new RegExp(`${system}-${view}-1920.webp$`));
     }
   }
+  await expect(page.locator('#atari-400').getByRole('link', { name: 'Atari 400', exact: true })).toHaveAttribute('href', '/systems/atari-800/');
   const amiga = page.locator('#commodore-amiga');
   await expect(amiga.getByRole('link', { name: 'Keyboard', exact: true })).toHaveAttribute('href', /keyboard-1920.webp$/);
   await expect(page.locator('canvas')).toHaveCount(0);

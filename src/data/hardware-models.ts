@@ -9,6 +9,7 @@ export interface HardwareModel {
   name: string;
   variant: string;
   vaultSystem?: string;
+  systemPage?: string;
   description: string;
   views: ModelView[];
   credit?: { label: string; href: string };
@@ -242,6 +243,83 @@ export const hardwareModels: HardwareModel[] = [
       { id: 'front', label: 'Front', alt: 'Rendered illustration of the original Sharp X68000 main unit with twin towers and vertical drive slots' },
       { id: 'straight-on', label: 'Straight on', alt: 'Rendered illustration of the Sharp X68000 twin towers, drive slots and base connections viewed straight on' },
       { id: 'side', label: 'Side', alt: 'Rendered illustration of the Sharp X68000 case depth and twin-tower profile from the side' },
+    ],
+  },
+  {
+    system: "apple-ii", name: "Apple II", variant: "Apple II Plus",
+    description: "The deep rear lid, rainbow badge and raised keyboard of the Apple II Plus.",
+    views: [
+      { id: "front", label: "Front", alt: "Rendered illustration of Apple II: view from above the front-right corner" },
+      { id: "top", label: "Above", alt: "Rendered illustration of Apple II: view from directly above" },
+      { id: "keyboard", label: "Keyboard", alt: "Rendered illustration of Apple II: close view of the keyboard" },
+      { id: "low-angle", label: "Low angle", alt: "Rendered illustration of Apple II: low-angle view showing the case and controls" },
+    ],
+  },
+  {
+    system: "macintosh", name: "Apple Macintosh", variant: "Macintosh 128K \u00b7 main unit",
+    description: "The upright case, recessed screen and front disk slot of the Macintosh 128K.",
+    views: [
+      { id: "front", label: "Front", alt: "Rendered illustration of Apple Macintosh: view from above the front-right corner" },
+      { id: "straight-on", label: "Straight on", alt: "Rendered illustration of Apple Macintosh: view from the front" },
+      { id: "rear", label: "Rear", alt: "Rendered illustration of Apple Macintosh: view from behind" },
+    ],
+  },
+  {
+    system: "atari-400", name: "Atari 400", variant: "Atari 400 \u00b7 membrane keyboard",
+    systemPage: "atari-800",
+    description: "The membrane keyboard, console buttons and cartridge-lid shoulder of the Atari 400.",
+    views: [
+      { id: "front", label: "Front", alt: "Rendered illustration of Atari 400: view from above the front-right corner" },
+      { id: "top", label: "Above", alt: "Rendered illustration of Atari 400: view from directly above" },
+      { id: "keyboard", label: "Keyboard", alt: "Rendered illustration of Atari 400: close view of the keyboard" },
+    ],
+  },
+  {
+    system: "acorn-archimedes", name: "Acorn A3010", variant: "A3010 \u00b7 UK keyboard",
+    description: "The green function keys, numeric pad and integrated case of the Acorn A3010.",
+    views: [
+      { id: "front", label: "Front", alt: "Rendered illustration of Acorn A3010: view from above the front-right corner" },
+      { id: "top", label: "Above", alt: "Rendered illustration of Acorn A3010: view from directly above" },
+      { id: "keyboard", label: "Keyboard", alt: "Rendered illustration of Acorn A3010: close view of the keyboard" },
+      { id: "low-angle", label: "Low angle", alt: "Rendered illustration of Acorn A3010: low-angle view showing the case and controls" },
+    ],
+  },
+  {
+    system: "trs-80", name: "TRS-80 Model III", variant: "Model III \u00b7 dual drive",
+    description: "The raked screen surround, integrated keyboard and stacked drives of the Model III.",
+    views: [
+      { id: "front", label: "Front", alt: "Rendered illustration of TRS-80 Model III: view from above the front-right corner" },
+      { id: "straight-on", label: "Straight on", alt: "Rendered illustration of TRS-80 Model III: view from the front" },
+      { id: "keyboard", label: "Keyboard", alt: "Rendered illustration of TRS-80 Model III: close view of the keyboard" },
+      { id: "low-angle", label: "Low angle", alt: "Rendered illustration of TRS-80 Model III: low-angle view showing the case and controls" },
+    ],
+  },
+  {
+    system: "amstrad-pcw", name: "Amstrad PCW 8256", variant: "8256 \u00b7 monitor/computer unit",
+    description: "The recessed green screen and single vertical drive of the PCW 8256 main unit.",
+    views: [
+      { id: "front", label: "Front", alt: "Rendered illustration of Amstrad PCW 8256: view from above the front-right corner" },
+      { id: "straight-on", label: "Straight on", alt: "Rendered illustration of Amstrad PCW 8256: view from the front" },
+      { id: "side", label: "Side", alt: "Rendered illustration of Amstrad PCW 8256: view from the side" },
+    ],
+  },
+  {
+    system: "kim-1", name: "MOS KIM-1", variant: "Populated-board study",
+    description: "The calculator-style keypad, dark six-digit display and component groups of the KIM-1.",
+    views: [
+      { id: "front", label: "Front", alt: "Rendered illustration of MOS KIM-1: view from above the front-right corner" },
+      { id: "top", label: "Above", alt: "Rendered illustration of MOS KIM-1: view from directly above" },
+      { id: "keypad", label: "Keypad", alt: "Rendered illustration of MOS KIM-1: close view of the keypad and unpowered display" },
+      { id: "low-angle", label: "Low angle", alt: "Rendered illustration of MOS KIM-1: low-angle view showing the case and controls" },
+    ],
+  },
+  {
+    system: "game-boy-color", name: "Game Boy Color", variant: "Opaque purple shell study",
+    description: "The purple shell, recessed screen, directional pad and circular speaker holes of the Game Boy Color.",
+    views: [
+      { id: "front", label: "Front", alt: "Rendered illustration of Game Boy Color: view from above the front-right corner" },
+      { id: "top", label: "Above", alt: "Rendered illustration of Game Boy Color: view from directly above" },
+      { id: "controls", label: "Controls", alt: "Rendered illustration of Game Boy Color: close view of the screen surround and controls" },
     ],
   },
 ];
