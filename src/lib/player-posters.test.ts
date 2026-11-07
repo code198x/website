@@ -53,11 +53,15 @@ describe('player posters', () => {
       expect(entry.variant).toBe(capture.variant);
       expect(entry.frame).toBe(capture.frame);
       expect(hash(`public${poster!.src}`)).toBe(capture.pngSha256);
-      if (capture.media) {
-        expect(entry.demo?.src).toBe(capture.media.src);
+      if (entry.demo) {
+        expect(capture.media).not.toBeNull();
+        expect(capture.media.src).toBe(entry.demo.src);
+        expect(capture.media.source?.src).toBe(entry.demo.src.replace(/\.bin$/, '.asm'));
         expect(hash(`public${capture.media.src}`)).toBe(capture.media.sha256);
-        expect(hash(`public${capture.media.source.src}`)).toBe(capture.media.source.sha256);
-        expect(hash(`public${capture.media.src.replace(/demo\.bin$/, 'LICENSE')}`)).toBe(capture.media.source.licenseSha256);
+        expect(hash(`public${entry.demo.src.replace(/\.bin$/, '.asm')}`)).toBe(capture.media.source.sha256);
+        expect(hash(`public${entry.demo.src.replace(/demo\.bin$/, 'LICENSE')}`)).toBe(capture.media.source.licenseSha256);
+      } else {
+        expect(capture.media).toBeNull();
       }
     }
   });
