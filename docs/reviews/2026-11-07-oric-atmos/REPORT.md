@@ -68,3 +68,7 @@ Limits:
   - `systems/oric` carries `noindex` at both sizes. Each of the 13 linked entries has exactly 1 link to `/vault/systems/oric` inside `main`.
   - Every capture was inspected: the Oric entry in full at both sizes, and the linked paragraph on each of the 13 entries. None renders wrongly.
 - No approval is recorded, so `systems/oric` stays `reviewed: false`.
+
+## Approval
+
+Steve Hill approved 1 entry in conversation on 7 November 2026: `systems/oric`. They are now `reviewed: true`; the approval is recorded in [approval.json](approval.json). Publication is verified after the merge.
