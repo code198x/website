@@ -38,3 +38,101 @@ jobs:
 
       - name: Validate the reviewed project-progress snapshot
         run: npx vitest run src/lib/project-progress.test.ts
+
+  # A pull request that adds a Vault batch (docs/reviews/<slug>/triage.json)
+  # must pass the batch gates in code198x/docs: scripts/vault_batch_gates.py.
+  # The release check stays local, so the gates run with --skip-release and
+  # must end INCOMPLETE (exit 3); any other exit fails. The queue rows are read
+  # from the docs branch named like this one, or from docs main.
+  vault-batch:
+    name: Vault batch gates
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout website
+        uses: actions/checkout@v7
+        with:
+          path: website
+          fetch-depth: 0
+
+      - name: Find Vault batches this change adds
+        id: find
+        working-directory: website
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          dirs="$(git diff --name-only --diff-filter=A "$BASE"...HEAD -- 'docs/reviews/*/triage.json' | xargs -r -n1 dirname)"
+          if [ -z "$dirs" ]; then
+            echo 'No Vault batch in this change.'
+          else
+            printf 'Vault batches:\n%s\n' "$dirs"
+          fi
+          {
+            echo 'dirs<<EOF'
+            echo "$dirs"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Choose the docs branch
+        id: docs
+        if: steps.find.outputs.dirs != ''
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if git ls-remote --exit-code --heads https://github.com/code198x/docs "$HEAD_REF" >/dev/null; then
+            echo "ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=main" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout docs
+        if: steps.find.outputs.dirs != ''
+        uses: actions/checkout@v7
+        with:
+          repository: code198x/docs
+          ref: ${{ steps.docs.outputs.ref }}
+          path: docs-repo
+
+      - name: Setup Node
+        if: steps.find.outputs.dirs != ''
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: website/package-lock.json
+
+      - name: Setup Python
+        if: steps.find.outputs.dirs != ''
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        if: steps.find.outputs.dirs != ''
+        working-directory: website
+        run: npm ci --ignore-scripts
+
+      - name: Run the batch gates
+        if: steps.find.outputs.dirs != ''
+        env:
+          DIRS: ${{ steps.find.outputs.dirs }}
+          DOCS_REF: ${{ steps.docs.outputs.ref }}
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          echo "Queue rows from code198x/docs $DOCS_REF"
+          status=0
+          while IFS= read -r dir; do
+            [ -n "$dir" ] || continue
+            ids="$(python3 -c 'import json, sys; print(" ".join(r["id"] for r in json.load(open(sys.argv[1]))))' "website/$dir/triage.json")"
+            echo "::group::$dir ($ids)"
+            rc=0
+            # shellcheck disable=SC2086 # one argument per candidate ID
+            python3 docs-repo/scripts/vault_batch_gates.py --website website --review "$dir" --ids $ids --skip-release || rc=$?
+            echo '::endgroup::'
+            if [ "$rc" -ne 3 ]; then
+              echo "::error::$dir failed its Vault batch gates (exit $rc)"
+              status=1
+            fi
+          done <<< "$DIRS"
+          exit "$status"
