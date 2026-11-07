@@ -1,6 +1,7 @@
 import { defineCollection, z } from 'astro:content';
 import { glob, file } from 'astro/loaders';
 import { COLOUR_ROLES, CONFIDENCES } from './lib/machine-colours';
+import { CAPABILITY_FIELDS, PRIVATE_SOURCE } from './lib/system-capability';
 
 // CPU families a system can be keyed by — shared by the primary and secondary
 // architecture fields on the systems collection.
@@ -37,6 +38,13 @@ const cpuArchitectures = z.enum([
 ]);
 
 // Platform/system definitions - the source of truth for all platform data
+// One capability field: a statement for a reader and the public sources that
+// support it (docs: specifications/system-profile.md).
+const capabilityField = z.object({
+  value: z.string().min(1),
+  sources: z.array(z.string().min(1).refine((s) => !PRIVATE_SOURCE.test(s), 'sources must be public works, not local paths')).min(1),
+}).strict();
+
 const systems = defineCollection({
   loader: glob({ pattern: '**/*.yaml', base: 'src/content/systems' }),
   schema: z.object({
@@ -109,6 +117,14 @@ const systems = defineCollection({
     // "active" (has a real landing page) means tier is live or next — see
     // isActivePlatform() in lib/platforms.ts.
     tier: z.enum(['live', 'next', 'planned', 'edge', 'beyond']),
+
+    // What the machine can do, for one named configuration. Optional: a
+    // missing field is a depth gap (`npm run systems:depth`), never a guess.
+    // Depth is orthogonal to `tier` and the support flags; it never sets them.
+    capability: z.object({
+      configuration: z.string().min(1),
+      ...Object.fromEntries(CAPABILITY_FIELDS.map(({ key }) => [key, capabilityField.optional()])),
+    }).strict().optional(),
   }),
 });
 
