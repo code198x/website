@@ -36,7 +36,8 @@ export function frontmatter(text) {
 export function systemDepth({ systems, vault, patterns, lessons }) {
   return systems.map((system) => {
     const naming = vault.filter((entry) => entry.platforms?.includes(system.slug));
-    const own = vault.find((entry) => entry.path === `systems/${system.slug}`);
+    const ownPath = system.vaultEntry ?? `systems/${system.slug}`;
+    const own = vault.find((entry) => entry.path === ownPath);
     const fields = CAPABILITY_FIELDS.filter(({ key }) => system.capability?.[key]).map(({ key }) => key);
     const depth = {
       slug: system.slug,
@@ -51,7 +52,7 @@ export function systemDepth({ systems, vault, patterns, lessons }) {
       lessons: lessons.filter((id) => id.startsWith(`${system.slug}/`)).length,
     };
     depth.gaps = [
-      depth.vaultEntry === 'none' && 'Vault entry',
+      depth.vaultEntry === 'none' && (system.vaultEntry ? `Vault entry (${system.vaultEntry} is named but not published)` : 'Vault entry'),
       depth.vaultEntry === 'unreviewed' && 'Vault review',
       depth.capability < CAPABILITY_FIELDS.length &&
         `capability (${CAPABILITY_FIELDS.length - depth.capability} of ${CAPABILITY_FIELDS.length} fields missing)`,

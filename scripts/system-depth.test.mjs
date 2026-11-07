@@ -88,3 +88,14 @@ test('the schema lists exactly the capability fields the page and report use', a
   const keys = [...block.matchAll(/^\s+(\w+): capabilityField\.optional\(\)/gm)].map((m) => m[1]);
   assert.deepEqual(keys, CAPABILITY_FIELDS.map((f) => f.key));
 });
+
+test('a system can name a Vault entry with a different slug', () => {
+  const site = base();
+  site.systems[0].vaultEntry = 'systems/oric';
+  assert.equal(systemDepth(site)[0].vaultEntry, 'none');
+  assert.ok(systemDepth(site)[0].gaps.includes('Vault entry (systems/oric is named but not published)'));
+  site.vault.push({ path: 'systems/oric', category: 'systems', platforms: ['oric-atmos'], reviewed: false });
+  const d = systemDepth(site)[0];
+  assert.equal(d.vaultEntry, 'unreviewed');
+  assert.equal(d.otherVault, 1, 'the named entry is its own, not related reading');
+});
