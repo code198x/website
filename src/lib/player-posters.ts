@@ -6,7 +6,8 @@ import { pngSize } from './pixel-frame';
 
 export type PosterKind = 'game' | 'boot' | 'demo';
 export interface Poster { src: string; kind: PosterKind; caption: string; ceiling: number }
-type Entry = { kind: PosterKind; src?: string; variant?: string; frame?: number; caption?: string; ceiling?: number };
+export type DemoMedia = { src: string; title: string };
+type Entry = { kind: PosterKind; src?: string; variant?: string; frame?: number; caption?: string; ceiling?: number; demo?: DemoMedia };
 
 /** A sensible width for the empty frame, when a family has no poster yet. */
 const FALLBACK_STAGE_WIDTH = 704;
@@ -63,4 +64,9 @@ export function stageWidth(system: string, machineName: string): number | null {
  */
 export function declaredGrid(system: string, width: number, height: number): { w: number; h: number } | undefined {
   return system === 'commodore-amiga' && width === 640 && height === 512 ? { w: 320, h: 256 } : undefined;
+}
+
+/** An explicit lesson program wins over the system page's display cartridge. */
+export function demoMediaFor(familyId: string, explicit?: DemoMedia): DemoMedia | undefined {
+  return explicit ?? posterEntries()[familyId]?.demo;
 }

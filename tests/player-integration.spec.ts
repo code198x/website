@@ -336,3 +336,43 @@ test.describe('editable BASIC in the lesson', () => {
     await expect(page.getByRole('dialog',{name:'Your Spectrum'})).toBeHidden();
   });
 });
+
+test.describe('new family display defaults', () => {
+  for (const [slug, family] of [['msx2', 'msx2'], ['sega-mega-drive', 'sega-mega-drive'], ['neo-geo', 'snk-neo-geo']]) {
+    test(`${family} resolves its real poster`, async ({ page }) => {
+      await page.goto(`/systems/${slug}/`);
+      const stage = page.locator(`.stage[data-system="${family}"]`);
+      await expect(stage.locator('img')).toBeVisible();
+      expect(await stage.locator('img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+      await expect(stage.locator('.stage-empty')).toHaveCount(0);
+    });
+  }
+
+  test('the Mega Drive default downloads and actually displays its red cartridge', async ({ page }) => {
+    await page.goto('/systems/sega-mega-drive/');
+    await page.locator('.stage-play').click();
+    const player = page.locator('emu198x-player');
+    await expect(player).toHaveAttribute('src', '/code-samples/sega-mega-drive/demos/colour-screen/demo.bin');
+    await player.locator('#run-example').click();
+    await expect.poll(async () => player.locator('canvas').evaluate((canvas: HTMLCanvasElement) => {
+      const copy = document.createElement('canvas');
+      copy.width = canvas.width; copy.height = canvas.height;
+      const context = copy.getContext('2d')!;
+      context.drawImage(canvas, 0, 0);
+      const [r, g, b] = context.getImageData(Math.floor(copy.width / 2), Math.floor(copy.height / 2), 1, 1).data;
+      return r > 240 && g < 10 && b < 10;
+    })).toBe(true);
+  });
+
+  test('the AES default requires the visitor’s BIOS before it starts', async ({ page }) => {
+    const workers: string[] = [];
+    page.on('worker', worker => workers.push(worker.url()));
+    await page.goto('/systems/neo-geo/');
+    await page.locator('.stage-play').click();
+    const player = page.locator('emu198x-player');
+    await expect(player).toHaveAttribute('src', '/code-samples/snk-neo-geo/demos/colour-screen/demo.bin');
+    await player.locator('#run-example').click();
+    await expect(player.locator('#status')).toContainText('Firmware is not included.');
+    expect(workers).toEqual([]);
+  });
+});

@@ -111,3 +111,16 @@ nes_intro="nintendo-entertainment-system/assembly/meet-the-machine/unit-01"
 for file in screen.asm nes.cfg; do
     cp "$SAMPLES/$nes_intro/$file" "$OUT/$nes_intro/$file"
 done
+
+# These original display cartridges are system-page defaults, not arbitrary
+# .bin files. Never ship a stale/empty default or silently omit its source.
+for family in sega-mega-drive snk-neo-geo; do
+    rel="$family/demos/colour-screen"
+    mkdir -p "$OUT/$rel"
+    for file in demo.bin demo.asm Makefile README.md; do
+        test -s "$SAMPLES/$rel/$file" || { echo "Missing display cartridge input: $rel/$file" >&2; exit 1; }
+        cp "$SAMPLES/$rel/$file" "$OUT/$rel/$file"
+    done
+    test -s "$SAMPLES/LICENSE"
+    cp "$SAMPLES/LICENSE" "$OUT/$rel/LICENSE"
+done
