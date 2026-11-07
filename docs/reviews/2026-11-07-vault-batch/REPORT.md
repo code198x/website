@@ -130,3 +130,7 @@ No issues were opened for follow-ups.
 Screenshots: **64** full-page captures in `screenshots/` cover **32** entries (3 drafts, 29 linked entries). Each was captured at desktop 1440×1000 and on a Pixel 7, from the built site served by `astro preview`. Every page answered **200** with the expected heading. In all **64** views a DOM check found **0** broken images, **0** horizontally overflowing elements, **0** page errors and **0** fragments of raw Markdown or MDX. All **29** new incoming links render inline and are visible. Each capture was inspected by eye. On a phone, two table cells break a word mid-way: "Akumajō Densetsu" in `hardware/apu` and "background" in `games/shovel-knight`. Neither cell's text changed in this batch.
 
 The automated results are not human approval. The three entries stay `reviewed: false` until a person approves them.
+
+## Approval
+
+Steve Hill approved all 3 entries in conversation on 7 November 2026: `hardware/cp-system`, `systems/magnavox-odyssey`, `hardware/vrc6`. They are now `reviewed: true`; the approval is recorded in [approval.json](approval.json). Publication is verified after the merge.
