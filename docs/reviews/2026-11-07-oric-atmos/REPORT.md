@@ -43,7 +43,7 @@ Limits:
   - `hardware/ay-3-8912` never mentions the Oric, so there are no words to wrap. Adding an Oric line is a review edit and is left as a followup.
   - `companies/silmarils` and `people/ian-andrew` mention the Oric but were not proposed. They are left unchanged.
 - **Outgoing links** from the entry: the Spectrum, 6502, AY-3-8912, 6522 VIA, Microsoft BASIC, Éric Chahi, Silmarils, *The Hobbit*, *Pixel*, Ocean, Durell, Level 9, Melbourne House and the Dragon 32.
-- **Queue** (`followups.json`): seven new needs-triage candidates, VC-3189 to VC-3195 (Tangerine Computer Systems, Tansoft, Oric Telestrat, Pravetz 8D, *Théoric*, IJK Software, *Bits & Bytes*). Eureka Informatique is folded into the Telestrat row. Five existing candidates gain `candidate:VC-0010` as a planned referrer: Loriciels (VC-1127), *L'Aigle d'Or* (VC-1841), Microtan 65 (VC-3015), *Personal Computer News* (VC-1318) and *Svet kompjutera* (VC-1412). No issues were created for followups.
+- **Queue** (`followups.json`): seven new needs-triage candidates, VC-3205 to VC-3211 (Tangerine Computer Systems, Tansoft, Oric Telestrat, Pravetz 8D, *Théoric*, IJK Software, *Bits & Bytes*). Eureka Informatique is folded into the Telestrat row. Five existing candidates gain `candidate:VC-0010` as a planned referrer: Loriciels (VC-1127), *L'Aigle d'Or* (VC-1841), Microtan 65 (VC-3015), *Personal Computer News* (VC-1318) and *Svet kompjutera* (VC-1412). No issues were created for followups.
 
 ## For the reviewer: the claim checker's concerns
 
