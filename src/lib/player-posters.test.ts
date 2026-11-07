@@ -44,7 +44,9 @@ describe('player posters', () => {
   it('binds the three new images and staged sources to their capture receipt', () => {
     const receipt = JSON.parse(readFileSync('docs/reviews/2026-11-07-player-captures.json', 'utf8'));
     const hash = (file: string) => createHash('sha256').update(readFileSync(file)).digest('hex');
-    expect(receipt.captures).toHaveLength(3);
+    const families = receipt.captures.map((capture: { family: string }) => capture.family);
+    expect([...new Set(families)].sort()).toEqual(['msx2', 'sega-mega-drive', 'snk-neo-geo']);
+    expect(new Set(families).size).toBe(families.length);
     for (const capture of receipt.captures) {
       const entry = posterEntries()[capture.family];
       const poster = posterFor(capture.family, capture.family);

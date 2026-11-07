@@ -63,8 +63,8 @@ global.fetch=async i=>new Response(await readFile(new URL(i)),{headers:{'Content
 import(workerData).then(()=>parentPort.on('message',data=>self.onmessage({data})));`;
 
 let failures = 0;
-for (const [family, entry] of Object.entries(entries)) {
-  if (entry.kind === 'game' || (only.length && !only.includes(family))) continue;
+const eligible = Object.entries(entries).filter(([family, entry]) => entry.kind !== 'game' && (!only.length || only.includes(family)));
+for (const [family, entry] of eligible) {
   let worker;
   try {
     if (!Number.isInteger(entry.frame) || entry.frame < 1) throw new Error('Capture frame must be a positive integer');
@@ -119,5 +119,7 @@ for (const [family, entry] of Object.entries(entries)) {
 }
 
 if (only.some(family => !(family in entries))) { console.error('Unknown requested family'); failures++; }
-if (process.env.POSTER_RECEIPT_PATH) writeFileSync(process.env.POSTER_RECEIPT_PATH, JSON.stringify(receipts, null, 2));
+if (!eligible.length) { console.error('No eligible boot/demo families selected'); failures++; }
+if (receipts.length !== eligible.length) failures++;
+if (!failures && process.env.POSTER_RECEIPT_PATH) writeFileSync(process.env.POSTER_RECEIPT_PATH, JSON.stringify(receipts, null, 2));
 if (failures) process.exitCode = 1;
