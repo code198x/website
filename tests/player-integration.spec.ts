@@ -342,8 +342,10 @@ test.describe('new family display defaults', () => {
     test(`${family} resolves its real poster`, async ({ page }) => {
       await page.goto(`/systems/${slug}/`);
       const stage = page.locator(`.stage[data-system="${family}"]`);
-      await expect(stage.locator('img')).toBeVisible();
-      expect(await stage.locator('img').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
+      const poster = stage.getByRole('img');
+      await expect(poster).toHaveCount(1);
+      await expect(poster).toBeVisible();
+      expect(await poster.evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true);
       await expect(stage.locator('.stage-empty')).toHaveCount(0);
     });
   }
