@@ -33,7 +33,7 @@ const doubled = !!grid || (!!size && size.width / size.height > 1.8);
 const maxScale = poster ? poster.ceiling * (doubled ? 2 : 1) : 1;
 ---
 <RefitScreens />
-{entry && <div class="stage" data-system={entry.id} data-variant={variant} data-media-src={media?.src} data-media-title={media?.title} style={`--stage-rule: ${rule}; --stage-max: calc(${max}px + 1.2rem)`}>
+{entry && <div class="stage" data-system={entry.id} data-variant={variant} data-default-demo={media && !Astro.props.src ? 'true' : undefined} data-media-src={media?.src} data-media-title={media?.title} style={`--stage-rule: ${rule}; --stage-max: calc(${max}px + 1.2rem)`}>
   <div class="stage-screen">
     {poster
       ? <Screen src={poster.src} alt={`${name}: ${poster.caption}`} width={size!.width} height={size!.height} grid={grid} maxScale={maxScale} loading="eager" />
@@ -56,6 +56,7 @@ const maxScale = poster ? poster.ceiling * (doubled ? 2 : 1) : 1;
   // soft navigation. Re-run the reveal-and-bind step on every page load —
   // initial or soft — and guard each stage so it's never bound twice.
   import { loadPlayer } from '../lib/load-player';
+  type MediaPlayer = HTMLElement & { loadMedia(program: { name: string; bytes: Uint8Array }): Promise<boolean> };
 
   function init() {
     for (const stage of document.querySelectorAll<HTMLElement>('.stage:not([data-stage-bound])')) {
@@ -67,8 +68,18 @@ const maxScale = poster ? poster.ceiling * (doubled ? 2 : 1) : 1;
         play.disabled = true;
         play.setAttribute('aria-busy', 'true');
         status.textContent = '';
+        const defaultDemo = stage.dataset.defaultDemo === 'true';
+        let program: { name: string; bytes: Uint8Array } | undefined;
         try {
           await loadPlayer();
+          if (defaultDemo) {
+            const url = new URL(stage.dataset.mediaSrc!, window.location.href);
+            if (url.origin !== window.location.origin) throw new Error('Display cartridges must come from this site.');
+            const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+            if (!response.ok) throw new Error('The display cartridge could not be downloaded.');
+            program = { name: decodeURIComponent(url.pathname.split('/').pop()!), bytes: new Uint8Array(await response.arrayBuffer()) };
+            if (!program.bytes.length) throw new Error('The display cartridge is empty.');
+          }
         } catch (error) {
           console.error(error);
           play.disabled = false;
@@ -76,25 +87,39 @@ const maxScale = poster ? poster.ceiling * (doubled ? 2 : 1) : 1;
           // The live region is already in the page, empty; filling it a frame
           // later is what makes screen readers announce the change.
           requestAnimationFrame(() => {
-            status.textContent = "The player couldn't load. Check your connection and try again.";
+            status.textContent = defaultDemo
+              ? "The test display couldn't load. Check your connection and try again."
+              : "The player couldn't load. Check your connection and try again.";
           });
           return;
         }
+        if (!stage.isConnected) return;
         const screen = stage.querySelector<HTMLElement>('.stage-screen')!;
         // The player takes the poster's width: the capture, not its bezel.
         const width = (screen.querySelector('.h-screen') ?? screen).getBoundingClientRect().width;
-        const player = document.createElement('emu198x-player');
+        const player = document.createElement('emu198x-player') as MediaPlayer;
         player.setAttribute('system', stage.dataset.system!);
         if (stage.dataset.variant) player.setAttribute('variant', stage.dataset.variant);
-        if (stage.dataset.mediaSrc) {
+        if (stage.dataset.mediaSrc && !defaultDemo) {
           player.setAttribute('src', stage.dataset.mediaSrc);
           player.setAttribute('example-title', stage.dataset.mediaTitle ?? 'Test display');
         }
         player.setAttribute('tabindex', '-1');
         if (width) player.style.maxWidth = `${width}px`;
         screen.replaceChildren(player);
+        if (program) {
+          try {
+            await player.loadMedia(program);
+          } catch (error) {
+            console.error(error);
+            status.textContent = "The test display couldn't start. Try Play again, or choose a local cartridge.";
+            play.disabled = false;
+            play.removeAttribute('aria-busy');
+            return;
+          }
+        }
         stage.querySelector('.stage-bar')!.remove();
-        stage.querySelector('.stage-caption')?.remove();
+        if (!defaultDemo) stage.querySelector('.stage-caption')?.remove();
         player.focus();
       });
     }
