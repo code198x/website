@@ -118,6 +118,12 @@ const systems = defineCollection({
     // isActivePlatform() in lib/platforms.ts.
     tier: z.enum(['live', 'next', 'planned', 'edge', 'beyond']),
 
+    // The Vault entry that tells this system's history, when it isn't
+    // systems/<slug>: one entry can cover a family (systems/oric for the Oric
+    // Atmos page, systems/atari-8-bit for the Atari 800). Read by
+    // `npm run systems:depth`.
+    vaultEntry: z.string().regex(/^systems\/[a-z0-9]+(?:-[a-z0-9]+)*$/).optional(),
+
     // What the machine can do, for one named configuration. Optional: a
     // missing field is a depth gap (`npm run systems:depth`), never a guess.
     // Depth is orthogonal to `tier` and the support flags; it never sets them.
