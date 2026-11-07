@@ -79,3 +79,12 @@ test('capability sources must be public works, never local or library paths', as
     assert.ok(!PRIVATE_SOURCE.test(good), good);
   }
 });
+
+test('the schema lists exactly the capability fields the page and report use', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { CAPABILITY_FIELDS } = await import('../src/lib/system-capability.ts');
+  const config = readFileSync(new URL('../src/content.config.ts', import.meta.url), 'utf8');
+  const block = config.match(/capability: z\.object\(\{([\s\S]*?)\}\)\.strict\(\)/)[1];
+  const keys = [...block.matchAll(/^\s+(\w+): capabilityField\.optional\(\)/gm)].map((m) => m[1]);
+  assert.deepEqual(keys, CAPABILITY_FIELDS.map((f) => f.key));
+});

@@ -1,7 +1,7 @@
 import { defineCollection, z } from 'astro:content';
 import { glob, file } from 'astro/loaders';
 import { COLOUR_ROLES, CONFIDENCES } from './lib/machine-colours';
-import { CAPABILITY_FIELDS, PRIVATE_SOURCE } from './lib/system-capability';
+import { PRIVATE_SOURCE } from './lib/system-capability';
 
 // CPU families a system can be keyed by — shared by the primary and secondary
 // architecture fields on the systems collection.
@@ -121,9 +121,18 @@ const systems = defineCollection({
     // What the machine can do, for one named configuration. Optional: a
     // missing field is a depth gap (`npm run systems:depth`), never a guess.
     // Depth is orthogonal to `tier` and the support flags; it never sets them.
+    // Keys match CAPABILITY_FIELDS (src/lib/system-capability.ts), written
+    // out so the page sees their types; .strict() rejects any other key.
     capability: z.object({
       configuration: z.string().min(1),
-      ...Object.fromEntries(CAPABILITY_FIELDS.map(({ key }) => [key, capabilityField.optional()])),
+      processor: capabilityField.optional(),
+      memory: capabilityField.optional(),
+      display: capabilityField.optional(),
+      sound: capabilityField.optional(),
+      input: capabilityField.optional(),
+      storage: capabilityField.optional(),
+      expansion: capabilityField.optional(),
+      firmware: capabilityField.optional(),
     }).strict().optional(),
   }),
 });
