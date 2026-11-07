@@ -3,6 +3,10 @@
 // A11Y_SWEEP/built-site workaround is needed. Run: npx playwright test tests/player-integration.spec.ts
 
 import { expect, test, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+
+const displayCaptures = JSON.parse(readFileSync('docs/reviews/2026-11-07-player-captures.json', 'utf8')) as { captures: Array<{ family: string; media: { src: string; sha256: string } | null }> };
 
 /**
  * Follows a link by ClientRouter soft navigation and waits for the new page's
@@ -352,15 +356,31 @@ test.describe('new family display defaults', () => {
 
   test('the Mega Drive default downloads and actually displays its red cartridge', async ({ page }) => {
     await page.goto('/systems/sega-mega-drive/');
+    const expected = displayCaptures.captures.find(c => c.family === 'sega-mega-drive')!.media!;
+    const download = page.waitForResponse(response => new URL(response.url()).pathname === expected.src);
+    const workers: string[] = [];
+    page.on('worker', worker => workers.push(worker.url()));
     await page.locator('.stage-play').click();
     const player = page.locator('emu198x-player');
-    await expect(player).toHaveAttribute('src', '/code-samples/sega-mega-drive/demos/colour-screen/demo.bin');
-    await player.locator('#run-example').click();
+    expect(createHash('sha256').update(await (await download).body()).digest('hex')).toBe(expected.sha256);
+    expect(await player.getAttribute('src')).toBeNull();
+    await expect(player.getByRole('button', { name: 'Run this lesson' })).toHaveCount(0);
+    await expect(page.locator('.stage-caption')).toContainText('no game or controls');
     await expect.poll(async () => player.locator('canvas').evaluate((canvas: HTMLCanvasElement) => {
       const copy = document.createElement('canvas');
       copy.width = canvas.width; copy.height = canvas.height;
       const context = copy.getContext('2d')!;
       context.drawImage(canvas, 0, 0);
+      const [r, g, b] = context.getImageData(Math.floor(copy.width / 2), Math.floor(copy.height / 2), 1, 1).data;
+      return r > 240 && g < 10 && b < 10;
+    })).toBe(true);
+    const before = workers.length;
+    await player.locator('#start').click();
+    await expect.poll(() => workers.length).toBe(before + 1);
+    await expect(player.locator('#status')).toContainText('Running');
+    await expect.poll(async () => player.locator('canvas').evaluate((canvas: HTMLCanvasElement) => {
+      const copy = document.createElement('canvas'); copy.width = canvas.width; copy.height = canvas.height;
+      const context = copy.getContext('2d')!; context.drawImage(canvas, 0, 0);
       const [r, g, b] = context.getImageData(Math.floor(copy.width / 2), Math.floor(copy.height / 2), 1, 1).data;
       return r > 240 && g < 10 && b < 10;
     })).toBe(true);
@@ -370,11 +390,30 @@ test.describe('new family display defaults', () => {
     const workers: string[] = [];
     page.on('worker', worker => workers.push(worker.url()));
     await page.goto('/systems/neo-geo/');
+    const expected = displayCaptures.captures.find(c => c.family === 'snk-neo-geo')!.media!;
+    const download = page.waitForResponse(response => new URL(response.url()).pathname === expected.src);
     await page.locator('.stage-play').click();
     const player = page.locator('emu198x-player');
-    await expect(player).toHaveAttribute('src', '/code-samples/snk-neo-geo/demos/colour-screen/demo.bin');
-    await player.locator('#run-example').click();
+    expect(createHash('sha256').update(await (await download).body()).digest('hex')).toBe(expected.sha256);
+    expect(await player.getAttribute('src')).toBeNull();
+    await expect(player.getByRole('button', { name: 'Run this lesson' })).toHaveCount(0);
+    await expect(page.locator('.stage-caption')).toContainText('no game or controls');
     await expect(player.locator('#status')).toContainText('Firmware is not included.');
     expect(workers).toEqual([]);
   });
+});
+
+test('a failed default cartridge download preserves the poster and can retry', async ({ page }) => {
+  await page.goto('/systems/sega-mega-drive/');
+  const src = '**/code-samples/sega-mega-drive/demos/colour-screen/demo.bin';
+  await page.route(src, route => route.fulfill({ status: 503, body: 'Temporarily unavailable' }));
+  const play = page.locator('.stage-play');
+  await play.click();
+  await expect(page.locator('.stage-status')).toContainText("The test display couldn't load");
+  await expect(play).toBeEnabled();
+  await expect(page.locator('.stage').getByRole('img')).toBeVisible();
+  await expect(page.locator('emu198x-player')).toHaveCount(0);
+  await page.unroute(src);
+  await play.click();
+  await expect(page.locator('emu198x-player').locator('#status')).toContainText('Running');
 });
