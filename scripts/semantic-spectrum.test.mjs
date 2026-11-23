@@ -73,3 +73,19 @@ test('unrecognised policy version fails closed', () => {
   const p = copy(); p.version = 2;
   assert.throws(() => buildSemanticGraph(baseEntry, baseSystem, p), /Unknown pilot policy/);
 });
+
+test('evidence identifiers do not depend on source order', () => {
+  const a = { ref: 'magazines/sinclair-user', kind: 'magazine', date: '1986-06', issue: 51, page: '47' };
+  const b = { ref: 'magazines/sinclair-user', kind: 'advertisement', date: '1982-11', issue: 8, page: '38' };
+  const ids = sources => graph({ ...baseEntry, sources: { introduced: sources } })['@graph'].slice(2).map(n => n['@id']).sort();
+  assert.deepEqual(ids([a,b]), ids([b,a]));
+});
+test('distinct claim values cannot silently reuse an assertion identifier', () => {
+  const first = graph()['@graph'][1]['@id'];
+  const changed = graph({ ...baseEntry, introduced: 1983 }, { ...baseSystem, year: 1983 })['@graph'][1]['@id'];
+  assert.notEqual(first, changed);
+});
+test('duplicate evidence occurrence is rejected', () => {
+  const source = { ref: 'magazines/sinclair-user', kind: 'magazine' };
+  assert.throws(() => graph({ ...baseEntry, sources: { introduced: [source, source] } }), /Duplicate evidence occurrence/);
+});
