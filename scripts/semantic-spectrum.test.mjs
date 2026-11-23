@@ -62,8 +62,8 @@ test('approved source does not authorise prohibited derivative', () => {
   assert.throws(() => buildSemanticGraph(baseEntry, baseSystem, p), /derived introduction claim/);
 });
 test('approved entities do not authorise restricted edge', () => {
-  const p = copy(); p.decisions.relationships.manufacturer.publish = false;
-  assert.throws(() => buildSemanticGraph(baseEntry, baseSystem, p), /relationship manufacturer/);
+  const p = copy(); p.decisions.relationships.assertion.publish = false;
+  assert.throws(() => buildSemanticGraph(baseEntry, baseSystem, p), /relationship assertion/);
 });
 test('identity remains stable across editorial metadata changes', () => {
   const altered = { ...baseEntry, subtitle: 'Renamed editorial subtitle' };
