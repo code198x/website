@@ -74,7 +74,7 @@ export function buildSemanticGraph(entry, system, policy = DEFAULT_POLICY) {
   requirePermission(policy.decisions?.entity?.publish, 'entity');
   requirePermission(policy.decisions?.claim?.introduced?.publish, 'introduction claim');
   requirePermission(policy.decisions?.claim?.introduced?.derived, 'derived introduction claim');
-  for (const relation of ['cpuArchitecture', 'manufacturer', 'assertion', 'subject', 'predicate', 'year', 'evidenceUsage', 'source', 'sourceKind']) {
+  for (const relation of ['assertion', 'subject', 'predicate', 'year', 'evidenceUsage', 'source', 'sourceKind']) {
     requirePermission(policy.decisions?.relationships?.[relation]?.publish, 'relationship ' + relation);
   }
   if (policy.identities?.machine !== ENTITY || policy.identities?.cpu !== 'https://code198x.com/id/cpu/z80' || policy.identities?.manufacturer !== 'https://code198x.com/id/organisations/sinclair') throw Error('Identity policy mismatch');
@@ -98,8 +98,6 @@ export function buildSemanticGraph(entry, system, policy = DEFAULT_POLICY) {
     },
     '@graph': [
       { '@id': ENTITY, '@type': 'schema:Product', 'schema:name': entry.title,
-        'x:cpuArchitecture': { '@id': 'https://code198x.com/id/cpu/z80' },
-        'x:manufacturer': { '@id': 'https://code198x.com/id/organisations/sinclair' },
         'x:assertion': { '@id': claimId } },
       { '@id': claimId, '@type': 'x:HistoricalAssertion', 'x:subject': { '@id': ENTITY },
         'x:predicate': { '@id': VOCAB + 'introduced' }, 'x:year': String(year),
