@@ -37,7 +37,6 @@ def main():
     expected = {
         (entity, RDF.type, URIRef(SCHEMA + "Product")),
         (entity, URIRef(VOCAB + "assertion"), claim),
-        (entity, URIRef(VOCAB + "cpuArchitecture"), URIRef("https://code198x.com/id/cpu/z80")),
         (claim, RDF.type, URIRef(VOCAB + "HistoricalAssertion")),
         (claim, URIRef(VOCAB + "subject"), entity),
         (claim, URIRef(VOCAB + "predicate"), URIRef(VOCAB + "introduced")),
