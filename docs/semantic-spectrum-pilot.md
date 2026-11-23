@@ -13,7 +13,7 @@ The test suite is part of the existing `check:content` command. The generated fi
 
 ## Pilot identity and publication manifest
 
-`scripts/semantic-spectrum-policy.json` is a versioned **test fixture** for the rights gate, not evidence of legal permission or release authorisation. It records candidate identity URIs and separate decisions for entities, derived claims, source identities/usages, and each relationship. Missing or unknown decisions fail closed. Identities are stable across editorial metadata changes but remain provisional until a URI persistence policy is approved. Contradictory claims are not yet implemented; future assertion identities must preserve competing assertions and provenance instead of overwriting them.
+`scripts/semantic-spectrum-policy.json` is a versioned **test fixture** for the rights gate, not evidence of legal permission or release authorisation. It records candidate identity URIs and separate decisions for entities, derived claims, source identities/usages, and each relationship. Missing or unknown decisions fail closed. Identities are stable across editorial metadata changes but remain provisional until a URI persistence policy is approved. Synthetic contradictory claims are demonstrated in `scripts/semantic-federation.test.mjs`; this is not yet general RDF federation or provenance verification. The model-family referent, pilot assertion IDs and evidence occurrence IDs are specified in `docs/semantic-vocabulary-contract.md`.
 
 **No public release may be inferred from the manifest's `publish: true` test flags.** A separate human-reviewed rights and namespace decision is mandatory.
 
