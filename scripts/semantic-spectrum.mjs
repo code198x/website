@@ -3,7 +3,7 @@
 // Requires existing dev dependency js-yaml.
 import fs from 'node:fs';
 import path from 'node:path';
-import yaml from 'js-yaml';
+import * as yaml from 'js-yaml';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const ENTITY = 'https://code198x.com/id/systems/sinclair-zx-spectrum';
