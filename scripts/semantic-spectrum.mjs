@@ -8,6 +8,9 @@ import * as yaml from 'js-yaml';
 const ROOT = path.resolve(import.meta.dirname, '..');
 const ENTITY = 'https://code198x.com/id/systems/sinclair-zx-spectrum';
 const VOCAB = 'https://code198x.com/ns/semantic#';
+// Pilot-only identifiers; not yet committed to public URI resolution.
+// A source link is disclosed only after an explicit source-identity review.
+const PUBLIC_SOURCE_REFS = new Set(['magazines/sinclair-user']);
 const SOURCE = path.join(ROOT, 'src/content/vault/systems/sinclair-zx-spectrum.mdx');
 const SYSTEM = path.join(ROOT, 'src/content/systems/sinclair-zx-spectrum.yaml');
 const DEFAULT_OUT = path.join(ROOT, 'dist/semantic/sinclair-zx-spectrum.jsonld');
@@ -41,6 +44,7 @@ function sourceNodes(sources, claimId) {
       // Free-text titles have not undergone rights classification: fail closed.
       return null;
     }
+    if (!PUBLIC_SOURCE_REFS.has(s.ref)) throw Error('Source identity has not been approved for export');
     if (s.kind !== 'magazine' && s.kind !== 'advertisement') throw Error('Unexpected source kind');
     return {
       '@id': claimId + '/source/' + (index + 1),
@@ -65,6 +69,7 @@ export function buildSemanticGraph(entry, system) {
       schema: 'https://schema.org/',
       x: VOCAB,
       year: { '@id': 'schema:dateCreated', '@type': 'http://www.w3.org/2001/XMLSchema#gYear' },
+      'x:year': { '@id': VOCAB + 'year', '@type': 'http://www.w3.org/2001/XMLSchema#gYear' },
     },
     '@graph': [
       { '@id': ENTITY, '@type': 'schema:Product', 'schema:name': entry.title,
@@ -72,7 +77,7 @@ export function buildSemanticGraph(entry, system) {
         'x:manufacturer': { '@id': 'https://code198x.com/id/organisations/sinclair' },
         'x:assertion': { '@id': claimId } },
       { '@id': claimId, '@type': 'x:HistoricalAssertion', 'x:subject': { '@id': ENTITY },
-        'x:predicate': 'introduced', 'x:year': year,
+        'x:predicate': { '@id': VOCAB + 'introduced' }, 'x:year': String(year),
         'x:evidenceUsage': usages.map(u => ({ '@id': u['@id'] })) },
       ...usages,
     ],
