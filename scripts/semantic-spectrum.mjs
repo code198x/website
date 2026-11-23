@@ -3,6 +3,7 @@
 // Requires existing dev dependency js-yaml.
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import * as yaml from 'js-yaml';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -34,9 +35,13 @@ function safeYear(value) {
 function requirePermission(value, description) {
   if (value !== true) throw Error('Publication decision denied: ' + description);
 }
+function stableToken(value) {
+  return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0, 24);
+}
 function sourceNodes(sources, claimId, policy) {
   if (!Array.isArray(sources) || sources.length === 0) throw Error('No evidence for claim');
-  return sources.map((s, index) => {
+  const seen = new Set();
+  return sources.map((s) => {
     if (!s || typeof s !== 'object') throw Error('Invalid evidence');
     // Deliberately narrow allowlist: no notes, locators, filenames, paths or URLs.
     // Source records are NOT asserted to be independent witnesses.
@@ -51,8 +56,13 @@ function sourceNodes(sources, claimId, policy) {
     requirePermission(policy.decisions?.sources?.[s.ref]?.identity, 'source identity');
     requirePermission(policy.decisions?.sources?.[s.ref]?.usage, 'source usage');
     if (s.kind !== 'magazine' && s.kind !== 'advertisement') throw Error('Unexpected source kind');
+    // The key identifies a specific evidence occurrence, not its list position.
+    // Do not publish locator metadata; use it only to disambiguate usages.
+    const key = stableToken([s.ref, s.kind, s.date ?? null, s.issue ?? null, s.page ?? null]);
+    if (seen.has(key)) throw Error('Duplicate evidence occurrence');
+    seen.add(key);
     return {
-      '@id': claimId + '/source/' + (index + 1),
+      '@id': claimId + '/source/' + key,
       '@type': VOCAB + 'SourceUsage',
       [VOCAB + 'source']: { '@id': 'https://code198x.com/vault/' + s.ref },
       [VOCAB + 'sourceKind']: s.kind,
@@ -74,7 +84,9 @@ export function buildSemanticGraph(entry, system, policy = DEFAULT_POLICY) {
   if (system.cpuArchitecture !== 'z80' || system.manufacturer !== 'sinclair') throw Error('Technical identity mismatch');
   const year = safeYear(entry.introduced);
   if (safeYear(system.year) !== year) throw Error('Conflicting introduction year');
-  const claimId = ENTITY + '/claims/introduced';
+  // Distinct immutable assertion IDs for distinct stated years. A correction
+  // becomes another assertion, never a mutation of the previous identifier.
+  const claimId = ENTITY + '/claims/introduced/' + year;
   const usages = sourceNodes(entry.sources?.introduced, claimId, policy);
   if (usages.length === 0) throw Error('No publicly identified evidence');
   return {
