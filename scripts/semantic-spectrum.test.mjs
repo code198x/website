@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generate, buildSemanticGraph } from './semantic-spectrum.mjs';
+import fs from 'node:fs';
+const policy = JSON.parse(fs.readFileSync(new URL('./semantic-spectrum-policy.json', import.meta.url), 'utf8'));
+const copy = () => structuredClone(policy);
 
 const baseEntry = {
   category: 'systems', reviewed: true, title: 'Sinclair ZX Spectrum',
@@ -38,7 +41,7 @@ test('real checked-in content produces a projection', () => {
 });
 
 test('a syntactically public-looking but unreviewed source identity fails closed', () => {
-  assert.throws(() => graph({ ...baseEntry, sources: { introduced: [{ ref: 'magazines/unreviewed-title', kind: 'magazine' }] } }), /not been approved/);
+  assert.throws(() => graph({ ...baseEntry, sources: { introduced: [{ ref: 'magazines/unreviewed-title', kind: 'magazine' }] } }), /Publication decision denied/);
 });
 test('consumer can traverse typed assertion and evidence without Code198x source files', () => {
   const document = JSON.parse(JSON.stringify(graph())); // independent JSON-only consumer
@@ -48,4 +51,25 @@ test('consumer can traverse typed assertion and evidence without Code198x source
   assert.equal(assertion['x:year'], '1982');
   assert.equal(assertion['x:subject']['@id'], machine['@id']);
   assert.ok(assertion['x:evidenceUsage'].every(link => byId.has(link['@id'])));
+});
+
+test('unknown rights decisions fail closed', () => {
+  const p = copy(); delete p.decisions.relationships.evidenceUsage;
+  assert.throws(() => buildSemanticGraph(baseEntry, baseSystem, p), /relationship evidenceUsage/);
+});
+test('approved source does not authorise prohibited derivative', () => {
+  const p = copy(); p.decisions.claim.introduced.derived = false;
+  assert.throws(() => buildSemanticGraph(baseEntry, baseSystem, p), /derived introduction claim/);
+});
+test('approved entities do not authorise restricted edge', () => {
+  const p = copy(); p.decisions.relationships.manufacturer.publish = false;
+  assert.throws(() => buildSemanticGraph(baseEntry, baseSystem, p), /relationship manufacturer/);
+});
+test('identity remains stable across editorial metadata changes', () => {
+  const altered = { ...baseEntry, subtitle: 'Renamed editorial subtitle' };
+  assert.equal(graph(altered)['@graph'][0]['@id'], graph()['@graph'][0]['@id']);
+});
+test('unrecognised policy version fails closed', () => {
+  const p = copy(); p.version = 2;
+  assert.throws(() => buildSemanticGraph(baseEntry, baseSystem, p), /Unknown pilot policy/);
 });
