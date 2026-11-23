@@ -11,6 +11,12 @@ node scripts/semantic-spectrum.mjs
 
 The test suite is part of the existing `check:content` command. The generated file goes to `dist/semantic/sinclair-zx-spectrum.jsonld`; it is **not automatically published**. JSON-only independent-consumer tests check linked IDs. In addition, the existing CI job installs pinned RDFLib 7.4.0 and runs `python scripts/validate-semantic-spectrum.py` to parse the generated JSON-LD as RDF and assert expected triples. This requires no graph service or database.
 
+## Pilot identity and publication manifest
+
+`scripts/semantic-spectrum-policy.json` is a versioned **test fixture** for the rights gate, not evidence of legal permission or release authorisation. It records candidate identity URIs and separate decisions for entities, derived claims, source identities/usages, and each relationship. Missing or unknown decisions fail closed. Identities are stable across editorial metadata changes but remain provisional until a URI persistence policy is approved. Contradictory claims are not yet implemented; future assertion identities must preserve competing assertions and provenance instead of overwriting them.
+
+**No public release may be inferred from the manifest's `publish: true` test flags.** A separate human-reviewed rights and namespace decision is mandatory.
+
 ## Rights boundary
 
 - The export selects known, reviewed fields; it never serialises entire source records or prose.
