@@ -4,20 +4,20 @@
 
 ## Referent decision
 
-The entity `https://code198x.com/id/systems/sinclair-zx-spectrum` denotes the **original Sinclair ZX Spectrum 16K/48K computer model family introduced in 1982**, not an individual physical computer, the entire later Spectrum-branded lineage, a particular 128K/+2/+3 variant, a website page, or a commercial product listing. The current `schema:Product` type is a provisional broad classification, not a claim that every member has identical hardware. Separate variant identifiers will be needed if those distinctions become relevant.
+The entity `https://code198x.com/id/systems/sinclair-zx-spectrum` denotes the **ZX Spectrum computer family across its models and variants**, including the original 16K/48K, 128K, +2 and +3 machines. It does not identify an individual physical computer, a particular model or revision, a website page, or a commercial product listing. Inclusion of later licensed, compatible, or revival products requires explicit family-membership criteria rather than name matching alone. The current `schema:Product` type is a provisional broad classification, not a claim that every member has identical hardware. Separate variant identifiers will be needed if those distinctions become relevant.
 
 ## Terms used by the generator
 
 | Term | Subject | Object | Meaning and limits |
 | --- | --- | --- | --- |
 | `schema:name` | machine-family entity | string | Human-readable preferred label; not identity |
-| `x:cpuArchitecture` | machine-family entity | CPU-architecture URI | Editorially selected CPU architecture for the original family; not a claim about every later variant |
-| `x:manufacturer` | machine-family entity | organisation URI | Editorially selected original manufacturer; not necessarily sole manufacturer throughout lineage |
+| `x:cpuArchitecture` | machine-family entity | CPU-architecture URI | Legacy pilot field describing the original model; must not be applied indiscriminately to the entire family |
+| `x:manufacturer` | machine-family entity | organisation URI | Legacy pilot field describing the original manufacturer; not necessarily every family member |
 | `x:assertion` | entity | HistoricalAssertion URI | Link to an assertion about the entity; not endorsement of universal truth |
 | `x:HistoricalAssertion` | RDF type | — | Publisher-scoped historical statement; its identity must not silently change |
 | `x:subject` | assertion | entity URI | Referent of the assertion |
 | `x:predicate` | assertion | predicate URI | Property claimed about the subject |
-| `x:introduced` | predicate resource | — | A model-family introduction event/date, not an individual machine's manufacture date |
+| `x:introduced` | predicate resource | — | The initial introduction of the family, not the introduction or manufacture date of each member |
 | `x:year` | introduction assertion | `xsd:gYear` literal | Year-level claim, without implying a known exact day or month |
 | `x:evidenceUsage` | assertion | SourceUsage URI | A cited use of a source for this assertion; no independence or reliability score implied |
 | `x:SourceUsage` | RDF type | — | A specific evidence occurrence, not the publication itself |
@@ -34,7 +34,7 @@ The entity `https://code198x.com/id/systems/sinclair-zx-spectrum` denotes the **
 - Evidence usage identifiers derive from source identity, kind, date, issue and page, **not array position**. These are opaque SHA-256 prefixes, not reversible publication metadata. Changing the identity-defining evidence occurrence changes its identifier; merely reordering evidence does not.
 - Evidence usage IDs are stable only within this documented pilot algorithm; they are not suitable for indefinite cross-publisher commitments until the canonical evidence occurrence schema is agreed.
 - Source titles, notes, excerpts and locators are not projected. Hashing restricted metadata is **not proof of non-disclosure**: public identifiers can still reveal or be correlated with sensitive material. Human rights review remains mandatory.
-- Direct machine CPU/manufacturer edges are currently editorial claims without assertion-level provenance. Do not infer that they are incontrovertible.
+- Family-level CPU/manufacturer properties must not be interpreted as universally inherited by every member. The pilot currently projects original-machine values on the family URI; this is a known semantic defect requiring removal or model-scoped assertions before public release.
 
 ## Deliberate omissions
 
