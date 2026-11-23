@@ -10,7 +10,8 @@ const ENTITY = 'https://code198x.com/id/systems/sinclair-zx-spectrum';
 const VOCAB = 'https://code198x.com/ns/semantic#';
 // Pilot-only identifiers; not yet committed to public URI resolution.
 // A source link is disclosed only after an explicit source-identity review.
-const PUBLIC_SOURCE_REFS = new Set(['magazines/sinclair-user']);
+const POLICY_FILE = path.join(ROOT, 'scripts/semantic-spectrum-policy.json');
+const DEFAULT_POLICY = JSON.parse(fs.readFileSync(POLICY_FILE, 'utf8'));
 const SOURCE = path.join(ROOT, 'src/content/vault/systems/sinclair-zx-spectrum.mdx');
 const SYSTEM = path.join(ROOT, 'src/content/systems/sinclair-zx-spectrum.yaml');
 const DEFAULT_OUT = path.join(ROOT, 'dist/semantic/sinclair-zx-spectrum.jsonld');
@@ -30,7 +31,10 @@ function safeYear(value) {
   if (!Number.isInteger(value) || value < 1800 || value > 2100) throw Error('Invalid year');
   return value;
 }
-function sourceNodes(sources, claimId) {
+function requirePermission(value, description) {
+  if (value !== true) throw Error('Publication decision denied: ' + description);
+}
+function sourceNodes(sources, claimId, policy) {
   if (!Array.isArray(sources) || sources.length === 0) throw Error('No evidence for claim');
   return sources.map((s, index) => {
     if (!s || typeof s !== 'object') throw Error('Invalid evidence');
@@ -44,7 +48,8 @@ function sourceNodes(sources, claimId) {
       // Free-text titles have not undergone rights classification: fail closed.
       return null;
     }
-    if (!PUBLIC_SOURCE_REFS.has(s.ref)) throw Error('Source identity has not been approved for export');
+    requirePermission(policy.decisions?.sources?.[s.ref]?.identity, 'source identity');
+    requirePermission(policy.decisions?.sources?.[s.ref]?.usage, 'source usage');
     if (s.kind !== 'magazine' && s.kind !== 'advertisement') throw Error('Unexpected source kind');
     return {
       '@id': claimId + '/source/' + (index + 1),
@@ -54,7 +59,15 @@ function sourceNodes(sources, claimId) {
     };
   }).filter(Boolean);
 }
-export function buildSemanticGraph(entry, system) {
+export function buildSemanticGraph(entry, system, policy = DEFAULT_POLICY) {
+  if (policy.version !== 1 || policy.status !== 'pilot-only-not-approved-for-publication') throw Error('Unknown pilot policy version or status');
+  requirePermission(policy.decisions?.entity?.publish, 'entity');
+  requirePermission(policy.decisions?.claim?.introduced?.publish, 'introduction claim');
+  requirePermission(policy.decisions?.claim?.introduced?.derived, 'derived introduction claim');
+  for (const relation of ['cpuArchitecture', 'manufacturer', 'assertion', 'subject', 'predicate', 'year', 'evidenceUsage', 'source', 'sourceKind']) {
+    requirePermission(policy.decisions?.relationships?.[relation]?.publish, 'relationship ' + relation);
+  }
+  if (policy.identities?.machine !== ENTITY || policy.identities?.cpu !== 'https://code198x.com/id/cpu/z80' || policy.identities?.manufacturer !== 'https://code198x.com/id/organisations/sinclair') throw Error('Identity policy mismatch');
   if (entry.category !== 'systems' || entry.reviewed !== true) throw Error('Unreviewed or unexpected entry');
   if (entry.title !== 'Sinclair ZX Spectrum' || system.name !== entry.title) throw Error('Identity mismatch');
   if (!entry.platforms?.includes('sinclair-zx-spectrum')) throw Error('Platform mismatch');
@@ -62,7 +75,7 @@ export function buildSemanticGraph(entry, system) {
   const year = safeYear(entry.introduced);
   if (safeYear(system.year) !== year) throw Error('Conflicting introduction year');
   const claimId = ENTITY + '/claims/introduced';
-  const usages = sourceNodes(entry.sources?.introduced, claimId);
+  const usages = sourceNodes(entry.sources?.introduced, claimId, policy);
   if (usages.length === 0) throw Error('No publicly identified evidence');
   return {
     '@context': {
@@ -91,6 +104,8 @@ export function generate() {
 if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname)) {
   const out = path.resolve(process.argv[2] || DEFAULT_OUT);
   if (!out.startsWith(ROOT + path.sep)) throw Error('Output must stay within repository');
+  // The manifest is an internal test fixture, not a legal rights approval.
+  // Never enable production publication without a separate reviewed release decision.
   fs.mkdirSync(path.dirname(out), { recursive: true });
   fs.writeFileSync(out, JSON.stringify(generate(), null, 2) + '\n');
   console.log('Wrote ' + path.relative(ROOT, out));
