@@ -34,7 +34,7 @@ The entity `https://code198x.com/id/systems/sinclair-zx-spectrum` denotes the **
 - Evidence usage identifiers derive from source identity, kind, date, issue and page, **not array position**. These are opaque SHA-256 prefixes, not reversible publication metadata. Changing the identity-defining evidence occurrence changes its identifier; merely reordering evidence does not.
 - Evidence usage IDs are stable only within this documented pilot algorithm; they are not suitable for indefinite cross-publisher commitments until the canonical evidence occurrence schema is agreed.
 - Source titles, notes, excerpts and locators are not projected. Hashing restricted metadata is **not proof of non-disclosure**: public identifiers can still reveal or be correlated with sensitive material. Human rights review remains mandatory.
-- Family-level CPU/manufacturer properties must not be interpreted as universally inherited by every member. The pilot currently projects original-machine values on the family URI; this is a known semantic defect requiring removal or model-scoped assertions before public release.
+- Family-level CPU/manufacturer properties must not be interpreted as universally inherited by every member. The pilot deliberately omits these direct family-level edges. The original source YAML values are used only for internal consistency checks; future model-scoped assertions require separate rights and provenance review.
 
 ## Deliberate omissions
 
