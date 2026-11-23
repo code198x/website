@@ -30,8 +30,10 @@ def main():
     graph.parse(data=json.dumps(data), format="json-ld")
 
     entity = URIRef(BASE)
-    claim = URIRef(BASE + "/claims/introduced")
-    source_usage = URIRef(BASE + "/claims/introduced/source/1")
+    claim = URIRef(BASE + "/claims/introduced/1982")
+    usages = [URIRef(node["@id"]) for node in data["@graph"] if node.get("@type") == VOCAB + "SourceUsage"]
+    assert len(usages) == 2, "Expected two public evidence usages"
+    source_usage = usages[0]
     expected = {
         (entity, RDF.type, URIRef(SCHEMA + "Product")),
         (entity, URIRef(VOCAB + "assertion"), claim),
