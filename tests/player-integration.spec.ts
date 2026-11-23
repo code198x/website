@@ -55,6 +55,29 @@ test.describe('lesson run panel', () => {
     await expect(page.locator('.unit-layout')).not.toHaveClass(/is-docked/);
   });
 
+  test('a locally loaded Spectrum tape is not labelled as the lesson example', async ({ page, request }) => {
+    const tape = await request.get('/code-samples/sinclair-zx-spectrum/basic/meet-basic/unit-01/step-04.tap');
+    expect(tape.ok()).toBe(true);
+    await page.goto('/systems/sinclair-zx-spectrum/basic/meet-basic/unit-02-remember-and-save/');
+    await page.getByRole('button', { name: 'Run it here' }).click();
+    const dialog = page.getByRole('dialog');
+    const player = dialog.locator('emu198x-player');
+    await expect(player.getByRole('button', { name: 'Choose program or disk' })).toBeVisible();
+    await player.locator('input[type="file"]#media').setInputFiles({
+      name: 'greeting.tap',
+      mimeType: 'application/octet-stream',
+      buffer: await tape.body(),
+    });
+    await expect(player.locator('#status')).toContainText('Media ready');
+    await player.getByRole('button', { name: 'Start', exact: true }).click();
+    await expect(player.locator('#status')).toHaveText('Running');
+
+    await expect(dialog).toHaveAccessibleName('Run in the lesson player');
+    await expect(dialog.locator('.rp-title')).toHaveText('Lesson player');
+    await expect(player.getByRole('button', { name: 'Run this lesson' })).toBeVisible();
+    await expect(player.getByText('Lesson example: step-03.tap', { exact: true })).toBeVisible();
+  });
+
   test('opens a wide machine in a modal, with its screen at 1×', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(amiga);
