@@ -17,6 +17,20 @@ test('both printable editions retain the maintained starting program', async ({ 
   }
 });
 
+test('both workbook breadcrumbs return to the first-session guide', async ({ page }) => {
+  for (const [edition, title] of [['learner', 'Learner workbook'], ['teacher', 'Teacher notes']]) {
+    await page.goto(`/try/workbook/${edition}/`);
+    const breadcrumb = page.getByRole('navigation', { name: 'Breadcrumb', exact: true });
+    const guide = breadcrumb.getByRole('link', { name: 'Try Code198x', exact: true });
+    await expect(guide).toHaveAttribute('href', '/try/');
+    await expect(breadcrumb.locator('[aria-current="page"]')).toHaveText(title);
+    await guide.click();
+    await expect(page).toHaveURL(/\/try\/$/);
+    await expect(page.getByRole('link', { name: 'Read the learner booklet as HTML' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'read the teacher notes as HTML' })).toBeVisible();
+  }
+});
+
 test('downloaded PDFs match the reviewed manifest', async ({ request }) => {
   const response = await request.get('/workbooks/spectrum-basic-first-session/pdf-manifest.json');
   expect(response.ok()).toBe(true);
