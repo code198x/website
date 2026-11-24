@@ -83,3 +83,56 @@ test('Vault component preview renders the shared discovery components', async ({
   await expect(page.locator('.vault-connections li')).toHaveCount(4);
   await expect(page.locator('.vault-captures img')).toHaveCount(2);
 });
+
+const editorialPaths = [
+  {
+    id: 'records-composers-publishers',
+    entrance: '/vault/games/xenon-2/',
+    directArrival: '/vault/companies/bitmap-brothers/',
+    hops: [
+      ['/vault/games/xenon-2/', '/vault/people/david-whittaker/'],
+      ['/vault/games/xenon-2/', '/vault/companies/bitmap-brothers/'],
+      ['/vault/companies/bitmap-brothers/', '/vault/companies/renegade/'],
+      ['/vault/companies/renegade/', '/vault/phenomena/record-companies-in-software/'],
+    ],
+  },
+  {
+    id: 'software-across-borders',
+    entrance: '/vault/culture/the-c64-across-borders/',
+    directArrival: '/vault/magazines/bajtek/',
+    hops: [
+      ['/vault/culture/the-c64-across-borders/', '/vault/magazines/bajtek/'],
+      ['/vault/magazines/bajtek/', '/vault/culture/software-crossed-what-machines-could-not/'],
+      ['/vault/culture/the-c64-across-borders/', '/vault/culture/brazilian-market-reserve/'],
+      ['/vault/culture/brazilian-market-reserve/', '/vault/culture/brazil-gaming/'],
+      ['/vault/culture/brazilian-market-reserve/', '/vault/culture/spectrum-clones/'],
+      ['/vault/culture/spectrum-clones/', '/vault/culture/soviet-computing/'],
+    ],
+  },
+];
+
+for (const { id, entrance, directArrival, hops } of editorialPaths) {
+  test(`Vault reading path: ${id}`, async ({ page }) => {
+    await page.goto('/vault/');
+    await expect(page.getByRole('searchbox', { name: 'Search article titles' })).toBeVisible();
+    const starts = page.getByRole('region', { name: 'Reading paths.' });
+    await expect(starts.getByRole('link')).toHaveCount(2);
+    const start = starts.locator(`[data-reading-path="${id}"] a`);
+    await expect(start).toHaveAttribute('href', entrance);
+    await start.click();
+    await expect.poll(() => new URL(page.url()).pathname).toBe(entrance);
+
+    for (const [from, to] of hops) {
+      // Fresh loads ensure the middle article works without arriving from the index.
+      if (from === directArrival || new URL(page.url()).pathname !== from) {
+        expect((await page.goto(from))?.ok()).toBe(true);
+      }
+      const steps = page.getByRole('region', { name: 'Follow the connections.' });
+      const next = steps.locator(`a[href="${to}"]`);
+      await expect(next).toBeVisible();
+      await next.click();
+      await expect.poll(() => new URL(page.url()).pathname).toBe(to);
+      await expect(page.locator('main h1')).toBeVisible();
+    }
+  });
+}
