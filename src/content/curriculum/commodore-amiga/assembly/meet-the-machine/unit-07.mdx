@@ -12,12 +12,12 @@ import Figure from "@components/Figure.astro";
 
 Every unit so far handed something to "the Copper" and moved on. Time to open the box, because the Copper is one of the things that makes an Amiga an Amiga.
 
-The **Copper** is a tiny **co-processor** living inside the chip Agnus. It runs its own little program — the **Copper list** you've been writing — *in step with the video beam* as it sweeps down the screen. It's not the 68000; it runs alongside it, for free, while your CPU does other things. And it knows just **two instructions**:
+The **Copper** is a tiny **co-processor** living inside the chip Agnus. It runs its own little program — the **Copper list** you've been writing — *in step with the video beam* as it sweeps down the screen. It runs alongside the 68000, so the CPU doesn't have to time each colour change. Both share access to Chip RAM: the Copper uses bus slots to fetch instructions, but not while it waits for the beam. This list uses **two instructions**:
 
-- **WAIT** — pause until the beam reaches a given line. Written `dc.w $VVHH,$fffe`, where `$VV` is the line number.
+- **WAIT** — continue once the beam reaches or passes the target position. Written `dc.w $VVHH,$fffe`, where `$VV` is the line number.
 - **MOVE** — write a value to a chip register. Written `dc.w register,value`.
 
-That's the whole language. But "wait for a line, then change a register" is enough to do something the CPU would sweat over: change a colour **part-way down the screen**. Do it at several lines and you get a gradient — bands of colour — drawn by the Copper while the CPU sits idle.
+The Copper also has a `SKIP` instruction, which this list doesn’t use. But “wait for a line, then change a register” is enough to do something the CPU would sweat over: change a colour **part-way down the screen**. Do it at several lines and you get a gradient — bands of colour — drawn by the Copper while the CPU sits idle.
 
 ## What you'll see by the end
 
@@ -45,7 +45,7 @@ dc.w    COLOR00,$00af       ; ...change it again
 
 Each `WAIT`/`MOVE` pair says "when the beam gets *here*, make the background *this*." The background holds each colour until the next `WAIT` fires, so the screen shows solid bands. The CPU wrote the *list* once, at start-up; the Copper has re-run it every frame since, all by itself.
 
-This is why the harness always pointed the hardware at a Copper list, even in Unit 1: the Copper is how you change the display **in time with the beam** — the one thing the CPU, running to its own clock, can't do in lockstep.
+This is why the harness always pointed the hardware at a Copper list, even in Unit 1: the Copper changes the display **in time with the beam** without the 68000 having to check the beam position and time the writes itself.
 
 ## Assemble, master, and run
 
@@ -73,12 +73,12 @@ Change the WAIT lines — `$3001`, `$5001`, and so on. The `$VV` digits are the 
 
 ## Try this: a smoother fade
 
-Add more `WAIT`/`MOVE` pairs between the existing ones, stepping the colour by a little each time — `$0008`, `$0009`, `$000a`… The more bands you add, the smoother the fade, until it looks like a continuous gradient. (Real Amiga demos change the colour on *every* line this way — a "copper gradient" — and it costs the CPU nothing.)
+Add more `WAIT`/`MOVE` pairs between the existing ones, stepping the colour by a little each time — `$0008`, `$0009`, `$000a`… The more bands you add, the smoother the fade, until it looks like a continuous gradient. Amiga demos can change the colour on *every* line this way. Once the list is set up, the CPU doesn’t have to issue those changes each frame.
 
 ## If it doesn't work
 
-- **The whole screen is one colour.** A `WAIT` is malformed — each is two words, `dc.w $VVHH,$fffe`, and the `$fffe` matters. Without it the Copper doesn't pause and the last colour wins.
-- **The bands are in the wrong place.** Check the `$VV` line numbers are in increasing order down the list; the beam only moves down, so a `WAIT` for a line already passed never fires.
+- **The whole screen is one colour.** Check that each `WAIT` has both words, `dc.w $VVHH,$fffe`. A missing or wrong second word can change how the Copper reads the list.
+- **A band is missing or in the wrong place.** Keep the `$VV` line numbers in increasing order for separate bands. A `WAIT` can continue when the beam [has already passed its target](https://www.theflatnet.de/pub/cbm/amiga/AmigaDevDocs/hard_2.html#:~:text=even%20though%20the%20instructions%20are). To see why order matters, change only the cyan `WAIT` from `$5001` to `$2001` and leave it after `$3001`. Predict what happens, then run it: cyan follows blue around line `$30`, so the wide blue band nearly disappears. Restore `$5001` before continuing.
 - **Nothing shows / a black screen.** The Copper DMA isn't on — the harness enables it with `$8280` to `DMACON`. Leave that line as shown.
 
 ## What you've learnt
